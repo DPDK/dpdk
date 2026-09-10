@@ -128,9 +128,11 @@
 #define IXGBE_DMATXCTL_VT_MASK                 0xFFFF0000
 
 #define IXGBE_DEVARG_FIBER_SDP3_NOT_TX_DISABLE	"fiber_sdp3_no_tx_disable"
+#define IXGBE_DEVARG_FDIR_BUFFER_SIZE		"fdir_buffer_size"
 
 static const char * const ixgbe_valid_arguments[] = {
 	IXGBE_DEVARG_FIBER_SDP3_NOT_TX_DISABLE,
+	IXGBE_DEVARG_FDIR_BUFFER_SIZE,
 	NULL
 };
 
@@ -1054,19 +1056,44 @@ ixgbe_swfw_lock_reset(struct ixgbe_hw *hw)
 	ixgbe_release_swfw_semaphore(hw, mask);
 }
 
-static void
+static int
+devarg_handle_fdir_buffer_size(const char *key, const char *value,
+			       void *extra_args)
+{
+	enum rte_eth_fdir_pballoc_type *pballoc = extra_args;
+
+	if (value == NULL || extra_args == NULL)
+		return -EINVAL;
+
+	if (strcmp(value, "64k") == 0)
+		*pballoc = RTE_ETH_FDIR_PBALLOC_64K;
+	else if (strcmp(value, "128k") == 0)
+		*pballoc = RTE_ETH_FDIR_PBALLOC_128K;
+	else if (strcmp(value, "256k") == 0)
+		*pballoc = RTE_ETH_FDIR_PBALLOC_256K;
+	else {
+		PMD_INIT_LOG(ERR, "invalid %s='%s', use 64k, 128k or 256k", key, value);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int
 ixgbe_parse_devargs(struct ixgbe_adapter *adapter,
 		      struct rte_devargs *devargs)
 {
 	struct rte_kvargs *kvlist;
 	uint16_t sdp3_no_tx_disable;
+	enum rte_eth_fdir_pballoc_type pballoc;
+	int ret = 0;
 
 	if (devargs == NULL)
-		return;
+		return 0;
 
 	kvlist = rte_kvargs_parse(devargs->args, ixgbe_valid_arguments);
 	if (kvlist == NULL)
-		return;
+		return 0;
 
 	if (rte_kvargs_count(kvlist, IXGBE_DEVARG_FIBER_SDP3_NOT_TX_DISABLE) == 1 &&
 	    rte_kvargs_process(kvlist, IXGBE_DEVARG_FIBER_SDP3_NOT_TX_DISABLE,
@@ -1074,7 +1101,17 @@ ixgbe_parse_devargs(struct ixgbe_adapter *adapter,
 	    sdp3_no_tx_disable == 1)
 		adapter->sdp3_no_tx_disable = 1;
 
+	if (rte_kvargs_count(kvlist, IXGBE_DEVARG_FDIR_BUFFER_SIZE) != 0) {
+		if (rte_kvargs_process(kvlist, IXGBE_DEVARG_FDIR_BUFFER_SIZE,
+				       devarg_handle_fdir_buffer_size,
+				       &pballoc) != 0)
+			ret = -EINVAL;
+		else
+			adapter->fdir_conf.pballoc = pballoc;
+	}
+
 	rte_kvargs_free(kvlist);
+	return ret;
 }
 
 /*
@@ -1141,8 +1178,10 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 
 	/* NOTE: review for potential ordering optimization */
 	rte_atomic_store_explicit(&ad->link_thread_running, 0, rte_memory_order_seq_cst);
-	ixgbe_parse_devargs(eth_dev->data->dev_private,
-			    pci_dev->device.devargs);
+	ret = ixgbe_parse_devargs(eth_dev->data->dev_private, pci_dev->device.devargs);
+	if (ret != 0)
+		return ret;
+
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_AUTOFILL_QUEUE_XSTATS;
 
@@ -2726,7 +2765,7 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 	if (fdir_conf->mode != RTE_FDIR_MODE_NONE) {
 		struct ixgbe_hw_fdir_info *info =
 			IXGBE_DEV_PRIVATE_TO_FDIR_INFO(adapter);
-		err = ixgbe_fdir_configure(adapter, fdir_conf, &info->mask);
+		err = ixgbe_fdir_configure(dev, fdir_conf, &info->mask);
 		if (err)
 			goto error;
 	}
@@ -8668,7 +8707,8 @@ RTE_PMD_REGISTER_PCI(net_ixgbe, rte_ixgbe_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_ixgbe, pci_id_ixgbe_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_ixgbe, "* igb_uio | uio_pci_generic | vfio-pci");
 RTE_PMD_REGISTER_PARAM_STRING(net_ixgbe,
-			      IXGBE_DEVARG_FIBER_SDP3_NOT_TX_DISABLE "=<0|1>");
+			      IXGBE_DEVARG_FIBER_SDP3_NOT_TX_DISABLE "=<0|1>"
+			      IXGBE_DEVARG_FDIR_BUFFER_SIZE "=<64k|128k|256k>");
 RTE_PMD_REGISTER_PCI(net_ixgbe_vf, rte_ixgbevf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_ixgbe_vf, pci_id_ixgbevf_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_ixgbe_vf, "* igb_uio | vfio-pci");

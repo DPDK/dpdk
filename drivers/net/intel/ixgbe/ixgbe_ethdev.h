@@ -705,7 +705,7 @@ void ixgbe_filterlist_flush(struct rte_eth_dev *dev);
 /*
  * Flow director function prototypes
  */
-int ixgbe_fdir_configure(struct ixgbe_adapter *adapter,
+int ixgbe_fdir_configure(struct rte_eth_dev *dev,
 			 const struct rte_eth_fdir_conf *fdir_conf,
 			 const struct ixgbe_hw_fdir_mask *fdir_mask);
 int ixgbe_fdir_set_input_mask(struct ixgbe_adapter *adapter,

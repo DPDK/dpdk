@@ -555,10 +555,11 @@ ixgbe_set_fdir_flex_conf(struct ixgbe_adapter *adapter,
 }
 
 int
-ixgbe_fdir_configure(struct ixgbe_adapter *adapter,
+ixgbe_fdir_configure(struct rte_eth_dev *dev,
 		const struct rte_eth_fdir_conf *fdir_conf,
 		const struct ixgbe_hw_fdir_mask *fdir_mask)
 {
+	struct ixgbe_adapter *adapter = dev->data->dev_private;
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(adapter);
 	int err;
 	uint32_t fdirctrl, pbsize;
@@ -566,6 +567,16 @@ ixgbe_fdir_configure(struct ixgbe_adapter *adapter,
 	enum rte_fdir_mode mode = fdir_conf->mode;
 
 	PMD_INIT_FUNC_TRACE();
+
+	switch (dev->data->dev_conf.rxmode.mq_mode) {
+	case RTE_ETH_MQ_RX_VMDQ_DCB:
+	case RTE_ETH_MQ_RX_DCB:
+	case RTE_ETH_MQ_RX_DCB_RSS:
+		PMD_INIT_LOG(ERR, "Flow Director is not supported with DCB");
+		return -ENOTSUP;
+	default:
+		break;
+	}
 
 	if (hw->mac.type != ixgbe_mac_82599EB &&
 		hw->mac.type != ixgbe_mac_X540 &&
