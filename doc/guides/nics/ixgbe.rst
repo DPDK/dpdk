@@ -164,6 +164,32 @@ be passed as part of EAL arguments. For example,
   This option informs the driver that in this case, SDP3 is not to be
   used as a check for link up by testing for laser on/off.
 
+PF Runtime Options
+^^^^^^^^^^^^^^^^^^
+
+The following ``devargs`` option can be enabled at probe time.
+It must be passed as part of EAL arguments. For example,
+
+.. code-block:: console
+
+   dpdk-testpmd -a 81:00.0,fdir_buffer_size=256k -- -i
+
+- ``fdir_buffer_size`` (default **64k**)
+
+  Memory allocated from the Rx packet buffer for Flow Director filters.
+  Valid values are ``64k``, ``128k`` and ``256k``.
+
+  Larger values increase the number of hardware filter entries
+  (perfect mode: 2K / 4K / 8K; signature mode: 8K / 16K / 32K)
+  and reduce Rx packet buffer space by the same amount.
+  On 82599 the Rx packet buffer is 512KB, so ``256k`` takes half of it.
+
+  This value is read only at probe time. Changing it requires restarting
+  the process with a new EAL argument.
+
+.. note::
+   The driver rejects Flow Director when DCB is enabled.
+
 VF Runtime Options
 ^^^^^^^^^^^^^^^^^^
 
