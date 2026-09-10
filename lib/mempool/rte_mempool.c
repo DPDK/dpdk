@@ -873,9 +873,7 @@ rte_mempool_create_empty(const char *name, unsigned n, unsigned elt_size,
 	 * reserve a memory zone for this mempool: private data is
 	 * cache-aligned
 	 */
-	private_data_size = (private_data_size +
-			     RTE_MEMPOOL_ALIGN_MASK) & (~RTE_MEMPOOL_ALIGN_MASK);
-
+	private_data_size = RTE_CACHE_LINE_ROUNDUP(private_data_size);
 
 	/* try to allocate tailq entry */
 	te = rte_zmalloc("MEMPOOL_TAILQ_ENTRY", sizeof(*te), 0);
@@ -886,7 +884,6 @@ rte_mempool_create_empty(const char *name, unsigned n, unsigned elt_size,
 
 	mempool_size = RTE_MEMPOOL_HEADER_SIZE(mp, cache_size);
 	mempool_size += private_data_size;
-	mempool_size = RTE_ALIGN_CEIL(mempool_size, RTE_MEMPOOL_ALIGN);
 
 	ret = snprintf(mz_name, sizeof(mz_name), RTE_MEMPOOL_MZ_FORMAT, name);
 	if (ret < 0 || ret >= (int)sizeof(mz_name)) {
