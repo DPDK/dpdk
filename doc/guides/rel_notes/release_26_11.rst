@@ -194,6 +194,9 @@ Removed Items
   ``cmpset`` and ``exchange``). Use the C11 ``rte_atomic_*_explicit``
   operations instead.
 
+* mempool: Removed the deprecated and obsolete ``flushthresh`` field
+  from the ``rte_mempool_cache`` structure.
+
 * net: Removed ``version``, ``ds``, ``ecn`` and ``flow_label``
   bitfields from ``struct rte_ipv6_hdr``.
   They accessed the wrong bits on little endian.
@@ -275,6 +278,13 @@ API Changes
 * eal: The entire VFIO API (``rte_vfio_*``) was made internal.
   These functions are now available only to EAL and drivers,
   and are no longer part of the public API.
+
+* mempool: Updated the ``rte_mempool_cache`` structure as follows:
+
+  * Removed the deprecated and obsolete ``flushthresh`` field.
+  * Removed the ``unused`` field.
+  * Reduced the size of the ``objs`` array
+    from ``RTE_MEMPOOL_CACHE_MAX_SIZE`` * 2 to ``RTE_MEMPOOL_CACHE_MAX_SIZE``.
 
 * ethdev: Updated VMDq related API.
 
