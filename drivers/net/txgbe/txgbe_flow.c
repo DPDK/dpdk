@@ -3667,11 +3667,13 @@ txgbe_flow_destroy(struct rte_eth_dev *dev,
 	}
 
 	TAILQ_FOREACH(txgbe_flow_mem_ptr, &txgbe_flow_list, entries) {
-		if (txgbe_flow_mem_ptr->flow == pmd_flow) {
-			TAILQ_REMOVE(&txgbe_flow_list,
-				txgbe_flow_mem_ptr, entries);
-			rte_free(txgbe_flow_mem_ptr);
-		}
+		if (txgbe_flow_mem_ptr->flow == pmd_flow)
+			break;
+	}
+	if (txgbe_flow_mem_ptr != NULL) {
+		TAILQ_REMOVE(&txgbe_flow_list,
+			txgbe_flow_mem_ptr, entries);
+		rte_free(txgbe_flow_mem_ptr);
 	}
 	rte_free(flow);
 
