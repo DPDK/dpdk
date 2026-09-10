@@ -124,7 +124,8 @@ static int ice_dev_info_get(struct rte_eth_dev *dev,
 			    struct rte_eth_dev_info *dev_info);
 static int ice_phy_conf_link(struct ice_hw *hw,
 					u16 force_speed,
-					bool link_up);
+					bool link_up,
+					bool link_autoneg);
 static int ice_link_update(struct rte_eth_dev *dev,
 			   int wait_to_complete);
 static int ice_dev_set_link_up(struct rte_eth_dev *dev);
@@ -5043,13 +5044,15 @@ ice_apply_link_speed(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
-	return ice_phy_conf_link(hw, speed, true);
+	bool link_autoneg = (conf->link_speeds & RTE_ETH_LINK_SPEED_FIXED) == 0;
+	return ice_phy_conf_link(hw, speed, true, link_autoneg);
 }
 
 static int
 ice_phy_conf_link(struct ice_hw *hw,
 		   u16 link_speeds_bitmap,
-		   bool link_up)
+		   bool link_up,
+		   bool link_autoneg)
 {
 	struct ice_aqc_set_phy_cfg_data cfg = { 0 };
 	struct ice_port_info *pi = hw->port_info;
@@ -5093,6 +5096,10 @@ ice_phy_conf_link(struct ice_hw *hw,
 
 	cfg.caps = phy_caps->caps | ICE_AQ_PHY_ENA_AUTO_LINK_UPDT;
 	cfg.low_power_ctrl_an = phy_caps->low_power_ctrl_an;
+	if (!link_autoneg)
+		cfg.low_power_ctrl_an &= ~(ICE_AQC_PHY_AN_EN_CLAUSE28 |
+				ICE_AQC_PHY_AN_EN_CLAUSE73 |
+				ICE_AQC_PHY_AN_EN_CLAUSE37);
 	cfg.eee_cap = phy_caps->eee_cap;
 	cfg.eeer_value = phy_caps->eeer_value;
 	cfg.link_fec_opt = phy_caps->link_fec_options;
@@ -5120,7 +5127,7 @@ ice_dev_set_link_down(struct rte_eth_dev *dev)
 	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint8_t speed = ICE_LINK_SPEED_UNKNOWN;
 
-	return ice_phy_conf_link(hw, speed, false);
+	return ice_phy_conf_link(hw, speed, false, true);
 }
 
 static int
