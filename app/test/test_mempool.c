@@ -195,7 +195,7 @@ static int test_mempool_creation_with_exceeded_cache_size(void)
 	mp_cov = rte_mempool_create("test_cache_too_big",
 		MEMPOOL_SIZE,
 		MEMPOOL_ELT_SIZE,
-		RTE_MEMPOOL_CACHE_MAX_SIZE + 32, 0,
+		MEMPOOL_SIZE + 32, 0,
 		NULL, NULL,
 		my_obj_init, NULL,
 		SOCKET_ID_ANY, 0);

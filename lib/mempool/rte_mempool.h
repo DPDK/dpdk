@@ -105,8 +105,7 @@ struct __rte_cache_aligned rte_mempool_cache {
 	} stats;                        /**< Statistics */
 #endif
 	/** Cache objects */
-	alignas(RTE_CACHE_LINE_SIZE) void *objs[RTE_MEMPOOL_CACHE_MAX_SIZE];
-	RTE_CACHE_GUARD;
+	alignas(RTE_CACHE_LINE_SIZE) void *objs[];
 };
 
 /**
@@ -265,6 +264,7 @@ struct __rte_cache_aligned rte_mempool {
 	int32_t ops_index;
 
 	struct rte_mempool_cache *local_cache; /**< Per-lcore local cache */
+	uint32_t sizeof_cache_per_lcore; /**< Multiplier for indexing into the local cache. */
 
 	uint32_t populated_size;         /**< Number of populated objects. */
 	struct rte_mempool_objhdr_list elt_list; /**< List of objects in pool */
@@ -1053,8 +1053,7 @@ rte_mempool_free(struct rte_mempool *mp);
  * @param cache_size
  *   If cache_size is non-zero, the rte_mempool library will try to
  *   limit the accesses to the common lockless pool, by maintaining a
- *   per-lcore object cache. This argument must be lower or equal to
- *   RTE_MEMPOOL_CACHE_MAX_SIZE and n.
+ *   per-lcore object cache. This argument must be lower or equal to n.
  *   The access to the per-lcore table is of course
  *   faster than the multi-producer/consumer pool. The cache can be
  *   disabled if the cache_size argument is set to 0; it can be useful to
@@ -1374,15 +1373,17 @@ rte_mempool_cache_create(uint32_t size, int socket_id)
 static __rte_always_inline struct rte_mempool_cache *
 rte_mempool_default_cache(struct rte_mempool *mp, unsigned lcore_id)
 {
-	if (unlikely(mp->cache_size == 0))
+	if (unlikely(mp->local_cache == NULL))
 		return NULL;
 
 	if (unlikely(lcore_id == LCORE_ID_ANY))
 		return NULL;
 
-	rte_mempool_trace_default_cache(mp, lcore_id,
-		&mp->local_cache[lcore_id]);
-	return &mp->local_cache[lcore_id];
+	struct rte_mempool_cache *cache = (struct rte_mempool_cache *)RTE_PTR_ADD(mp->local_cache,
+			lcore_id * (size_t)mp->sizeof_cache_per_lcore);
+	rte_mempool_trace_default_cache(mp, lcore_id, cache);
+	__rte_assume(cache != NULL);
+	return cache;
 }
 
 /**
