@@ -2637,7 +2637,11 @@ ixgbe_fdir_flow_program(struct rte_eth_dev *dev,
 
 	/* Configure FDIR mode if this is the first filter */
 	if (fdir_conf->mode == RTE_FDIR_MODE_NONE) {
-		ret = ixgbe_fdir_configure(adapter, &local_fdir_conf, &fdir_rule->mask);
+		ret = ixgbe_fdir_configure(dev, &local_fdir_conf, &fdir_rule->mask);
+		if (ret == -ENOTSUP)
+			return rte_flow_error_set(error, ENOTSUP,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				"Flow Director is not supported with DCB");
 		if (ret) {
 			return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,

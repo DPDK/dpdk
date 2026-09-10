@@ -82,6 +82,11 @@ New Features
   * Renamed the ``enable_ptype_lldp`` devarg to ``enable_lldp``.
     The old name is no longer accepted.
 
+* **Updated Intel ixgbe driver.**
+
+  Added ``fdir_buffer_size`` devarg to select the Flow Director table size
+  (``64k``, ``128k`` or ``256k``) at probe time. The default remains ``64k``.
+
 * **Updated NXP DPAA2 ethernet driver.**
 
   * Added the inner IP header to the RSS hash so tunneled traffic is
