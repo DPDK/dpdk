@@ -8608,9 +8608,11 @@ i40e_dev_consistent_tunnel_filter_set(struct i40e_pf *pf,
 	case I40E_TUNNEL_TYPE_QINQ:
 		if (!pf->qinq_replace_flag) {
 			ret = i40e_cloud_filter_qinq_create(pf);
-			if (ret < 0)
-				PMD_DRV_LOG(DEBUG,
-					    "QinQ tunnel filter already created.");
+			if (ret < 0) {
+				PMD_DRV_LOG(ERR, "Failed to create QinQ tunnel filter.");
+				/* ret is a raw i40e_status_code, not an errno */
+				return -ENOTSUP;
+			}
 			pf->qinq_replace_flag = 1;
 		}
 		/*	Add in the General fields the values of
