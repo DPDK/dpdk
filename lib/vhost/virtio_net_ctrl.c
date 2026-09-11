@@ -138,6 +138,8 @@ virtio_net_ctrl_pop(struct virtio_net *dev, struct vhost_virtqueue *cvq,
 
 	ctrl_req = (uint8_t *)ctrl_elem->ctrl_req;
 
+	uint64_t copied = 0;
+
 	if (cvq->desc[desc_idx].flags & VRING_DESC_F_INDIRECT) {
 		desc_len = cvq->desc[desc_idx].len;
 		desc_iova = cvq->desc[desc_idx].addr;
@@ -175,8 +177,14 @@ virtio_net_ctrl_pop(struct virtio_net *dev, struct vhost_virtqueue *cvq,
 			goto free_err;
 		}
 
+		if (copied + desc_len > data_len) {
+			VHOST_LOG_CONFIG(dev->ifname, ERR, "Descriptor length overflow detected");
+			goto free_err;
+		}
+
 		memcpy(ctrl_req, (void *)(uintptr_t)desc_addr, desc_len);
 		ctrl_req += desc_len;
+		copied += desc_len;
 
 		if (!(descs[desc_idx].flags & VRING_DESC_F_NEXT))
 			break;
