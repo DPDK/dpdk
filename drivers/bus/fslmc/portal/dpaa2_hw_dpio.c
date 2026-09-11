@@ -476,6 +476,10 @@ dpaa2_close_dpio_device(int object_id)
 			rte_free(dpio_dev->dpio);
 		}
 		TAILQ_REMOVE(&dpio_dev_list, dpio_dev, next);
+		rte_intr_fd_close(dpio_dev->intr_handle);
+		/* dev_fd is closed by caller, clear reference here. */
+		rte_intr_dev_fd_set(dpio_dev->intr_handle, -1);
+		rte_intr_instance_free(dpio_dev->intr_handle);
 		rte_free(dpio_dev);
 	}
 }
@@ -668,6 +672,9 @@ err:
 		rte_free(dpio_dev->dpio);
 	}
 
+	rte_intr_fd_close(dpio_dev->intr_handle);
+	/* dev_fd is closed by caller, clear reference here. */
+	rte_intr_dev_fd_set(dpio_dev->intr_handle, -1);
 	rte_intr_instance_free(dpio_dev->intr_handle);
 	rte_free(dpio_dev);
 
@@ -680,6 +687,9 @@ err:
 				dpio_dev->token);
 			rte_free(dpio_dev->dpio);
 		}
+		rte_intr_fd_close(dpio_dev->intr_handle);
+		/* dev_fd is closed by caller, clear reference here. */
+		rte_intr_dev_fd_set(dpio_dev->intr_handle, -1);
 		rte_intr_instance_free(dpio_dev->intr_handle);
 		rte_free(dpio_dev);
 	}
