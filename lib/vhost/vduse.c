@@ -439,13 +439,35 @@ vduse_events_handler(int fd, void *arg, int *remove __rte_unused)
 		dev->status = req.s.status;
 		resp.result = VDUSE_REQ_RESULT_OK;
 		break;
-	case VDUSE_UPDATE_IOTLB:
-		VHOST_LOG_CONFIG(dev->ifname, INFO, "\tIOVA range: %" PRIx64 " - %" PRIx64 "\n",
+	case VDUSE_UPDATE_IOTLB: {
+		struct vhost_iotlb_msg imsg;
+		uint32_t i;
+
+		VHOST_LOG_CONFIG(dev->ifname, INFO, "\tIOVA range: %" PRIx64 " - %" PRIx64,
 				(uint64_t)req.iova.start, (uint64_t)req.iova.last);
 		vhost_user_iotlb_cache_remove(dev, req.iova.start,
 				req.iova.last - req.iova.start + 1);
+
+		/* Invalidate vring translations if affected by this range */
+		imsg.iova = req.iova.start;
+		imsg.size = req.iova.last - req.iova.start + 1;
+
+		for (i = 0; i < dev->nr_vring; i++) {
+			vq = dev->virtqueue[i];
+
+			if (!vq)
+				continue;
+
+			if (is_vring_iotlb(dev, vq, &imsg)) {
+				rte_rwlock_write_lock(&vq->access_lock);
+				vring_invalidate(dev, vq);
+				rte_rwlock_write_unlock(&vq->access_lock);
+			}
+		}
+
 		resp.result = VDUSE_REQ_RESULT_OK;
 		break;
+	}
 	default:
 		resp.result = VDUSE_REQ_RESULT_FAILED;
 		break;

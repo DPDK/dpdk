@@ -881,6 +881,8 @@ uint64_t translate_log_addr(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		uint64_t log_addr)
 	__rte_shared_locks_required(&vq->iotlb_lock);
 void vring_invalidate(struct virtio_net *dev, struct vhost_virtqueue *vq);
+int is_vring_iotlb(struct virtio_net *dev, struct vhost_virtqueue *vq,
+	struct vhost_iotlb_msg *imsg);
 
 static __rte_always_inline uint64_t
 vhost_iova_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,
