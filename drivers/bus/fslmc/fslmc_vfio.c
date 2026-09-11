@@ -1168,6 +1168,27 @@ fslmc_dmamap_seg(const struct rte_memseg_list *msl __rte_unused,
 	return ret;
 }
 
+static int
+fslmc_dmaunmap_seg(const struct rte_memseg_list *msl __rte_unused,
+		const struct rte_memseg *ms, void *arg)
+{
+	int *n_segs = arg;
+	int ret;
+
+	/* if IOVA address is invalid, skip */
+	if (ms->iova == RTE_BAD_IOVA)
+		return 0;
+
+	ret = fslmc_unmap_dma(ms->addr_64, ms->iova, ms->len);
+	if (ret)
+		DPAA2_BUS_ERR("Unable to VFIO unmap (addr=%p, len=%zu)",
+				ms->addr, ms->len);
+	else
+		(*n_segs)++;
+
+	return ret;
+}
+
 RTE_EXPORT_SYMBOL(rte_fslmc_vfio_mem_dmamap)
 int
 rte_fslmc_vfio_mem_dmamap(uint64_t vaddr, uint64_t iova, uint64_t size)
@@ -1191,10 +1212,8 @@ fslmc_vfio_dmamap(void)
 	rte_mcfg_mem_read_lock();
 
 	ret = rte_memseg_walk(fslmc_dmamap_seg, &i);
-	if (ret) {
-		rte_mcfg_mem_read_unlock();
-		return ret;
-	}
+	if (ret != 0)
+		goto unmap;
 
 	ret = rte_mem_event_callback_register("fslmc_memevent_clb",
 			fslmc_memevent_cb, NULL);
@@ -1207,12 +1226,33 @@ fslmc_vfio_dmamap(void)
 
 	DPAA2_BUS_DEBUG("Total %d segments found.", i);
 
-	/* Existing segments have been mapped and memory callback for hotplug
-	 * has been installed.
-	 */
+	/* Ignore callback handler registration failure */
+	ret = 0;
+
+unmap:
+	if (ret != 0) {
+		i = 0;
+		rte_memseg_walk(fslmc_dmaunmap_seg, &i);
+	}
+
 	rte_mcfg_mem_read_unlock();
 
-	return 0;
+	return ret;
+}
+
+int
+fslmc_vfio_dmaunmap(void)
+{
+	int i = 0, ret;
+
+	rte_mcfg_mem_read_lock();
+
+	rte_mem_event_callback_unregister("fslmc_memevent_clb", NULL);
+	ret = rte_memseg_walk(fslmc_dmaunmap_seg, &i);
+
+	rte_mcfg_mem_read_unlock();
+
+	return ret;
 }
 
 static int

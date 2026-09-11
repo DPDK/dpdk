@@ -423,17 +423,23 @@ rte_fslmc_probe(struct rte_bus *bus)
 		if (ret) {
 			DPAA2_BUS_ERR("Unable to DMA map existing VAs: (%d)", ret);
 			DPAA2_BUS_ERR("FSLMC VFIO Mapping failed");
-			return ret;
+			goto vfio_close_group;
 		}
 	}
 
 	ret = fslmc_vfio_process_group();
 	if (ret) {
 		DPAA2_BUS_ERR("Unable to setup devices %d", ret);
-		return ret;
+		goto vfio_dma_unmap;
 	}
 
 	return rte_bus_generic_probe(bus);
+
+vfio_dma_unmap:
+	fslmc_vfio_dmaunmap();
+vfio_close_group:
+	fslmc_vfio_close_group();
+	return ret;
 }
 
 static bool
