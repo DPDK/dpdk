@@ -264,7 +264,8 @@ vhost_backend_cleanup(struct virtio_net *dev)
 	dev->guest_pages = NULL;
 
 	if (dev->log_addr) {
-		munmap((void *)(uintptr_t)dev->log_addr, dev->log_size);
+		munmap((void *)(uintptr_t)dev->log_addr,
+		       dev->log_size + dev->log_base - dev->log_addr);
 		dev->log_addr = 0;
 	}
 
@@ -2412,7 +2413,7 @@ vhost_user_set_log_base(struct virtio_net **pdev,
 	 * mmap from 0 to workaround a hugepage mmap bug: mmap will
 	 * fail when offset is not page size aligned.
 	 */
-	addr = mmap(0, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, off);
+	addr = mmap(0, size + off, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 	alignment = get_blk_size(fd);
 	close(fd);
 	if (addr == MAP_FAILED) {
@@ -2425,7 +2426,8 @@ vhost_user_set_log_base(struct virtio_net **pdev,
 	 * multiple VHOST_USER_SET_LOG_BASE.
 	 */
 	if (dev->log_addr) {
-		munmap((void *)(uintptr_t)dev->log_addr, dev->log_size);
+		munmap((void *)(uintptr_t)dev->log_addr,
+		       dev->log_size + dev->log_base - dev->log_addr);
 	}
 	dev->log_addr = (uint64_t)(uintptr_t)addr;
 	dev->log_base = dev->log_addr + off;
