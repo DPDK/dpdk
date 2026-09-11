@@ -20,6 +20,7 @@ struct virtio_net_ctrl_elem {
 	struct virtio_net_ctrl *ctrl_req;
 	uint16_t head_idx;
 	uint16_t n_descs;
+	uint32_t data_len;
 	uint8_t *desc_ack;
 };
 
@@ -135,6 +136,7 @@ virtio_net_ctrl_pop(struct virtio_net *dev, struct vhost_virtqueue *cvq,
 		VHOST_LOG_CONFIG(dev->ifname, ERR, "Failed to alloc ctrl request\n");
 		goto err;
 	}
+	ctrl_elem->data_len = data_len;
 
 	ctrl_req = (uint8_t *)ctrl_elem->ctrl_req;
 
@@ -211,7 +213,8 @@ err:
 }
 
 static uint8_t
-virtio_net_ctrl_handle_req(struct virtio_net *dev, struct virtio_net_ctrl *ctrl_req)
+virtio_net_ctrl_handle_req(struct virtio_net *dev, struct virtio_net_ctrl *ctrl_req,
+		uint32_t data_len)
 {
 	uint8_t ret = VIRTIO_NET_ERR;
 
@@ -219,6 +222,12 @@ virtio_net_ctrl_handle_req(struct virtio_net *dev, struct virtio_net_ctrl *ctrl_
 			ctrl_req->command == VIRTIO_NET_CTRL_MQ_VQ_PAIRS_SET) {
 		uint16_t queue_pairs;
 		uint32_t i;
+
+		if (data_len < sizeof(*ctrl_req) + sizeof(queue_pairs)) {
+			VHOST_LOG_CONFIG(dev->ifname, ERR,
+					"Invalid MQ control request size");
+			return VIRTIO_NET_ERR;
+		}
 
 		queue_pairs = *(uint16_t *)(uintptr_t)ctrl_req->command_data;
 		VHOST_LOG_CONFIG(dev->ifname, INFO, "Ctrl req: MQ %u queue pairs\n", queue_pairs);
@@ -294,7 +303,8 @@ virtio_net_ctrl_handle(struct virtio_net *dev)
 		if (ret <= 0)
 			break;
 
-		*ctrl_elem.desc_ack = virtio_net_ctrl_handle_req(dev, ctrl_elem.ctrl_req);
+		*ctrl_elem.desc_ack = virtio_net_ctrl_handle_req(dev, ctrl_elem.ctrl_req,
+				ctrl_elem.data_len);
 
 		ret = virtio_net_ctrl_push(dev, &ctrl_elem);
 		if (ret < 0)
