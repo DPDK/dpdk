@@ -365,10 +365,18 @@ uint32_t rte_net_get_ptype(const struct rte_mbuf *m,
 
 		if (++vlan_depth > RTE_NET_VLAN_MAX_DEPTH)
 			return 0;
-		pkt_type |=
-			proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN) ?
-				 RTE_PTYPE_L2_ETHER_VLAN :
-				 RTE_PTYPE_L2_ETHER_QINQ;
+
+		/*
+		 * It is the outermost tag that determines whether
+		 * the packet will be classified as VLAN or QinQ.
+		 */
+		if (vlan_depth == 1) {
+			/* Override previously set 'RTE_PTYPE_L2_ETHER'. */
+			pkt_type = (proto == rte_cpu_to_be_16(RTE_ETHER_TYPE_VLAN) ?
+					RTE_PTYPE_L2_ETHER_VLAN :
+					RTE_PTYPE_L2_ETHER_QINQ);
+		}
+
 		vh = rte_pktmbuf_read(m, off, sizeof(*vh), &vh_copy);
 		if (unlikely(vh == NULL))
 			return pkt_type;
