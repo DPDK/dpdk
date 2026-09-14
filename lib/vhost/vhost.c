@@ -1149,6 +1149,9 @@ rte_vhost_set_inflight_desc_split(int vid, uint16_t vring_idx,
 	if (unlikely(idx >= vq->size))
 		return -1;
 
+	if (unlikely(idx >= vq->inflight_split->desc_num))
+		return -1;
+
 	vq->inflight_split->desc[idx].counter = vq->global_counter++;
 	vq->inflight_split->desc[idx].inflight = 1;
 	return 0;
@@ -1194,6 +1197,9 @@ rte_vhost_set_inflight_desc_packed(int vid, uint16_t vring_idx,
 	desc = vq->desc_packed;
 	old_free_head = inflight_info->old_free_head;
 	if (unlikely(old_free_head >= vq->size))
+		return -1;
+
+	if (unlikely(old_free_head >= inflight_info->desc_num))
 		return -1;
 
 	free_head = old_free_head;
@@ -1255,6 +1261,9 @@ rte_vhost_clr_inflight_desc_split(int vid, uint16_t vring_idx,
 	if (unlikely(idx >= vq->size))
 		return -1;
 
+	if (unlikely(idx >= vq->inflight_split->desc_num))
+		return -1;
+
 	rte_atomic_thread_fence(rte_memory_order_seq_cst);
 
 	vq->inflight_split->desc[idx].inflight = 0;
@@ -1297,6 +1306,9 @@ rte_vhost_clr_inflight_desc_packed(int vid, uint16_t vring_idx,
 		return -1;
 
 	if (unlikely(head >= vq->size))
+		return -1;
+
+	if (unlikely(head >= inflight_info->desc_num))
 		return -1;
 
 	rte_atomic_thread_fence(rte_memory_order_seq_cst);
@@ -1383,8 +1395,14 @@ rte_vhost_set_last_inflight_io_packed(int vid, uint16_t vring_idx,
 	if (unlikely(head >= vq->size))
 		return -1;
 
+	if (unlikely(head >= inflight_info->desc_num))
+		return -1;
+
 	last = inflight_info->desc[head].last;
 	if (unlikely(last >= vq->size))
+		return -1;
+
+	if (unlikely(last >= inflight_info->desc_num))
 		return -1;
 
 	inflight_info->desc[last].next = inflight_info->free_head;
