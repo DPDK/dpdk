@@ -1674,19 +1674,19 @@ iavf_config_irq_map_lv(struct iavf_adapter *adapter, uint16_t num)
 void
 iavf_add_del_all_mac_addr(struct iavf_adapter *adapter, bool add)
 {
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
 	struct {
 		struct virtchnl_ether_addr_list list;
-		struct virtchnl_ether_addr addr[IAVF_NUM_MACADDR_MAX];
+		struct virtchnl_ether_addr addr[RTE_DIM(vf->mac_addrs)];
 	} list_req = {0};
 	struct virtchnl_ether_addr_list *list = &list_req.list;
-	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
 	uint8_t msg_buf[IAVF_AQ_BUF_SZ] = {0};
 	struct iavf_cmd_info args = {0};
-	int err, i;
+	int err;
 	size_t buf_len;
 
-	for (i = 0; i < IAVF_NUM_MACADDR_MAX; i++) {
-		struct rte_ether_addr *addr = &adapter->dev_data->mac_addrs[i];
+	for (unsigned int i = 0; i < RTE_DIM(vf->mac_addrs); i++) {
+		struct rte_ether_addr *addr = &vf->mac_addrs[i];
 		struct virtchnl_ether_addr *vc_addr = &list->list[list->num_elements];
 
 		/* ignore empty addresses */
