@@ -188,12 +188,6 @@ ice_dcf_node_param_check(struct ice_dcf_hw *hw, uint32_t node_id,
 				RTE_TM_ERROR_TYPE_NODE_PARAMS_N_SP_PRIORITIES;
 			error->message = "SP priority not supported";
 			return -EINVAL;
-		} else if (params->nonleaf.wfq_weight_mode &&
-			   !(*params->nonleaf.wfq_weight_mode)) {
-			error->type =
-				RTE_TM_ERROR_TYPE_NODE_PARAMS_WFQ_WEIGHT_MODE;
-			error->message = "WFP should be byte mode";
-			return -EINVAL;
 		}
 
 		return 0;
