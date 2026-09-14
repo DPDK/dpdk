@@ -941,7 +941,7 @@ iavf_ipsec_crypto_security_policy_delete(struct iavf_adapter *adapter,
 		response->req_id != request->req_id)
 		rc = -EFAULT;
 	else
-		return response->ipsec_data.ipsec_status->status;
+		rc = response->ipsec_data.ipsec_status->status;
 
 update_cleanup:
 	free(request);
