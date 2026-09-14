@@ -553,14 +553,14 @@ struct ice_pf {
  * Cache devargs parse result.
  */
 struct ice_devargs {
-	int rx_low_latency;
-	int safe_mode_support;
+	bool rx_low_latency;
+	bool safe_mode_support;
 	uint8_t proto_xtr_dflt;
-	uint8_t default_mac_disable;
+	bool default_mac_disable;
 	uint8_t proto_xtr[ICE_MAX_QUEUE_NUM];
 	uint8_t pin_idx;
 	uint8_t pps_out_ena;
-	uint8_t ddp_load_sched;
+	bool ddp_load_sched;
 	uint8_t tm_exposed_levels;
 	int xtr_field_offs;
 	uint8_t xtr_flag_offs[PROTO_XTR_MAX];
