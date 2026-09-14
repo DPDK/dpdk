@@ -11,8 +11,8 @@
 
 #include "test.h"
 
-#define STACK_SIZE 4096
-#define MAX_BULK 32
+#define STACK_SIZE 65536
+#define MAX_BULK 512
 
 static int
 test_stack_push_pop(struct rte_stack *s, void **obj_table, unsigned int bulk_sz)
@@ -81,11 +81,220 @@ test_stack_push_pop(struct rte_stack *s, void **obj_table, unsigned int bulk_sz)
 		}
 	}
 
-	for (i = 0; i < STACK_SIZE; i++) {
-		if (obj_table[i] != popped_objs[STACK_SIZE - i - 1]) {
+	if (!(s->flags & RTE_STACK_F_PILE)) {
+		/* Normal stack. */
+lifo:
+		for (i = 0; i < STACK_SIZE; i++) {
+			if (obj_table[i] != popped_objs[STACK_SIZE - i - 1]) {
+				printf("[%s():%u] Incorrect value %p at index 0x%x\n",
+				       __func__, __LINE__,
+				       popped_objs[STACK_SIZE - i - 1], i);
+				rte_free(popped_objs);
+				return -1;
+			}
+		}
+	} else {
+		/* Pile. Ordering not strictly LIFO. */
+		if (bulk_sz < RTE_STACK_PILE_BULK_SIZE)
+			goto lifo;
+		if ((bulk_sz & (RTE_STACK_PILE_BULK_SIZE - 1)) == 0) {
+			for (i = 0; i < STACK_SIZE; i += RTE_STACK_PILE_BULK_SIZE) {
+				if (memcmp(&obj_table[i],
+						&popped_objs[STACK_SIZE - RTE_STACK_PILE_BULK_SIZE -
+						i],
+						sizeof(void *) * RTE_STACK_PILE_BULK_SIZE) != 0) {
+					printf("[%s():%u] Incorrect values %p at 0x%x, bulk %u\n",
+					       __func__, __LINE__,
+					       popped_objs[STACK_SIZE - RTE_STACK_PILE_BULK_SIZE -
+					       i],
+					       i, bulk_sz);
+					rte_free(popped_objs);
+					return -1;
+				}
+			}
+		}
+	}
+
+	rte_free(popped_objs);
+
+	return 0;
+}
+
+static int
+test_stack_pile_fragmentation(struct rte_stack *s, void **obj_table)
+{
+	unsigned int ret;
+	void **popped_objs;
+
+	popped_objs = rte_calloc(NULL, STACK_SIZE, sizeof(void *), 0);
+	if (popped_objs == NULL) {
+		printf("[%s():%u] failed to calloc %zu bytes\n",
+		       __func__, __LINE__, STACK_SIZE * sizeof(void *));
+		return -1;
+	}
+
+	ret = rte_stack_push(s, &obj_table[0], RTE_STACK_PILE_BULK_SIZE);
+	if (ret != RTE_STACK_PILE_BULK_SIZE) {
+		printf("[%s():%u] push returned: %d (expected %u)\n",
+		       __func__, __LINE__, ret, RTE_STACK_PILE_BULK_SIZE);
+		rte_free(popped_objs);
+		return -1;
+	}
+	if (rte_stack_count(s) != RTE_STACK_PILE_BULK_SIZE) {
+		printf("[%s():%u] stack count: %u (expected %u)\n",
+		       __func__, __LINE__, rte_stack_count(s),
+		       RTE_STACK_PILE_BULK_SIZE);
+		rte_free(popped_objs);
+		return -1;
+	}
+	if (rte_stack_free_count(s) != STACK_SIZE - RTE_STACK_PILE_BULK_SIZE) {
+		printf("[%s():%u] stack free count: %u (expected %u)\n",
+		       __func__, __LINE__, rte_stack_count(s),
+		       STACK_SIZE - RTE_STACK_PILE_BULK_SIZE);
+		rte_free(popped_objs);
+		return -1;
+	}
+
+	ret = rte_stack_pop(s, &popped_objs[0], 3);
+	if (ret != 3) {
+		printf("[%s():%u] pop returned: %d (expected %u)\n",
+		       __func__, __LINE__, ret, 3);
+		rte_free(popped_objs);
+		return -1;
+	}
+	if (rte_stack_count(s) != RTE_STACK_PILE_BULK_SIZE - 3) {
+		printf("[%s():%u] stack count: %u (expected %u)\n",
+		       __func__, __LINE__, rte_stack_count(s),
+		       RTE_STACK_PILE_BULK_SIZE - 3);
+		rte_free(popped_objs);
+		return -1;
+	}
+	if (rte_stack_free_count(s) != STACK_SIZE - (RTE_STACK_PILE_BULK_SIZE - 3)) {
+		printf("[%s():%u] stack free count: %u (expected %u)\n",
+		       __func__, __LINE__, rte_stack_count(s),
+		       STACK_SIZE - (RTE_STACK_PILE_BULK_SIZE - 3));
+		rte_free(popped_objs);
+		return -1;
+	}
+
+	ret = rte_stack_pop(s, &popped_objs[3], RTE_STACK_PILE_BULK_SIZE - 3);
+	if (ret != RTE_STACK_PILE_BULK_SIZE - 3) {
+		printf("[%s():%u] pop returned: %d (expected %u)\n",
+		       __func__, __LINE__, ret, RTE_STACK_PILE_BULK_SIZE - 3);
+		rte_free(popped_objs);
+		return -1;
+	}
+	if (rte_stack_count(s) != 0) {
+		printf("[%s():%u] stack count: %u (expected %u)\n",
+		       __func__, __LINE__, rte_stack_count(s),
+		       0);
+		rte_free(popped_objs);
+		return -1;
+	}
+	if (rte_stack_free_count(s) != STACK_SIZE) {
+		printf("[%s():%u] stack free count: %u (expected %u)\n",
+		       __func__, __LINE__, rte_stack_count(s),
+		       STACK_SIZE);
+		rte_free(popped_objs);
+		return -1;
+	}
+
+	if (memcmp(obj_table, popped_objs, sizeof(void *) * RTE_STACK_PILE_BULK_SIZE) != 0) {
+		printf("[%s():%u] Incorrect values\n",
+		       __func__, __LINE__);
+		rte_free(popped_objs);
+		return -1;
+	}
+
+	rte_free(popped_objs);
+
+	return 0;
+}
+
+static int
+test_stack_pile_retry(struct rte_stack *s, void **obj_table)
+{
+	unsigned int i, ret;
+	void **popped_objs;
+
+	popped_objs = rte_calloc(NULL, STACK_SIZE, sizeof(void *), 0);
+	if (popped_objs == NULL) {
+		printf("[%s():%u] failed to calloc %zu bytes\n",
+		       __func__, __LINE__, STACK_SIZE * sizeof(void *));
+		return -1;
+	}
+
+	ret = rte_stack_push(s, &obj_table[0], 3);
+	if (ret != 3) {
+		printf("[%s():%u] push returned: %d (expected %u)\n",
+		       __func__, __LINE__, ret, 3);
+		rte_free(popped_objs);
+		return -1;
+	}
+	if (rte_stack_count(s) != 3) {
+		printf("[%s():%u] stack count: %u (expected %u)\n",
+		       __func__, __LINE__, rte_stack_count(s),
+		       3);
+		rte_free(popped_objs);
+		return -1;
+	}
+	if (rte_stack_free_count(s) != STACK_SIZE - 3) {
+		printf("[%s():%u] stack free count: %u (expected %u)\n",
+		       __func__, __LINE__, rte_stack_count(s),
+		       STACK_SIZE - 3);
+		rte_free(popped_objs);
+		return -1;
+	}
+
+	ret = rte_stack_push(s, &obj_table[3], RTE_STACK_PILE_BULK_SIZE - 3);
+	if (ret != RTE_STACK_PILE_BULK_SIZE - 3) {
+		printf("[%s():%u] push returned: %d (expected %u)\n",
+		       __func__, __LINE__, ret, RTE_STACK_PILE_BULK_SIZE - 3);
+		rte_free(popped_objs);
+		return -1;
+	}
+	if (rte_stack_count(s) != RTE_STACK_PILE_BULK_SIZE) {
+		printf("[%s():%u] stack count: %u (expected %u)\n",
+		       __func__, __LINE__, rte_stack_count(s),
+		       RTE_STACK_PILE_BULK_SIZE);
+		rte_free(popped_objs);
+		return -1;
+	}
+	if (rte_stack_free_count(s) != STACK_SIZE - RTE_STACK_PILE_BULK_SIZE) {
+		printf("[%s():%u] stack free count: %u (expected %u)\n",
+		       __func__, __LINE__, rte_stack_count(s),
+		       STACK_SIZE - RTE_STACK_PILE_BULK_SIZE);
+		rte_free(popped_objs);
+		return -1;
+	}
+
+	ret = rte_stack_pop(s, &popped_objs[0], RTE_STACK_PILE_BULK_SIZE);
+	if (ret != RTE_STACK_PILE_BULK_SIZE) {
+		printf("[%s():%u] pop returned: %d (expected %u)\n",
+		       __func__, __LINE__, ret, RTE_STACK_PILE_BULK_SIZE);
+		rte_free(popped_objs);
+		return -1;
+	}
+	if (rte_stack_count(s) != 0) {
+		printf("[%s():%u] stack count: %u (expected %u)\n",
+		       __func__, __LINE__, rte_stack_count(s),
+		       0);
+		rte_free(popped_objs);
+		return -1;
+	}
+	if (rte_stack_free_count(s) != STACK_SIZE) {
+		printf("[%s():%u] stack free count: %u (expected %u)\n",
+		       __func__, __LINE__, rte_stack_count(s),
+		       STACK_SIZE);
+		rte_free(popped_objs);
+		return -1;
+	}
+
+	for (i = 0; i < RTE_STACK_PILE_BULK_SIZE; i++) {
+		if (obj_table[i] != popped_objs[RTE_STACK_PILE_BULK_SIZE - i - 1]) {
 			printf("[%s():%u] Incorrect value %p at index 0x%x\n",
 			       __func__, __LINE__,
-			       popped_objs[STACK_SIZE - i - 1], i);
+			       popped_objs[RTE_STACK_PILE_BULK_SIZE - i - 1], i);
 			rte_free(popped_objs);
 			return -1;
 		}
@@ -152,9 +361,36 @@ test_stack_basic(uint32_t flags)
 		goto fail_test;
 	}
 
-	ret = rte_stack_push(s, obj_table, 2 * STACK_SIZE);
+	if (s->flags & RTE_STACK_F_PILE) {
+		ret = test_stack_pile_fragmentation(s, obj_table);
+		if (ret) {
+			printf("[%s():%u] Pile push/pop fragmentation failed\n",
+			       __func__, __LINE__);
+			goto fail_test;
+		}
+		ret = test_stack_pile_retry(s, obj_table);
+		if (ret) {
+			printf("[%s():%u] Pile push/pop retry failed\n",
+			       __func__, __LINE__);
+			goto fail_test;
+		}
+	}
+
+	ret = rte_stack_push(s, obj_table, STACK_SIZE);
+	if (ret == 0) {
+		printf("[%s():%u] All objects push failed\n",
+		       __func__, __LINE__);
+		goto fail_test;
+	}
+	ret = rte_stack_push(s, obj_table, STACK_SIZE);
 	if (ret != 0) {
 		printf("[%s():%u] Excess objects push succeeded\n",
+		       __func__, __LINE__);
+		goto fail_test;
+	}
+	ret = rte_stack_pop(s, obj_table, STACK_SIZE);
+	if (ret == 0) {
+		printf("[%s():%u] All objects pop failed\n",
 		       __func__, __LINE__);
 		goto fail_test;
 	}
@@ -167,8 +403,12 @@ test_stack_basic(uint32_t flags)
 	}
 
 	ret = 0;
+	goto done;
 
 fail_test:
+	ret = -1;
+
+done:
 	rte_stack_free(s);
 
 	rte_free(obj_table);
@@ -384,5 +624,16 @@ test_lf_stack(void)
 #endif
 }
 
+static int
+test_pile(void)
+{
+#if defined(RTE_STACK_PILE_SUPPORTED)
+	return __test_stack(RTE_STACK_F_PILE);
+#else
+	return TEST_SKIPPED;
+#endif
+}
+
 REGISTER_FAST_TEST(stack_autotest, NOHUGE_SKIP, ASAN_OK, test_stack);
 REGISTER_FAST_TEST(stack_lf_autotest, NOHUGE_SKIP, ASAN_OK, test_lf_stack);
+REGISTER_FAST_TEST(stack_pile_autotest, NOHUGE_SKIP, ASAN_OK, test_pile);

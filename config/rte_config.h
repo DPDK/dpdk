@@ -64,6 +64,9 @@
 #define RTE_MBUF_DEFAULT_MEMPOOL_OPS "ring_mp_mc"
 /* RTE_MBUF_HISTORY_DEBUG is not set */
 
+/* stack defines */
+#define RTE_STACK_PILE_BULK_SIZE 32
+
 /* ether defines */
 #define RTE_MAX_QUEUES_PER_PORT 1024
 #define RTE_ETHDEV_RXTX_CALLBACKS 1

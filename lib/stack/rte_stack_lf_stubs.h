@@ -8,9 +8,9 @@
 #include <rte_common.h>
 
 static __rte_always_inline unsigned int
-__rte_stack_lf_count(struct rte_stack *s)
+__rte_stack_lf_elems_count(struct rte_stack_lf_list *list)
 {
-	RTE_SET_USED(s);
+	RTE_SET_USED(list);
 
 	return 0;
 }

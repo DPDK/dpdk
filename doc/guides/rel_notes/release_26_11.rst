@@ -73,6 +73,15 @@ New Features
   Added the experimental ``rte_cpu_socket_id()`` function
   to map an OS logical CPU ID to the NUMA socket containing that CPU.
 
+* **Added pile stack.**
+
+  Introduced pile, a lock-free, stack-like implementation,
+  optimized for bulk operations.
+  The pile is only LIFO on bulk level, not on object level;
+  i.e. arrays of bulks are pushed and popped in LIFO manner,
+  but objects within each bulk are not ordered as expected by a stack.
+  Furthermore, it is not strictly bounded by its size, but might hold more objects.
+
 * **Added TPID support to VLAN tag insertion.**
 
   Added ``rte_vlan_insert_tpid()`` to the net library.

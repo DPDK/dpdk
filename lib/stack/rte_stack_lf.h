@@ -16,6 +16,27 @@
 #define RTE_STACK_LF_SUPPORTED
 #endif
 
+static __rte_always_inline unsigned int
+__rte_stack_lf_count(struct rte_stack *s)
+{
+	/* stack_lf_push() and stack_lf_pop() do not update the list's contents
+	 * and stack_lf->len atomically, which can cause the list to appear
+	 * shorter than it actually is if this function is called while other
+	 * threads are modifying the list.
+	 *
+	 * However, given the inherently approximate nature of the get_count
+	 * callback -- even if the list and its size were updated atomically,
+	 * the size could change between when get_count executes and when the
+	 * value is returned to the caller -- this is acceptable.
+	 *
+	 * The stack_lf->len updates are placed such that the list may appear to
+	 * have fewer elements than it does, but will never appear to have more
+	 * elements. If the mempool is near-empty to the point that this is a
+	 * concern, the user should consider increasing the mempool size.
+	 */
+	return __rte_stack_lf_elems_count(&s->stack_lf.used);
+}
+
 /**
  * @internal Push several objects on the lock-free stack (MT-safe).
  *
@@ -75,6 +96,7 @@ __rte_stack_lf_pop(struct rte_stack *s, void **obj_table, unsigned int n)
 		return 0;
 
 	/* Pop n used elements */
+	__rte_assume(obj_table != NULL);
 	first = __rte_stack_lf_pop_elems(&s->stack_lf.used,
 					 n, obj_table, &last);
 	if (unlikely(first == NULL))

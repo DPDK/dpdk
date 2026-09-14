@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2019 Intel Corporation
+ * Copyright(c) 2026 SmartShare Systems
  */
 
 /**
@@ -28,10 +29,32 @@
 #define RTE_STACK_NAMESIZE (RTE_MEMZONE_NAMESIZE - \
 			   sizeof(RTE_STACK_MZ_PREFIX) + 1)
 
+static_assert(((sizeof(void *) * RTE_STACK_PILE_BULK_SIZE) & RTE_CACHE_LINE_MASK) == 0,
+		"Pile bulk size must be divisible by CPU cache line size");
+static_assert(RTE_IS_POWER_OF_2(RTE_STACK_PILE_BULK_SIZE),
+		"Pile bulk size must be power of 2");
+
+/* Note: Also used as solo (single-object) pile element. */
 struct rte_stack_lf_elem {
 	void *data;			/**< Data pointer */
 	struct rte_stack_lf_elem *next;	/**< Next pointer */
 };
+
+/*
+ * Bulk (multi-object) pile element.
+ * Inherited from the rte_stack_lf_elem (single-object) class,
+ * and extended with an array for holding a bulk of object pointers.
+ */
+struct rte_stack_pile_bulk_elem {
+	/* The first part must be ABI compatible with the rte_stack_lf_elem parent class. */
+	struct rte_stack_lf_elem elem;
+	/* The second part differs. */
+	alignas(RTE_CACHE_LINE_SIZE)
+	void *objs[RTE_STACK_PILE_BULK_SIZE];   /**< Bulk (multi-object) pointers */
+};
+
+static_assert(offsetof(struct rte_stack_pile_bulk_elem, elem) == 0,
+		"Inherited type mismatch");
 
 struct __rte_aligned(16) rte_stack_lf_head {
 	struct rte_stack_lf_elem *top; /**< Stack top */
@@ -51,10 +74,34 @@ struct rte_stack_lf_list {
 struct rte_stack_lf {
 	/** LIFO list of elements */
 	alignas(RTE_CACHE_LINE_SIZE) struct rte_stack_lf_list used;
+	RTE_CACHE_GUARD;
 	/** LIFO list of free elements */
 	alignas(RTE_CACHE_LINE_SIZE) struct rte_stack_lf_list free;
+	RTE_CACHE_GUARD;
 	/** LIFO elements */
 	alignas(RTE_CACHE_LINE_SIZE) struct rte_stack_lf_elem elems[];
+};
+
+/* Pile structure containing three lock-free LIFO-like lists:
+ *  - A list of elements, each element holding a bulk of pointers to objects.
+ *  - A list of elements, each element holding one pointer to an object.
+ *  - A list of free linked-list elements.
+ */
+struct rte_stack_pile {
+	/** LIFO list of bulk (multi-object) elements */
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_stack_lf_list bulk;
+	RTE_CACHE_GUARD;
+	/** LIFO list of solo (single-object) elements */
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_stack_lf_list solo;
+	RTE_CACHE_GUARD;
+	/** LIFO list of free bulk elements */
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_stack_lf_list free_bulk;
+	RTE_CACHE_GUARD;
+	/** LIFO list of free solo elements */
+	alignas(RTE_CACHE_LINE_SIZE) struct rte_stack_lf_list free_solo;
+	RTE_CACHE_GUARD;
+	/** LIFO elements follow, first bulk, then solo */
+	alignas(RTE_CACHE_LINE_SIZE) void *elems[];
 };
 
 /* Structure containing the LIFO, its current length, and a lock for mutual
@@ -78,6 +125,7 @@ struct __rte_cache_aligned rte_stack {
 	uint32_t flags; /**< Flags supplied at creation. */
 	union {
 		struct rte_stack_lf stack_lf; /**< Lock-free LIFO structure. */
+		struct rte_stack_pile stack_pile; /**< Lock-free pile (LIFO-like) structure. */
 		struct rte_stack_std stack_std;	/**< LIFO structure. */
 	};
 };
@@ -88,8 +136,20 @@ struct __rte_cache_aligned rte_stack {
  */
 #define RTE_STACK_F_LF 0x0001
 
+/**
+ * The stack-like pile uses lock-free push and pop functions.
+ * It is optimized for bulks of objects, and is not strictly LIFO, and
+ * is not strictly bounded by its size, but might hold more objects.
+ * This flag is only supported on x86_64 or arm64 platforms, currently.
+ *
+ * @warning
+ * @b EXPERIMENTAL: this API may change, or be removed, without prior notice.
+ */
+#define RTE_STACK_F_PILE 0x0002
+
 #include "rte_stack_std.h"
 #include "rte_stack_lf.h"
+#include "rte_stack_pile.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -115,6 +175,8 @@ rte_stack_push(struct rte_stack *s, void * const *obj_table, unsigned int n)
 
 	if (s->flags & RTE_STACK_F_LF)
 		return __rte_stack_lf_push(s, obj_table, n);
+	else if (s->flags & RTE_STACK_F_PILE)
+		return __rte_stack_pile_push(s, obj_table, n);
 	else
 		return __rte_stack_std_push(s, obj_table, n);
 }
@@ -139,6 +201,8 @@ rte_stack_pop(struct rte_stack *s, void **obj_table, unsigned int n)
 
 	if (s->flags & RTE_STACK_F_LF)
 		return __rte_stack_lf_pop(s, obj_table, n);
+	else if (s->flags & RTE_STACK_F_PILE)
+		return __rte_stack_pile_pop(s, obj_table, n);
 	else
 		return __rte_stack_std_pop(s, obj_table, n);
 }
@@ -158,6 +222,8 @@ rte_stack_count(struct rte_stack *s)
 
 	if (s->flags & RTE_STACK_F_LF)
 		return __rte_stack_lf_count(s);
+	else if (s->flags & RTE_STACK_F_PILE)
+		return __rte_stack_pile_count(s);
 	else
 		return __rte_stack_std_count(s);
 }

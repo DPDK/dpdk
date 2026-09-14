@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(c) 2019 Intel Corporation
+ * Copyright(c) 2026 SmartShare Systems
  */
 
 #include <stdalign.h>
@@ -32,6 +33,8 @@ rte_stack_init(struct rte_stack *s, unsigned int count, uint32_t flags)
 
 	if (flags & RTE_STACK_F_LF)
 		rte_stack_lf_init(s, count);
+	else if (flags & RTE_STACK_F_PILE)
+		rte_stack_pile_init(s, count);
 	else
 		rte_stack_std_init(s);
 }
@@ -41,6 +44,8 @@ rte_stack_get_memsize(unsigned int count, uint32_t flags)
 {
 	if (flags & RTE_STACK_F_LF)
 		return rte_stack_lf_get_memsize(count);
+	else if (flags & RTE_STACK_F_PILE)
+		return rte_stack_pile_get_memsize(count);
 	else
 		return rte_stack_std_get_memsize(count);
 }
@@ -58,7 +63,11 @@ rte_stack_create(const char *name, unsigned int count, int socket_id,
 	unsigned int sz;
 	int ret;
 
-	if (flags & ~(RTE_STACK_F_LF)) {
+	if (flags & ~(RTE_STACK_F_LF | RTE_STACK_F_PILE)) {
+		STACK_LOG_ERR("Unsupported stack flags %#x", flags);
+		return NULL;
+	}
+	if ((flags & RTE_STACK_F_LF) && (flags & RTE_STACK_F_PILE)) {
 		STACK_LOG_ERR("Unsupported stack flags %#x", flags);
 		return NULL;
 	}
@@ -69,6 +78,13 @@ rte_stack_create(const char *name, unsigned int count, int socket_id,
 #if !defined(RTE_STACK_LF_SUPPORTED)
 	if (flags & RTE_STACK_F_LF) {
 		STACK_LOG_ERR("Lock-free stack is not supported on your platform");
+		rte_errno = ENOTSUP;
+		return NULL;
+	}
+#endif
+#if !defined(RTE_STACK_PILE_SUPPORTED)
+	if (flags & RTE_STACK_F_PILE) {
+		STACK_LOG_ERR("Pile is not supported on your platform");
 		rte_errno = ENOTSUP;
 		return NULL;
 	}

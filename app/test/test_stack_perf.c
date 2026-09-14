@@ -14,14 +14,14 @@
 #include "test.h"
 
 #define STACK_NAME "STACK_PERF"
-#define MAX_BURST 32
+#define MAX_BURST 512
 #define STACK_SIZE (RTE_MAX_LCORE * MAX_BURST)
 
 /*
  * Push/pop bulk sizes, marked volatile so they aren't treated as compile-time
  * constants.
  */
-static volatile unsigned int bulk_sizes[] = {8, MAX_BURST};
+static volatile unsigned int bulk_sizes[] = {1, 8, 32, MAX_BURST};
 
 static RTE_ATOMIC(uint32_t) lcore_barrier;
 
@@ -354,5 +354,16 @@ test_lf_stack_perf(void)
 #endif
 }
 
+static int
+test_pile_perf(void)
+{
+#if defined(RTE_STACK_PILE_SUPPORTED)
+	return __test_stack_perf(RTE_STACK_F_PILE);
+#else
+	return TEST_SKIPPED;
+#endif
+}
+
 REGISTER_PERF_TEST(stack_perf_autotest, test_stack_perf);
 REGISTER_PERF_TEST(stack_lf_perf_autotest, test_lf_stack_perf);
+REGISTER_PERF_TEST(stack_pile_perf_autotest, test_pile_perf);
