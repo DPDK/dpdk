@@ -255,6 +255,9 @@ struct iavf_info {
 	bool link_up;
 	uint32_t link_speed;
 
+	/* Unicast addrs */
+	struct rte_ether_addr mac_addrs[IAVF_NUM_MACADDR_MAX];
+
 	/* Multicast addrs */
 	struct rte_ether_addr mc_addrs[IAVF_NUM_MACADDR_MAX];
 	uint16_t mc_addrs_num;   /* Multicast mac addresses number */
