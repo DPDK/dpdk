@@ -658,7 +658,6 @@ F: drivers/bus/vdev/
 F: app/test/test_vdev.c
 
 VMBUS bus driver
-M: Long Li <longli@microsoft.com>
 M: Wei Hu <weh@microsoft.com>
 F: drivers/bus/vmbus/
 
@@ -939,7 +938,6 @@ F: doc/guides/nics/mlx5.rst
 F: doc/guides/nics/features/mlx5.ini
 
 Microsoft mana
-M: Long Li <longli@microsoft.com>
 M: Wei Hu <weh@microsoft.com>
 F: drivers/net/mana/
 F: doc/guides/nics/mana.rst
@@ -951,7 +949,6 @@ F: drivers/net/vdev_netvsc/
 F: doc/guides/nics/vdev_netvsc.rst
 
 Microsoft Hyper-V netvsc
-M: Long Li <longli@microsoft.com>
 M: Wei Hu <weh@microsoft.com>
 F: drivers/net/netvsc/
 F: doc/guides/nics/netvsc.rst
