@@ -482,7 +482,7 @@ int iavf_add_del_vlan_v2(struct iavf_adapter *adapter, uint16_t vlanid,
 int iavf_get_vlan_offload_caps_v2(struct iavf_adapter *adapter);
 int iavf_config_irq_map(struct iavf_adapter *adapter);
 int iavf_config_irq_map_lv(struct iavf_adapter *adapter, uint16_t num);
-void iavf_add_del_all_mac_addr(struct iavf_adapter *adapter, bool add);
+void iavf_add_del_secondary_mac_addr(struct iavf_adapter *adapter, bool add);
 int iavf_dev_link_update(struct rte_eth_dev *dev,
 			__rte_unused int wait_to_complete);
 void iavf_dev_alarm_handler(void *param);
