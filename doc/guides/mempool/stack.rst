@@ -1,5 +1,6 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2020 Intel Corporation.
+    Copyright(c) 2026 SmartShare Systems.
 
 Stack Mempool Driver
 ====================
@@ -28,6 +29,12 @@ can be selected as described in :ref:`Mempool_Handlers`:
   The underlying **rte_stack** operates in lock-free mode. For more
   information please refer to :ref:`Stack_Library_LF_Stack`.
 
+- ``pile``
+
+  The underlying **rte_stack** operates in lock-free mode,
+  and is optimized for bulks of objects.
+  For more information please refer to :ref:`Stack_Library_Pile`.
+
 The standard stack outperforms the lock-free stack on average, however the
 standard stack is non-preemptive: if a mempool user is preempted while holding
 the stack lock, that thread will block all other mempool accesses until it
@@ -35,9 +42,12 @@ returns and releases the lock. As a result, an application using the standard
 stack whose threads can be preempted can suffer from brief, infrequent
 performance hiccups.
 
-The lock-free stack, by design, is not susceptible to this problem; one thread can
+The lock-free stack and the pile, by design, are not susceptible to this problem; one thread can
 be preempted at any point during a push or pop operation and will not impede
 the progress of any other thread.
+
+The pile is not LIFO per object, but per bulk of objects.
+Although the pile is optimized for bulks of objects, it can handle any request size.
 
 For a more detailed description of the stack implementations, please refer to
 :doc:`/prog_guide/stack_lib`.

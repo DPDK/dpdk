@@ -721,7 +721,7 @@ struct __rte_cache_aligned rte_mempool_ops {
 	rte_mempool_dequeue_contig_blocks_t dequeue_contig_blocks;
 };
 
-#define RTE_MEMPOOL_MAX_OPS_IDX 16  /**< Max registered ops structs */
+#define RTE_MEMPOOL_MAX_OPS_IDX 32  /**< Max registered ops structs */
 
 /**
  * Structure storing the table of registered ops structs, each of which contain

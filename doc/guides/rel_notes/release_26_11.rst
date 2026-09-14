@@ -73,7 +73,7 @@ New Features
   Added the experimental ``rte_cpu_socket_id()`` function
   to map an OS logical CPU ID to the NUMA socket containing that CPU.
 
-* **Added pile stack.**
+* **Added pile stack and mempool driver.**
 
   Introduced pile, a lock-free, stack-like implementation,
   optimized for bulk operations.

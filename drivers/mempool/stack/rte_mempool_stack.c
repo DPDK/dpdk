@@ -30,7 +30,7 @@ __stack_alloc(struct rte_mempool *mp, uint32_t flags)
 }
 
 static int
-stack_alloc(struct rte_mempool *mp)
+std_stack_alloc(struct rte_mempool *mp)
 {
 	return __stack_alloc(mp, 0);
 }
@@ -42,21 +42,81 @@ lf_stack_alloc(struct rte_mempool *mp)
 }
 
 static int
-stack_enqueue(struct rte_mempool *mp, void * const *obj_table,
-	      unsigned int n)
+pile_alloc(struct rte_mempool *mp)
 {
-	struct rte_stack *s = mp->pool_data;
-
-	return rte_stack_push(s, obj_table, n) == 0 ? -ENOBUFS : 0;
+	return __stack_alloc(mp, RTE_STACK_F_PILE);
 }
 
 static int
-stack_dequeue(struct rte_mempool *mp, void **obj_table,
+std_stack_enqueue(struct rte_mempool *mp, void * const *obj_table,
 	      unsigned int n)
 {
 	struct rte_stack *s = mp->pool_data;
 
-	return rte_stack_pop(s, obj_table, n) == 0 ? -ENOBUFS : 0;
+	RTE_ASSERT(s != NULL);
+	RTE_ASSERT(obj_table != NULL);
+
+	return __rte_stack_std_push(s, obj_table, n) == 0 ? -ENOBUFS : 0;
+}
+
+static int
+std_stack_dequeue(struct rte_mempool *mp, void **obj_table,
+	      unsigned int n)
+{
+	struct rte_stack *s = mp->pool_data;
+
+	RTE_ASSERT(s != NULL);
+	RTE_ASSERT(obj_table != NULL);
+
+	return __rte_stack_std_pop(s, obj_table, n) == 0 ? -ENOBUFS : 0;
+}
+
+static int
+lf_stack_enqueue(struct rte_mempool *mp, void * const *obj_table,
+	      unsigned int n)
+{
+	struct rte_stack *s = mp->pool_data;
+
+	RTE_ASSERT(s != NULL);
+	RTE_ASSERT(obj_table != NULL);
+
+	return __rte_stack_lf_push(s, obj_table, n) == 0 ? -ENOBUFS : 0;
+}
+
+static int
+lf_stack_dequeue(struct rte_mempool *mp, void **obj_table,
+	      unsigned int n)
+{
+	struct rte_stack *s = mp->pool_data;
+
+	RTE_ASSERT(s != NULL);
+	RTE_ASSERT(obj_table != NULL);
+
+	return __rte_stack_lf_pop(s, obj_table, n) == 0 ? -ENOBUFS : 0;
+}
+
+static int
+pile_enqueue(struct rte_mempool *mp, void * const *obj_table,
+	      unsigned int n)
+{
+	struct rte_stack *s = mp->pool_data;
+
+	RTE_ASSERT(s != NULL);
+	RTE_ASSERT(obj_table != NULL);
+
+	return __rte_stack_pile_push(s, obj_table, n) == 0 ? -ENOBUFS : 0;
+}
+
+static int
+pile_dequeue(struct rte_mempool *mp, void **obj_table,
+	      unsigned int n)
+{
+	struct rte_stack *s = mp->pool_data;
+
+	RTE_ASSERT(s != NULL);
+	RTE_ASSERT(obj_table != NULL);
+
+	return __rte_stack_pile_pop(s, obj_table, n) == 0 ? -ENOBUFS : 0;
 }
 
 static unsigned
@@ -77,10 +137,10 @@ stack_free(struct rte_mempool *mp)
 
 static struct rte_mempool_ops ops_stack = {
 	.name = "stack",
-	.alloc = stack_alloc,
+	.alloc = std_stack_alloc,
 	.free = stack_free,
-	.enqueue = stack_enqueue,
-	.dequeue = stack_dequeue,
+	.enqueue = std_stack_enqueue,
+	.dequeue = std_stack_dequeue,
 	.get_count = stack_get_count
 };
 
@@ -88,10 +148,20 @@ static struct rte_mempool_ops ops_lf_stack = {
 	.name = "lf_stack",
 	.alloc = lf_stack_alloc,
 	.free = stack_free,
-	.enqueue = stack_enqueue,
-	.dequeue = stack_dequeue,
+	.enqueue = lf_stack_enqueue,
+	.dequeue = lf_stack_dequeue,
+	.get_count = stack_get_count
+};
+
+static struct rte_mempool_ops ops_pile = {
+	.name = "pile",
+	.alloc = pile_alloc,
+	.free = stack_free,
+	.enqueue = pile_enqueue,
+	.dequeue = pile_dequeue,
 	.get_count = stack_get_count
 };
 
 RTE_MEMPOOL_REGISTER_OPS(ops_stack);
 RTE_MEMPOOL_REGISTER_OPS(ops_lf_stack);
+RTE_MEMPOOL_REGISTER_OPS(ops_pile);
