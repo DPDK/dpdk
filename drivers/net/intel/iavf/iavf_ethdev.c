@@ -414,10 +414,9 @@ iavf_set_mc_addr_list(struct rte_eth_dev *dev,
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	int err, ret;
 
-	if (mc_addrs_num > IAVF_NUM_MACADDR_MAX) {
-		PMD_DRV_LOG(ERR,
-			    "can't add more than a limited number (%u) of addresses.",
-			    (uint32_t)IAVF_NUM_MACADDR_MAX);
+	if (mc_addrs_num > RTE_DIM(vf->mc_addrs)) {
+		PMD_DRV_LOG(ERR, "can't add more than a limited number (%u) of addresses.",
+			(unsigned int)RTE_DIM(vf->mc_addrs));
 		return -EINVAL;
 	}
 
