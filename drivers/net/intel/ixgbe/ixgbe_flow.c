@@ -2862,62 +2862,67 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 			actions, &ntuple_filter, error);
 
 	if (!ret) {
-		ret = ixgbe_add_del_ntuple_filter(adapter, &ntuple_filter, TRUE);
-		if (!ret) {
-			ntuple_filter_ptr = rte_zmalloc("ixgbe_ntuple_filter",
-				sizeof(struct ixgbe_ntuple_filter_ele), 0);
-			if (!ntuple_filter_ptr) {
-				PMD_DRV_LOG(ERR, "failed to allocate memory");
-				goto out;
-			}
-			ntuple_filter_ptr->filter_info = ntuple_filter;
-			flow->rule = ntuple_filter_ptr;
-			flow->filter_type = RTE_ETH_FILTER_NTUPLE;
-			return flow;
+		ntuple_filter_ptr = rte_zmalloc("ixgbe_ntuple_filter",
+			sizeof(struct ixgbe_ntuple_filter_ele), 0);
+		if (!ntuple_filter_ptr) {
+			PMD_DRV_LOG(ERR, "failed to allocate memory");
+			ret = -ENOMEM;
+			goto out;
 		}
-		goto out;
+		ntuple_filter_ptr->filter_info = ntuple_filter;
+		ret = ixgbe_add_del_ntuple_filter(adapter, &ntuple_filter, TRUE);
+		if (ret) {
+			rte_free(ntuple_filter_ptr);
+			goto out;
+		}
+		flow->rule = ntuple_filter_ptr;
+		flow->filter_type = RTE_ETH_FILTER_NTUPLE;
+		return flow;
 	}
 
 	memset(&ethertype_filter, 0, sizeof(struct rte_eth_ethertype_filter));
 	ret = ixgbe_parse_ethertype_filter(dev, attr, pattern,
 				actions, &ethertype_filter, error);
 	if (!ret) {
+		ethertype_filter_ptr = rte_zmalloc("ixgbe_ethertype_filter",
+			sizeof(struct ixgbe_ethertype_filter_ele), 0);
+		if (!ethertype_filter_ptr) {
+			PMD_DRV_LOG(ERR, "failed to allocate memory");
+			ret = -ENOMEM;
+			goto out;
+		}
+		ethertype_filter_ptr->filter_info = ethertype_filter;
 		ret = ixgbe_add_del_ethertype_filter(adapter,
 				&ethertype_filter, TRUE);
-		if (!ret) {
-			ethertype_filter_ptr = rte_zmalloc(
-				"ixgbe_ethertype_filter",
-				sizeof(struct ixgbe_ethertype_filter_ele), 0);
-			if (!ethertype_filter_ptr) {
-				PMD_DRV_LOG(ERR, "failed to allocate memory");
-				goto out;
-			}
-			ethertype_filter_ptr->filter_info = ethertype_filter;
-			flow->rule = ethertype_filter_ptr;
-			flow->filter_type = RTE_ETH_FILTER_ETHERTYPE;
-			return flow;
+		if (ret) {
+			rte_free(ethertype_filter_ptr);
+			goto out;
 		}
-		goto out;
+		flow->rule = ethertype_filter_ptr;
+		flow->filter_type = RTE_ETH_FILTER_ETHERTYPE;
+		return flow;
 	}
 
 	memset(&syn_filter, 0, sizeof(struct rte_eth_syn_filter));
 	ret = ixgbe_parse_syn_filter(dev, attr, pattern,
 				actions, &syn_filter, error);
 	if (!ret) {
-		ret = ixgbe_syn_filter_set(adapter, &syn_filter, TRUE);
-		if (!ret) {
-			syn_filter_ptr = rte_zmalloc("ixgbe_syn_filter",
-				sizeof(struct ixgbe_eth_syn_filter_ele), 0);
-			if (!syn_filter_ptr) {
-				PMD_DRV_LOG(ERR, "failed to allocate memory");
-				goto out;
-			}
-			syn_filter_ptr->filter_info = syn_filter;
-			flow->rule = syn_filter_ptr;
-			flow->filter_type = RTE_ETH_FILTER_SYN;
-			return flow;
+		syn_filter_ptr = rte_zmalloc("ixgbe_syn_filter",
+			sizeof(struct ixgbe_eth_syn_filter_ele), 0);
+		if (!syn_filter_ptr) {
+			PMD_DRV_LOG(ERR, "failed to allocate memory");
+			ret = -ENOMEM;
+			goto out;
 		}
-		goto out;
+		syn_filter_ptr->filter_info = syn_filter;
+		ret = ixgbe_syn_filter_set(adapter, &syn_filter, TRUE);
+		if (ret) {
+			rte_free(syn_filter_ptr);
+			goto out;
+		}
+		flow->rule = syn_filter_ptr;
+		flow->filter_type = RTE_ETH_FILTER_SYN;
+		return flow;
 	}
 
 	memset(&fdir_rule, 0, sizeof(struct ixgbe_fdir_rule));
@@ -2927,17 +2932,21 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 		struct rte_eth_fdir_conf *fdir_conf = IXGBE_DEV_FDIR_CONF(dev);
 		bool first_mask = false;
 
-		ret = ixgbe_fdir_flow_program(dev, adapter, &fdir_rule,
-			&first_mask, error);
-		if (ret)
-			goto out;
-
 		fdir_rule_ptr = rte_zmalloc("ixgbe_fdir_filter",
 				sizeof(struct ixgbe_fdir_rule_ele), 0);
 		if (!fdir_rule_ptr) {
 			PMD_DRV_LOG(ERR, "failed to allocate memory");
+			ret = -ENOMEM;
 			goto out;
 		}
+
+		ret = ixgbe_fdir_flow_program(dev, adapter, &fdir_rule,
+			&first_mask, error);
+		if (ret) {
+			rte_free(fdir_rule_ptr);
+			goto out;
+		}
+
 		/* update global state */
 		if (first_mask) {
 			fdir_info->mask_added = TRUE;
@@ -2957,39 +2966,46 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 	ret = ixgbe_parse_l2_tn_filter(dev, attr, pattern,
 					actions, &l2_tn_filter, error);
 	if (!ret) {
-		ret = ixgbe_dev_l2_tunnel_filter_add(adapter, &l2_tn_filter, FALSE);
-		if (!ret) {
-			l2_tn_filter_ptr = rte_zmalloc("ixgbe_l2_tn_filter",
-				sizeof(struct ixgbe_eth_l2_tunnel_conf_ele), 0);
-			if (!l2_tn_filter_ptr) {
-				PMD_DRV_LOG(ERR, "failed to allocate memory");
-				goto out;
-			}
-			l2_tn_filter_ptr->filter_info = l2_tn_filter;
-			flow->rule = l2_tn_filter_ptr;
-			flow->filter_type = RTE_ETH_FILTER_L2_TUNNEL;
-			return flow;
+		l2_tn_filter_ptr = rte_zmalloc("ixgbe_l2_tn_filter",
+			sizeof(struct ixgbe_eth_l2_tunnel_conf_ele), 0);
+		if (!l2_tn_filter_ptr) {
+			PMD_DRV_LOG(ERR, "failed to allocate memory");
+			ret = -ENOMEM;
+			goto out;
 		}
+		l2_tn_filter_ptr->filter_info = l2_tn_filter;
+		ret = ixgbe_dev_l2_tunnel_filter_add(adapter, &l2_tn_filter,
+						     FALSE);
+		if (ret) {
+			rte_free(l2_tn_filter_ptr);
+			goto out;
+		}
+		flow->rule = l2_tn_filter_ptr;
+		flow->filter_type = RTE_ETH_FILTER_L2_TUNNEL;
+		return flow;
 	}
 
 	memset(&rss_conf, 0, sizeof(struct ixgbe_rte_flow_rss_conf));
 	ret = ixgbe_parse_rss_filter(dev, attr,
 					actions, &rss_conf, error);
 	if (!ret) {
-		ret = ixgbe_config_rss_filter(adapter, &rss_conf, TRUE);
-		if (!ret) {
-			rss_filter_ptr = rte_zmalloc("ixgbe_rss_filter",
-				sizeof(struct ixgbe_rss_conf_ele), 0);
-			if (!rss_filter_ptr) {
-				PMD_DRV_LOG(ERR, "failed to allocate memory");
-				goto out;
-			}
-			ixgbe_rss_conf_init(&rss_filter_ptr->filter_info,
-					    &rss_conf.conf);
-			flow->rule = rss_filter_ptr;
-			flow->filter_type = RTE_ETH_FILTER_HASH;
-			return flow;
+		rss_filter_ptr = rte_zmalloc("ixgbe_rss_filter",
+			sizeof(struct ixgbe_rss_conf_ele), 0);
+		if (!rss_filter_ptr) {
+			PMD_DRV_LOG(ERR, "failed to allocate memory");
+			ret = -ENOMEM;
+			goto out;
 		}
+		ret = ixgbe_config_rss_filter(adapter, &rss_conf, TRUE);
+		if (ret) {
+			rte_free(rss_filter_ptr);
+			goto out;
+		}
+		ixgbe_rss_conf_init(&rss_filter_ptr->filter_info,
+				    &rss_conf.conf);
+		flow->rule = rss_filter_ptr;
+		flow->filter_type = RTE_ETH_FILTER_HASH;
+		return flow;
 	}
 
 out:
