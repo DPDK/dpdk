@@ -1189,7 +1189,7 @@ iavf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->hash_key_size = vf->vf_res->rss_key_size;
 	dev_info->reta_size = vf->vf_res->rss_lut_size;
 	dev_info->flow_type_rss_offloads = IAVF_RSS_OFFLOAD_ALL;
-	dev_info->max_mac_addrs = IAVF_NUM_MACADDR_MAX;
+	dev_info->max_mac_addrs = RTE_DIM(vf->mac_addrs);
 	/*
 	 * Runtime queue setup can race with the hardware Tx rate limiter on
 	 * E810 VFs and corrupt queue state. Once a per-queue bandwidth rte_tm
@@ -3107,16 +3107,9 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 	/* set default ptype table */
 	iavf_set_default_ptype_table(eth_dev);
 
-	/* copy mac addr */
-	eth_dev->data->mac_addrs = rte_zmalloc(
-		"iavf_mac", RTE_ETHER_ADDR_LEN * IAVF_NUM_MACADDR_MAX, 0);
-	if (!eth_dev->data->mac_addrs) {
-		PMD_INIT_LOG(ERR, "Failed to allocate %d bytes needed to"
-			     " store MAC addresses",
-			     RTE_ETHER_ADDR_LEN * IAVF_NUM_MACADDR_MAX);
-		ret = -ENOMEM;
-		goto init_vf_err;
-	}
+	/* Point at the MAC addresses array from priv */
+	eth_dev->data->mac_addrs = vf->mac_addrs;
+
 	/* If the MAC address is not configured by host,
 	 * generate a random one.
 	 */
@@ -3125,7 +3118,6 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 		rte_eth_random_addr(hw->mac.addr);
 	rte_ether_addr_copy((struct rte_ether_addr *)hw->mac.addr,
 			&eth_dev->data->mac_addrs[0]);
-
 
 	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR &&
 			/* register callback func to eal lib */
@@ -3203,7 +3195,6 @@ flow_init_err:
 	iavf_phc_sync_alarm_stop(eth_dev);
 	rte_eal_alarm_cancel(iavf_dev_alarm_handler, eth_dev);
 
-	rte_free(eth_dev->data->mac_addrs);
 	eth_dev->data->mac_addrs = NULL;
 
 init_vf_err:
@@ -3259,6 +3250,9 @@ iavf_dev_close(struct rte_eth_dev *dev)
 	}
 
 	adapter->closed = true;
+
+	/* Clear reference to the MAC addresses in priv */
+	dev->data->mac_addrs = NULL;
 
 	/* free iAVF security device context all related resources */
 	iavf_security_ctx_destroy(adapter);
