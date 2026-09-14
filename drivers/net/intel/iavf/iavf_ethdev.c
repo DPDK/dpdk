@@ -295,11 +295,12 @@ iavf_get_restore_flags(__rte_unused struct rte_eth_dev *dev,
 		       __rte_unused enum rte_eth_dev_operation op)
 {
 	/*
-	 * The unicast and multicast promiscuous settings persist across a
+	 * The mac addresses, unicast and multicast promiscuous settings persist across a
 	 * stop/start; they are only cleared by a VF reset, which the driver
 	 * restores itself. So ethdev does not need to restore them on start.
 	 */
-	return RTE_ETH_RESTORE_ALL & ~(RTE_ETH_RESTORE_PROMISC |
+	return RTE_ETH_RESTORE_ALL & ~(RTE_ETH_RESTORE_MAC_ADDR |
+				       RTE_ETH_RESTORE_PROMISC |
 				       RTE_ETH_RESTORE_ALLMULTI);
 }
 
@@ -1098,15 +1099,14 @@ iavf_dev_start(struct rte_eth_dev *dev)
 		rte_intr_enable(intr_handle);
 	}
 
-	/* Set all mac addrs */
-	iavf_add_del_all_mac_addr(adapter, true);
-
-	if (!adapter->mac_primary_set)
-		adapter->mac_primary_set = true;
-
-	/* Set all multicast addresses */
-	iavf_add_del_mc_addr_list(adapter, vf->mc_addrs, vf->mc_addrs_num,
-				  true);
+	if (!adapter->mac_primary_set) {
+		if (iavf_add_del_eth_addr(adapter, &dev->data->mac_addrs[0], true,
+				VIRTCHNL_ETHER_ADDR_PRIMARY) != 0)
+			PMD_DRV_LOG(ERR, "failed to add primary MAC:" RTE_ETHER_ADDR_PRT_FMT,
+				RTE_ETHER_ADDR_BYTES(&dev->data->mac_addrs[0]));
+		else
+			adapter->mac_primary_set = true;
+	}
 
 	rte_spinlock_init(&vf->phc_time_aq_lock);
 
@@ -3432,6 +3432,14 @@ iavf_post_reset_reconfig(struct rte_eth_dev *dev)
 	int ret = 0;
 	bool allmulti = false, allunicast = false;
 	struct iavf_adapter *adapter = IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+
+	/*
+	 * After a VF reset, all MAC addresses got flushed.
+	 * The primary MAC has been or will be restored by iavf_dev_start.
+	 */
+	iavf_add_del_secondary_mac_addr(adapter, true);
+	(void)iavf_add_del_mc_addr_list(adapter, vf->mc_addrs, vf->mc_addrs_num, true);
 
 	/* Restore pre-reset unicast promiscuous and multicast promiscuous states */
 	if (dev->data->promiscuous)

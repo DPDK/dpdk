@@ -1672,7 +1672,7 @@ iavf_config_irq_map_lv(struct iavf_adapter *adapter, uint16_t num)
 }
 
 void
-iavf_add_del_all_mac_addr(struct iavf_adapter *adapter, bool add)
+iavf_add_del_secondary_mac_addr(struct iavf_adapter *adapter, bool add)
 {
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
 	struct {
@@ -1685,7 +1685,7 @@ iavf_add_del_all_mac_addr(struct iavf_adapter *adapter, bool add)
 	int err;
 	size_t buf_len;
 
-	for (unsigned int i = 0; i < RTE_DIM(vf->mac_addrs); i++) {
+	for (unsigned int i = 1; i < RTE_DIM(vf->mac_addrs); i++) {
 		struct rte_ether_addr *addr = &vf->mac_addrs[i];
 		struct virtchnl_ether_addr *vc_addr = &list->list[list->num_elements];
 
@@ -1695,10 +1695,11 @@ iavf_add_del_all_mac_addr(struct iavf_adapter *adapter, bool add)
 		list->num_elements++;
 
 		memcpy(vc_addr->addr, addr->addr_bytes, sizeof(addr->addr_bytes));
-		vc_addr->type = (list->num_elements == 1) ?
-				VIRTCHNL_ETHER_ADDR_PRIMARY :
-				VIRTCHNL_ETHER_ADDR_EXTRA;
+		vc_addr->type = VIRTCHNL_ETHER_ADDR_EXTRA;
 	}
+
+	if (list->num_elements == 0)
+		return;
 
 	/* for some reason PF side checks for buffer being too big, so adjust it down */
 	buf_len = sizeof(struct virtchnl_ether_addr_list) +
