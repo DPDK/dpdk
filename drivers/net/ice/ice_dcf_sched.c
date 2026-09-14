@@ -194,28 +194,9 @@ ice_dcf_node_param_check(struct ice_dcf_hw *hw, uint32_t node_id,
 	}
 
 	/* for leaf node */
-	if (params->leaf.cman) {
+	if (params->leaf.cman != RTE_TM_CMAN_TAIL_DROP) {
 		error->type = RTE_TM_ERROR_TYPE_NODE_PARAMS_CMAN;
-		error->message = "Congestion management not supported";
-		return -EINVAL;
-	}
-	if (params->leaf.wred.wred_profile_id !=
-	    RTE_TM_WRED_PROFILE_ID_NONE) {
-		error->type =
-			RTE_TM_ERROR_TYPE_NODE_PARAMS_WRED_PROFILE_ID;
-		error->message = "WRED not supported";
-		return -EINVAL;
-	}
-	if (params->leaf.wred.shared_wred_context_id) {
-		error->type =
-			RTE_TM_ERROR_TYPE_NODE_PARAMS_SHARED_WRED_CONTEXT_ID;
-		error->message = "WRED not supported";
-		return -EINVAL;
-	}
-	if (params->leaf.wred.n_shared_wred_contexts) {
-		error->type =
-			RTE_TM_ERROR_TYPE_NODE_PARAMS_N_SHARED_WRED_CONTEXTS;
-		error->message = "WRED not supported";
+		error->message = "Only tail drop is supported";
 		return -EINVAL;
 	}
 
