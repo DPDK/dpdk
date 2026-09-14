@@ -742,7 +742,7 @@ static int
 handle_field_offs_arg(__rte_unused const char *key, const char *value,
 				void *offs_args)
 {
-	uint8_t *offset = offs_args;
+	int *offset = offs_args;
 
 	if (value == NULL || offs_args == NULL)
 		return -EINVAL;
