@@ -106,8 +106,12 @@ cnxk_ethdev_is_representor(const char *if_name)
 	regex_t regex;
 	int val;
 
-	val = regcomp(&regex, "net_.*_representor_.*", 0);
+	if (regcomp(&regex, "net_.*_representor_.*", 0) != 0)
+		return 0;
+
 	val = regexec(&regex, if_name, 0, NULL, 0);
+	regfree(&regex);
+
 	return (val == 0);
 }
 
