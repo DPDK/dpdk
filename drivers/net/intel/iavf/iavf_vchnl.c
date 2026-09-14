@@ -1671,50 +1671,69 @@ iavf_config_irq_map_lv(struct iavf_adapter *adapter, uint16_t num)
 	return 0;
 }
 
+#define IAVF_ETH_ADDR_PER_REQ \
+	((IAVF_AQ_BUF_SZ - sizeof(struct virtchnl_ether_addr_list)) / \
+	 sizeof(struct virtchnl_ether_addr))
+#define IAVF_ETH_ADDR_CMD_SIZE(nb_addrs) \
+	(sizeof(struct virtchnl_ether_addr_list) + sizeof(struct virtchnl_ether_addr) * (nb_addrs))
+
+static int
+iavf_send_eth_addr_list(struct iavf_adapter *adapter, const char *caller,
+		struct virtchnl_ether_addr_list *list, bool add)
+{
+	uint8_t msg_buf[IAVF_AQ_BUF_SZ] = {0};
+	struct iavf_cmd_info args;
+	int err;
+
+	if (list->num_elements > IAVF_ETH_ADDR_PER_REQ) {
+		PMD_DRV_LOG(ERR, "cannot fit this ethernet address list in a message to the PF");
+		return -EINVAL;
+	}
+
+	memset(&args, 0, sizeof(args));
+	args.ops = add ? VIRTCHNL_OP_ADD_ETH_ADDR : VIRTCHNL_OP_DEL_ETH_ADDR;
+	args.in_args = (uint8_t *)list;
+	args.in_args_size = IAVF_ETH_ADDR_CMD_SIZE(list->num_elements);
+	args.out_buffer = msg_buf;
+	args.out_size = IAVF_AQ_BUF_SZ;
+	err = iavf_execute_vf_cmd_safe(adapter, &args);
+	if (err != 0) {
+		PMD_DRV_LOG(ERR, "fail to execute command %s for %s",
+			add ? "VIRTCHNL_OP_ADD_ETH_ADDR" : "VIRTCHNL_OP_DEL_ETH_ADDR", caller);
+		return err;
+	}
+
+	PMD_DRV_LOG(DEBUG, "executed command %s for %s",
+		add ? "VIRTCHNL_OP_ADD_ETH_ADDR" : "VIRTCHNL_OP_DEL_ETH_ADDR", caller);
+
+	return 0;
+}
+
 void
 iavf_add_del_secondary_mac_addr(struct iavf_adapter *adapter, bool add)
 {
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
-	struct {
-		struct virtchnl_ether_addr_list list;
-		struct virtchnl_ether_addr addr[RTE_DIM(vf->mac_addrs)];
-	} list_req = {0};
-	struct virtchnl_ether_addr_list *list = &list_req.list;
-	uint8_t msg_buf[IAVF_AQ_BUF_SZ] = {0};
-	struct iavf_cmd_info args = {0};
-	int err;
-	size_t buf_len;
+	uint8_t cmd_buffer[IAVF_ETH_ADDR_CMD_SIZE(RTE_DIM(vf->mac_addrs))] = {0};
+	struct virtchnl_ether_addr_list *list;
+
+	list = (struct virtchnl_ether_addr_list *)cmd_buffer;
+	list->vsi_id = vf->vsi_res->vsi_id;
+	list->num_elements = 0;
 
 	for (unsigned int i = 1; i < RTE_DIM(vf->mac_addrs); i++) {
 		struct rte_ether_addr *addr = &vf->mac_addrs[i];
 		struct virtchnl_ether_addr *vc_addr = &list->list[list->num_elements];
 
-		/* ignore empty addresses */
-		if (rte_is_zero_ether_addr(addr))
-			continue;
-		list->num_elements++;
+		if (!rte_is_zero_ether_addr(addr)) {
+			list->num_elements++;
 
-		memcpy(vc_addr->addr, addr->addr_bytes, sizeof(addr->addr_bytes));
-		vc_addr->type = VIRTCHNL_ETHER_ADDR_EXTRA;
+			memcpy(vc_addr->addr, addr->addr_bytes, sizeof(addr->addr_bytes));
+			vc_addr->type = VIRTCHNL_ETHER_ADDR_EXTRA;
+		}
 	}
 
-	if (list->num_elements == 0)
-		return;
-
-	/* for some reason PF side checks for buffer being too big, so adjust it down */
-	buf_len = sizeof(struct virtchnl_ether_addr_list) +
-		  sizeof(struct virtchnl_ether_addr) * list->num_elements;
-
-	list->vsi_id = vf->vsi_res->vsi_id;
-	args.ops = add ? VIRTCHNL_OP_ADD_ETH_ADDR : VIRTCHNL_OP_DEL_ETH_ADDR;
-	args.in_args = (uint8_t *)list;
-	args.in_args_size = buf_len;
-	args.out_buffer = msg_buf;
-	args.out_size = IAVF_AQ_BUF_SZ;
-	err = iavf_execute_vf_cmd_safe(adapter, &args);
-	if (err)
-		PMD_DRV_LOG(ERR, "fail to execute command %s",
-				add ? "OP_ADD_ETHER_ADDRESS" : "OP_DEL_ETHER_ADDRESS");
+	if (list->num_elements != 0)
+		(void)iavf_send_eth_addr_list(adapter, __func__, list, add);
 }
 
 int
@@ -1797,13 +1816,9 @@ int
 iavf_add_del_eth_addr(struct iavf_adapter *adapter, struct rte_ether_addr *addr,
 		     bool add, uint8_t type)
 {
-	struct virtchnl_ether_addr_list *list;
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
-	uint8_t msg_buf[IAVF_AQ_BUF_SZ] = {0};
-	uint8_t cmd_buffer[sizeof(struct virtchnl_ether_addr_list) +
-			   sizeof(struct virtchnl_ether_addr)];
-	struct iavf_cmd_info args;
-	int err;
+	uint8_t cmd_buffer[IAVF_ETH_ADDR_CMD_SIZE(1)] = {0};
+	struct virtchnl_ether_addr_list *list;
 
 	if (adapter->closed)
 		return -EIO;
@@ -1815,16 +1830,7 @@ iavf_add_del_eth_addr(struct iavf_adapter *adapter, struct rte_ether_addr *addr,
 	memcpy(list->list[0].addr, addr->addr_bytes,
 		   sizeof(addr->addr_bytes));
 
-	args.ops = add ? VIRTCHNL_OP_ADD_ETH_ADDR : VIRTCHNL_OP_DEL_ETH_ADDR;
-	args.in_args = cmd_buffer;
-	args.in_args_size = sizeof(cmd_buffer);
-	args.out_buffer = msg_buf;
-	args.out_size = IAVF_AQ_BUF_SZ;
-	err = iavf_execute_vf_cmd_safe(adapter, &args);
-	if (err)
-		PMD_DRV_LOG(ERR, "fail to execute command %s",
-			    add ? "OP_ADD_ETH_ADDR" :  "OP_DEL_ETH_ADDR");
-	return err;
+	return iavf_send_eth_addr_list(adapter, __func__, list, add);
 }
 
 int
@@ -2302,14 +2308,10 @@ iavf_add_del_mc_addr_list(struct iavf_adapter *adapter,
 			struct rte_ether_addr *mc_addrs,
 			uint32_t mc_addrs_num, bool add)
 {
+	uint8_t cmd_buffer[IAVF_ETH_ADDR_CMD_SIZE(IAVF_NUM_MACADDR_MAX)] = {0};
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
-	uint8_t msg_buf[IAVF_AQ_BUF_SZ] = {0};
-	uint8_t cmd_buffer[sizeof(struct virtchnl_ether_addr_list) +
-		(IAVF_NUM_MACADDR_MAX * sizeof(struct virtchnl_ether_addr))];
 	struct virtchnl_ether_addr_list *list;
-	struct iavf_cmd_info args;
 	uint32_t i;
-	int err;
 
 	if (mc_addrs == NULL || mc_addrs_num == 0)
 		return 0;
@@ -2330,21 +2332,7 @@ iavf_add_del_mc_addr_list(struct iavf_adapter *adapter,
 		list->list[i].type = VIRTCHNL_ETHER_ADDR_EXTRA;
 	}
 
-	args.ops = add ? VIRTCHNL_OP_ADD_ETH_ADDR : VIRTCHNL_OP_DEL_ETH_ADDR;
-	args.in_args = cmd_buffer;
-	args.in_args_size = sizeof(struct virtchnl_ether_addr_list) +
-		i * sizeof(struct virtchnl_ether_addr);
-	args.out_buffer = msg_buf;
-	args.out_size = IAVF_AQ_BUF_SZ;
-	err = iavf_execute_vf_cmd_safe(adapter, &args);
-
-	if (err) {
-		PMD_DRV_LOG(ERR, "fail to execute command %s",
-			add ? "OP_ADD_ETH_ADDR" : "OP_DEL_ETH_ADDR");
-		return err;
-	}
-
-	return 0;
+	return iavf_send_eth_addr_list(adapter, __func__, list, add);
 }
 
 int
