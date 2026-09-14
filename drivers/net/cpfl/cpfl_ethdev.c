@@ -1449,7 +1449,7 @@ parse_vport(const char *key, const char *value, void *args)
 static int
 parse_bool(const char *key, const char *value, void *args)
 {
-	int *i = args;
+	bool *i = args;
 	char *end;
 	int num;
 
@@ -1463,7 +1463,7 @@ parse_bool(const char *key, const char *value, void *args)
 		return -EINVAL;
 	}
 
-	*i = num;
+	*i = (num == 1);
 	return 0;
 }
 
