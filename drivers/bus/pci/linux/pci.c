@@ -5,6 +5,7 @@
 #include <string.h>
 #include <dirent.h>
 
+#include <rte_errno.h>
 #include <rte_log.h>
 #include <rte_pci.h>
 #include <rte_bus_pci.h>
@@ -476,6 +477,40 @@ rte_pci_scan(void)
 error:
 	closedir(dir);
 	return -1;
+}
+
+int
+pci_device_dma_map(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
+{
+	int ret = pci_dma_map(dev, addr, iova, len);
+
+	if (ret == -1 && rte_errno == ENOTSUP) {
+		struct rte_pci_device *pdev = RTE_BUS_DEVICE(dev, *pdev);
+
+		/* In case driver doesn't provide any specific mapping try fallback to VFIO. */
+		if (pdev->kdrv == RTE_PCI_KDRV_VFIO)
+			ret = rte_vfio_container_dma_map(RTE_VFIO_DEFAULT_CONTAINER_FD,
+				(uintptr_t)addr, iova, len);
+	}
+
+	return ret;
+}
+
+int
+pci_device_dma_unmap(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
+{
+	int ret = pci_dma_unmap(dev, addr, iova, len);
+
+	if (ret == -1 && rte_errno == ENOTSUP) {
+		struct rte_pci_device *pdev = RTE_BUS_DEVICE(dev, *pdev);
+
+		/* In case driver doesn't provide any specific mapping try fallback to VFIO. */
+		if (pdev->kdrv == RTE_PCI_KDRV_VFIO)
+			return rte_vfio_container_dma_unmap(RTE_VFIO_DEFAULT_CONTAINER_FD,
+				(uintptr_t)addr, iova, len);
+	}
+
+	return ret;
 }
 
 #if defined(RTE_ARCH_X86)

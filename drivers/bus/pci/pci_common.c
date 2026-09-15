@@ -25,7 +25,6 @@
 #include <rte_string_fns.h>
 #include <rte_common.h>
 #include <rte_devargs.h>
-#include <rte_vfio.h>
 #include <rte_tailq.h>
 
 #include "private.h"
@@ -474,7 +473,7 @@ pci_sigbus_handler(const void *failure_addr)
 	return ret;
 }
 
-static int
+int
 pci_dma_map(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
 {
 	struct rte_pci_device *pdev = RTE_BUS_DEVICE(dev, *pdev);
@@ -482,19 +481,12 @@ pci_dma_map(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
 
 	if (pdrv->dma_map != NULL)
 		return pdrv->dma_map(pdev, addr, iova, len);
-	/**
-	 *  In case driver don't provides any specific mapping
-	 *  try fallback to VFIO.
-	 */
-	if (pdev->kdrv == RTE_PCI_KDRV_VFIO)
-		return rte_vfio_container_dma_map
-				(RTE_VFIO_DEFAULT_CONTAINER_FD, (uintptr_t)addr,
-				 iova, len);
+
 	rte_errno = ENOTSUP;
 	return -1;
 }
 
-static int
+int
 pci_dma_unmap(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
 {
 	struct rte_pci_device *pdev = RTE_BUS_DEVICE(dev, *pdev);
@@ -502,14 +494,6 @@ pci_dma_unmap(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
 
 	if (pdrv->dma_unmap != NULL)
 		return pdrv->dma_unmap(pdev, addr, iova, len);
-	/**
-	 *  In case driver don't provides any specific mapping
-	 *  try fallback to VFIO.
-	 */
-	if (pdev->kdrv == RTE_PCI_KDRV_VFIO)
-		return rte_vfio_container_dma_unmap
-				(RTE_VFIO_DEFAULT_CONTAINER_FD, (uintptr_t)addr,
-				 iova, len);
 	rte_errno = ENOTSUP;
 	return -1;
 }
@@ -727,8 +711,8 @@ struct rte_bus rte_pci_bus = {
 	.parse = pci_parse,
 	.dev_compare = pci_dev_compare,
 	.devargs_parse = rte_pci_devargs_parse,
-	.dma_map = pci_dma_map,
-	.dma_unmap = pci_dma_unmap,
+	.dma_map = pci_device_dma_map,
+	.dma_unmap = pci_device_dma_unmap,
 	.get_iommu_class = rte_pci_get_iommu_class,
 	.dev_iterate = rte_pci_dev_iterate,
 	.hot_unplug_handler = pci_hot_unplug_handler,

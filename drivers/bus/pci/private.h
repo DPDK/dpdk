@@ -211,6 +211,47 @@ int pci_uio_map_resource_by_index(struct rte_pci_device *dev, int res_idx,
 		struct mapped_pci_resource *uio_res, int map_idx);
 
 /**
+ * Call driver DMA map callback if any.
+ *
+ * @param dev
+ *   Device pointer.
+ * @param addr
+ *   Virtual address to map.
+ * @param iova
+ *   IOVA address to map.
+ * @param len
+ *   Length of the memory segment being mapped.
+ * @return
+ *   0 on success, -1 on error
+ */
+int pci_dma_map(struct rte_device *dev, void *addr, uint64_t iova, size_t len);
+
+/**
+ * Call driver DMA unmap callback if any.
+ *
+ * @param dev
+ *   Device pointer.
+ * @param addr
+ *   Virtual address to unmap.
+ * @param iova
+ *   IOVA address to unmap.
+ * @param len
+ *   Length of the memory segment being unmapped.
+ * @return
+ *   0 on success, -1 on error
+ */
+int pci_dma_unmap(struct rte_device *dev, void *addr, uint64_t iova, size_t len);
+
+/**
+ * OS specific callbacks for dma_map/dma_unmap
+ */
+int
+pci_device_dma_map(struct rte_device *dev, void *addr, uint64_t iova, size_t len);
+
+int
+pci_device_dma_unmap(struct rte_device *dev, void *addr, uint64_t iova, size_t len);
+
+/**
  * OS specific callbacks for rte_pci_get_iommu_class
  *
  */

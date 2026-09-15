@@ -120,6 +120,18 @@ rte_pci_mmio_write(const struct rte_pci_device *dev, int bar,
 	return len;
 }
 
+int
+pci_device_dma_map(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
+{
+	return pci_dma_map(dev, addr, iova, len);
+}
+
+int
+pci_device_dma_unmap(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
+{
+	return pci_dma_unmap(dev, addr, iova, len);
+}
+
 enum rte_iova_mode
 pci_device_iova_mode(const struct rte_pci_driver *pdrv __rte_unused,
 		const struct rte_pci_device *pdev __rte_unused)
