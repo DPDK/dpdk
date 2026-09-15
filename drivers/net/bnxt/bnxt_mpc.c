@@ -48,18 +48,20 @@ static int bnxt_mpc_chnls_enable(struct bnxt *bp)
 static int bnxt_mpc_chnls_disable(struct bnxt *bp)
 {
 	struct bnxt_mpc *mpc = bp->mpc;
+	uint8_t mpc_chnl_flg;
 	uint8_t mpc_chnl_msk = 0;
 	int i, rc;
 
 	if (!mpc)
 		return -EINVAL;
+	mpc_chnl_flg = mpc->mpc_chnls_en;
 	mpc->mpc_chnls_en = 0;
 
 	if (!BNXT_PF(bp))
 		return 0;
 
 	for (i = 0; i < BNXT_MPC_CHNL_MAX; i++) {
-		if (!(mpc->mpc_chnls_en & (1 << i)))
+		if (!(mpc_chnl_flg & (1 << i)))
 			continue;
 		mpc_chnl_msk |= (1 << i);
 	}
