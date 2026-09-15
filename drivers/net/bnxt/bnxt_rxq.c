@@ -131,11 +131,6 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 
 	for (i = 0; i < pools; i++) {
 		vnic = &bp->vnic_info[i];
-		if (!vnic) {
-			PMD_DRV_LOG_LINE(ERR, "VNIC alloc failed");
-			rc = -ENOMEM;
-			goto err_out;
-		}
 		vnic->flags |= BNXT_VNIC_INFO_BCAST;
 		bp->nr_vnics++;
 
