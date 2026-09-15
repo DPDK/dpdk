@@ -370,11 +370,9 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 		return -EINVAL;
 	}
 
-	if (eth_dev->data->rx_queues) {
-		rxq = eth_dev->data->rx_queues[queue_idx];
-		if (rxq)
-			bnxt_rx_queue_release_op(eth_dev, queue_idx);
-	}
+	rxq = eth_dev->data->rx_queues[queue_idx];
+	if (rxq)
+		bnxt_rx_queue_release_op(eth_dev, queue_idx);
 	rxq = rte_zmalloc_socket("bnxt_rx_queue", sizeof(struct bnxt_rx_queue),
 				 RTE_CACHE_LINE_SIZE, socket_id);
 	if (!rxq) {
