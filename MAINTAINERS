@@ -331,6 +331,7 @@ F: lib/eal/loongarch/
 
 IBM POWER (alpha)
 M: David Christensen <drc@linux.ibm.com>
+M: Riley Fletcher <rileyf@linux.ibm.com>
 F: config/ppc/
 F: lib/eal/ppc/
 F: lib/*/*_altivec*
