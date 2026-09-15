@@ -5068,7 +5068,7 @@ static int bnxt_alloc_ctx_mem_blk(struct bnxt *bp,
 
 	snprintf(name, RTE_MEMZONE_NAMESIZE, "bnxt_ctx_dma_arr%s_%x_%d",
 		 suffix, idx, bp->eth_dev->data->port_id);
-	ctx_pg->ctx_dma_arr = rte_zmalloc(name, sizeof(rte_iova_t *) * rmem->nr_pages, 0);
+	ctx_pg->ctx_dma_arr = rte_zmalloc(name, sizeof(rte_iova_t) * rmem->nr_pages, 0);
 	if (ctx_pg->ctx_dma_arr == NULL)
 		return -ENOMEM;
 
