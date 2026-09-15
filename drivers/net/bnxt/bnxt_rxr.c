@@ -74,15 +74,6 @@ static inline int bnxt_alloc_ag_data(struct bnxt_rx_queue *rxq,
 
 	rxbd = &rxr->ag_desc_ring[prod];
 	rx_buf = &rxr->ag_buf_ring[prod];
-	if (rxbd == NULL) {
-		PMD_DRV_LOG_LINE(ERR, "Jumbo Frame. rxbd is NULL");
-		return -EINVAL;
-	}
-
-	if (rx_buf == NULL) {
-		PMD_DRV_LOG_LINE(ERR, "Jumbo Frame. rx_buf is NULL");
-		return -EINVAL;
-	}
 
 	mbuf = __bnxt_alloc_rx_data(rxq->agg_mb_pool);
 	if (!mbuf) {
