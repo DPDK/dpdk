@@ -2537,9 +2537,8 @@ iavf_get_ptp_cap(struct iavf_adapter *adapter)
 }
 
 int
-iavf_get_phc_time(struct ci_rx_queue *rxq)
+iavf_phc_get_time(struct iavf_adapter *adapter, uint64_t *time)
 {
-	struct iavf_adapter *adapter = rxq->iavf_vsi->adapter;
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
 	uint8_t msg_buf[IAVF_AQ_BUF_SZ] = {0};
 	struct virtchnl_phc_time phc_time;
@@ -2559,9 +2558,17 @@ iavf_get_phc_time(struct ci_rx_queue *rxq)
 			    "Failed to execute command of VIRTCHNL_OP_1588_PTP_GET_TIME");
 		goto out;
 	}
-	rxq->phc_time = ((struct virtchnl_phc_time *)args.out_buffer)->time;
+	*time = ((struct virtchnl_phc_time *)args.out_buffer)->time;
 
 out:
 	rte_spinlock_unlock(&vf->phc_time_aq_lock);
 	return err;
+}
+
+int
+iavf_get_phc_time(struct ci_rx_queue *rxq)
+{
+	struct iavf_adapter *adapter = rxq->iavf_vsi->adapter;
+
+	return iavf_phc_get_time(adapter, &rxq->phc_time);
 }
