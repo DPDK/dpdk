@@ -632,26 +632,24 @@ bnxt_validate_and_parse_flow_type(const struct rte_flow_attr *attr,
 				return -rte_errno;
 			}
 
-			if (nvgre_spec && nvgre_mask) {
-				tni_masked =
-					!!memcmp(nvgre_mask->tni, tni_mask,
-						 RTE_DIM(tni_mask));
-				if (tni_masked) {
-					rte_flow_error_set
-						(error,
-						 EINVAL,
-						 RTE_FLOW_ERROR_TYPE_ITEM,
-						 item,
-						 "Invalid TNI mask");
-					return -rte_errno;
-				}
-				rte_memcpy(((uint8_t *)&tenant_id_be + 1),
-					   nvgre_spec->tni, 3);
-				filter->vni =
-					rte_be_to_cpu_32(tenant_id_be);
-				filter->tunnel_type =
-				 CFA_NTUPLE_FILTER_ALLOC_REQ_TUNNEL_TYPE_NVGRE;
+			tni_masked =
+				!!memcmp(nvgre_mask->tni, tni_mask,
+					 RTE_DIM(tni_mask));
+			if (tni_masked) {
+				rte_flow_error_set
+					(error,
+					 EINVAL,
+					 RTE_FLOW_ERROR_TYPE_ITEM,
+					 item,
+					 "Invalid TNI mask");
+				return -rte_errno;
 			}
+			rte_memcpy(((uint8_t *)&tenant_id_be + 1),
+				   nvgre_spec->tni, 3);
+			filter->vni =
+				rte_be_to_cpu_32(tenant_id_be);
+			filter->tunnel_type =
+			 CFA_NTUPLE_FILTER_ALLOC_REQ_TUNNEL_TYPE_NVGRE;
 			break;
 
 		case RTE_FLOW_ITEM_TYPE_GRE:
