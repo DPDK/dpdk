@@ -155,7 +155,7 @@ bnxt_ulp_flow_mtr_xbs_calc(int64_t xbs, uint16_t *reg)
 	 *   = round(xbs*2^(8-e) - 2^7)
 	 *
 	 */
-	m = xbs / (1 << (e - 8)) - (1 << 7);
+	m = xbs / (1ULL << (e - 8)) - (1ULL << 7);
 	*reg = ((m & 0x7F) << 5) | (e & 0x1F);
 	*reg = rte_cpu_to_be_16(*reg);
 }
