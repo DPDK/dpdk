@@ -3108,7 +3108,7 @@ ulp_rte_port_act_handler(const struct rte_flow_action *act_item,
 
 	/* Get the intf type */
 	intf_type = ulp_port_db_port_type_get(param->ulp_ctx, ifindex);
-	if (!intf_type) {
+	if (intf_type == BNXT_ULP_INTF_TYPE_INVALID) {
 		BNXT_DRV_DBG(ERR, "Invalid port type\n");
 		return BNXT_TF_RC_ERROR;
 	}
