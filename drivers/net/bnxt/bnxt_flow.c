@@ -1631,7 +1631,16 @@ use_vnic:
 					       rss->key,
 					       rss->key_len);
 			}
-			bnxt_hwrm_vnic_rss_cfg(bp, vnic);
+			rc = bnxt_hwrm_vnic_rss_cfg(bp, vnic);
+			if (rc) {
+				rte_flow_error_set(error,
+						   -rc,
+						   RTE_FLOW_ERROR_TYPE_ACTION,
+						   act,
+						   "VNIC RSS configure failed");
+				rc = -rte_errno;
+				goto ret;
+			}
 		} else {
 			PMD_DRV_LOG_LINE(DEBUG, "No RSS config required");
 		}
