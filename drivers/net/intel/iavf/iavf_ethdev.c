@@ -24,6 +24,7 @@
 #include <rte_cycles.h>
 #include <rte_eal.h>
 #include <rte_ether.h>
+#include <rte_time.h>
 #include <ethdev_driver.h>
 #include <ethdev_pci.h>
 #include <rte_malloc.h>
@@ -167,6 +168,7 @@ static int iavf_tm_ops_get(struct rte_eth_dev *dev __rte_unused, void *arg);
 static uint64_t iavf_get_restore_flags(struct rte_eth_dev *dev,
 				       enum rte_eth_dev_operation op);
 static int iavf_post_reset_reconfig(struct rte_eth_dev *dev);
+static int iavf_timesync_read_time(struct rte_eth_dev *dev, struct timespec *timestamp);
 
 static const struct rte_pci_id pci_id_iavf_map[] = {
 	{ RTE_PCI_DEVICE(IAVF_INTEL_VENDOR_ID, IAVF_DEV_ID_ADAPTIVE_VF) },
@@ -267,6 +269,7 @@ static const struct eth_dev_ops iavf_eth_dev_ops = {
 	.get_monitor_addr           = iavf_get_monitor_addr,
 	.tm_ops_get                 = iavf_tm_ops_get,
 	.get_restore_flags          = iavf_get_restore_flags,
+	.timesync_read_time         = iavf_timesync_read_time,
 };
 
 static int
@@ -3757,6 +3760,31 @@ iavf_resume_pending_start(struct rte_eth_dev *dev)
 			    ret);
 		vf->start_pending = true;
 	}
+}
+
+static int
+iavf_timesync_read_time(struct rte_eth_dev *dev, struct timespec *timestamp)
+{
+	struct iavf_adapter *adapter =
+		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(adapter);
+	uint64_t time;
+	int ret;
+
+	if (adapter->closed)
+		return -EIO;
+
+	if (!(vf->vf_res->vf_cap_flags & VIRTCHNL_VF_CAP_PTP) ||
+	    !(vf->ptp_caps & VIRTCHNL_1588_PTP_CAP_READ_PHC))
+		return -ENOTSUP;
+
+	ret = iavf_phc_get_time(adapter, &time);
+	if (ret != 0)
+		return ret;
+
+	*timestamp = rte_ns_to_timespec(time);
+
+	return 0;
 }
 
 RTE_PMD_REGISTER_PCI(net_iavf, rte_iavf_pmd);
