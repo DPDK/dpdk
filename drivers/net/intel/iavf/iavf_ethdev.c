@@ -3156,7 +3156,7 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 		ret = iavf_security_ctx_create(adapter);
 		if (ret) {
 			PMD_INIT_LOG(ERR, "failed to create ipsec crypto security instance");
-			goto flow_init_err;
+			goto security_init_err;
 		}
 
 		ret = iavf_security_init(adapter);
@@ -3186,6 +3186,7 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 
 security_init_err:
 	iavf_security_ctx_destroy(adapter);
+	iavf_flow_uninit(adapter);
 
 flow_init_err:
 	vf->aq_intr_enabled = false;
