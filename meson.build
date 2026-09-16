@@ -10,7 +10,7 @@ project('DPDK', 'c',
             'default_library=static',
             'warning_level=2',
         ],
-        meson_version: '>= 0.57.2'
+        meson_version: '>= 0.61'
         # meson_version_windows: '>= 1.5.2'
 )
 
