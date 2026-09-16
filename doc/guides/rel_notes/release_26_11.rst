@@ -55,6 +55,11 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Added API to get CPU socket ID.**
+
+  Added the experimental ``rte_cpu_socket_id()`` function
+  to map an OS logical CPU ID to the NUMA socket containing that CPU.
+
 * **Added TPID support to VLAN tag insertion.**
 
   Added ``rte_vlan_insert_tpid()`` to the net library.
