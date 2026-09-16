@@ -121,13 +121,12 @@ iavf_tx_vec_dev_check_default(struct rte_eth_dev *dev)
 
 static __rte_always_inline void
 iavf_txd_enable_offload(__rte_unused struct rte_mbuf *tx_pkt,
-			uint64_t *txd_hi, uint8_t vlan_flag)
+			uint64_t *txd_hi, enum ci_l2tag_pos single_vlan_pos,
+			enum ci_l2tag_pos qinq_outer_pos)
 {
 	uint64_t ol_flags = tx_pkt->ol_flags;
 	uint32_t td_cmd = 0;
 	uint32_t td_offset = 0;
-
-	RTE_SET_USED(vlan_flag);
 
 	/* Set MACLEN */
 	if (ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK)
@@ -179,12 +178,12 @@ iavf_txd_enable_offload(__rte_unused struct rte_mbuf *tx_pkt,
 
 	if (ol_flags & RTE_MBUF_F_TX_QINQ) {
 		td_cmd |= IAVF_TX_DESC_CMD_IL2TAG1;
-		/* vlan_flag specifies outer tag location for QinQ. */
-		if (vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG1)
+		/* L2Tag1 always carries a tag for QinQ */
+		if (qinq_outer_pos == CI_TAG_IN_DATA_DESC)
 			*txd_hi |= ((uint64_t)tx_pkt->vlan_tci_outer << CI_TXD_QW1_L2TAG1_S);
 		else
 			*txd_hi |= ((uint64_t)tx_pkt->vlan_tci << CI_TXD_QW1_L2TAG1_S);
-	} else if (ol_flags & RTE_MBUF_F_TX_VLAN && vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG1) {
+	} else if (ol_flags & RTE_MBUF_F_TX_VLAN && single_vlan_pos == CI_TAG_IN_DATA_DESC) {
 		td_cmd |= CI_TX_DESC_CMD_IL2TAG1;
 		*txd_hi |= ((uint64_t)tx_pkt->vlan_tci << CI_TXD_QW1_L2TAG1_S);
 	}
