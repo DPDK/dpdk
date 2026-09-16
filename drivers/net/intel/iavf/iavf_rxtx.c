@@ -3611,9 +3611,9 @@ static const struct ci_tx_path_info iavf_tx_path_infos[] = {
 		.pkt_burst = iavf_xmit_pkts,
 		.info = "Scalar",
 		.features = {
-			.tx_offloads = IAVF_TX_SCALAR_OFFLOADS,
-			.ctx_desc = true
-		}
+			.tx_offloads = IAVF_TX_SCALAR_OFFLOADS
+		},
+		.supports_ctx = true
 	},
 #ifdef RTE_ARCH_X86
 	[IAVF_TX_AVX2] = {
@@ -3637,18 +3637,18 @@ static const struct ci_tx_path_info iavf_tx_path_infos[] = {
 		.info = "Vector AVX2 Ctx",
 		.features = {
 			.tx_offloads = IAVF_TX_VECTOR_OFFLOADS,
-			.simd_width = RTE_VECT_SIMD_256,
-			.ctx_desc = true
-		}
+			.simd_width = RTE_VECT_SIMD_256
+		},
+		.supports_ctx = true
 	},
 	[IAVF_TX_AVX2_CTX_OFFLOAD] = {
 		.pkt_burst = iavf_xmit_pkts_vec_avx2_ctx_offload,
 		.info = "Vector AVX2 Ctx Offload",
 		.features = {
 			.tx_offloads = IAVF_TX_VECTOR_CTX_OFFLOAD_OFFLOADS,
-			.simd_width = RTE_VECT_SIMD_256,
-			.ctx_desc = true
-		}
+			.simd_width = RTE_VECT_SIMD_256
+		},
+		.supports_ctx = true
 	},
 #ifdef CC_AVX512_SUPPORT
 	[IAVF_TX_AVX512] = {
@@ -3672,18 +3672,18 @@ static const struct ci_tx_path_info iavf_tx_path_infos[] = {
 		.info = "Vector AVX512 Ctx",
 		.features = {
 			.tx_offloads = IAVF_TX_VECTOR_OFFLOADS,
-			.simd_width = RTE_VECT_SIMD_512,
-			.ctx_desc = true
-		}
+			.simd_width = RTE_VECT_SIMD_512
+		},
+		.supports_ctx = true
 	},
 	[IAVF_TX_AVX512_CTX_OFFLOAD] = {
 		.pkt_burst = iavf_xmit_pkts_vec_avx512_ctx_offload,
 		.info = "Vector AVX512 Ctx Offload",
 		.features = {
 			.tx_offloads = IAVF_TX_VECTOR_CTX_OFFLOAD_OFFLOADS,
-			.simd_width = RTE_VECT_SIMD_512,
-			.ctx_desc = true
-		}
+			.simd_width = RTE_VECT_SIMD_512
+		},
+		.supports_ctx = true
 	},
 #endif
 #elif defined(RTE_ARCH_ARM64)
@@ -3918,12 +3918,13 @@ iavf_set_tx_function(struct rte_eth_dev *dev)
 #if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
 	struct ci_tx_queue *txq;
 	int i;
-	const struct ci_tx_path_features *selected_features;
+	const struct ci_tx_path_info *selected_info;
 #endif
 	struct ci_tx_path_features req_features = {
 		.tx_offloads = dev->data->dev_conf.txmode.offloads,
 		.simd_width = RTE_VECT_SIMD_DISABLED,
 	};
+	bool force_ctx = false;
 
 	/* If the device has started the function has already been selected. */
 	if (dev->data->dev_started)
@@ -3934,7 +3935,7 @@ iavf_set_tx_function(struct rte_eth_dev *dev)
 		req_features.simd_width = iavf_get_max_simd_bitwidth();
 
 	if (adapter->devargs.enable_lldp)
-		req_features.ctx_desc = true;
+		force_ctx = true;
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		txq = dev->data->tx_queues[i];
@@ -3942,24 +3943,25 @@ iavf_set_tx_function(struct rte_eth_dev *dev)
 			continue;
 		if (txq->offloads & RTE_ETH_TX_OFFLOAD_VLAN_INSERT &&
 				txq->vlan_flag == IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2)
-			req_features.ctx_desc = true;
+			force_ctx = true;
 	}
 #endif
 
 	adapter->tx_func_type = ci_tx_path_select(&req_features,
 						&iavf_tx_path_infos[0],
 						RTE_DIM(iavf_tx_path_infos),
-						IAVF_TX_DEFAULT);
+						IAVF_TX_DEFAULT,
+						force_ctx);
 
 out:
 #if defined(RTE_ARCH_X86) || defined(RTE_ARCH_ARM64)
-	selected_features = &iavf_tx_path_infos[adapter->tx_func_type].features;
+	selected_info = &iavf_tx_path_infos[adapter->tx_func_type];
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		txq = dev->data->tx_queues[i];
 		if (!txq)
 			continue;
-		txq->use_ctx = selected_features->ctx_desc;
-		txq->use_vec_entry = selected_features->simd_width >= RTE_VECT_SIMD_128;
+		txq->use_ctx = selected_info->supports_ctx;
+		txq->use_vec_entry = selected_info->features.simd_width >= RTE_VECT_SIMD_128;
 	}
 #endif
 

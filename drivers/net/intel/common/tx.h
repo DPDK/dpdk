@@ -249,7 +249,6 @@ struct ci_tx_path_features {
 	uint32_t tx_offloads;
 	enum rte_vect_max_simd simd_width;
 	bool simple_tx;
-	bool ctx_desc;
 	bool disabled;
 	bool single_queue;
 };
@@ -259,6 +258,7 @@ struct ci_tx_path_info {
 	const char *info;
 	struct ci_tx_path_features features;
 	eth_tx_prep_t pkt_prep;
+	bool supports_ctx;
 };
 
 static __rte_always_inline void
@@ -411,6 +411,11 @@ ci_txq_release_all_mbufs(struct ci_tx_queue *txq, bool use_ctx)
  *   Number of available paths in the infos array
  * @param default_path
  *   Index of the default path to use if no suitable path is found
+ * @param force_ctx
+ *   If true, only paths that support context descriptors may be selected.
+ *   Use this for offloads that require a context descriptor but cannot be
+ *   discovered purely from req_features->tx_offloads (e.g. a driver-specific
+ *   devarg, or a runtime/hardware-negotiated tag placement).
  *
  * @return
  *   The packet burst function index that best matches the requested features,
@@ -420,10 +425,12 @@ static inline int
 ci_tx_path_select(const struct ci_tx_path_features *req_features,
 			const struct ci_tx_path_info *infos,
 			size_t num_paths,
-			int default_path)
+			int default_path,
+			bool force_ctx)
 {
 	int idx = default_path;
 	const struct ci_tx_path_features *chosen_path_features = NULL;
+	bool chosen_supports_ctx = false;
 
 	for (unsigned int i = 0; i < num_paths; i++) {
 		const struct ci_tx_path_features *path_features = &infos[i].features;
@@ -440,8 +447,8 @@ ci_tx_path_select(const struct ci_tx_path_features *req_features,
 		if (path_features->simple_tx && !req_features->simple_tx)
 			continue;
 
-		/* If a context descriptor is requested, ensure the path supports it. */
-		if (!path_features->ctx_desc && req_features->ctx_desc)
+		/* If a context descriptor is required, ensure the path supports it. */
+		if (!infos[i].supports_ctx && force_ctx)
 			continue;
 
 		/* If requested, ensure the path supports single queue TX. */
@@ -462,22 +469,28 @@ ci_tx_path_select(const struct ci_tx_path_features *req_features,
 			/* Do not select paths with lower SIMD width than the chosen path. */
 			if (path_features->simd_width < chosen_path_features->simd_width)
 				continue;
-			/* Do not select paths with more offloads enabled than the chosen path if
-			 * the SIMD widths are the same.
+			/* The following tie-breaks only matter when SIMD widths are tied;
+			 * a strictly wider path is always preferred regardless of offload
+			 * count or ctx-descriptor use.
 			 */
-			if (path_features->simd_width == chosen_path_features->simd_width &&
-					rte_popcount32(path_features->tx_offloads) >
-					rte_popcount32(chosen_path_features->tx_offloads))
-				continue;
+			if (path_features->simd_width == chosen_path_features->simd_width) {
+				/* Do not select paths with more offloads enabled than the
+				 * chosen path.
+				 */
+				if (rte_popcount32(path_features->tx_offloads) >
+						rte_popcount32(chosen_path_features->tx_offloads))
+					continue;
 
-			/* Don't use a context descriptor unless necessary */
-			if (path_features->ctx_desc && !chosen_path_features->ctx_desc)
-				continue;
+				/* Don't use a context descriptor unless necessary */
+				if (infos[i].supports_ctx && !chosen_supports_ctx)
+					continue;
+			}
 		}
 
 		/* Finally, select the path since it has met all the requirements. */
 		idx = i;
 		chosen_path_features = &infos[idx].features;
+		chosen_supports_ctx = infos[idx].supports_ctx;
 	}
 
 	return idx;

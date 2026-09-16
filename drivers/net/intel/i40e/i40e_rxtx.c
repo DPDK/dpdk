@@ -3120,7 +3120,7 @@ i40e_set_tx_function(struct rte_eth_dev *dev)
 	}
 
 	ad->tx_func_type = ci_tx_path_select(&req_features, &i40e_tx_path_infos[0],
-						RTE_DIM(i40e_tx_path_infos), I40E_TX_DEFAULT);
+			RTE_DIM(i40e_tx_path_infos), I40E_TX_DEFAULT, false);
 
 out:
 	dev->tx_pkt_burst = mbuf_check ? i40e_xmit_pkts_check :
