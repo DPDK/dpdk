@@ -72,8 +72,7 @@ ice_tx_vec_queue_default(struct ci_tx_queue *txq)
 	if (!txq)
 		return -1;
 
-	if (txq->tx_rs_thresh < ICE_VPMD_TX_BURST ||
-	    txq->tx_rs_thresh > ICE_TX_MAX_FREE_BUF_SZ)
+	if (!ci_txq_vec_capable(txq->tx_rs_thresh))
 		return -1;
 
 	return 0;

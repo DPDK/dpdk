@@ -3551,7 +3551,7 @@ static const struct ci_tx_path_info ice_tx_path_infos[] = {
 		.pkt_burst = ice_xmit_pkts_vec_avx2,
 		.info = "Vector AVX2",
 		.features = {
-			.tx_offloads = ICE_TX_VECTOR_OFFLOADS,
+			.tx_offloads = CI_TX_VECTOR_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_256
 		},
 		.pkt_prep = rte_eth_tx_pkt_prepare_dummy
@@ -3560,7 +3560,7 @@ static const struct ci_tx_path_info ice_tx_path_infos[] = {
 		.pkt_burst = ice_xmit_pkts_vec_avx2_offload,
 		.info = "Offload Vector AVX2",
 		.features = {
-			.tx_offloads = ICE_TX_VECTOR_OFFLOAD_OFFLOADS,
+			.tx_offloads = CI_TX_VEC_OFFLOAD_PATH_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_256
 		},
 		.pkt_prep = ice_prep_pkts
@@ -3569,7 +3569,7 @@ static const struct ci_tx_path_info ice_tx_path_infos[] = {
 		.pkt_burst = ice_xmit_pkts_vec_avx2_ctx_offload,
 		.info = "Offload Vector AVX2 Ctx",
 		.features = {
-			.tx_offloads = ICE_TX_VECTOR_CTX_OFFLOAD_OFFLOADS,
+			.tx_offloads = CI_TX_VEC_CTX_OFFLOAD_PATH_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_256
 		},
 		.pkt_prep = ice_prep_pkts,
@@ -3580,7 +3580,7 @@ static const struct ci_tx_path_info ice_tx_path_infos[] = {
 		.pkt_burst = ice_xmit_pkts_vec_avx512,
 		.info = "Vector AVX512",
 		.features = {
-			.tx_offloads = ICE_TX_VECTOR_OFFLOADS,
+			.tx_offloads = CI_TX_VECTOR_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_512
 		},
 		.pkt_prep = rte_eth_tx_pkt_prepare_dummy
@@ -3589,7 +3589,7 @@ static const struct ci_tx_path_info ice_tx_path_infos[] = {
 		.pkt_burst = ice_xmit_pkts_vec_avx512_offload,
 		.info = "Offload Vector AVX512",
 		.features = {
-			.tx_offloads = ICE_TX_VECTOR_OFFLOAD_OFFLOADS,
+			.tx_offloads = CI_TX_VEC_OFFLOAD_PATH_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_512
 		},
 		.pkt_prep = ice_prep_pkts
@@ -3598,7 +3598,7 @@ static const struct ci_tx_path_info ice_tx_path_infos[] = {
 		.pkt_burst = ice_xmit_pkts_vec_avx512_ctx_offload,
 		.info = "Offload Vector AVX512 Ctx",
 		.features = {
-			.tx_offloads = ICE_TX_VECTOR_CTX_OFFLOAD_OFFLOADS,
+			.tx_offloads = CI_TX_VEC_CTX_OFFLOAD_PATH_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_512
 		},
 		.pkt_prep = ice_prep_pkts,
@@ -3610,7 +3610,7 @@ static const struct ci_tx_path_info ice_tx_path_infos[] = {
 		.pkt_burst = ice_xmit_pkts_vec,
 		.info = "Vector Neon",
 		.features = {
-			.tx_offloads = ICE_TX_VECTOR_OFFLOADS,
+			.tx_offloads = CI_TX_VECTOR_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_128
 		},
 		.pkt_prep = rte_eth_tx_pkt_prepare_dummy

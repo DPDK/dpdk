@@ -12,6 +12,27 @@
 #include <rte_io.h>
 #include <rte_byteorder.h>
 
+#define CI_VPMD_TX_BURST            32
+#define CI_VPMD_TX_MAX_FREE_BUF     64
+
+/* basic vector path */
+#define CI_TX_VECTOR_OFFLOADS RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE
+/* offload vector path */
+#define CI_TX_VEC_OFFLOAD_PATH_OFFLOADS (	\
+		CI_TX_VECTOR_OFFLOADS |		\
+		RTE_ETH_TX_OFFLOAD_VLAN_INSERT |	\
+		RTE_ETH_TX_OFFLOAD_IPV4_CKSUM |		\
+		RTE_ETH_TX_OFFLOAD_SCTP_CKSUM |		\
+		RTE_ETH_TX_OFFLOAD_UDP_CKSUM |		\
+		RTE_ETH_TX_OFFLOAD_TCP_CKSUM)
+/* offload vector path with context descriptor */
+#define CI_TX_VEC_CTX_OFFLOAD_PATH_OFFLOADS (	\
+		CI_TX_VECTOR_OFFLOADS |		\
+		CI_TX_VEC_OFFLOAD_PATH_OFFLOADS |	\
+		RTE_ETH_TX_OFFLOAD_OUTER_IPV4_CKSUM |	\
+		RTE_ETH_TX_OFFLOAD_OUTER_UDP_CKSUM |	\
+		RTE_ETH_TX_OFFLOAD_QINQ_INSERT)
+
 /* Common TX Descriptor QW1 Field Definitions */
 #define CI_TXD_QW1_DTYPE_S      0
 #define CI_TXD_QW1_DTYPE_M      (0xFUL << CI_TXD_QW1_DTYPE_S)
@@ -260,6 +281,15 @@ struct ci_tx_path_info {
 	eth_tx_prep_t pkt_prep;
 	bool supports_ctx;
 };
+
+/* basic check for a vector-driver capable Tx queue.
+ * Individual drivers may have other further tests beyond this.
+ */
+static inline bool
+ci_txq_vec_capable(uint16_t rs_thresh)
+{
+	return rs_thresh >= CI_VPMD_TX_BURST && rs_thresh <= CI_VPMD_TX_MAX_FREE_BUF;
+}
 
 static __rte_always_inline void
 ci_tx_backlog_entry(struct ci_tx_entry *txep, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
