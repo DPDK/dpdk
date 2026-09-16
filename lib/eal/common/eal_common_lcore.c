@@ -12,6 +12,7 @@
 #include <rte_errno.h>
 #include <rte_lcore.h>
 #include <rte_log.h>
+#include <rte_memory.h>
 #ifndef RTE_EXEC_ENV_WINDOWS
 #include <rte_telemetry.h>
 #endif
@@ -128,6 +129,16 @@ unsigned int
 rte_lcore_to_socket_id(unsigned int lcore_id)
 {
 	return lcore_config[lcore_id].numa_id;
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_cpu_socket_id, 26.11)
+unsigned int
+rte_cpu_socket_id(unsigned int cpu_id)
+{
+	if (eal_cpu_detected(cpu_id) == 0)
+		return (unsigned int)SOCKET_ID_ANY;
+
+	return eal_cpu_socket_id(cpu_id);
 }
 
 static int
