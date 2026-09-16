@@ -3620,7 +3620,7 @@ static const struct ci_tx_path_info iavf_tx_path_infos[] = {
 		.pkt_burst = iavf_xmit_pkts_vec_avx2,
 		.info = "Vector AVX2",
 		.features = {
-			.tx_offloads = IAVF_TX_VECTOR_OFFLOADS,
+			.tx_offloads = CI_TX_VECTOR_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_256
 		}
 	},
@@ -3628,7 +3628,7 @@ static const struct ci_tx_path_info iavf_tx_path_infos[] = {
 		.pkt_burst = iavf_xmit_pkts_vec_avx2_offload,
 		.info = "Vector AVX2 Offload",
 		.features = {
-			.tx_offloads = IAVF_TX_VECTOR_OFFLOAD_OFFLOADS,
+			.tx_offloads = CI_TX_VEC_OFFLOAD_PATH_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_256
 		}
 	},
@@ -3636,7 +3636,7 @@ static const struct ci_tx_path_info iavf_tx_path_infos[] = {
 		.pkt_burst = iavf_xmit_pkts_vec_avx2_ctx,
 		.info = "Vector AVX2 Ctx",
 		.features = {
-			.tx_offloads = IAVF_TX_VECTOR_OFFLOADS,
+			.tx_offloads = CI_TX_VECTOR_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_256
 		},
 		.supports_ctx = true
@@ -3645,7 +3645,7 @@ static const struct ci_tx_path_info iavf_tx_path_infos[] = {
 		.pkt_burst = iavf_xmit_pkts_vec_avx2_ctx_offload,
 		.info = "Vector AVX2 Ctx Offload",
 		.features = {
-			.tx_offloads = IAVF_TX_VECTOR_CTX_OFFLOAD_OFFLOADS,
+			.tx_offloads = CI_TX_VEC_CTX_OFFLOAD_PATH_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_256
 		},
 		.supports_ctx = true
@@ -3655,7 +3655,7 @@ static const struct ci_tx_path_info iavf_tx_path_infos[] = {
 		.pkt_burst = iavf_xmit_pkts_vec_avx512,
 		.info = "Vector AVX512",
 		.features = {
-			.tx_offloads = IAVF_TX_VECTOR_OFFLOADS,
+			.tx_offloads = CI_TX_VECTOR_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_512
 		}
 	},
@@ -3663,7 +3663,7 @@ static const struct ci_tx_path_info iavf_tx_path_infos[] = {
 		.pkt_burst = iavf_xmit_pkts_vec_avx512_offload,
 		.info = "Vector AVX512 Offload",
 		.features = {
-			.tx_offloads = IAVF_TX_VECTOR_OFFLOAD_OFFLOADS,
+			.tx_offloads = CI_TX_VEC_OFFLOAD_PATH_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_512
 		}
 	},
@@ -3671,7 +3671,7 @@ static const struct ci_tx_path_info iavf_tx_path_infos[] = {
 		.pkt_burst = iavf_xmit_pkts_vec_avx512_ctx,
 		.info = "Vector AVX512 Ctx",
 		.features = {
-			.tx_offloads = IAVF_TX_VECTOR_OFFLOADS,
+			.tx_offloads = CI_TX_VECTOR_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_512
 		},
 		.supports_ctx = true
@@ -3680,7 +3680,7 @@ static const struct ci_tx_path_info iavf_tx_path_infos[] = {
 		.pkt_burst = iavf_xmit_pkts_vec_avx512_ctx_offload,
 		.info = "Vector AVX512 Ctx Offload",
 		.features = {
-			.tx_offloads = IAVF_TX_VECTOR_CTX_OFFLOAD_OFFLOADS,
+			.tx_offloads = CI_TX_VEC_CTX_OFFLOAD_PATH_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_512
 		},
 		.supports_ctx = true
@@ -3691,7 +3691,7 @@ static const struct ci_tx_path_info iavf_tx_path_infos[] = {
 		.pkt_burst = iavf_xmit_pkts_vec,
 		.info = "Vector Neon",
 		.features = {
-			.tx_offloads = IAVF_TX_VECTOR_OFFLOADS,
+			.tx_offloads = CI_TX_VECTOR_OFFLOADS,
 			.simd_width = RTE_VECT_SIMD_128
 		}
 	},
