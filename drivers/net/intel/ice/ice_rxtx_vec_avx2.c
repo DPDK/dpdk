@@ -810,6 +810,30 @@ ice_xmit_pkts_vec_avx2_offload(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return ice_xmit_pkts_vec_avx2_common(tx_queue, tx_pkts, nb_pkts, true);
 }
 
+uint16_t
+ice_xmit_pkts_vec_avx2_ctx_offload(void *tx_queue, struct rte_mbuf **tx_pkts,
+				   uint16_t nb_pkts)
+{
+	uint16_t nb_tx = 0;
+	struct ci_tx_queue *txq = (struct ci_tx_queue *)tx_queue;
+
+	while (nb_pkts) {
+		uint16_t ret, num;
+
+		/* cross rs_thresh boundary is not allowed */
+		num = (uint16_t)RTE_MIN(nb_pkts << 1, txq->tx_rs_thresh);
+		num = num >> 1;
+		ret = ci_xmit_fixed_burst_vec_ctx_avx2(tx_queue, &tx_pkts[nb_tx], num,
+				true, CI_TAG_IN_DATA_DESC, CI_TAG_IN_CTX_DESC, NULL);
+		nb_tx += ret;
+		nb_pkts -= ret;
+		if (ret < num)
+			break;
+	}
+
+	return nb_tx;
+}
+
 int __rte_cold
 ice_rxq_vec_setup(struct ci_rx_queue *rxq)
 {

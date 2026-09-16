@@ -82,6 +82,11 @@ New Features
   * Renamed the ``enable_ptype_lldp`` devarg to ``enable_lldp``.
     The old name is no longer accepted.
 
+* **Updated Intel ice driver.**
+
+  * Added Tx context descriptor support to the AVX2 and AVX512 vector Tx paths,
+    enabling QinQ tag insertion and outer IPv4/UDP checksum offloads on those paths.
+
 * **Updated Intel ixgbe driver.**
 
   Added ``fdir_buffer_size`` devarg to select the Flow Director table size
