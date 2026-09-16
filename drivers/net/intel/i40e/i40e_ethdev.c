@@ -11612,7 +11612,9 @@ i40e_ethertype_filter_restore(struct i40e_pf *pf)
 		*ethertype_list = &pf->ethertype.ethertype_list;
 	struct i40e_ethertype_filter *f;
 	struct i40e_control_filter_stats stats;
+	enum i40e_status_code ret;
 	uint16_t flags;
+	bool stats_valid = false;
 
 	TAILQ_FOREACH(f, ethertype_list, rules) {
 		flags = 0;
@@ -11622,18 +11624,29 @@ i40e_ethertype_filter_restore(struct i40e_pf *pf)
 			flags |= I40E_AQC_ADD_CONTROL_PACKET_FLAGS_DROP;
 		flags |= I40E_AQC_ADD_CONTROL_PACKET_FLAGS_TO_QUEUE;
 
-		memset(&stats, 0, sizeof(stats));
-		i40e_aq_add_rem_control_packet_filter(hw,
+		ret = i40e_aq_add_rem_control_packet_filter(hw,
 					    f->input.mac_addr.addr_bytes,
 					    f->input.ether_type,
 					    flags, pf->main_vsi->seid,
 					    f->queue, 1, &stats, NULL);
+		if (ret != I40E_SUCCESS) {
+			PMD_DRV_LOG(ERR,
+				    "Failed to restore ethertype filter, ether_type=0x%04x, queue=%u, vsi_seid=%u, err %d",
+				    f->input.ether_type, f->queue,
+				    pf->main_vsi->seid, ret);
+			continue;
+		}
+
+		stats_valid = true;
 	}
-	PMD_DRV_LOG(INFO, "Ethertype filter:"
-		    " mac_etype_used = %u, etype_used = %u,"
-		    " mac_etype_free = %u, etype_free = %u",
-		    stats.mac_etype_used, stats.etype_used,
-		    stats.mac_etype_free, stats.etype_free);
+
+	if (stats_valid) {
+		PMD_DRV_LOG(INFO, "Ethertype filter:"
+			    " mac_etype_used = %u, etype_used = %u,"
+			    " mac_etype_free = %u, etype_free = %u",
+			    stats.mac_etype_used, stats.etype_used,
+			    stats.mac_etype_free, stats.etype_free);
+	}
 }
 
 /* Restore tunnel filter */
