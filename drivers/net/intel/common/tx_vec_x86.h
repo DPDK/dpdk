@@ -408,6 +408,74 @@ ci_xmit_fixed_burst_vec_avx2(struct ci_tx_queue *txq, struct rte_mbuf **tx_pkts,
 	return nb_pkts;
 }
 
+static __rte_always_inline uint16_t
+ci_xmit_fixed_burst_vec_ctx_avx2(struct ci_tx_queue *txq, struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts, bool offload,
+		enum ci_l2tag_pos single_vlan_pos, enum ci_l2tag_pos qinq_outer_pos,
+		ci_tx_ctx_lldp_fn lldp_check)
+{
+	volatile struct ci_tx_desc *txdp;
+	struct ci_tx_entry_vec *txep;
+	uint16_t n, nb_commit, nb_mbuf, tx_id;
+	uint64_t flags = CI_TX_DESC_CMD_DEFAULT;
+	uint64_t rs = CI_TX_DESC_CMD_RS | flags;
+
+	if (txq->nb_tx_free < txq->tx_free_thresh)
+		ci_tx_free_bufs_vec(txq, ci_tx_desc_done_simple, true);
+
+	nb_commit = (uint16_t)RTE_MIN(txq->nb_tx_free, nb_pkts << 1);
+	nb_commit &= 0xFFFE;
+	if (unlikely(nb_commit == 0))
+		return 0;
+
+	nb_pkts = nb_commit >> 1;
+	tx_id = txq->tx_tail;
+	txdp = &txq->ci_tx_ring[tx_id];
+	txep = (void *)txq->sw_ring;
+	txep += (tx_id >> 1);
+
+	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_commit);
+	n = (uint16_t)(txq->nb_tx_desc - tx_id);
+
+	if (n != 0 && nb_commit >= n) {
+		nb_mbuf = n >> 1;
+		ci_tx_backlog_entry_vec(txep, tx_pkts, nb_mbuf);
+
+		ci_vtx_ctx_avx2(txdp, tx_pkts, nb_mbuf - 1, flags, offload,
+				single_vlan_pos, qinq_outer_pos, lldp_check);
+		tx_pkts += (nb_mbuf - 1);
+		txdp += (n - 2);
+		ci_vtx1_ctx_avx2(txdp, *tx_pkts++, rs, offload,
+				single_vlan_pos, qinq_outer_pos, lldp_check);
+
+		nb_commit = (uint16_t)(nb_commit - n);
+
+		txq->tx_next_rs = (uint16_t)(txq->tx_rs_thresh - 1);
+		tx_id = 0;
+		/* avoid reach the end of ring */
+		txdp = txq->ci_tx_ring;
+		txep = (void *)txq->sw_ring;
+	}
+
+	nb_mbuf = nb_commit >> 1;
+	ci_tx_backlog_entry_vec(txep, tx_pkts, nb_mbuf);
+
+	ci_vtx_ctx_avx2(txdp, tx_pkts, nb_mbuf, flags, offload,
+			single_vlan_pos, qinq_outer_pos, lldp_check);
+	tx_id = (uint16_t)(tx_id + nb_commit);
+
+	if (tx_id > txq->tx_next_rs) {
+		txq->ci_tx_ring[txq->tx_next_rs].cmd_type_offset_bsz |=
+			rte_cpu_to_le_64(((uint64_t)CI_TX_DESC_CMD_RS) << CI_TXD_QW1_CMD_S);
+		txq->tx_next_rs = (uint16_t)(txq->tx_next_rs + txq->tx_rs_thresh);
+	}
+
+	txq->tx_tail = tx_id;
+
+	ci_tx_qtx_tail_write(txq, tx_id);
+	return nb_pkts;
+}
+
 #endif /* __AVX2__ */
 
 #ifdef __AVX512VL__
@@ -637,6 +705,74 @@ ci_xmit_fixed_burst_vec_avx512(struct ci_tx_queue *txq, struct rte_mbuf **tx_pkt
 
 	ci_tx_qtx_tail_write(txq, tx_id);
 
+	return nb_pkts;
+}
+
+static __rte_always_inline uint16_t
+ci_xmit_fixed_burst_vec_ctx_avx512(struct ci_tx_queue *txq, struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts, bool offload,
+		enum ci_l2tag_pos single_vlan_pos, enum ci_l2tag_pos qinq_outer_pos,
+		ci_tx_ctx_lldp_fn lldp_check)
+{
+	volatile struct ci_tx_desc *txdp;
+	struct ci_tx_entry_vec *txep;
+	uint16_t n, nb_commit, nb_mbuf, tx_id;
+	uint64_t flags = CI_TX_DESC_CMD_DEFAULT;
+	uint64_t rs = CI_TX_DESC_CMD_RS | flags;
+
+	if (txq->nb_tx_free < txq->tx_free_thresh)
+		ci_tx_free_bufs_vec(txq, ci_tx_desc_done_simple, true);
+
+	nb_commit = (uint16_t)RTE_MIN(txq->nb_tx_free, nb_pkts << 1);
+	nb_commit &= 0xFFFE;
+	if (unlikely(nb_commit == 0))
+		return 0;
+
+	nb_pkts = nb_commit >> 1;
+	tx_id = txq->tx_tail;
+	txdp = &txq->ci_tx_ring[tx_id];
+	txep = (void *)txq->sw_ring;
+	txep += (tx_id >> 1);
+
+	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_commit);
+	n = (uint16_t)(txq->nb_tx_desc - tx_id);
+
+	if (n != 0 && nb_commit >= n) {
+		nb_mbuf = n >> 1;
+		ci_tx_backlog_entry_vec(txep, tx_pkts, nb_mbuf);
+
+		ci_vtx_ctx_avx512(txdp, tx_pkts, nb_mbuf - 1, flags, offload,
+				single_vlan_pos, qinq_outer_pos, lldp_check);
+		tx_pkts += (nb_mbuf - 1);
+		txdp += (n - 2);
+		ci_vtx1_ctx_avx512(txdp, *tx_pkts++, rs, offload,
+				single_vlan_pos, qinq_outer_pos, lldp_check);
+
+		nb_commit = (uint16_t)(nb_commit - n);
+
+		txq->tx_next_rs = (uint16_t)(txq->tx_rs_thresh - 1);
+		tx_id = 0;
+		/* avoid reach the end of ring */
+		txdp = txq->ci_tx_ring;
+		txep = (void *)txq->sw_ring;
+	}
+
+	nb_mbuf = nb_commit >> 1;
+	ci_tx_backlog_entry_vec(txep, tx_pkts, nb_mbuf);
+
+	ci_vtx_ctx_avx512(txdp, tx_pkts, nb_mbuf, flags, offload,
+			single_vlan_pos, qinq_outer_pos, lldp_check);
+	tx_id = (uint16_t)(tx_id + nb_commit);
+
+	if (tx_id > txq->tx_next_rs) {
+		txq->ci_tx_ring[txq->tx_next_rs].cmd_type_offset_bsz |=
+			rte_cpu_to_le_64(((uint64_t)CI_TX_DESC_CMD_RS) << CI_TXD_QW1_CMD_S);
+		txq->tx_next_rs = (uint16_t)(txq->tx_next_rs + txq->tx_rs_thresh);
+	}
+
+	txq->tx_tail = tx_id;
+
+	ci_tx_qtx_tail_write(txq, tx_id);
 	return nb_pkts;
 }
 
