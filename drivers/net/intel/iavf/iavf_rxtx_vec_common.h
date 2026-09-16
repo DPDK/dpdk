@@ -11,6 +11,10 @@
 #include "iavf.h"
 #include "iavf_rxtx.h"
 
+#ifdef RTE_ARCH_X86
+#include "../common/tx_vec_x86.h"
+#endif
+
 static inline int
 iavf_tx_desc_done(struct ci_tx_queue *txq, uint16_t idx)
 {
@@ -119,75 +123,4 @@ iavf_tx_vec_dev_check_default(struct rte_eth_dev *dev)
 	return ret;
 }
 
-static __rte_always_inline void
-iavf_txd_enable_offload(__rte_unused struct rte_mbuf *tx_pkt,
-			uint64_t *txd_hi, enum ci_l2tag_pos single_vlan_pos,
-			enum ci_l2tag_pos qinq_outer_pos)
-{
-	uint64_t ol_flags = tx_pkt->ol_flags;
-	uint32_t td_cmd = 0;
-	uint32_t td_offset = 0;
-
-	/* Set MACLEN */
-	if (ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK)
-		td_offset |= (tx_pkt->outer_l2_len >> 1)
-			<< CI_TX_DESC_LEN_MACLEN_S;
-	else
-		td_offset |= (tx_pkt->l2_len >> 1)
-			<< CI_TX_DESC_LEN_MACLEN_S;
-
-	/* Enable L3 checksum offloads */
-	if (ol_flags & RTE_MBUF_F_TX_IP_CKSUM) {
-		if (ol_flags & RTE_MBUF_F_TX_IPV4) {
-			td_cmd |= CI_TX_DESC_CMD_IIPT_IPV4_CSUM;
-			td_offset |= (tx_pkt->l3_len >> 2) <<
-				     CI_TX_DESC_LEN_IPLEN_S;
-		}
-	} else if (ol_flags & RTE_MBUF_F_TX_IPV4) {
-		td_cmd |= CI_TX_DESC_CMD_IIPT_IPV4;
-		td_offset |= (tx_pkt->l3_len >> 2) <<
-			     CI_TX_DESC_LEN_IPLEN_S;
-	} else if (ol_flags & RTE_MBUF_F_TX_IPV6) {
-		td_cmd |= CI_TX_DESC_CMD_IIPT_IPV6;
-		td_offset |= (tx_pkt->l3_len >> 2) <<
-			     CI_TX_DESC_LEN_IPLEN_S;
-	}
-
-	/* Enable L4 checksum offloads */
-	switch (ol_flags & RTE_MBUF_F_TX_L4_MASK) {
-	case RTE_MBUF_F_TX_TCP_CKSUM:
-		td_cmd |= IAVF_TX_DESC_CMD_L4T_EOFT_TCP;
-		td_offset |= (sizeof(struct rte_tcp_hdr) >> 2) <<
-			     IAVF_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;
-		break;
-	case RTE_MBUF_F_TX_SCTP_CKSUM:
-		td_cmd |= IAVF_TX_DESC_CMD_L4T_EOFT_SCTP;
-		td_offset |= (sizeof(struct rte_sctp_hdr) >> 2) <<
-			     IAVF_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;
-		break;
-	case RTE_MBUF_F_TX_UDP_CKSUM:
-		td_cmd |= IAVF_TX_DESC_CMD_L4T_EOFT_UDP;
-		td_offset |= (sizeof(struct rte_udp_hdr) >> 2) <<
-			     IAVF_TX_DESC_LENGTH_L4_FC_LEN_SHIFT;
-		break;
-	default:
-		break;
-	}
-
-	*txd_hi |= ((uint64_t)td_offset) << CI_TXD_QW1_OFFSET_S;
-
-	if (ol_flags & RTE_MBUF_F_TX_QINQ) {
-		td_cmd |= IAVF_TX_DESC_CMD_IL2TAG1;
-		/* L2Tag1 always carries a tag for QinQ */
-		if (qinq_outer_pos == CI_TAG_IN_DATA_DESC)
-			*txd_hi |= ((uint64_t)tx_pkt->vlan_tci_outer << CI_TXD_QW1_L2TAG1_S);
-		else
-			*txd_hi |= ((uint64_t)tx_pkt->vlan_tci << CI_TXD_QW1_L2TAG1_S);
-	} else if (ol_flags & RTE_MBUF_F_TX_VLAN && single_vlan_pos == CI_TAG_IN_DATA_DESC) {
-		td_cmd |= CI_TX_DESC_CMD_IL2TAG1;
-		*txd_hi |= ((uint64_t)tx_pkt->vlan_tci << CI_TXD_QW1_L2TAG1_S);
-	}
-
-	*txd_hi |= ((uint64_t)td_cmd) << CI_TXD_QW1_CMD_S;
-}
 #endif
