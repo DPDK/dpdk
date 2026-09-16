@@ -3784,7 +3784,8 @@ ice_set_tx_function(struct rte_eth_dev *dev)
 	ad->tx_func_type = ci_tx_path_select(&req_features,
 						&ice_tx_path_infos[0],
 						RTE_DIM(ice_tx_path_infos),
-						ICE_TX_DEFAULT);
+						ICE_TX_DEFAULT,
+						false);
 
 out:
 #if defined(RTE_ARCH_X86)

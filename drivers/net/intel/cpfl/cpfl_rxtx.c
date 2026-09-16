@@ -1542,7 +1542,8 @@ cpfl_set_tx_function(struct rte_eth_dev *dev)
 	ad->tx_func_type = ci_tx_path_select(&req_features,
 					&idpf_tx_path_infos[0],
 					IDPF_TX_MAX,
-					IDPF_TX_DEFAULT);
+					IDPF_TX_DEFAULT,
+					false);
 
 	/* Set use_vec_entry for single queue mode - only IDPF_TX_SINGLEQ uses regular entries */
 	if (vport->txq_model == VIRTCHNL2_QUEUE_MODEL_SINGLE) {
