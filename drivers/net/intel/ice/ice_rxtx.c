@@ -3700,7 +3700,7 @@ ice_xmit_pkts_check(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				break;
 			}
 
-			if (!rte_validate_tx_offload(mb)) {
+			if (rte_validate_tx_offload(mb) != 0) {
 				PMD_TX_LOG(ERR, "INVALID mbuf: TX offload setup error");
 				pkt_error = true;
 				break;
