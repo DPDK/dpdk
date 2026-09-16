@@ -173,6 +173,7 @@ struct ci_tx_queue {
 	bool tx_deferred_start; /* don't start this queue in dev start */
 	bool q_set;             /* indicate if tx queue has been configured */
 	bool use_vec_entry;     /* use sw_ring_vec (true for vector and simple paths) */
+	bool use_ctx;           /* with ctx info, each pkt needs two desc in vec paths */
 	union {                  /* the VSI this queue belongs to */
 		struct i40e_vsi *i40e_vsi;
 		struct iavf_vsi *iavf_vsi;
@@ -194,7 +195,6 @@ struct ci_tx_queue {
 #define IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG2 BIT(1)
 			uint8_t vlan_flag;
 			uint8_t tc;
-			bool use_ctx;  /* with ctx info, each pkt needs two descriptors */
 			bool lldp_enabled;
 		};
 		struct { /* ixgbe specific values */
