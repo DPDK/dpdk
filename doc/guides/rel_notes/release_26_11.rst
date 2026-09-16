@@ -69,6 +69,12 @@ New Features
   Added ``fdir_buffer_size`` devarg to select the Flow Director table size
   (``64k``, ``128k`` or ``256k``) at probe time. The default remains ``64k``.
 
+* **Updated Intel ice driver.**
+
+  * Added Tx context descriptor support to the AVX2 and AVX512 vector Tx
+    paths, enabling QinQ tag insertion and outer IPv4/UDP checksum
+    offloads on those paths.
+
 
 Removed Items
 -------------
