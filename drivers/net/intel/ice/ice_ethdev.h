@@ -213,8 +213,10 @@ enum ice_tx_func_type {
 	ICE_TX_SIMPLE,
 	ICE_TX_AVX2,
 	ICE_TX_AVX2_OFFLOAD,
+	ICE_TX_AVX2_CTX_OFFLOAD,
 	ICE_TX_AVX512,
 	ICE_TX_AVX512_OFFLOAD,
+	ICE_TX_AVX512_CTX_OFFLOAD,
 	ICE_TX_NEON,
 };
 
@@ -676,6 +678,7 @@ struct ice_adapter {
 	bool rx_bulk_alloc_allowed;
 	bool tx_vec_allowed;
 	bool tx_simple_allowed;
+	bool use_ctx;
 	enum ice_rx_func_type rx_func_type;
 	enum ice_tx_func_type tx_func_type;
 	/* ptype mapping table */

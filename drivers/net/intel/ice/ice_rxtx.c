@@ -890,6 +890,7 @@ ice_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 
 	/* record what kind of descriptor cleanup we need on teardown */
 	txq->use_vec_entry = ad->tx_vec_allowed || ad->tx_simple_allowed;
+	txq->use_ctx = ad->use_ctx;
 
 	if (txq->tsq != NULL && txq->tsq->ts_flag > 0) {
 		struct ice_aqc_set_txtime_qgrp *ts_elem;
@@ -1200,7 +1201,7 @@ ice_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 		return -EINVAL;
 	}
 
-	ci_txq_release_all_mbufs(txq, false);
+	ci_txq_release_all_mbufs(txq, txq->use_ctx);
 	ice_reset_tx_queue(txq);
 	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STOPPED;
 
@@ -1263,7 +1264,7 @@ ice_fdir_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 		return -EINVAL;
 	}
 
-	ci_txq_release_all_mbufs(txq, false);
+	ci_txq_release_all_mbufs(txq, txq->use_ctx);
 	txq->qtx_tail = NULL;
 
 	return 0;
@@ -1751,7 +1752,7 @@ ice_tx_queue_release(void *txq)
 		return;
 	}
 
-	ci_txq_release_all_mbufs(q, false);
+	ci_txq_release_all_mbufs(q, q->use_ctx);
 	rte_free(q->sw_ring);
 	rte_free(q->rs_last_id);
 	if (q->tsq) {
@@ -3533,7 +3534,8 @@ static const struct ci_tx_path_info ice_tx_path_infos[] = {
 		.features = {
 			.tx_offloads = ICE_TX_SCALAR_OFFLOADS
 		},
-		.pkt_prep = ice_prep_pkts
+		.pkt_prep = ice_prep_pkts,
+		.supports_ctx = true
 	},
 	[ICE_TX_SIMPLE] = {
 		.pkt_burst = ice_xmit_pkts_simple,
@@ -3563,6 +3565,16 @@ static const struct ci_tx_path_info ice_tx_path_infos[] = {
 		},
 		.pkt_prep = ice_prep_pkts
 	},
+	[ICE_TX_AVX2_CTX_OFFLOAD] = {
+		.pkt_burst = ice_xmit_pkts_vec_avx2_ctx_offload,
+		.info = "Offload Vector AVX2 Ctx",
+		.features = {
+			.tx_offloads = ICE_TX_VECTOR_CTX_OFFLOAD_OFFLOADS,
+			.simd_width = RTE_VECT_SIMD_256
+		},
+		.pkt_prep = ice_prep_pkts,
+		.supports_ctx = true
+	},
 #ifdef CC_AVX512_SUPPORT
 	[ICE_TX_AVX512] = {
 		.pkt_burst = ice_xmit_pkts_vec_avx512,
@@ -3581,6 +3593,16 @@ static const struct ci_tx_path_info ice_tx_path_infos[] = {
 			.simd_width = RTE_VECT_SIMD_512
 		},
 		.pkt_prep = ice_prep_pkts
+	},
+	[ICE_TX_AVX512_CTX_OFFLOAD] = {
+		.pkt_burst = ice_xmit_pkts_vec_avx512_ctx_offload,
+		.info = "Offload Vector AVX512 Ctx",
+		.features = {
+			.tx_offloads = ICE_TX_VECTOR_CTX_OFFLOAD_OFFLOADS,
+			.simd_width = RTE_VECT_SIMD_512
+		},
+		.pkt_prep = ice_prep_pkts,
+		.supports_ctx = true
 	},
 #endif
 #elif defined(RTE_ARCH_ARM64)
@@ -3795,6 +3817,7 @@ out:
 	ad->tx_vec_allowed =
 		(ice_tx_path_infos[ad->tx_func_type].features.simd_width >= RTE_VECT_SIMD_128);
 #endif
+	ad->use_ctx = ice_tx_path_infos[ad->tx_func_type].supports_ctx;
 
 	dev->tx_pkt_burst = mbuf_check ? ice_xmit_pkts_check :
 					 ice_tx_path_infos[ad->tx_func_type].pkt_burst;
