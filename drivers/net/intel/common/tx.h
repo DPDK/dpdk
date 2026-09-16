@@ -9,6 +9,8 @@
 #include <rte_mbuf.h>
 #include <rte_ethdev.h>
 #include <rte_vect.h>
+#include <rte_io.h>
+#include <rte_byteorder.h>
 
 /* Common TX Descriptor QW1 Field Definitions */
 #define CI_TXD_QW1_DTYPE_S      0
@@ -271,6 +273,14 @@ ci_tx_backlog_entry_vec(struct ci_tx_entry_vec *txep, struct rte_mbuf **tx_pkts,
 {
 	for (uint16_t i = 0; i < nb_pkts; ++i)
 		txep[i].mbuf = tx_pkts[i];
+}
+
+
+/* Write the Tx tail register, byte-swapped for hardware regardless of host endianness. */
+static __rte_always_inline void
+ci_tx_qtx_tail_write(struct ci_tx_queue *txq, uint16_t tx_id)
+{
+	rte_write32_wc(rte_cpu_to_le_32((uint32_t)tx_id), txq->qtx_tail);
 }
 
 #define IETH_VPMD_TX_MAX_FREE_BUF 64
