@@ -848,115 +848,37 @@ ice_recv_scattered_pkts_vec_avx512_offload(void *rx_queue,
 }
 
 static __rte_always_inline uint16_t
-ice_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
-				uint16_t nb_pkts, bool do_offload)
+ice_xmit_pkts_vec_avx512_common(void *tx_queue, struct rte_mbuf **tx_pkts,
+				uint16_t nb_pkts, bool offload)
 {
+	uint16_t nb_tx = 0;
 	struct ci_tx_queue *txq = (struct ci_tx_queue *)tx_queue;
-	volatile struct ci_tx_desc *txdp;
-	struct ci_tx_entry_vec *txep;
-	uint16_t n, nb_commit, tx_id;
-	uint64_t flags = CI_TX_DESC_CMD_DEFAULT;
-	uint64_t rs = CI_TX_DESC_CMD_RS | CI_TX_DESC_CMD_DEFAULT;
 
-	/* cross rx_thresh boundary is not allowed */
-	nb_pkts = RTE_MIN(nb_pkts, txq->tx_rs_thresh);
+	while (nb_pkts) {
+		uint16_t ret, num;
 
-	if (txq->nb_tx_free < txq->tx_free_thresh)
-		ci_tx_free_bufs_vec(txq, ice_tx_desc_done, false);
-
-	nb_commit = nb_pkts = (uint16_t)RTE_MIN(txq->nb_tx_free, nb_pkts);
-	if (unlikely(nb_pkts == 0))
-		return 0;
-
-	tx_id = txq->tx_tail;
-	txdp = &txq->ci_tx_ring[tx_id];
-	txep = (void *)txq->sw_ring;
-	txep += tx_id;
-
-	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_pkts);
-
-	n = (uint16_t)(txq->nb_tx_desc - tx_id);
-	if (nb_commit >= n) {
-		ci_tx_backlog_entry_vec(txep, tx_pkts, n);
-
-		ci_vtx_avx512(txdp, tx_pkts, n - 1, flags, do_offload,
-			CI_TAG_IN_DATA_DESC, CI_TAG_IN_DATA_DESC);
-		tx_pkts += (n - 1);
-		txdp += (n - 1);
-
-		ci_vtx1(txdp, *tx_pkts++, rs, do_offload, CI_TAG_IN_DATA_DESC, CI_TAG_IN_DATA_DESC);
-
-		nb_commit = (uint16_t)(nb_commit - n);
-
-		tx_id = 0;
-		txq->tx_next_rs = (uint16_t)(txq->tx_rs_thresh - 1);
-
-		/* avoid reach the end of ring */
-		txdp = txq->ci_tx_ring;
-		txep = (void *)txq->sw_ring;
+		num = (uint16_t)RTE_MIN(nb_pkts, txq->tx_rs_thresh);
+		ret = ci_xmit_fixed_burst_vec_avx512(tx_queue, &tx_pkts[nb_tx], num,
+				offload, CI_TAG_IN_DATA_DESC, CI_TAG_IN_DATA_DESC);
+		nb_tx += ret;
+		nb_pkts -= ret;
+		if (ret < num)
+			break;
 	}
 
-	ci_tx_backlog_entry_vec(txep, tx_pkts, nb_commit);
-
-	ci_vtx_avx512(txdp, tx_pkts, nb_commit, flags, do_offload,
-		CI_TAG_IN_DATA_DESC, CI_TAG_IN_DATA_DESC);
-
-	tx_id = (uint16_t)(tx_id + nb_commit);
-	if (tx_id > txq->tx_next_rs) {
-		txq->ci_tx_ring[txq->tx_next_rs].cmd_type_offset_bsz |=
-			rte_cpu_to_le_64(((uint64_t)CI_TX_DESC_CMD_RS) << CI_TXD_QW1_CMD_S);
-		txq->tx_next_rs =
-			(uint16_t)(txq->tx_next_rs + txq->tx_rs_thresh);
-	}
-
-	txq->tx_tail = tx_id;
-
-	ICE_PCI_REG_WC_WRITE(txq->qtx_tail, txq->tx_tail);
-
-	return nb_pkts;
+	return nb_tx;
 }
 
 uint16_t
 ice_xmit_pkts_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 			 uint16_t nb_pkts)
 {
-	uint16_t nb_tx = 0;
-	struct ci_tx_queue *txq = (struct ci_tx_queue *)tx_queue;
-
-	while (nb_pkts) {
-		uint16_t ret, num;
-
-		num = (uint16_t)RTE_MIN(nb_pkts, txq->tx_rs_thresh);
-		ret = ice_xmit_fixed_burst_vec_avx512(tx_queue,
-				&tx_pkts[nb_tx], num, false);
-		nb_tx += ret;
-		nb_pkts -= ret;
-		if (ret < num)
-			break;
-	}
-
-	return nb_tx;
+	return ice_xmit_pkts_vec_avx512_common(tx_queue, tx_pkts, nb_pkts, false);
 }
 
 uint16_t
 ice_xmit_pkts_vec_avx512_offload(void *tx_queue, struct rte_mbuf **tx_pkts,
 				 uint16_t nb_pkts)
 {
-	uint16_t nb_tx = 0;
-	struct ci_tx_queue *txq = (struct ci_tx_queue *)tx_queue;
-
-	while (nb_pkts) {
-		uint16_t ret, num;
-
-		num = (uint16_t)RTE_MIN(nb_pkts, txq->tx_rs_thresh);
-		ret = ice_xmit_fixed_burst_vec_avx512(tx_queue,
-				&tx_pkts[nb_tx], num, true);
-
-		nb_tx += ret;
-		nb_pkts -= ret;
-		if (ret < num)
-			break;
-	}
-
-	return nb_tx;
+	return ice_xmit_pkts_vec_avx512_common(tx_queue, tx_pkts, nb_pkts, true);
 }
