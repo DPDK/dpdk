@@ -168,7 +168,7 @@ ci_vtx1(volatile struct ci_tx_desc *txdp,
 	if (offload)
 		ci_tx_vec_offload(pkt, &high_qw, single_vlan_pos, qinq_outer_pos);
 
-	__m128i descriptor = _mm_set_epi64x(high_qw, pkt->buf_iova + pkt->data_off);
+	__m128i descriptor = _mm_set_epi64x(high_qw, rte_pktmbuf_iova(pkt));
 	_mm_store_si128(RTE_CAST_PTR(__m128i *, txdp), descriptor);
 }
 
@@ -209,15 +209,15 @@ ci_vtx_avx2(volatile struct ci_tx_desc *txdp,
 		__m256i desc2_3 =
 			_mm256_set_epi64x
 				(hi_qw3,
-				 pkt[3]->buf_iova + pkt[3]->data_off,
+				 rte_pktmbuf_iova(pkt[3]),
 				 hi_qw2,
-				 pkt[2]->buf_iova + pkt[2]->data_off);
+				 rte_pktmbuf_iova(pkt[2]));
 		__m256i desc0_1 =
 			_mm256_set_epi64x
 				(hi_qw1,
-				 pkt[1]->buf_iova + pkt[1]->data_off,
+				 rte_pktmbuf_iova(pkt[1]),
 				 hi_qw0,
-				 pkt[0]->buf_iova + pkt[0]->data_off);
+				 rte_pktmbuf_iova(pkt[0]));
 		_mm256_store_si256(RTE_CAST_PTR(__m256i *, txdp + 2), desc2_3);
 		_mm256_store_si256(RTE_CAST_PTR(__m256i *, txdp), desc0_1);
 	}
@@ -259,7 +259,7 @@ ci_vtx1_ctx_avx2(volatile struct ci_tx_desc *txdp, struct rte_mbuf *pkt,
 	if (offload)
 		ci_tx_vec_offload(pkt, &high_data_qw, single_vlan_pos, qinq_outer_pos);
 
-	__m256i ctx_data_desc = _mm256_set_epi64x(high_data_qw, pkt->buf_iova + pkt->data_off,
+	__m256i ctx_data_desc = _mm256_set_epi64x(high_data_qw, rte_pktmbuf_iova(pkt),
 							high_ctx_qw, low_ctx_qw);
 
 	/* tx_id is always even in ctx mode, so txdp is always 32-byte aligned */
@@ -331,10 +331,10 @@ ci_vtx_ctx_avx2(volatile struct ci_tx_desc *txdp,
 		}
 
 		__m256i desc2_3 = _mm256_set_epi64x
-				(hi_data_qw1, pkt[1]->buf_iova + pkt[1]->data_off,
+				(hi_data_qw1, rte_pktmbuf_iova(pkt[1]),
 				 hi_ctx_qw1, low_ctx_qw1);
 		__m256i desc0_1 = _mm256_set_epi64x
-				(hi_data_qw0, pkt[0]->buf_iova + pkt[0]->data_off,
+				(hi_data_qw0, rte_pktmbuf_iova(pkt[0]),
 				 hi_ctx_qw0, low_ctx_qw0);
 		_mm256_store_si256(RTE_CAST_PTR(__m256i *, txdp + 2), desc2_3);
 		_mm256_store_si256(RTE_CAST_PTR(__m256i *, txdp), desc0_1);
@@ -382,13 +382,13 @@ ci_vtx_avx512(volatile struct ci_tx_desc *txdp,
 		__m512i desc0_3 =
 			_mm512_set_epi64
 				(hi_qw3,
-				 pkt[3]->buf_iova + pkt[3]->data_off,
+				 rte_pktmbuf_iova(pkt[3]),
 				 hi_qw2,
-				 pkt[2]->buf_iova + pkt[2]->data_off,
+				 rte_pktmbuf_iova(pkt[2]),
 				 hi_qw1,
-				 pkt[1]->buf_iova + pkt[1]->data_off,
+				 rte_pktmbuf_iova(pkt[1]),
 				 hi_qw0,
-				 pkt[0]->buf_iova + pkt[0]->data_off);
+				 rte_pktmbuf_iova(pkt[0]));
 		_mm512_storeu_si512(RTE_CAST_PTR(void *, txdp), desc0_3);
 	}
 
@@ -430,7 +430,7 @@ ci_vtx1_ctx_avx512(volatile struct ci_tx_desc *txdp, struct rte_mbuf *pkt,
 		ci_tx_vec_offload(pkt, &high_data_qw, single_vlan_pos, qinq_outer_pos);
 
 	__m256i ctx_data_desc = _mm256_set_epi64x
-			(high_data_qw, pkt->buf_iova + pkt->data_off,
+			(high_data_qw, rte_pktmbuf_iova(pkt),
 			high_ctx_qw, low_ctx_qw);
 
 	/* tx_id is always even in ctx mode, so txdp is always 32-byte aligned */
@@ -500,9 +500,9 @@ ci_vtx_ctx_avx512(volatile struct ci_tx_desc *txdp,
 		}
 
 		__m512i desc0_3 = _mm512_set_epi64
-				(hi_data_qw1, pkt[1]->buf_iova + pkt[1]->data_off,
+				(hi_data_qw1, rte_pktmbuf_iova(pkt[1]),
 				hi_ctx_qw1, low_ctx_qw1,
-				hi_data_qw0, pkt[0]->buf_iova + pkt[0]->data_off,
+				hi_data_qw0, rte_pktmbuf_iova(pkt[0]),
 				hi_ctx_qw0, low_ctx_qw0);
 		_mm512_storeu_si512(RTE_CAST_PTR(void *, txdp), desc0_3);
 	}
