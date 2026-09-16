@@ -1617,74 +1617,6 @@ iavf_recv_scattered_pkts_vec_avx2_flex_rxd_offload(void *rx_queue,
 }
 
 
-static __rte_always_inline uint16_t
-iavf_xmit_fixed_burst_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
-			       uint16_t nb_pkts, bool offload)
-{
-	struct ci_tx_queue *txq = (struct ci_tx_queue *)tx_queue;
-	volatile struct ci_tx_desc *txdp;
-	struct ci_tx_entry_vec *txep;
-	uint16_t n, nb_commit, tx_id;
-	/* bit2 is reserved and must be set to 1 according to Spec */
-	uint64_t flags = CI_TX_DESC_CMD_EOP | CI_TX_DESC_CMD_ICRC;
-	uint64_t rs = CI_TX_DESC_CMD_RS | flags;
-	/* vlan_flag gives both the single-VLAN and the QinQ outer tag position */
-	enum ci_l2tag_pos vlan_pos = (txq->vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG1) ?
-			CI_TAG_IN_DATA_DESC : CI_TAG_IN_CTX_DESC;
-
-	if (txq->nb_tx_free < txq->tx_free_thresh)
-		ci_tx_free_bufs_vec(txq, iavf_tx_desc_done, false);
-
-	nb_pkts = (uint16_t)RTE_MIN(txq->nb_tx_free, nb_pkts);
-	if (unlikely(nb_pkts == 0))
-		return 0;
-	nb_commit = nb_pkts;
-
-	tx_id = txq->tx_tail;
-	txdp = &txq->ci_tx_ring[tx_id];
-	txep = &txq->sw_ring_vec[tx_id];
-
-	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_pkts);
-
-	n = (uint16_t)(txq->nb_tx_desc - tx_id);
-	if (nb_commit >= n) {
-		ci_tx_backlog_entry_vec(txep, tx_pkts, n);
-
-		ci_vtx_avx2(txdp, tx_pkts, n - 1, flags, offload, vlan_pos, vlan_pos);
-		tx_pkts += (n - 1);
-		txdp += (n - 1);
-
-		ci_vtx1(txdp, *tx_pkts++, rs, offload, vlan_pos, vlan_pos);
-
-		nb_commit = (uint16_t)(nb_commit - n);
-
-		tx_id = 0;
-		txq->tx_next_rs = (uint16_t)(txq->tx_rs_thresh - 1);
-
-		/* avoid reach the end of ring */
-		txdp = &txq->ci_tx_ring[tx_id];
-		txep = &txq->sw_ring_vec[tx_id];
-	}
-
-	ci_tx_backlog_entry_vec(txep, tx_pkts, nb_commit);
-
-	ci_vtx_avx2(txdp, tx_pkts, nb_commit, flags, offload, vlan_pos, vlan_pos);
-
-	tx_id = (uint16_t)(tx_id + nb_commit);
-	if (tx_id > txq->tx_next_rs) {
-		txq->ci_tx_ring[txq->tx_next_rs].cmd_type_offset_bsz |=
-			rte_cpu_to_le_64(((uint64_t)CI_TX_DESC_CMD_RS) << CI_TXD_QW1_CMD_S);
-		txq->tx_next_rs =
-			(uint16_t)(txq->tx_next_rs + txq->tx_rs_thresh);
-	}
-
-	txq->tx_tail = tx_id;
-
-	IAVF_PCI_REG_WC_WRITE(txq->qtx_tail, txq->tx_tail);
-
-	return nb_pkts;
-}
-
 static __rte_always_inline uint64_t
 iavf_tx_ctx_lldp_check(struct rte_mbuf *pkt, uint64_t high_ctx_qw)
 {
@@ -1809,14 +1741,17 @@ iavf_xmit_pkts_vec_avx2_common(void *tx_queue, struct rte_mbuf **tx_pkts,
 {
 	uint16_t nb_tx = 0;
 	struct ci_tx_queue *txq = (struct ci_tx_queue *)tx_queue;
+	/* vlan_flag gives both the single-VLAN and the QinQ outer tag position */
+	enum ci_l2tag_pos vlan_pos = (txq->vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG1) ?
+			CI_TAG_IN_DATA_DESC : CI_TAG_IN_CTX_DESC;
 
 	while (nb_pkts) {
 		uint16_t ret, num;
 
 		/* cross rs_thresh boundary is not allowed */
 		num = (uint16_t)RTE_MIN(nb_pkts, txq->tx_rs_thresh);
-		ret = iavf_xmit_fixed_burst_vec_avx2(tx_queue, &tx_pkts[nb_tx],
-						     num, offload);
+		ret = ci_xmit_fixed_burst_vec_avx2(txq, &tx_pkts[nb_tx], num,
+				offload, vlan_pos, vlan_pos);
 		nb_tx += ret;
 		nb_pkts -= ret;
 		if (ret < num)
