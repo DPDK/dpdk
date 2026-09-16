@@ -1760,7 +1760,7 @@ static inline void
 iavf_fill_ctx_desc_tunneling_avx2(uint64_t *low_ctx_qw, struct rte_mbuf *pkt)
 {
 	if (pkt->ol_flags & RTE_MBUF_F_TX_TUNNEL_MASK) {
-		uint64_t eip_typ = IAVF_TX_CTX_DESC_EIPT_NONE;
+		uint64_t eip_typ = CI_TX_CTX_EIPT_NONE;
 		uint64_t eip_len = 0;
 		uint64_t eip_noinc = 0;
 		/* Default - IP_ID is increment in each segment of LSO */
@@ -1769,15 +1769,15 @@ iavf_fill_ctx_desc_tunneling_avx2(uint64_t *low_ctx_qw, struct rte_mbuf *pkt)
 				RTE_MBUF_F_TX_OUTER_IPV6 |
 				RTE_MBUF_F_TX_OUTER_IP_CKSUM)) {
 		case RTE_MBUF_F_TX_OUTER_IPV4:
-			eip_typ = IAVF_TX_CTX_DESC_EIPT_IPV4_NO_CHECKSUM_OFFLOAD;
+			eip_typ = CI_TX_CTX_EIPT_IPV4_NO_CSUM;
 			eip_len = pkt->outer_l3_len >> 2;
 		break;
 		case RTE_MBUF_F_TX_OUTER_IPV4 | RTE_MBUF_F_TX_OUTER_IP_CKSUM:
-			eip_typ = IAVF_TX_CTX_DESC_EIPT_IPV4_CHECKSUM_OFFLOAD;
+			eip_typ = CI_TX_CTX_EIPT_IPV4;
 			eip_len = pkt->outer_l3_len >> 2;
 		break;
 		case RTE_MBUF_F_TX_OUTER_IPV6:
-			eip_typ = IAVF_TX_CTX_DESC_EIPT_IPV6;
+			eip_typ = CI_TX_CTX_EIPT_IPV6;
 			eip_len = pkt->outer_l3_len >> 2;
 		break;
 		}
@@ -1791,10 +1791,10 @@ iavf_fill_ctx_desc_tunneling_avx2(uint64_t *low_ctx_qw, struct rte_mbuf *pkt)
 		case RTE_MBUF_F_TX_TUNNEL_VXLAN_GPE:
 		case RTE_MBUF_F_TX_TUNNEL_GTP:
 		case RTE_MBUF_F_TX_TUNNEL_GENEVE:
-			eip_typ |= IAVF_TXD_CTX_UDP_TUNNELING;
+			eip_typ |= CI_TXD_CTX_UDP_TUNNELING;
 			break;
 		case RTE_MBUF_F_TX_TUNNEL_GRE:
-			eip_typ |= IAVF_TXD_CTX_GRE_TUNNELING;
+			eip_typ |= CI_TXD_CTX_GRE_TUNNELING;
 			break;
 		default:
 			PMD_TX_LOG(ERR, "Tunnel type not supported");
@@ -1811,22 +1811,22 @@ iavf_fill_ctx_desc_tunneling_avx2(uint64_t *low_ctx_qw, struct rte_mbuf *pkt)
 		 * its last Ethertype.
 		 * If MPLS labels exists, it should include them as well.
 		 */
-		eip_typ |= (pkt->l2_len >> 1) << IAVF_TXD_CTX_QW0_NATLEN_SHIFT;
+		eip_typ |= (pkt->l2_len >> 1) << CI_TXD_CTX_QW0_NATLEN_S;
 
 		/**
 		 * Calculate the tunneling UDP checksum.
 		 * Shall be set only if L4TUNT = 01b and EIPT is not zero
 		 */
-		if ((eip_typ & (IAVF_TX_CTX_EXT_IP_IPV4 |
-					IAVF_TX_CTX_EXT_IP_IPV6 |
-					IAVF_TX_CTX_EXT_IP_IPV4_NO_CSUM)) &&
-				(eip_typ & IAVF_TXD_CTX_UDP_TUNNELING) &&
+		if ((eip_typ & (CI_TX_CTX_EIPT_IPV4 |
+					CI_TX_CTX_EIPT_IPV6 |
+					CI_TX_CTX_EIPT_IPV4_NO_CSUM)) &&
+				(eip_typ & CI_TXD_CTX_UDP_TUNNELING) &&
 				(pkt->ol_flags & RTE_MBUF_F_TX_OUTER_UDP_CKSUM))
-			eip_typ |= IAVF_TXD_CTX_QW0_L4T_CS_MASK;
+			eip_typ |= CI_TXD_CTX_QW0_L4T_CS_M;
 
-		*low_ctx_qw = eip_typ << IAVF_TXD_CTX_QW0_TUN_PARAMS_EIPT_SHIFT |
-			eip_len << IAVF_TXD_CTX_QW0_TUN_PARAMS_EIPLEN_SHIFT |
-			eip_noinc << IAVF_TXD_CTX_QW0_TUN_PARAMS_EIP_NOINC_SHIFT;
+		*low_ctx_qw = eip_typ << CI_TXD_CTX_QW0_EIPT_S |
+			eip_len << CI_TXD_CTX_QW0_EIPLEN_S |
+			eip_noinc << CI_TXD_CTX_QW0_EIP_NOINC_S;
 
 	} else {
 		*low_ctx_qw = 0;

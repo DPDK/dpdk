@@ -45,6 +45,30 @@
 #define CI_TX_CTX_DESC_TSYN             0x02
 #define CI_TX_CTX_DESC_IL2TAG2          0x04
 
+/* Common TX Context Descriptor QW0 Field Shifts */
+#define CI_TXD_CTX_QW0_L2TAG2_S         32
+#define CI_TXD_CTX_QW0_EIPT_S           0  /* 2 BITS - external IP type */
+#define CI_TXD_CTX_QW0_EIPLEN_S         2  /* 7 BITS - external IP header length */
+#define CI_TXD_CTX_QW0_NATT_S           9  /* 2 BITS - L4 tunnel type */
+#define CI_TXD_CTX_QW0_EIP_NOINC_S      11 /* 1 BIT  - external IP ID not incremented */
+#define CI_TXD_CTX_QW0_NATLEN_S         12 /* 7 BITS - L4 tunnel header length */
+#define CI_TXD_CTX_QW0_L4T_CS_S         23 /* 1 BIT  - tunnel UDP checksum enable */
+
+/**
+ * Enum for the external (outer) IP type field of a Tx context descriptor's
+ * tunnel parameters (QW0 bits 0-1).
+ */
+enum ci_tx_ctx_eipt {
+	CI_TX_CTX_EIPT_NONE,
+	CI_TX_CTX_EIPT_IPV6,
+	CI_TX_CTX_EIPT_IPV4_NO_CSUM,
+	CI_TX_CTX_EIPT_IPV4,
+};
+
+#define CI_TXD_CTX_UDP_TUNNELING        (0x1ULL << CI_TXD_CTX_QW0_NATT_S)
+#define CI_TXD_CTX_GRE_TUNNELING        (0x2ULL << CI_TXD_CTX_QW0_NATT_S)
+#define CI_TXD_CTX_QW0_L4T_CS_M         (0x1ULL << CI_TXD_CTX_QW0_L4T_CS_S)
+
 /**
  * Enum to specify where a VLAN tag is to be placed for packet Tx.
  */
