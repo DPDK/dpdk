@@ -11,6 +11,12 @@
 
 #include "tx.h"
 
+/* Optional per-driver LLDP switch-uplink check for ctx descriptors.
+ * Takes the ctx-desc high qword and returns it with the LLDP bit applied
+ * if appropriate. NULL disables the check.
+ */
+typedef uint64_t (*ci_tx_ctx_lldp_fn)(struct rte_mbuf *pkt, uint64_t high_ctx_qw);
+
 static __rte_always_inline void
 ci_fill_ctx_desc_tunneling(uint64_t *low_ctx_qw, struct rte_mbuf *pkt)
 {
@@ -226,7 +232,7 @@ ci_vtx_avx2(volatile struct ci_tx_desc *txdp,
 static __rte_always_inline void
 ci_vtx1_ctx_avx2(volatile struct ci_tx_desc *txdp, struct rte_mbuf *pkt,
 		uint64_t flags, bool offload, enum ci_l2tag_pos single_vlan_pos,
-		enum ci_l2tag_pos qinq_outer_pos, bool ptype_lldp_enabled)
+		enum ci_l2tag_pos qinq_outer_pos, ci_tx_ctx_lldp_fn lldp_check)
 {
 	uint64_t high_ctx_qw = CI_TX_DESC_DTYPE_CTX;
 	uint64_t low_ctx_qw = 0;
@@ -245,8 +251,8 @@ ci_vtx1_ctx_avx2(volatile struct ci_tx_desc *txdp, struct rte_mbuf *pkt,
 			low_ctx_qw |= (uint64_t)pkt->vlan_tci << CI_TXD_CTX_QW0_L2TAG2_S;
 		}
 	}
-	if (IAVF_CHECK_TX_LLDP(pkt, ptype_lldp_enabled))
-		high_ctx_qw |= IAVF_TX_CTX_DESC_SWTCH_UPLINK << CI_TXD_QW1_CMD_S;
+	if (lldp_check != NULL)
+		high_ctx_qw = lldp_check(pkt, high_ctx_qw);
 	uint64_t high_data_qw = (CI_TX_DESC_DTYPE_DATA |
 			((uint64_t)flags  << CI_TXD_QW1_CMD_S) |
 			((uint64_t)pkt->data_len << CI_TXD_QW1_TX_BUF_SZ_S));
@@ -264,7 +270,7 @@ static __rte_always_inline void
 ci_vtx_ctx_avx2(volatile struct ci_tx_desc *txdp,
 		struct rte_mbuf **pkt, uint16_t nb_pkts, uint64_t flags,
 		bool offload, enum ci_l2tag_pos single_vlan_pos, enum ci_l2tag_pos qinq_outer_pos,
-		bool ptype_lldp_enabled)
+		ci_tx_ctx_lldp_fn lldp_check)
 {
 	uint64_t hi_data_qw_tmpl = (CI_TX_DESC_DTYPE_DATA | (flags  << CI_TXD_QW1_CMD_S));
 
@@ -298,8 +304,8 @@ ci_vtx_ctx_avx2(volatile struct ci_tx_desc *txdp,
 				low_ctx_qw1 |= (uint64_t)pkt[1]->vlan_tci << CI_TXD_CTX_QW0_L2TAG2_S;
 			}
 		}
-		if (IAVF_CHECK_TX_LLDP(pkt[1], ptype_lldp_enabled))
-			hi_ctx_qw1 |= IAVF_TX_CTX_DESC_SWTCH_UPLINK << CI_TXD_QW1_CMD_S;
+		if (lldp_check != NULL)
+			hi_ctx_qw1 = lldp_check(pkt[1], hi_ctx_qw1);
 
 		if (offload) {
 			/* tunnel fill assigns low_ctx_qw0; must run before QinQ/VLAN OR below */
@@ -316,8 +322,8 @@ ci_vtx_ctx_avx2(volatile struct ci_tx_desc *txdp,
 				low_ctx_qw0 |= (uint64_t)pkt[0]->vlan_tci << CI_TXD_CTX_QW0_L2TAG2_S;
 			}
 		}
-		if (IAVF_CHECK_TX_LLDP(pkt[0], ptype_lldp_enabled))
-			hi_ctx_qw0 |= IAVF_TX_CTX_DESC_SWTCH_UPLINK << CI_TXD_QW1_CMD_S;
+		if (lldp_check != NULL)
+			hi_ctx_qw0 = lldp_check(pkt[0], hi_ctx_qw0);
 
 		if (offload) {
 			ci_tx_vec_offload(pkt[1], &hi_data_qw1, single_vlan_pos, qinq_outer_pos);
@@ -336,7 +342,7 @@ ci_vtx_ctx_avx2(volatile struct ci_tx_desc *txdp,
 
 	if (nb_pkts)
 		ci_vtx1_ctx_avx2(txdp, *pkt, flags, offload,
-				single_vlan_pos, qinq_outer_pos, ptype_lldp_enabled);
+				single_vlan_pos, qinq_outer_pos, lldp_check);
 }
 
 #endif /* __AVX2__ */
@@ -396,7 +402,7 @@ ci_vtx_avx512(volatile struct ci_tx_desc *txdp,
 static __rte_always_inline void
 ci_vtx1_ctx_avx512(volatile struct ci_tx_desc *txdp, struct rte_mbuf *pkt,
 		uint64_t flags, bool offload, enum ci_l2tag_pos single_vlan_pos,
-		enum ci_l2tag_pos qinq_outer_pos, bool lldp_enabled)
+		enum ci_l2tag_pos qinq_outer_pos, ci_tx_ctx_lldp_fn lldp_check)
 {
 	uint64_t high_ctx_qw = CI_TX_DESC_DTYPE_CTX;
 	uint64_t low_ctx_qw = 0;
@@ -415,8 +421,8 @@ ci_vtx1_ctx_avx512(volatile struct ci_tx_desc *txdp, struct rte_mbuf *pkt,
 			low_ctx_qw |= (uint64_t)pkt->vlan_tci << CI_TXD_CTX_QW0_L2TAG2_S;
 		}
 	}
-	if (IAVF_CHECK_TX_LLDP(pkt, lldp_enabled))
-		high_ctx_qw |= IAVF_TX_CTX_DESC_SWTCH_UPLINK << CI_TXD_QW1_CMD_S;
+	if (lldp_check != NULL)
+		high_ctx_qw = lldp_check(pkt, high_ctx_qw);
 	uint64_t high_data_qw = (CI_TX_DESC_DTYPE_DATA |
 			((uint64_t)flags << CI_TXD_QW1_CMD_S) |
 			((uint64_t)pkt->data_len << CI_TXD_QW1_TX_BUF_SZ_S));
@@ -435,7 +441,7 @@ static __rte_always_inline void
 ci_vtx_ctx_avx512(volatile struct ci_tx_desc *txdp,
 		struct rte_mbuf **pkt, uint16_t nb_pkts,  uint64_t flags,
 		bool offload, enum ci_l2tag_pos single_vlan_pos, enum ci_l2tag_pos qinq_outer_pos,
-		bool lldp_enabled)
+		ci_tx_ctx_lldp_fn lldp_check)
 {
 	uint64_t hi_data_qw_tmpl = (CI_TX_DESC_DTYPE_DATA | (flags << CI_TXD_QW1_CMD_S));
 
@@ -467,8 +473,8 @@ ci_vtx_ctx_avx512(volatile struct ci_tx_desc *txdp,
 				low_ctx_qw1 |= (uint64_t)pkt[1]->vlan_tci << CI_TXD_CTX_QW0_L2TAG2_S;
 			}
 		}
-		if (IAVF_CHECK_TX_LLDP(pkt[1], lldp_enabled))
-			hi_ctx_qw1 |= IAVF_TX_CTX_DESC_SWTCH_UPLINK << CI_TXD_QW1_CMD_S;
+		if (lldp_check != NULL)
+			hi_ctx_qw1 = lldp_check(pkt[1], hi_ctx_qw1);
 
 		if (offload) {
 			/* tunnel fill assigns low_ctx_qw0; must run before QinQ/VLAN OR below */
@@ -485,8 +491,8 @@ ci_vtx_ctx_avx512(volatile struct ci_tx_desc *txdp,
 				low_ctx_qw0 |= (uint64_t)pkt[0]->vlan_tci << CI_TXD_CTX_QW0_L2TAG2_S;
 			}
 		}
-		if (IAVF_CHECK_TX_LLDP(pkt[0], lldp_enabled))
-			hi_ctx_qw0 |= IAVF_TX_CTX_DESC_SWTCH_UPLINK << CI_TXD_QW1_CMD_S;
+		if (lldp_check != NULL)
+			hi_ctx_qw0 = lldp_check(pkt[0], hi_ctx_qw0);
 
 		if (offload) {
 			ci_tx_vec_offload(pkt[1], &hi_data_qw1, single_vlan_pos, qinq_outer_pos);
@@ -503,7 +509,7 @@ ci_vtx_ctx_avx512(volatile struct ci_tx_desc *txdp,
 
 	if (nb_pkts)
 		ci_vtx1_ctx_avx512(txdp, *pkt, flags, offload,
-				single_vlan_pos, qinq_outer_pos, lldp_enabled);
+					single_vlan_pos, qinq_outer_pos, lldp_check);
 }
 
 #endif /* __AVX512VL__ */
