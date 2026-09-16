@@ -1900,6 +1900,14 @@ iavf_xmit_fixed_burst_vec_avx512(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return nb_pkts;
 }
 
+static __rte_always_inline uint64_t
+iavf_tx_ctx_lldp_check(struct rte_mbuf *pkt, uint64_t high_ctx_qw)
+{
+	if (IAVF_CHECK_TX_LLDP(pkt, true))
+		high_ctx_qw |= IAVF_TX_CTX_DESC_SWTCH_UPLINK << CI_TXD_QW1_CMD_S;
+	return high_ctx_qw;
+}
+
 static __rte_always_inline uint16_t
 iavf_xmit_fixed_burst_vec_avx512_ctx(void *tx_queue, struct rte_mbuf **tx_pkts,
 				 uint16_t nb_pkts, bool offload)
@@ -1911,7 +1919,7 @@ iavf_xmit_fixed_burst_vec_avx512_ctx(void *tx_queue, struct rte_mbuf **tx_pkts,
 	/* bit2 is reserved and must be set to 1 according to Spec */
 	uint64_t flags = CI_TX_DESC_CMD_EOP | CI_TX_DESC_CMD_ICRC;
 	uint64_t rs = CI_TX_DESC_CMD_RS | flags;
-	bool lldp_enabled = txq->lldp_enabled;
+	ci_tx_ctx_lldp_fn lldp_check = txq->lldp_enabled ? iavf_tx_ctx_lldp_check : NULL;
 	/* vlan_flag gives both the single-VLAN and the QinQ outer tag position */
 	enum ci_l2tag_pos vlan_pos = (txq->vlan_flag & IAVF_TX_FLAGS_VLAN_TAG_LOC_L2TAG1) ?
 			CI_TAG_IN_DATA_DESC : CI_TAG_IN_CTX_DESC;
@@ -1938,11 +1946,10 @@ iavf_xmit_fixed_burst_vec_avx512_ctx(void *tx_queue, struct rte_mbuf **tx_pkts,
 		tx_backlog_entry_avx512(txep, tx_pkts, nb_mbuf);
 
 		ci_vtx_ctx_avx512(txdp, tx_pkts, nb_mbuf - 1, flags, offload,
-				vlan_pos, vlan_pos, lldp_enabled);
+				vlan_pos, vlan_pos, lldp_check);
 		tx_pkts += (nb_mbuf - 1);
 		txdp += (n - 2);
-		ci_vtx1_ctx_avx512(txdp, *tx_pkts++, rs, offload,
-				vlan_pos, vlan_pos, lldp_enabled);
+		ci_vtx1_ctx_avx512(txdp, *tx_pkts++, rs, offload, vlan_pos, vlan_pos, lldp_check);
 
 		nb_commit = (uint16_t)(nb_commit - n);
 
@@ -1956,7 +1963,7 @@ iavf_xmit_fixed_burst_vec_avx512_ctx(void *tx_queue, struct rte_mbuf **tx_pkts,
 	nb_mbuf = nb_commit >> 1;
 	tx_backlog_entry_avx512(txep, tx_pkts, nb_mbuf);
 
-	ci_vtx_ctx_avx512(txdp, tx_pkts, nb_mbuf, flags, offload, vlan_pos, vlan_pos, lldp_enabled);
+	ci_vtx_ctx_avx512(txdp, tx_pkts, nb_mbuf, flags, offload, vlan_pos, vlan_pos, lldp_check);
 	tx_id = (uint16_t)(tx_id + nb_commit);
 
 	if (tx_id > txq->tx_next_rs) {
