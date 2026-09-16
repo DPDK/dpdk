@@ -1918,7 +1918,7 @@ F: doc/guides/howto/telemetry.rst
 
 BPF
 M: Konstantin Ananyev <konstantin.v.ananyev@yandex.ru>
-M: Marat Khalili <marat.khalili@huawei.com>
+M: Marat Khalili <qm2k21@gmail.com>
 F: lib/bpf/
 F: examples/bpf/
 F: app/test/test_bpf*
