@@ -2078,7 +2078,8 @@ ctx_vtx1(volatile struct ci_tx_desc *txdp, struct rte_mbuf *pkt,
 	__m256i ctx_data_desc = _mm256_set_epi64x(high_data_qw, pkt->buf_iova + pkt->data_off,
 							high_ctx_qw, low_ctx_qw);
 
-	_mm256_storeu_si256(RTE_CAST_PTR(__m256i *, txdp), ctx_data_desc);
+	/* tx_id is always even in ctx mode, so txdp is always 32-byte aligned */
+	_mm256_store_si256(RTE_CAST_PTR(__m256i *, txdp), ctx_data_desc);
 }
 
 static __rte_always_inline void
@@ -2087,12 +2088,6 @@ ctx_vtx(volatile struct ci_tx_desc *txdp,
 		bool offload, uint8_t vlan_flag, bool lldp_enabled)
 {
 	uint64_t hi_data_qw_tmpl = (CI_TX_DESC_DTYPE_DATA | (flags << CI_TXD_QW1_CMD_S));
-
-	/* if unaligned on 32-bit boundary, do one to align */
-	if (((uintptr_t)txdp & 0x1F) != 0 && nb_pkts != 0) {
-		ctx_vtx1(txdp, *pkt, flags, offload, vlan_flag, lldp_enabled);
-		nb_pkts--; txdp++; pkt++;
-	}
 
 	for (; nb_pkts > 1; txdp += 4, pkt += 2, nb_pkts -= 2) {
 		uint64_t hi_ctx_qw1 = IAVF_TX_DESC_DTYPE_CONTEXT;
