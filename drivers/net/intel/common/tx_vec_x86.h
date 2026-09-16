@@ -345,6 +345,69 @@ ci_vtx_ctx_avx2(volatile struct ci_tx_desc *txdp,
 				single_vlan_pos, qinq_outer_pos, lldp_check);
 }
 
+static __rte_always_inline uint16_t
+ci_xmit_fixed_burst_vec_avx2(struct ci_tx_queue *txq, struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts, bool offload,
+		enum ci_l2tag_pos single_vlan_pos, enum ci_l2tag_pos qinq_outer_pos)
+{
+	volatile struct ci_tx_desc *txdp;
+	struct ci_tx_entry_vec *txep;
+	uint16_t n, nb_commit, tx_id;
+	uint64_t flags = CI_TX_DESC_CMD_DEFAULT;
+	uint64_t rs = CI_TX_DESC_CMD_RS | flags;
+
+	if (txq->nb_tx_free < txq->tx_free_thresh)
+		ci_tx_free_bufs_vec(txq, ci_tx_desc_done_simple, false);
+
+	nb_pkts = (uint16_t)RTE_MIN(txq->nb_tx_free, nb_pkts);
+	if (unlikely(nb_pkts == 0))
+		return 0;
+	nb_commit = nb_pkts;
+
+	tx_id = txq->tx_tail;
+	txdp = &txq->ci_tx_ring[tx_id];
+	txep = &txq->sw_ring_vec[tx_id];
+
+	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_pkts);
+
+	n = (uint16_t)(txq->nb_tx_desc - tx_id);
+	if (nb_commit >= n) {
+		ci_tx_backlog_entry_vec(txep, tx_pkts, n);
+
+		ci_vtx_avx2(txdp, tx_pkts, n - 1, flags, offload, single_vlan_pos, qinq_outer_pos);
+		tx_pkts += (n - 1);
+		txdp += (n - 1);
+
+		ci_vtx1(txdp, *tx_pkts++, rs, offload, single_vlan_pos, qinq_outer_pos);
+
+		nb_commit = (uint16_t)(nb_commit - n);
+
+		tx_id = 0;
+		txq->tx_next_rs = (uint16_t)(txq->tx_rs_thresh - 1);
+
+		/* avoid reach the end of ring */
+		txdp = &txq->ci_tx_ring[tx_id];
+		txep = &txq->sw_ring_vec[tx_id];
+	}
+
+	ci_tx_backlog_entry_vec(txep, tx_pkts, nb_commit);
+
+	ci_vtx_avx2(txdp, tx_pkts, nb_commit, flags, offload, single_vlan_pos, qinq_outer_pos);
+
+	tx_id = (uint16_t)(tx_id + nb_commit);
+	if (tx_id > txq->tx_next_rs) {
+		txq->ci_tx_ring[txq->tx_next_rs].cmd_type_offset_bsz |=
+			rte_cpu_to_le_64(((uint64_t)CI_TX_DESC_CMD_RS) << CI_TXD_QW1_CMD_S);
+		txq->tx_next_rs = (uint16_t)(txq->tx_next_rs + txq->tx_rs_thresh);
+	}
+
+	txq->tx_tail = tx_id;
+
+	ci_tx_qtx_tail_write(txq, tx_id);
+
+	return nb_pkts;
+}
+
 #endif /* __AVX2__ */
 
 #ifdef __AVX512VL__
@@ -510,6 +573,71 @@ ci_vtx_ctx_avx512(volatile struct ci_tx_desc *txdp,
 	if (nb_pkts)
 		ci_vtx1_ctx_avx512(txdp, *pkt, flags, offload,
 					single_vlan_pos, qinq_outer_pos, lldp_check);
+}
+
+static __rte_always_inline uint16_t
+ci_xmit_fixed_burst_vec_avx512(struct ci_tx_queue *txq, struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts, bool offload,
+		enum ci_l2tag_pos single_vlan_pos, enum ci_l2tag_pos qinq_outer_pos)
+{
+	volatile struct ci_tx_desc *txdp;
+	struct ci_tx_entry_vec *txep;
+	uint16_t n, nb_commit, tx_id;
+	/* bit2 is reserved and must be set to 1 according to Spec */
+	uint64_t flags = CI_TX_DESC_CMD_DEFAULT;
+	uint64_t rs = CI_TX_DESC_CMD_RS | flags;
+
+	if (txq->nb_tx_free < txq->tx_free_thresh)
+		ci_tx_free_bufs_vec(txq, ci_tx_desc_done_simple, false);
+
+	nb_pkts = (uint16_t)RTE_MIN(txq->nb_tx_free, nb_pkts);
+	if (unlikely(nb_pkts == 0))
+		return 0;
+	nb_commit = nb_pkts;
+
+	tx_id = txq->tx_tail;
+	txdp = &txq->ci_tx_ring[tx_id];
+	txep = &txq->sw_ring_vec[tx_id];
+
+	txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_pkts);
+
+	n = (uint16_t)(txq->nb_tx_desc - tx_id);
+	if (nb_commit >= n) {
+		ci_tx_backlog_entry_vec(txep, tx_pkts, n);
+
+		ci_vtx_avx512(txdp, tx_pkts, n - 1, flags, offload,
+				single_vlan_pos, qinq_outer_pos);
+		tx_pkts += (n - 1);
+		txdp += (n - 1);
+
+		ci_vtx1(txdp, *tx_pkts++, rs, offload, single_vlan_pos, qinq_outer_pos);
+
+		nb_commit = (uint16_t)(nb_commit - n);
+
+		tx_id = 0;
+		txq->tx_next_rs = (uint16_t)(txq->tx_rs_thresh - 1);
+
+		/* avoid reach the end of ring */
+		txdp = &txq->ci_tx_ring[tx_id];
+		txep = &txq->sw_ring_vec[tx_id];
+	}
+
+	ci_tx_backlog_entry_vec(txep, tx_pkts, nb_commit);
+
+	ci_vtx_avx512(txdp, tx_pkts, nb_commit, flags, offload, single_vlan_pos, qinq_outer_pos);
+
+	tx_id = (uint16_t)(tx_id + nb_commit);
+	if (tx_id > txq->tx_next_rs) {
+		txq->ci_tx_ring[txq->tx_next_rs].cmd_type_offset_bsz |=
+			rte_cpu_to_le_64(((uint64_t)CI_TX_DESC_CMD_RS) << CI_TXD_QW1_CMD_S);
+		txq->tx_next_rs = (uint16_t)(txq->tx_next_rs + txq->tx_rs_thresh);
+	}
+
+	txq->tx_tail = tx_id;
+
+	ci_tx_qtx_tail_write(txq, tx_id);
+
+	return nb_pkts;
 }
 
 #endif /* __AVX512VL__ */
