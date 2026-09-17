@@ -51,7 +51,7 @@ nix_fc_rxchan_bpid_set(struct roc_nix *roc_nix, bool enable)
 
 		nix->chan_cnt = rsp->chan_cnt;
 		for (i = 0; i < rsp->chan_cnt; i++)
-			nix->bpid[i] = rsp->chan_bpid[i] & 0x1FF;
+			nix->bpid[i] = rsp->chan_bpid[i] & 0x7FF;
 	} else {
 		req = mbox_alloc_msg_nix_bp_disable(mbox);
 		if (req == NULL)
@@ -86,7 +86,7 @@ nix_fc_rxchan_bpid_set(struct roc_nix *roc_nix, bool enable)
 		rc = mbox_process_msg(mbox, (void *)&rsp);
 		if (rc)
 			goto exit;
-		nix->cpt_lbpid = rsp->chan_bpid[0] & 0x1FF;
+		nix->cpt_lbpid = rsp->chan_bpid[0] & 0x7FF;
 	}
 
 	/* CPT to NIX BP on all channels */
@@ -333,6 +333,8 @@ nix_fc_cq_config_set(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 		if (fc_cfg->cq_cfg.enable) {
 			aq->cq.bpid = nix->bpid[fc_cfg->cq_cfg.tc];
 			aq->cq_mask.bpid = ~(aq->cq_mask.bpid);
+			aq->cq.bpid_ext = (nix->bpid[fc_cfg->cq_cfg.tc] >> 9) & 0x3;
+			aq->cq_mask.bpid_ext = ~(aq->cq_mask.bpid_ext);
 			aq->cq.bp = fc_cfg->cq_cfg.cq_bp;
 			aq->cq_mask.bp = ~(aq->cq_mask.bp);
 		}
@@ -903,33 +905,33 @@ roc_nix_chan_bpid_set(struct roc_nix *roc_nix, uint16_t chan, uint64_t bpid, int
 		return rc;
 
 	if (ena) {
-		if ((((cfg >> NIX_BPID1_OFF) & GENMASK_ULL(8, 0)) == bpid) ||
-		    (((cfg >> NIX_BPID2_OFF) & GENMASK_ULL(8, 0)) == bpid) ||
-		    (((cfg >> NIX_BPID3_OFF) & GENMASK_ULL(8, 0)) == bpid))
+		if ((((cfg >> NIX_BPID1_OFF) & GENMASK_ULL(10, 0)) == bpid) ||
+		    (((cfg >> NIX_BPID2_OFF) & GENMASK_ULL(10, 0)) == bpid) ||
+		    (((cfg >> NIX_BPID3_OFF) & GENMASK_ULL(10, 0)) == bpid))
 			return 0;
 
 		if (!(cfg & BIT_ULL(NIX_BPID1_ENA))) {
-			cfg &= ~GENMASK_ULL(NIX_BPID1_OFF + 8, NIX_BPID1_OFF);
+			cfg &= ~GENMASK_ULL(NIX_BPID1_OFF + 10, NIX_BPID1_OFF);
 			cfg |= (((uint64_t)bpid << NIX_BPID1_OFF) | BIT_ULL(NIX_BPID1_ENA));
 		} else if (!(cfg & BIT_ULL(NIX_BPID2_ENA))) {
-			cfg &= ~GENMASK_ULL(NIX_BPID2_OFF + 8, NIX_BPID2_OFF);
+			cfg &= ~GENMASK_ULL(NIX_BPID2_OFF + 10, NIX_BPID2_OFF);
 			cfg |= (((uint64_t)bpid << NIX_BPID2_OFF) | BIT_ULL(NIX_BPID2_ENA));
 		} else if (!(cfg & BIT_ULL(NIX_BPID3_ENA))) {
-			cfg &= ~GENMASK_ULL(NIX_BPID3_OFF + 8, NIX_BPID3_OFF);
+			cfg &= ~GENMASK_ULL(NIX_BPID3_OFF + 10, NIX_BPID3_OFF);
 			cfg |= (((uint64_t)bpid << NIX_BPID3_OFF) | BIT_ULL(NIX_BPID3_ENA));
 		} else {
 			plt_nix_dbg("Exceed maximum BPIDs");
 			return -ENOSPC;
 		}
 	} else {
-		if (((cfg >> NIX_BPID1_OFF) & GENMASK_ULL(8, 0)) == bpid) {
-			cfg &= ~(GENMASK_ULL(NIX_BPID1_OFF + 8, NIX_BPID1_OFF) |
+		if (((cfg >> NIX_BPID1_OFF) & GENMASK_ULL(10, 0)) == bpid) {
+			cfg &= ~(GENMASK_ULL(NIX_BPID1_OFF + 10, NIX_BPID1_OFF) |
 				 BIT_ULL(NIX_BPID1_ENA));
-		} else if (((cfg >> NIX_BPID2_OFF) & GENMASK_ULL(8, 0)) == bpid) {
-			cfg &= ~(GENMASK_ULL(NIX_BPID2_OFF + 8, NIX_BPID2_OFF) |
+		} else if (((cfg >> NIX_BPID2_OFF) & GENMASK_ULL(10, 0)) == bpid) {
+			cfg &= ~(GENMASK_ULL(NIX_BPID2_OFF + 10, NIX_BPID2_OFF) |
 				 BIT_ULL(NIX_BPID2_ENA));
-		} else if (((cfg >> NIX_BPID3_OFF) & GENMASK_ULL(8, 0)) == bpid) {
-			cfg &= ~(GENMASK_ULL(NIX_BPID3_OFF + 8, NIX_BPID3_OFF) |
+		} else if (((cfg >> NIX_BPID3_OFF) & GENMASK_ULL(10, 0)) == bpid) {
+			cfg &= ~(GENMASK_ULL(NIX_BPID3_OFF + 10, NIX_BPID3_OFF) |
 				 BIT_ULL(NIX_BPID3_ENA));
 		} else {
 			plt_nix_dbg("BPID not found");
