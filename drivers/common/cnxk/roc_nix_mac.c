@@ -316,6 +316,7 @@ roc_nix_mac_link_info_set(struct roc_nix *roc_nix,
 	struct dev *dev = &nix->dev;
 	struct mbox *mbox = mbox_get(dev->mbox);
 	struct cgx_set_link_mode_req *req;
+	struct cgx_set_link_mode_rsp *rsp;
 	int rc;
 
 	req = mbox_alloc_msg_cgx_set_link_mode(mbox);
@@ -329,8 +330,14 @@ roc_nix_mac_link_info_set(struct roc_nix *roc_nix,
 	req->args.duplex = link_info->full_duplex;
 	req->args.an = link_info->autoneg;
 
+	/* Populate mode for kernels that select it from args.mode. */
+	if (link_info->advertising)
+		req->args.mode = plt_ctz64(link_info->advertising);
+
 	/* Link mode changes takes more time. */
-	rc = mbox_process_tmo(mbox, mbox->rsp_tmo * 4);
+	rc = mbox_process_msg_tmo(mbox, (void **)&rsp, mbox->rsp_tmo * 4);
+	if (!rc)
+		rc = rsp->status;
 exit:
 	mbox_put(mbox);
 	return rc;
