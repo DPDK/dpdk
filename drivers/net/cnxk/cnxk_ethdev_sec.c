@@ -362,7 +362,14 @@ rte_pmd_cnxk_inl_inb_prof_sa_base_get(uint16_t portid, uint16_t profile_id)
 	eth_dev = &rte_eth_devices[portid];
 	dev = cnxk_eth_pmd_priv(eth_dev);
 
-	sa_base = roc_nix_inl_inb_prof_sa_base_get(&dev->nix, !dev->inb.no_inl_dev, profile_id);
+	/* Return IPsec sa base if profile_id is UINT16_MAX, else return the sa base
+	 * for the given profile_id.
+	 */
+	if (profile_id == UINT16_MAX)
+		sa_base = roc_nix_inl_inb_sa_base_get(&dev->nix, dev->inb.inl_dev);
+	else
+		sa_base = roc_nix_inl_inb_prof_sa_base_get(&dev->nix, !dev->inb.no_inl_dev,
+							   profile_id);
 
 	if (!sa_base)
 		return NULL;

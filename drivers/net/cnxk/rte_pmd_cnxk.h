@@ -337,6 +337,209 @@ struct rte_pmd_cnxk_ipsec_inb_sa {
 	struct rte_pmd_cnxk_ipsec_inb_ctx_update_reg ctx;
 };
 
+/** Number of MSNS spaces per inbound SA CTX entry */
+#define RTE_PMD_CNXK_IPSEC_INB_MSNS_SPACES 4
+
+/** Anti-replay window size per MSNS space (bits) */
+#define RTE_PMD_CNXK_IPSEC_INB_MSNS_AR_WIN_BITS 1024
+
+/** Anti-replay window size per MSNS space (bytes) */
+#define RTE_PMD_CNXK_IPSEC_INB_MSNS_AR_WIN_BYTES (RTE_PMD_CNXK_IPSEC_INB_MSNS_AR_WIN_BITS / 8)
+
+/** u64 array size to fit MSNS anti-replay window bits per space */
+#define RTE_PMD_CNXK_IPSEC_INB_MSNS_AR_WIN_U64                                                     \
+	(RTE_PMD_CNXK_IPSEC_INB_MSNS_AR_WIN_BYTES / sizeof(uint64_t))
+
+/** Per MSNS space anti-replay base/valid pair (packed contiguously) */
+struct rte_pmd_cnxk_ipsec_msns_ar {
+	/** IPSEC Anti-Replay base */
+	uint64_t ar_base;
+	/** IPSEC Anti-Replay valid */
+	uint64_t ar_valid;
+};
+
+/**
+ * Inbound IPsec MSNS packed context update region (4 spaces).
+ *
+ * Layout: ar_base[0], ar_valid[0], ar_base[1], ar_valid[1], ...
+ */
+struct __rte_aligned(32) rte_pmd_cnxk_ipsec_inb_ctx_msns_reg {
+	/** IPSEC Anti-Replay base/valid per MSNS space */
+	struct rte_pmd_cnxk_ipsec_msns_ar ar[RTE_PMD_CNXK_IPSEC_INB_MSNS_SPACES];
+	/** Hard lifetime */
+	uint64_t hard_life;
+	/** Soft lifetime */
+	uint64_t soft_life;
+	/** MIB byte statistics */
+	uint64_t mib_octs;
+	/** MIB packet statistics */
+	uint64_t mib_pkts;
+	/** IPSEC Anti-Replay window per MSNS space (128B each) */
+	uint64_t ar_winbits[RTE_PMD_CNXK_IPSEC_INB_MSNS_SPACES]
+			   [RTE_PMD_CNXK_IPSEC_INB_MSNS_AR_WIN_U64];
+};
+
+/** Inbound IPsec MSNS SA slot size (1KB) */
+#define RTE_PMD_CNXK_IPSEC_INB_SA_MSNS_SZ 1024
+
+/** Byte offset of MSNS HW ctx region (32-byte aligned, Word32) */
+#define RTE_PMD_CNXK_IPSEC_INB_MSNS_CTX_OFF                                                        \
+	RTE_ALIGN_CEIL(offsetof(struct rte_pmd_cnxk_ipsec_inb_sa, ctx), 32)
+
+/** Pad bytes before MSNS HW ctx to reach RTE_PMD_CNXK_IPSEC_INB_MSNS_CTX_OFF */
+#define RTE_PMD_CNXK_IPSEC_INB_MSNS_CTX_ALIGN_PAD                                                  \
+	(RTE_PMD_CNXK_IPSEC_INB_MSNS_CTX_OFF - offsetof(struct rte_pmd_cnxk_ipsec_inb_sa, ctx))
+
+/** MSNS inbound ctx_push_size: push ends at HW ctx (not hw_ctx_off + 1) */
+#define RTE_PMD_CNXK_IPSEC_INB_MSNS_CTX_PUSH_SZ(hw_ctx_off_words) (hw_ctx_off_words)
+
+/**
+ * Inbound IPsec SA for MSNS with 4 spaces packed in one CTX cache entry.
+ *
+ * Word0 - Word30 match struct rte_pmd_cnxk_ipsec_inb_sa.
+ * Word32+ is the 32-byte aligned MSNS HW context update region.
+ */
+struct rte_pmd_cnxk_ipsec_inb_msns_sa {
+	/** Word0 */
+	union {
+		struct {
+			uint64_t ar_win : 3;
+			uint64_t hard_life_dec : 1;
+			uint64_t soft_life_dec : 1;
+			uint64_t count_glb_octets : 1;
+			uint64_t count_glb_pkts : 1;
+			uint64_t count_mib_bytes : 1;
+			uint64_t count_mib_pkts : 1;
+			uint64_t hw_ctx_off : 7;
+			uint64_t ctx_id : 16;
+			uint64_t orig_pkt_fabs : 1;
+			uint64_t orig_pkt_free : 1;
+			uint64_t pkind : 6;
+			uint64_t rsvd0 : 1;
+			uint64_t et_ovrwr : 1;
+			uint64_t pkt_output : 2;
+			uint64_t pkt_format : 1;
+			uint64_t defrag_opt : 2;
+			uint64_t x2p_dst : 1;
+			uint64_t ctx_push_size : 7;
+			uint64_t rsvd1 : 1;
+			uint64_t ctx_hdr_size : 2;
+			uint64_t aop_valid : 1;
+			uint64_t rsvd2 : 1;
+			uint64_t ctx_size : 4;
+		} s;
+		uint64_t u64;
+	} w0;
+
+	/** Word1 */
+	union {
+		struct {
+			uint64_t orig_pkt_aura : 20;
+			uint64_t rsvd3 : 4;
+			uint64_t orig_pkt_foff : 8;
+			uint64_t cookie : 32;
+		} s;
+		uint64_t u64;
+	} w1;
+
+	/** Word2 */
+	union {
+		struct {
+			uint64_t valid : 1;
+			uint64_t dir : 1;
+			uint64_t rsvd11 : 1;
+			uint64_t rsvd4 : 1;
+			uint64_t ipsec_mode : 1;
+			uint64_t ipsec_protocol : 1;
+			uint64_t aes_key_len : 2;
+			uint64_t enc_type : 3;
+			uint64_t life_unit : 1;
+			uint64_t auth_type : 4;
+			uint64_t encap_type : 2;
+			uint64_t et_ovrwr_ddr_en : 1;
+			uint64_t esn_en : 1;
+			uint64_t tport_l4_incr_csum : 1;
+			uint64_t ip_hdr_verify : 2;
+			uint64_t udp_ports_verify : 1;
+			uint64_t l3hdr_on_err : 1;
+			uint64_t rsvd6 : 6;
+			uint64_t rsvd12 : 1;
+			uint64_t spi : 32;
+		} s;
+		uint64_t u64;
+	} w2;
+
+	/** Word3 */
+	uint64_t rsvd7;
+
+	/** Word4 - Word7 */
+	uint8_t cipher_key[RTE_PMD_CNXK_CTX_MAX_CKEY_LEN];
+
+	/** Word8 - Word9 */
+	union {
+		struct {
+			uint32_t rsvd8;
+			uint8_t salt[4];
+		} s;
+		uint64_t u64;
+	} w8;
+	uint64_t rsvd9;
+
+	/** Word10 */
+	union {
+		struct {
+			uint64_t rsvd10 : 32;
+			uint64_t udp_src_port : 16;
+			uint64_t udp_dst_port : 16;
+		} s;
+		uint64_t u64;
+	} w10;
+
+	/** Word11 - Word14 */
+	union rte_pmd_cnxk_ipsec_outer_ip_hdr outer_hdr;
+
+	/** Word15 - Word30 */
+	uint8_t hmac_opad_ipad[RTE_PMD_CNXK_CTX_MAX_OPAD_IPAD_LEN];
+
+	/** Pad Word31 so MSNS HW ctx region is 32-byte aligned */
+	uint8_t ctx_align_pad[RTE_PMD_CNXK_IPSEC_INB_MSNS_CTX_ALIGN_PAD];
+
+	/** Word32+ MSNS HW context update region (32-byte aligned) */
+	struct rte_pmd_cnxk_ipsec_inb_ctx_msns_reg ctx;
+
+	/** Reserved to pad SA to 1KB */
+	uint8_t rsvd[RTE_PMD_CNXK_IPSEC_INB_SA_MSNS_SZ - RTE_PMD_CNXK_IPSEC_INB_MSNS_CTX_OFF -
+		     sizeof(struct rte_pmd_cnxk_ipsec_inb_ctx_msns_reg)];
+};
+
+static_assert(sizeof(struct rte_pmd_cnxk_ipsec_inb_msns_sa) == RTE_PMD_CNXK_IPSEC_INB_SA_MSNS_SZ,
+	      "rte_pmd_cnxk_ipsec_inb_msns_sa must be 1KB");
+static_assert(RTE_PMD_CNXK_IPSEC_INB_MSNS_CTX_ALIGN_PAD == 8, "msns_sa ctx align pad must be 8B");
+static_assert((offsetof(struct rte_pmd_cnxk_ipsec_inb_msns_sa, ctx) % 32) == 0,
+	      "msns_sa ctx must be 32-byte aligned");
+static_assert(offsetof(struct rte_pmd_cnxk_ipsec_inb_msns_sa, ctx) ==
+		      RTE_PMD_CNXK_IPSEC_INB_MSNS_CTX_OFF,
+	      "msns_sa ctx must start at Word32");
+static_assert((offsetof(struct rte_pmd_cnxk_ipsec_inb_msns_sa, ctx) / 8) <= 32,
+	      "msns_sa hw_ctx_off must be <= 32 without CTX caching");
+static_assert((offsetof(struct rte_pmd_cnxk_ipsec_inb_msns_sa, ctx.ar_winbits) % 32) == 0,
+	      "msns_sa ar_winbits must be 32-byte aligned");
+static_assert(offsetof(struct rte_pmd_cnxk_ipsec_inb_msns_sa, w1) ==
+		      offsetof(struct rte_pmd_cnxk_ipsec_inb_sa, w1),
+	      "msns_sa w1 offset must match inb_sa");
+static_assert(offsetof(struct rte_pmd_cnxk_ipsec_inb_msns_sa, w2) ==
+		      offsetof(struct rte_pmd_cnxk_ipsec_inb_sa, w2),
+	      "msns_sa w2 offset must match inb_sa");
+
+/** @deprecated use struct rte_pmd_cnxk_ipsec_inb_msns_sa */
+typedef struct rte_pmd_cnxk_ipsec_inb_msns_sa rte_pmd_cnxk_ipsec_inb_sa_msns;
+
+/** 1KB-aligned inbound MSNS SA slot size */
+#define RTE_PMD_CNXK_IPSEC_INB_SA_MSNS_SZ_ALIGN RTE_PMD_CNXK_IPSEC_INB_SA_MSNS_SZ
+
+/** HW write size for inbound MSNS SA (push + MSNS ctx, excludes sw priv tail) */
+#define RTE_PMD_CNXK_IPSEC_INB_SA_MSNS_WR_SZ offsetof(struct rte_pmd_cnxk_ipsec_inb_msns_sa, rsvd)
+
 /**
  * Outbound IPsec SA
  */
@@ -485,6 +688,8 @@ union rte_pmd_cnxk_ipsec_hw_sa {
 	struct rte_pmd_cnxk_ipsec_inb_sa inb;
 	/** Outbound SA */
 	struct rte_pmd_cnxk_ipsec_outb_sa outb;
+	/** Inbound MSNS SA (1KB, 4 packed AR spaces) */
+	struct rte_pmd_cnxk_ipsec_inb_msns_sa inb_msns;
 };
 
 /** CPT HW result format */
@@ -505,6 +710,23 @@ union rte_pmd_cnxk_cpt_res_s {
 		/** Extended sequence number */
 		uint64_t esn;
 	} cn10k;
+
+	/** CN20K CPT result */
+	struct rte_pmd_cpt_cn20k_res_s {
+		/** Completion code */
+		uint64_t compcode : 7;
+		/** Done interrupt */
+		uint64_t doneint : 1;
+		/** Microcode completion code */
+		uint64_t uc_compcode : 8;
+		/** Result length */
+		uint64_t rlen : 16;
+		/** SPI */
+		uint64_t spi : 32;
+
+		/** Extended sequence number */
+		uint64_t esn;
+	} cn20k;
 
 	/** CN9K CPT result */
 	struct rte_pmd_cpt_cn9k_res_s {
@@ -745,16 +967,6 @@ struct rte_pmd_cnxk_rx_def_inl_cfg {
  * This structure represents the NIX_AF_RX_INLINE_GEN_CFG(0..7) register fields.
  */
 struct rte_pmd_cnxk_rx_gen_inl_cfg {
-	/** Layer type mask (bits 3:0) */
-	uint64_t ltype_mask;
-	/** Layer type match value (bits 7:4) */
-	uint64_t ltype_match;
-	/** Layer ID (bits 10:8) */
-	uint64_t lid;
-	/** Nibble Offset (bit 11) - 0: IPv4, 1: IPv6 */
-	uint64_t noffset;
-	/** Offset (bits 17:12) - Offset to DSCP field */
-	uint64_t offset;
 	/** PARAM2 (bits 15:0) - CPT_INST_S[PARAM2] */
 	uint64_t param2;
 	/** PARAM1 (bits 31:16) - CPT_INST_S[PARAM1] */
