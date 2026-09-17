@@ -568,6 +568,7 @@ __rte_bpf_validate_debug_evaluate_start(struct rte_bpf_validate_debug *debug,
 	debug->last_point = NULL;
 	debug->pc = 0;
 	debug->evaluate_started = true;
+	debug->evaluate_finished = false;
 
 	const int rc = debug_send_event(debug,
 		RTE_BPF_VALIDATE_DEBUG_EVENT_VALIDATION_START);
