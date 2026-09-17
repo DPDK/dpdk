@@ -195,6 +195,19 @@ rte_bpf_validate_debug_get_ins(const struct rte_bpf_validate_debug *debug,
 	const struct rte_ebpf_insn **ins, uint32_t *nb_ins);
 
 /**
+ * Get event currently processed by a catchpoint callback.
+ *
+ * @param debug
+ *   Debug instance.
+ * @return
+ *   Event currently processed by a catchpoint callback.
+ *   Undefined if no event is currently being processed.
+ */
+__rte_experimental
+enum rte_bpf_validate_debug_event
+rte_bpf_validate_debug_get_event(const struct rte_bpf_validate_debug *debug);
+
+/**
  * Get last triggered breakpoint or catchpoint.
  *
  * Can be used to destroy currently processed breakpoint or catchpoint.

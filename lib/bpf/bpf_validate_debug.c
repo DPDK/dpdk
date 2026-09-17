@@ -43,6 +43,7 @@ struct rte_bpf_validate_debug {
 	const struct bpf_verifier *verifier;
 	const struct rte_bpf_prm_ex *bpf_prm;
 	struct point_list *breakpoint_lists;
+	enum rte_bpf_validate_debug_event current_event;
 	struct rte_bpf_validate_debug_point *last_point;
 	uint32_t pc;
 	/* Evaluate stage (only tracking `evaluate` part at the moment). */
@@ -236,6 +237,7 @@ debug_trigger_breakpoints(struct rte_bpf_validate_debug *debug, uint32_t pc)
 static int
 debug_send_event(struct rte_bpf_validate_debug *debug, debug_event_t event)
 {
+	debug->current_event = event;
 	return debug_points_call_back(debug, &debug->catchpoint_lists[event]);
 }
 
@@ -340,6 +342,17 @@ rte_bpf_validate_debug_get_ins(const struct rte_bpf_validate_debug *debug,
 	*ins = debug->bpf_prm->raw.ins;
 	*nb_ins = debug->bpf_prm->raw.nb_ins;
 	return 0;
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_bpf_validate_debug_get_event, 26.11)
+enum rte_bpf_validate_debug_event
+rte_bpf_validate_debug_get_event(const struct rte_bpf_validate_debug *debug)
+{
+	if (debug == NULL)
+		/* Just to be fool-proof, not really required by API. */
+		return -EINVAL;
+
+	return debug->current_event;
 }
 
 RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_bpf_validate_debug_get_last_point, 26.07)
