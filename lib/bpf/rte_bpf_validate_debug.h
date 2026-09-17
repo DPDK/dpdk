@@ -35,6 +35,7 @@ extern "C" {
  * At any given evaluation step, callbacks are fired in the following order:
  * - Validation start event;
  * - Branching and invalid-state events (can be interleaved);
+ * - Jump-instruction events (before evaluating jump instruction);
  * - Instruction breakpoints (before evaluating instruction);
  * - Step (before evaluating instruction) or validation result (if done) event;
  */
@@ -57,6 +58,10 @@ enum rte_bpf_validate_debug_event {
 	RTE_BPF_VALIDATE_DEBUG_EVENT_BRANCH_RETURN,
 	/* Pruning branch as dynamically unreachable (pc points to branch start). */
 	RTE_BPF_VALIDATE_DEBUG_EVENT_BRANCH_UNREACHABLE,
+	/* Program counter points to a jump-always instruction. */
+	RTE_BPF_VALIDATE_DEBUG_EVENT_JUMP_ALWAYS,
+	/* Program counter points to a conditional jump instruction. */
+	RTE_BPF_VALIDATE_DEBUG_EVENT_JUMP_CONDITIONAL,
 	/* Number of valid event values. */
 	RTE_BPF_VALIDATE_DEBUG_EVENT_END,
 };

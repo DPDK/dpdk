@@ -2896,12 +2896,18 @@ is_branch_start(const struct inst_node *node)
 }
 
 static uint64_t
-step_events(const struct inst_node *node)
+step_events(const struct inst_node *node, uint8_t op)
 {
 	uint64_t events = RTE_BIT64(RTE_BPF_VALIDATE_DEBUG_EVENT_STEP);
 
 	if (is_branch_start(node))
 		events |= RTE_BIT64(RTE_BPF_VALIDATE_DEBUG_EVENT_BRANCH_ENTER);
+
+	if (op == (BPF_JMP | BPF_JA))
+		events |= RTE_BIT64(RTE_BPF_VALIDATE_DEBUG_EVENT_JUMP_ALWAYS);
+
+	if (node->nb_edge > 1)
+		events |= RTE_BIT64(RTE_BPF_VALIDATE_DEBUG_EVENT_JUMP_CONDITIONAL);
 
 	return events;
 }
@@ -3002,7 +3008,7 @@ evaluate(struct bpf_verifier *bvf)
 			}
 
 			rc = __rte_bpf_validate_debug_evaluate_update(debug, idx,
-				step_events(node));
+				step_events(node, op));
 			if (rc < 0)
 				break;
 
