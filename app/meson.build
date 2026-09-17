@@ -32,6 +32,7 @@ apps = [
         'test-regex',
         'test-sad',
         'test-security-perf',
+        'validate-bpf',
 ]
 
 if get_option('tests')

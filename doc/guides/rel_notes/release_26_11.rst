@@ -259,6 +259,11 @@ New Features
   all branches feeding a converge node complete before that node is visited.
   Reducing the occurrence of double-visits.
 
+* **Added BPF validation application.**
+
+  Added ``dpdk-validate-bpf`` tool to pre-validate eBPF programs
+  for compatibility with the ``lib/bpf`` execution context.
+
 
 Removed Items
 -------------
