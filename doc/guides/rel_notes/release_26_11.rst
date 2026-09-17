@@ -75,6 +75,8 @@ New Features
     paths, enabling QinQ tag insertion and outer IPv4/UDP checksum
     offloads on those paths.
 
+  * Added support for Tx rate limiting per queue.
+
 
 Removed Items
 -------------
