@@ -195,7 +195,9 @@ rte_vdpa_relay_vring_used(int vid, uint16_t qid, void *vring_m)
 			return -1;
 
 		if (vq->desc[desc_id].flags & VRING_DESC_F_INDIRECT) {
-			dlen = vq->desc[desc_id].len;
+			uint64_t desc_len = vq->desc[desc_id].len;
+
+			dlen = desc_len;
 			nr_descs = dlen / sizeof(struct vring_desc);
 			if (unlikely(nr_descs > vq->size))
 				return -1;
@@ -209,11 +211,11 @@ rte_vdpa_relay_vring_used(int vid, uint16_t qid, void *vring_m)
 			if (unlikely(!desc_ring))
 				return -1;
 
-			if (unlikely(dlen < vq->desc[desc_id].len)) {
+			if (unlikely(dlen < desc_len)) {
 				vhost_user_iotlb_rd_lock(vq);
 				idesc = vhost_alloc_copy_ind_table(dev, vq,
 						vq->desc[desc_id].addr,
-						vq->desc[desc_id].len);
+						desc_len);
 				vhost_user_iotlb_rd_unlock(vq);
 				if (unlikely(!idesc))
 					return -1;
