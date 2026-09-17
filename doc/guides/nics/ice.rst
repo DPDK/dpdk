@@ -925,6 +925,32 @@ Additional Options
       192.168.0.2', dst="192.168.0.3")/TCP(flags='S')/Raw(load='XXXXXXXXXX'), \
       iface="enp24s0f0", count=10)
 
+Per-Queue Tx Rate Limiting
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The maximum Tx rate of an individual queue can be capped using
+``rte_eth_set_queue_rate_limit()``, and read back using
+``rte_eth_get_queue_rate_limit()``.
+The rate is given in Mbps, and a rate of 0 removes the limit.
+
+The limit is applied to the queue's node in the Tx scheduler tree,
+which only exists while the queue is running,
+so the queue must be started before its rate can be set,
+and a configured rate is lost when the queue is stopped.
+
+This interface and the Traffic Management API are mutually exclusive,
+because both configure the bandwidth of the same scheduler nodes:
+
+* setting a queue rate limit fails while a Traffic Management
+  hierarchy is committed;
+
+* committing a Traffic Management hierarchy fails while any queue has
+  a rate limit set through ``rte_eth_set_queue_rate_limit()``.
+
+To switch from one to the other, clear the existing configuration first,
+either by setting the rate of each limited queue back to 0,
+or by deleting the Traffic Management hierarchy.
+
 Sample Application Notes
 ------------------------
 
