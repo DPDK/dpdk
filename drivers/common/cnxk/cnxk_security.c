@@ -1445,7 +1445,7 @@ ow_ipsec_sa_common_param_fill(union roc_ow_ipsec_sa_word2 *w2, uint8_t *cipher_k
 			plt_err("Expiry tracking with both packets & bytes is not supported");
 			return -EINVAL;
 		}
-		w2->s.life_unit = ROC_IE_OT_SA_LIFE_UNIT_PKTS;
+		w2->s.life_unit = ROC_IE_OW_SA_LIFE_UNIT_PKTS;
 	}
 
 	if (ipsec_xfrm->life.bytes_soft_limit != 0 || ipsec_xfrm->life.bytes_hard_limit != 0) {
@@ -1454,7 +1454,7 @@ ow_ipsec_sa_common_param_fill(union roc_ow_ipsec_sa_word2 *w2, uint8_t *cipher_k
 			plt_err("Expiry tracking with both packets & bytes is not supported");
 			return -EINVAL;
 		}
-		w2->s.life_unit = ROC_IE_OT_SA_LIFE_UNIT_OCTETS;
+		w2->s.life_unit = ROC_IE_OW_SA_LIFE_UNIT_OCTETS;
 	}
 
 	return 0;
