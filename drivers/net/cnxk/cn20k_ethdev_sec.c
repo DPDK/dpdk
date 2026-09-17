@@ -805,9 +805,6 @@ cn20k_eth_sec_session_create(void *device, struct rte_security_session_conf *con
 	if (conf->protocol != RTE_SECURITY_PROTOCOL_IPSEC)
 		return -ENOTSUP;
 
-	if (nix->custom_inb_sa)
-		return -ENOTSUP;
-
 	if (rte_security_dynfield_register() < 0)
 		return -ENOTSUP;
 
@@ -831,6 +828,9 @@ cn20k_eth_sec_session_create(void *device, struct rte_security_session_conf *con
 
 	ipsec = &conf->ipsec;
 	crypto = conf->crypto_xform;
+
+	if (nix->custom_inb_sa && ipsec->direction == RTE_SECURITY_IPSEC_SA_DIR_INGRESS)
+		return -ENOTSUP;
 
 	rc = cnxk_ipsec_xform_verify(ipsec, crypto);
 	if (rc) {
@@ -1083,7 +1083,7 @@ cn20k_eth_sec_session_destroy(void *device, struct rte_security_session *sess)
 	eth_sec = cnxk_eth_sec_sess_get_by_sess(dev, sess);
 	if (!eth_sec)
 		return -ENOENT;
-	if (dev->nix.custom_inb_sa)
+	if (dev->nix.custom_inb_sa && eth_sec->inb)
 		return -ENOTSUP;
 
 	lock = eth_sec->inb ? &dev->inb.lock : &dev->outb.lock;
