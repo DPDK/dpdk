@@ -258,8 +258,7 @@ nix_sec_meta_to_mbuf_sc(uint64_t cq_w5, uint64_t cpth, const uint64_t sa_base,
 			*rte_security_dynfield(mbuf) = (uint64_t)inb_priv->userdata;
 	} else {
 		/* Update dynamic field with userdata */
-		if (flags & NIX_RX_REAS_F && inb_priv->userdata)
-			*rte_security_dynfield(mbuf) = (uint64_t)inb_priv->userdata;
+		*rte_security_dynfield(mbuf) = (uint64_t)inb_priv->userdata;
 	}
 
 	*len = ((w3 >> 48) & 0xFFFF) + ((cq_w5 >> 16) & 0xFF) - (cq_w5 & 0xFF);
@@ -346,16 +345,17 @@ nix_cqe_xtract_mseg(const union nix_rx_parse_u *rx, struct rte_mbuf *mbuf, uint6
 	uint16_t rlen = hdr->w3.rlen;
 	const rte_iova_t *iova_list;
 	uint8_t sg_cnt = 1, nb_segs;
+	uint16_t sg_len, data_len;
 	uint16x4_t fsz, sg_swap;
 	uint16_t later_skip = 0;
 	bool reas_fail = false;
+	bool first_frag = true;
 	const rte_iova_t *eol;
 	uint16_t data_off = 0;
 	bool is_oop = false;
 	uint16_t l4_off = 0;
 	uint8_t ts_rx_off;
 	int dyn_off = 0;
-	uint16_t sg_len;
 	int64_t len;
 	uintptr_t p;
 
@@ -403,9 +403,11 @@ nix_cqe_xtract_mseg(const union nix_rx_parse_u *rx, struct rte_mbuf *mbuf, uint6
 				/* Reverse the order of fragment sizes */
 				fsz = vreinterpret_u16_u64(vdup_n_u64(finfo->w1.u64));
 				fsz = vrev64_u16(fsz);
-				fsz_w1 = vget_lane_u64(vreinterpret_u64_u16(fsz), 0) >> 16;
+				fsz_w1 = vget_lane_u64(vreinterpret_u64_u16(fsz), 0);
 				finfo++;
 				l4_off = ((cq_w5 >> 24) & 0xFF) - (cq_w5 & 0xFF);
+				mbuf->pkt_len = l4_off + (fsz_w1 & 0xFFFF) - ts_rx_off;
+				fsz_w1 >>= 16;
 			}
 		}
 
@@ -427,6 +429,7 @@ nix_cqe_xtract_mseg(const union nix_rx_parse_u *rx, struct rte_mbuf *mbuf, uint6
 			return;
 
 		len = rx->pkt_lenm1 + 1;
+		mbuf->pkt_len = len;
 
 		/* Skip SG_S and first IOVA */
 		eol = ((const rte_iova_t *)(rx + 1) + ((rx->desc_sizem1 + 1) << 1));
@@ -434,6 +437,7 @@ nix_cqe_xtract_mseg(const union nix_rx_parse_u *rx, struct rte_mbuf *mbuf, uint6
 	}
 
 	sg_len = sg & 0xFFFF;
+	data_len = sg_len;
 	sg = sg >> 16;
 
 	/* Update data len as per the segment size */
@@ -478,14 +482,16 @@ nix_cqe_xtract_mseg(const union nix_rx_parse_u *rx, struct rte_mbuf *mbuf, uint6
 
 			/* Reset last mbuf next and start new mbuf chain */
 			last_mbuf->next = NULL;
+			head->nb_segs = sg_cnt;
+			head->data_len =
+				(!first_frag && (sg_cnt == 1)) ? data_len + l4_off : data_len;
 			head = mbuf;
 			len = fsz_w1 & 0xFFFF;
 			head->pkt_len = l4_off + len - ts_rx_off;
-			head->nb_segs = sg_cnt;
-			/* later frag size update*/
-			sg_len += l4_off;
+			data_len = sg_len;
 			data_off = rearm & 0xFFFF;
 			sg_cnt = 0;
+			first_frag = false;
 			nxt_frag = nxt_frag >> 1;
 			fsz_w1 = fsz_w1 >> 16;
 			if (--num_frags == 4) {
@@ -568,6 +574,7 @@ nix_cqe_xtract_mseg(const union nix_rx_parse_u *rx, struct rte_mbuf *mbuf, uint6
 
 	/* Update for last failure fragment */
 	if ((flags & NIX_RX_REAS_F) && reas_fail) {
+		head->data_len = (!first_frag && (sg_cnt == 1)) ? data_len + l4_off : data_len;
 		cnxk_ip_reassembly_dynfield(head, dyn_off)->next_frag = NULL;
 		cnxk_ip_reassembly_dynfield(head, dyn_off)->nb_frags = 0;
 	}
@@ -1079,10 +1086,9 @@ nix_sec_meta_to_mbuf(uintptr_t inb_sa, uintptr_t cpth, struct rte_mbuf **inner, 
 		*rearm = (*rearm & ~(BIT_ULL(16) - 1)) | inner_m->data_off;
 	} else {
 		/* Get SPI from CPT_PARSE_S's cookie(already swapped) */
-		inb_priv = roc_nix_inl_ot_ipsec_inb_sa_sw_rsvd((void *)inb_sa);
+		inb_priv = roc_nix_inl_ow_ipsec_inb_sa_sw_rsvd((void *)inb_sa);
 		/* Update dynamic field with userdata */
-		if (flags & NIX_RX_REAS_F && inb_priv->userdata)
-			*rte_security_dynfield(inner_m) = (uint64_t)inb_priv->userdata;
+		*rte_security_dynfield(inner_m) = (uint64_t)inb_priv->userdata;
 	}
 
 	/* Clear and update original lower 16 bit of data offset */
@@ -1444,8 +1450,8 @@ cn20k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts, c
 				mask23 = vceqq_u64(sa23, vdupq_n_u64(0xFFFFFFFF));
 			}
 
-			sa01 = vshlq_n_u64(sa01, ROC_NIX_INL_OT_IPSEC_INB_SA_SZ_LOG2);
-			sa23 = vshlq_n_u64(sa23, ROC_NIX_INL_OT_IPSEC_INB_SA_SZ_LOG2);
+			sa01 = vshlq_n_u64(sa01, ROC_NIX_INL_OW_IPSEC_INB_SA_SZ_LOG2);
+			sa23 = vshlq_n_u64(sa23, ROC_NIX_INL_OW_IPSEC_INB_SA_SZ_LOG2);
 			sa01 = vaddq_u64(sa01, vdupq_n_u64(sa_base));
 			sa23 = vaddq_u64(sa23, vdupq_n_u64(sa_base));
 
@@ -1456,23 +1462,23 @@ cn20k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts, c
 
 			const uint8x16x2_t tbl = {{
 				{
-					/* ROC_IE_OT_UCC_SUCCESS_PKT_IP_BADCSUM */
+					/* ROC_IE_OW_UCC_SUCCESS_PKT_IP_BADCSUM */
 					RTE_MBUF_F_RX_IP_CKSUM_BAD >> 1,
-					/* ROC_IE_OT_UCC_SUCCESS_PKT_L4_GOODCSUM */
+					/* ROC_IE_OW_UCC_SUCCESS_PKT_L4_GOODCSUM */
 					(RTE_MBUF_F_RX_IP_CKSUM_GOOD |
 					 RTE_MBUF_F_RX_L4_CKSUM_GOOD) >>
 						1,
-					/* ROC_IE_OT_UCC_SUCCESS_PKT_L4_BADCSUM */
+					/* ROC_IE_OW_UCC_SUCCESS_PKT_L4_BADCSUM */
 					(RTE_MBUF_F_RX_IP_CKSUM_GOOD |
 					 RTE_MBUF_F_RX_L4_CKSUM_BAD) >>
 						1,
 					1,
-					/* ROC_IE_OT_UCC_SUCCESS_PKT_UDPESP_NZCSUM */
+					/* ROC_IE_OW_UCC_SUCCESS_PKT_UDPESP_NZCSUM */
 					(RTE_MBUF_F_RX_IP_CKSUM_GOOD |
 					 RTE_MBUF_F_RX_L4_CKSUM_GOOD) >>
 						1,
 					1,
-					/* ROC_IE_OT_UCC_SUCCESS_PKT_UDP_ZEROCSUM */
+					/* ROC_IE_OW_UCC_SUCCESS_PKT_UDP_ZEROCSUM */
 					(RTE_MBUF_F_RX_IP_CKSUM_GOOD |
 					 RTE_MBUF_F_RX_L4_CKSUM_GOOD) >>
 						1,
@@ -1490,7 +1496,7 @@ cn20k_nix_recv_pkts_vector(void *args, struct rte_mbuf **mbufs, uint16_t pkts, c
 					1,
 					1,
 					1,
-					/* ROC_IE_OT_UCC_SUCCESS_PKT_IP_GOODCSUM */
+					/* ROC_IE_OW_UCC_SUCCESS_PKT_IP_GOODCSUM */
 					RTE_MBUF_F_RX_IP_CKSUM_GOOD >> 1,
 					/* Rest 0 to indicate RTE_MBUF_F_RX_SEC_OFFLOAD_FAILED */
 					0,
