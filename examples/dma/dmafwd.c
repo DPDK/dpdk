@@ -488,7 +488,7 @@ dma_tx_port(struct rxtx_port_config *tx_config)
 					tx_config->rxtx_port);
 		}
 
-		nb_tx = rte_eth_tx_burst(tx_config->rxtx_port, 0,
+		nb_tx = rte_eth_tx_burst(tx_config->rxtx_port, i,
 				(void *)mbufs, nb_dq);
 
 		port_statistics.tx[tx_config->rxtx_port] += nb_tx;
