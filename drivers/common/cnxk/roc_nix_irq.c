@@ -324,9 +324,6 @@ nix_lf_q_irq(void *param)
 			plt_err("SQ=%d NIX_SQINT_SQB_ALLOC_FAIL", sq);
 	}
 
-	/* Clear interrupt */
-	plt_write64(intr, nix->base + NIX_LF_QINTX_INT(qintx));
-
 	/* Call reset callback */
 	if (intr_cb && dev->ops->q_err_cb)
 		dev->ops->q_err_cb(nix_priv_to_roc_nix(nix), NULL);
@@ -338,6 +335,7 @@ roc_nix_register_queue_irqs(struct roc_nix *roc_nix)
 	int vec, q, sqs, rqs, qs, rc = 0;
 	struct plt_intr_handle *handle;
 	struct nix *nix;
+	int64_t val;
 
 	nix = roc_nix_to_nix_priv(roc_nix);
 	handle = nix->pci_dev->intr_handle;
@@ -358,7 +356,8 @@ roc_nix_register_queue_irqs(struct roc_nix *roc_nix)
 		vec = nix->msixoff + NIX_LF_INT_VEC_QINT_START + q;
 
 		/* Clear QINT CNT */
-		plt_write64(0, nix->base + NIX_LF_QINTX_CNT(q));
+		val = plt_read64(nix->base + NIX_LF_QINTX_CNT(q));
+		plt_write64(-val, nix->base + NIX_LF_QINTX_CNT(q));
 
 		/* Clear interrupt */
 		plt_write64(~0ull, nix->base + NIX_LF_QINTX_ENA_W1C(q));
@@ -375,7 +374,6 @@ roc_nix_register_queue_irqs(struct roc_nix *roc_nix)
 		if (rc)
 			break;
 
-		plt_write64(0, nix->base + NIX_LF_QINTX_CNT(q));
 		plt_write64(0, nix->base + NIX_LF_QINTX_INT(q));
 		/* Enable QINT interrupt */
 		plt_write64(~0ull, nix->base + NIX_LF_QINTX_ENA_W1S(q));
@@ -389,6 +387,7 @@ roc_nix_unregister_queue_irqs(struct roc_nix *roc_nix)
 {
 	struct plt_intr_handle *handle;
 	struct nix *nix;
+	int64_t val;
 	int vec, q;
 
 	nix = roc_nix_to_nix_priv(roc_nix);
@@ -398,7 +397,8 @@ roc_nix_unregister_queue_irqs(struct roc_nix *roc_nix)
 		vec = nix->msixoff + NIX_LF_INT_VEC_QINT_START + q;
 
 		/* Clear QINT CNT */
-		plt_write64(0, nix->base + NIX_LF_QINTX_CNT(q));
+		val = plt_read64(nix->base + NIX_LF_QINTX_CNT(q));
+		plt_write64(-val, nix->base + NIX_LF_QINTX_CNT(q));
 		plt_write64(0, nix->base + NIX_LF_QINTX_INT(q));
 
 		/* Clear interrupt */
