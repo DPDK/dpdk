@@ -832,4 +832,6 @@ int rte_pmd_ice_dump_txsched(uint16_t port, bool detail, FILE *stream);
 int
 ice_tm_setup_txq_node(struct ice_pf *pf, struct ice_hw *hw, uint16_t qid, uint32_t node_teid);
 
+uint32_t ice_txq_rate_limit_kbps(struct ice_pf *pf, uint16_t queue_idx);
+
 #endif /* _ICE_ETHDEV_H_ */

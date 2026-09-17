@@ -903,7 +903,21 @@ ice_hierarchy_commit(struct rte_eth_dev *dev,
 				 int clear_on_fail,
 				 struct rte_tm_error *error)
 {
+	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	bool restart = false;
+
+	/*
+	 * A commit reapplies the bandwidth of every node, which would silently
+	 * discard any rate set through rte_eth_set_queue_rate_limit().
+	 */
+	for (uint16_t i = 0; i < dev->data->nb_tx_queues; i++) {
+		if (ice_txq_rate_limit_kbps(pf, i) != 0) {
+			error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
+			error->message =
+				"queue rate limit already set via rte_eth_set_queue_rate_limit";
+			return -EBUSY;
+		}
+	}
 
 	/* commit should only be done to topology before start
 	 * If port is already started, stop it and then restart when done.

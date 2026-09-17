@@ -212,6 +212,10 @@ static const uint32_t *ice_buffer_split_supported_hdr_ptypes_get(struct rte_eth_
 						size_t *no_of_elements);
 static int ice_get_dcb_info(struct rte_eth_dev *dev, struct rte_eth_dcb_info *dcb_info);
 static int ice_priority_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_pfc_conf *pfc_conf);
+static int ice_set_queue_rate_limit(struct rte_eth_dev *dev, uint16_t queue_idx,
+				    uint32_t tx_rate);
+static int ice_get_queue_rate_limit(struct rte_eth_dev *dev, uint16_t queue_idx,
+				    uint32_t *tx_rate);
 
 static const struct rte_pci_id pci_id_ice_map[] = {
 	{ RTE_PCI_DEVICE(ICE_INTEL_VENDOR_ID, ICE_DEV_ID_E823L_BACKPLANE) },
@@ -353,6 +357,8 @@ static const struct eth_dev_ops ice_eth_dev_ops = {
 	.buffer_split_supported_hdr_ptypes_get = ice_buffer_split_supported_hdr_ptypes_get,
 	.get_dcb_info                 =	ice_get_dcb_info,
 	.priority_flow_ctrl_set       = ice_priority_flow_ctrl_set,
+	.set_queue_rate_limit         = ice_set_queue_rate_limit,
+	.get_queue_rate_limit         = ice_get_queue_rate_limit,
 };
 
 /* store statistics names and its offset in stats structure */
@@ -4203,6 +4209,100 @@ ice_priority_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_pfc_conf *pfc
 
 		wr32(hw, E830_MAC_COMMAND_CONFIG(port_info), mac_config);
 	}
+
+	return 0;
+}
+
+static int
+ice_set_queue_rate_limit(struct rte_eth_dev *dev, uint16_t queue_idx,
+			 uint32_t tx_rate)
+{
+	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct ice_hw *hw = ICE_PF_TO_HW(pf);
+	struct ice_vsi *vsi = pf->main_vsi;
+	int ret;
+
+	if (queue_idx >= dev->data->nb_tx_queues) {
+		PMD_DRV_LOG(ERR, "Tx queue %u is out of range (%u configured)",
+			    queue_idx, dev->data->nb_tx_queues);
+		return -EINVAL;
+	}
+
+	/*
+	 * A committed TM hierarchy owns the bandwidth of every scheduler node
+	 * and reapplies it on each commit, so the two interfaces are exclusive.
+	 */
+	if (pf->tm_conf.committed) {
+		PMD_DRV_LOG(ERR, "Tx rate limit cannot be set while a traffic manager hierarchy is committed");
+		return -EBUSY;
+	}
+
+	/*
+	 * The scheduler node of a Tx queue only exists once the queue has been
+	 * added to the Tx scheduler tree, which happens on queue start.
+	 */
+	if (dev->data->tx_queue_state[queue_idx] != RTE_ETH_QUEUE_STATE_STARTED) {
+		PMD_DRV_LOG(ERR, "Tx queue %u must be started before setting its rate limit",
+			    queue_idx);
+		return -EINVAL;
+	}
+
+	/* Rate is expressed in Mbps by the API, the scheduler uses Kbps. */
+	if (tx_rate > ICE_SCHED_MAX_BW / 1000) {
+		PMD_DRV_LOG(ERR, "Invalid Tx rate %u Mbps for queue %u, maximum is %u Mbps",
+			    tx_rate, queue_idx, (uint32_t)(ICE_SCHED_MAX_BW / 1000));
+		return -EINVAL;
+	}
+
+	/* A rate of 0 removes the limit and restores the default bandwidth. */
+	if (tx_rate == 0)
+		ret = ice_cfg_q_bw_dflt_lmt(hw->port_info, vsi->idx, 0,
+					    queue_idx, ICE_MAX_BW);
+	else
+		ret = ice_cfg_q_bw_lmt(hw->port_info, vsi->idx, 0, queue_idx,
+				       ICE_MAX_BW, tx_rate * 1000);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to set Tx rate limit on queue %u, error %d",
+			    queue_idx, ret);
+		return -EIO;
+	}
+
+	return 0;
+}
+
+/*
+ * Returns the rate limit currently programmed on a Tx queue, 0 if unlimited.
+ * The scheduler caches the requested rate, but that cache outlives the queue
+ * node, which is destroyed on queue stop and recreated with the default
+ * profile, so only trust it while the node still carries a rate limit.
+ */
+uint32_t
+ice_txq_rate_limit_kbps(struct ice_pf *pf, uint16_t queue_idx)
+{
+	struct ice_hw *hw = ICE_PF_TO_HW(pf);
+	struct ice_sched_node *node;
+	struct ice_q_ctx *q_ctx;
+
+	q_ctx = ice_get_lan_q_ctx(hw, pf->main_vsi->idx, 0, queue_idx);
+	if (q_ctx == NULL)
+		return 0;
+
+	node = ice_sched_find_node_by_teid(hw->port_info->root, q_ctx->q_teid);
+	if (node == NULL ||
+	    rte_le_to_cpu_16(node->info.data.eir_bw.bw_profile_idx) ==
+	    ICE_SCHED_DFLT_RL_PROF_ID)
+		return 0;
+
+	return q_ctx->bw_t_info.eir_bw.bw;
+}
+
+static int
+ice_get_queue_rate_limit(struct rte_eth_dev *dev, uint16_t queue_idx,
+			 uint32_t *tx_rate)
+{
+	struct ice_pf *pf = ICE_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+
+	*tx_rate = ice_txq_rate_limit_kbps(pf, queue_idx) / 1000;
 
 	return 0;
 }
