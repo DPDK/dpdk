@@ -138,11 +138,16 @@ gdma_post_work_request(struct mana_gdma_queue *queue,
 				client_oob_size + sgl_data_size,
 			  GDMA_WQE_ALIGNMENT_UNIT_SIZE);
 	uint8_t *wq_buffer_pointer;
-	uint32_t queue_free_units = queue->count - (queue->head - queue->tail);
+	/* head and tail are in WQE alignment units, so the capacity must
+	 * come from the queue size in bytes, not the entry count.
+	 */
+	uint32_t queue_free_units = queue->size / GDMA_WQE_ALIGNMENT_UNIT_SIZE -
+					(queue->head - queue->tail);
 
 	if (wqe_size / GDMA_WQE_ALIGNMENT_UNIT_SIZE > queue_free_units) {
-		DP_LOG(DEBUG, "WQE size %u queue count %u head %u tail %u",
-		       wqe_size, queue->count, queue->head, queue->tail);
+		DP_LOG(DEBUG, "WQE size %u queue size %u free %u head %u tail %u",
+		       wqe_size, queue->size, queue_free_units,
+		       queue->head, queue->tail);
 		return -EBUSY;
 	}
 
