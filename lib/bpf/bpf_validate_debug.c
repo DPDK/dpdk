@@ -225,6 +225,13 @@ debug_points_call_back(struct rte_bpf_validate_debug *debug,
 	return rc;
 }
 
+/* Call back all breakpoints for the specified program counter. */
+static int
+debug_trigger_breakpoints(struct rte_bpf_validate_debug *debug, uint32_t pc)
+{
+	return debug_points_call_back(debug, &debug->breakpoint_lists[pc]);
+}
+
 /* Call back all catchpoints for the specified event. */
 static int
 debug_send_event(struct rte_bpf_validate_debug *debug, debug_event_t event)
@@ -585,6 +592,21 @@ int
 __rte_bpf_validate_debug_evaluate_update(struct rte_bpf_validate_debug *debug,
 	uint32_t pc, uint64_t events)
 {
+	/* Required order of sent events according to the documentation. */
+	static const enum rte_bpf_validate_debug_event ordered_events[] = {
+		RTE_BPF_VALIDATE_DEBUG_EVENT_VALIDATION_START,
+		RTE_BPF_VALIDATE_DEBUG_EVENT_INVALID_STATE,
+		RTE_BPF_VALIDATE_DEBUG_EVENT_BRANCH_ENTER,
+		RTE_BPF_VALIDATE_DEBUG_EVENT_BRANCH_PRUNE,
+		RTE_BPF_VALIDATE_DEBUG_EVENT_BRANCH_RETURN,
+		RTE_BPF_VALIDATE_DEBUG_EVENT_BRANCH_UNREACHABLE,
+		RTE_BPF_VALIDATE_DEBUG_EVENT_STEP,
+		RTE_BPF_VALIDATE_DEBUG_EVENT_VALIDATION_SUCCESS,
+		RTE_BPF_VALIDATE_DEBUG_EVENT_VALIDATION_FAILURE,
+	};
+	RTE_BUILD_BUG_ON(
+		RTE_DIM(ordered_events) != RTE_BPF_VALIDATE_DEBUG_EVENT_END);
+
 	int rc;
 
 	if (debug == NULL)
@@ -595,29 +617,31 @@ __rte_bpf_validate_debug_evaluate_update(struct rte_bpf_validate_debug *debug,
 		return -ECHILD;
 	}
 
-	if (pc > debug->bpf_prm->raw.nb_ins)
+	if (pc >= debug->bpf_prm->raw.nb_ins)
 		return -EINVAL;
 
 	debug->pc = pc;
 
 	rc = __rte_bpf_validate_state_is_valid(debug->verifier);
 	if (rc == 0)
-		rc = debug_send_event(debug,
-			RTE_BPF_VALIDATE_DEBUG_EVENT_INVALID_STATE);
+		events |= RTE_BIT64(RTE_BPF_VALIDATE_DEBUG_EVENT_INVALID_STATE);
 
-	for (enum rte_bpf_validate_debug_event event = 0;
-			event != RTE_BPF_VALIDATE_DEBUG_EVENT_END; ++event)
-		if (events & RTE_BIT64(event))
-			rc = rc < 0 ? rc : debug_send_event(debug, event);
+	for (uint32_t index = 0; index < RTE_DIM(ordered_events); index++) {
+		const enum rte_bpf_validate_debug_event event =
+			ordered_events[index];
+		if ((events & RTE_BIT64(event)) == 0)
+			continue;
 
-	if (events == 0 || events == RTE_BIT64(
-			RTE_BPF_VALIDATE_DEBUG_EVENT_BRANCH_ENTER))
-		/* Stepping into a real instruction to execute. */
-		rc = rc < 0 ? rc : debug_points_call_back(debug,
-			&debug->breakpoint_lists[pc]);
+		if (event == RTE_BPF_VALIDATE_DEBUG_EVENT_STEP)
+			rc = rc < 0 ? rc : debug_trigger_breakpoints(debug, pc);
 
-	rc = rc < 0 ? rc : debug_send_event(debug,
-		RTE_BPF_VALIDATE_DEBUG_EVENT_STEP);
+		rc = rc < 0 ? rc : debug_send_event(debug, event);
+		events -= RTE_BIT64(event);
+	}
+
+	if (events != 0)
+		/* Received unsupported events. */
+		rc = rc < 0 ? rc : -EINVAL;
 
 	return rc;
 }
@@ -627,8 +651,6 @@ __rte_bpf_validate_debug_evaluate_finish(struct rte_bpf_validate_debug *debug,
 	int result)
 {
 	int rc = 0;
-	uint32_t pc;
-	debug_event_t event;
 
 	if (debug == NULL)
 		return 0;
@@ -641,20 +663,10 @@ __rte_bpf_validate_debug_evaluate_finish(struct rte_bpf_validate_debug *debug,
 	debug->evaluate_finished = true;
 	debug->evaluate_result = result;
 
-	if (result != -ECANCELED) {
-		if (result < 0) {
-			/* Last known pc is the place we failed. */
-			pc = debug->pc;
-			event = RTE_BPF_VALIDATE_DEBUG_EVENT_VALIDATION_FAILURE;
-		} else {
-			/* Show program end, not particular instruction. */
-			pc = debug->bpf_prm->raw.nb_ins;
-			event = RTE_BPF_VALIDATE_DEBUG_EVENT_VALIDATION_SUCCESS;
-		}
-
-		rc = __rte_bpf_validate_debug_evaluate_update(debug, pc,
-			RTE_BIT64(event));
-	}
+	if (result != -ECANCELED)
+		rc = debug_send_event(debug, result < 0 ?
+			RTE_BPF_VALIDATE_DEBUG_EVENT_VALIDATION_FAILURE :
+			RTE_BPF_VALIDATE_DEBUG_EVENT_VALIDATION_SUCCESS);
 
 	debug_evaluate_close(debug);
 

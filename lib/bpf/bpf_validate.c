@@ -2889,6 +2889,23 @@ prune_eval_state(struct bpf_verifier *bvf, const struct inst_node *node,
 	return rc;
 }
 
+static bool
+is_branch_start(const struct inst_node *node)
+{
+	return node->prev_node != NULL && node->prev_node->nb_edge > 1;
+}
+
+static uint64_t
+step_events(const struct inst_node *node)
+{
+	uint64_t events = RTE_BIT64(RTE_BPF_VALIDATE_DEBUG_EVENT_STEP);
+
+	if (is_branch_start(node))
+		events |= RTE_BIT64(RTE_BPF_VALIDATE_DEBUG_EVENT_BRANCH_ENTER);
+
+	return events;
+}
+
 /* Do second pass through CFG and try to evaluate instructions
  * via each possible path. The verifier will try all paths, tracking types of
  * registers used as input to instructions, and updating resulting type via
@@ -2915,7 +2932,6 @@ evaluate(struct bpf_verifier *bvf)
 	const char *err;
 	const struct rte_ebpf_insn *ins;
 	struct inst_node *next, *node;
-	int prev_nb_edge;  /* branching number of the previous instruction */
 	int rc, debug_rc;
 	struct rte_bpf_validate_debug *const debug = bvf->prm->debug;
 
@@ -2951,7 +2967,6 @@ evaluate(struct bpf_verifier *bvf)
 	ins = bvf->prm->raw.ins;
 	node = bvf->in;
 	next = node;
-	prev_nb_edge = 1;
 
 	memset(&stats, 0, sizeof(stats));
 
@@ -2987,8 +3002,7 @@ evaluate(struct bpf_verifier *bvf)
 			}
 
 			rc = __rte_bpf_validate_debug_evaluate_update(debug, idx,
-				prev_nb_edge > 1 ?
-					RTE_BIT64(RTE_BPF_VALIDATE_DEBUG_EVENT_BRANCH_ENTER) : 0);
+				step_events(node));
 			if (rc < 0)
 				break;
 
@@ -3044,7 +3058,6 @@ evaluate(struct bpf_verifier *bvf)
 				stats.nb_prune++;
 			} else {
 				next->prev_node = node;
-				prev_nb_edge = node->nb_edge;
 				node = next;
 			}
 		} else {
@@ -3054,9 +3067,9 @@ evaluate(struct bpf_verifier *bvf)
 			 * and proceed with parent.
 			 */
 
-			if (prev_nb_edge != 0) {
+			if (is_branch_start(node)) {
 				rc = __rte_bpf_validate_debug_evaluate_update(
-					debug, get_node_idx(bvf, node) + 1,
+					debug, get_node_idx(bvf, node->prev_node),
 					RTE_BIT64(RTE_BPF_VALIDATE_DEBUG_EVENT_BRANCH_RETURN));
 				if (rc < 0)
 					break;
@@ -3064,7 +3077,6 @@ evaluate(struct bpf_verifier *bvf)
 
 			node->cur_edge = 0;
 			save_safe_eval_state(bvf, node);
-			prev_nb_edge = 0;
 			node = node->prev_node;
 
 			/* first node will not have prev, signalling finish */

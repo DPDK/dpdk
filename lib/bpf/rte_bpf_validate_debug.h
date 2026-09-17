@@ -31,25 +31,31 @@ extern "C" {
  * Supported validate events.
  *
  * Valid events begin from 0 and end before `RTE_BPF_VALIDATE_DEBUG_EVENT_END`.
+ *
+ * At any given evaluation step, callbacks are fired in the following order:
+ * - Validation start event;
+ * - Branching and invalid-state events (can be interleaved);
+ * - Instruction breakpoints (before evaluating instruction);
+ * - Step (before evaluating instruction) or validation result (if done) event;
  */
 enum rte_bpf_validate_debug_event {
-	/* Just before every instruction, at branch or validation end. */
+	/* Just before every evaluated instruction. */
 	RTE_BPF_VALIDATE_DEBUG_EVENT_STEP,
 	/* Validator has failed its internal self-checks. */
 	RTE_BPF_VALIDATE_DEBUG_EVENT_INVALID_STATE,
-	/* Start of validation. */
+	/* Start of validation (pc points to first instruction). */
 	RTE_BPF_VALIDATE_DEBUG_EVENT_VALIDATION_START,
-	/* Successful finish of validation. */
+	/* Successful finish (pc undefined). */
 	RTE_BPF_VALIDATE_DEBUG_EVENT_VALIDATION_SUCCESS,
-	/* Finish of validation with error. */
+	/* Finish of validation with error (pc points at error). */
 	RTE_BPF_VALIDATE_DEBUG_EVENT_VALIDATION_FAILURE,
-	/* Beginning of a branch just after the jump. */
+	/* Beginning of a branch evaluation (pc points to branch start). */
 	RTE_BPF_VALIDATE_DEBUG_EVENT_BRANCH_ENTER,
-	/* Pruning branch as verified earlier. */
+	/* Pruning branch as verified earlier (pc points to branch start). */
 	RTE_BPF_VALIDATE_DEBUG_EVENT_BRANCH_PRUNE,
-	/* End of branch verification, after the last verified instruction. */
+	/* End of branch verification (pc points to jump instruction). */
 	RTE_BPF_VALIDATE_DEBUG_EVENT_BRANCH_RETURN,
-	/* Pruning branch as dynamically unreachable. */
+	/* Pruning branch as dynamically unreachable (pc points to branch start). */
 	RTE_BPF_VALIDATE_DEBUG_EVENT_BRANCH_UNREACHABLE,
 	/* Number of valid event values. */
 	RTE_BPF_VALIDATE_DEBUG_EVENT_END,
@@ -208,7 +214,7 @@ rte_bpf_validate_debug_get_last_point(const struct rte_bpf_validate_debug *debug
  * @param debug
  *   Debug instance.
  * @return
- *   Current program counter being validated, or one after last.
+ *   Current program counter being validated.
  *   UINT32_MAX if no program is being validated.
  */
 __rte_experimental
