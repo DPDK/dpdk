@@ -1258,6 +1258,7 @@ roc_nix_cn20k_cq_init(struct roc_nix *roc_nix, struct roc_nix_cq *cq)
 			cq_ctx->lbpid_low = cpt_lbpid & 0x7;
 			cq_ctx->lbpid_med = (cpt_lbpid >> 3) & 0x7;
 			cq_ctx->lbpid_high = (cpt_lbpid >> 6) & 0x7;
+			cq_ctx->lbpid_ext = (cpt_lbpid >> 9) & 0x3;
 			cq_ctx->lbp_frac = NIX_CQ_LBP_THRESH_FRAC;
 		}
 		drop_thresh = NIX_CQ_SEC_BP_THRESH_LEVEL;
