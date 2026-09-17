@@ -1251,7 +1251,7 @@ roc_nix_cn20k_cq_init(struct roc_nix *roc_nix, struct roc_nix_cq *cq)
 	cq_ctx->cq_err_int_ena |= BIT(NIX_CQERRINT_DOOR_ERR);
 	if (roc_feature_nix_has_late_bp() && roc_nix_inl_inb_is_enabled(roc_nix)) {
 		cq_ctx->cq_err_int_ena |= BIT(NIX_CQERRINT_CPT_DROP);
-		cq_ctx->cpt_drop_err_en = 1;
+		cq_ctx->cpt_drop_err_en = 0;
 		/* Enable Late BP only when non zero CPT BPID */
 		if (cpt_lbpid) {
 			cq_ctx->lbp_ena = 1;
