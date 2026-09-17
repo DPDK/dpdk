@@ -582,8 +582,8 @@ __rte_bpf_validate_debug_evaluate_start(struct rte_bpf_validate_debug *debug,
 }
 
 int
-__rte_bpf_validate_debug_evaluate_step(struct rte_bpf_validate_debug *debug,
-	uint32_t pc, debug_event_t event)
+__rte_bpf_validate_debug_evaluate_update(struct rte_bpf_validate_debug *debug,
+	uint32_t pc, uint64_t events)
 {
 	int rc;
 
@@ -595,8 +595,7 @@ __rte_bpf_validate_debug_evaluate_step(struct rte_bpf_validate_debug *debug,
 		return -ECHILD;
 	}
 
-	if (pc > debug->bpf_prm->raw.nb_ins || event < 0 ||
-			event >= RTE_BPF_VALIDATE_DEBUG_EVENT_END)
+	if (pc > debug->bpf_prm->raw.nb_ins)
 		return -EINVAL;
 
 	debug->pc = pc;
@@ -606,11 +605,13 @@ __rte_bpf_validate_debug_evaluate_step(struct rte_bpf_validate_debug *debug,
 		rc = debug_send_event(debug,
 			RTE_BPF_VALIDATE_DEBUG_EVENT_INVALID_STATE);
 
-	if (event != RTE_BPF_VALIDATE_DEBUG_EVENT_STEP)
-		rc = rc < 0 ? rc : debug_send_event(debug, event);
+	for (enum rte_bpf_validate_debug_event event = 0;
+			event != RTE_BPF_VALIDATE_DEBUG_EVENT_END; ++event)
+		if (events & RTE_BIT64(event))
+			rc = rc < 0 ? rc : debug_send_event(debug, event);
 
-	if (event == RTE_BPF_VALIDATE_DEBUG_EVENT_STEP ||
-			event == RTE_BPF_VALIDATE_DEBUG_EVENT_BRANCH_ENTER)
+	if (events == 0 || events == RTE_BIT64(
+			RTE_BPF_VALIDATE_DEBUG_EVENT_BRANCH_ENTER))
 		/* Stepping into a real instruction to execute. */
 		rc = rc < 0 ? rc : debug_points_call_back(debug,
 			&debug->breakpoint_lists[pc]);
@@ -651,7 +652,8 @@ __rte_bpf_validate_debug_evaluate_finish(struct rte_bpf_validate_debug *debug,
 			event = RTE_BPF_VALIDATE_DEBUG_EVENT_VALIDATION_SUCCESS;
 		}
 
-		rc = __rte_bpf_validate_debug_evaluate_step(debug, pc, event);
+		rc = __rte_bpf_validate_debug_evaluate_update(debug, pc,
+			RTE_BIT64(event));
 	}
 
 	debug_evaluate_close(debug);

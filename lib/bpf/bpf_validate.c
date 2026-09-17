@@ -2986,10 +2986,9 @@ evaluate(struct bpf_verifier *bvf)
 				break;
 			}
 
-			rc = __rte_bpf_validate_debug_evaluate_step(debug, idx,
+			rc = __rte_bpf_validate_debug_evaluate_update(debug, idx,
 				prev_nb_edge > 1 ?
-					RTE_BPF_VALIDATE_DEBUG_EVENT_BRANCH_ENTER :
-					RTE_BPF_VALIDATE_DEBUG_EVENT_STEP);
+					RTE_BIT64(RTE_BPF_VALIDATE_DEBUG_EVENT_BRANCH_ENTER) : 0);
 			if (rc < 0)
 				break;
 
@@ -3021,9 +3020,9 @@ evaluate(struct bpf_verifier *bvf)
 			}
 
 			if (bvf->evst->unreachable) {
-				rc = __rte_bpf_validate_debug_evaluate_step(
+				rc = __rte_bpf_validate_debug_evaluate_update(
 					debug, get_node_idx(bvf, next),
-					RTE_BPF_VALIDATE_DEBUG_EVENT_BRANCH_UNREACHABLE);
+					RTE_BIT64(RTE_BPF_VALIDATE_DEBUG_EVENT_BRANCH_UNREACHABLE));
 				if (rc < 0)
 					break;
 
@@ -3035,9 +3034,9 @@ evaluate(struct bpf_verifier *bvf)
 			 */
 			} else if (node->nb_edge > 1 &&
 					prune_eval_state(bvf, node, next) == 0) {
-				rc = __rte_bpf_validate_debug_evaluate_step(
+				rc = __rte_bpf_validate_debug_evaluate_update(
 					debug, get_node_idx(bvf, next),
-					RTE_BPF_VALIDATE_DEBUG_EVENT_BRANCH_PRUNE);
+					RTE_BIT64(RTE_BPF_VALIDATE_DEBUG_EVENT_BRANCH_PRUNE));
 				if (rc < 0)
 					break;
 
@@ -3056,9 +3055,9 @@ evaluate(struct bpf_verifier *bvf)
 			 */
 
 			if (prev_nb_edge != 0) {
-				rc = __rte_bpf_validate_debug_evaluate_step(
+				rc = __rte_bpf_validate_debug_evaluate_update(
 					debug, get_node_idx(bvf, node) + 1,
-					RTE_BPF_VALIDATE_DEBUG_EVENT_BRANCH_RETURN);
+					RTE_BIT64(RTE_BPF_VALIDATE_DEBUG_EVENT_BRANCH_RETURN));
 				if (rc < 0)
 					break;
 			}
