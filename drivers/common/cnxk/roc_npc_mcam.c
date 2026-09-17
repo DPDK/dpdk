@@ -761,7 +761,7 @@ npc_mcam_set_channel(struct roc_npc_flow *flow, struct npc_cn20k_mcam_write_entr
 	chan = channel;
 	mask = chan_mask;
 
-	if (roc_model_runtime_is_cn10k()) {
+	if (roc_model_runtime_is_cn10k() || roc_model_is_cn20k()) {
 		if (is_second_pass) {
 			chan = (channel | NIX_CHAN_CPT_CH_START);
 			mask = (chan_mask | NIX_CHAN_CPT_CH_START);
