@@ -775,7 +775,9 @@ fill_vec_buf_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	*desc_chain_head = idx;
 
 	if (vq->desc[idx].flags & VRING_DESC_F_INDIRECT) {
-		dlen = vq->desc[idx].len;
+		uint64_t desc_len = vq->desc[idx].len;
+
+		dlen = desc_len;
 		nr_descs = dlen / sizeof(struct vring_desc);
 		if (unlikely(nr_descs > vq->size))
 			return -1;
@@ -787,13 +789,13 @@ fill_vec_buf_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		if (unlikely(!descs))
 			return -1;
 
-		if (unlikely(dlen < vq->desc[idx].len)) {
+		if (unlikely(dlen < desc_len)) {
 			/*
 			 * The indirect desc table is not contiguous
 			 * in process VA space, we have to copy it.
 			 */
 			idesc = vhost_alloc_copy_ind_table(dev, vq,
-					vq->desc[idx].addr, vq->desc[idx].len);
+					vq->desc[idx].addr, desc_len);
 			if (unlikely(!idesc))
 				return -1;
 
@@ -898,29 +900,29 @@ fill_vec_buf_packed_indirect(struct virtio_net *dev,
 	uint16_t i;
 	uint32_t nr_descs;
 	uint16_t vec_id = *vec_idx;
-	uint64_t dlen;
+	uint64_t desc_len = desc->len;
+	uint64_t dlen = desc_len;
 	struct vring_packed_desc *descs, *idescs = NULL;
 
-	dlen = desc->len;
 	descs = (struct vring_packed_desc *)(uintptr_t)
 		vhost_iova_to_vva(dev, vq, desc->addr, &dlen, VHOST_ACCESS_RO);
 	if (unlikely(!descs))
 		return -1;
 
-	if (unlikely(dlen < desc->len)) {
+	if (unlikely(dlen < desc_len)) {
 		/*
 		 * The indirect desc table is not contiguous
 		 * in process VA space, we have to copy it.
 		 */
 		idescs = vhost_alloc_copy_ind_table(dev,
-				vq, desc->addr, desc->len);
+				vq, desc->addr, desc_len);
 		if (unlikely(!idescs))
 			return -1;
 
 		descs = idescs;
 	}
 
-	nr_descs =  desc->len / sizeof(struct vring_packed_desc);
+	nr_descs = desc_len / sizeof(struct vring_packed_desc);
 	if (unlikely(nr_descs >= vq->size)) {
 		free_ind_table(idescs);
 		return -1;
@@ -936,8 +938,10 @@ fill_vec_buf_packed_indirect(struct virtio_net *dev,
 		*len += dlen;
 		if (unlikely(map_one_desc(dev, vq, buf_vec, &vec_id,
 						descs[i].addr, dlen,
-						perm)))
+						perm))) {
+			free_ind_table(idescs);
 			return -1;
+		}
 	}
 	*vec_idx = vec_id;
 
