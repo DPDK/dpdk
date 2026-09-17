@@ -103,7 +103,8 @@ nix_inl_cpt_cq_cb(struct roc_cpt_lf *lf)
 	}
 
 	for (i = 0; i < count; i++) {
-		cq_s = (struct cpt_cq_s *)(uintptr_t)(((cq_base.s.addr << 7)) + (head << 5));
+		cq_s = (struct cpt_cq_s *)(uintptr_t)((((uint64_t)cq_base.s.addr << 7)) +
+						      (head << 5));
 
 		if (cq_s->w0.s.uc_compcode && cq_s->w0.s.compcode) {
 			switch (cq_s->w2.s.fmt & fmt_msk) {
