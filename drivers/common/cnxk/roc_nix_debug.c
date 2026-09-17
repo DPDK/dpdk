@@ -1087,7 +1087,7 @@ roc_nix_cqe_dump(FILE *file, const struct nix_cqe_hdr_s *cq)
 	nix_dump(file, "W5: vtag0_ptr \t%d\t\tvtag1_ptr \t%d\t\tflow_key_alg \t%d",
 		 rx->vtag0_ptr, rx->vtag1_ptr, rx->flow_key_alg);
 
-	for (i = 0; i < (rx->desc_sizem1 + 1) << 1; i++)
+	for (i = 0; i < ((rx->desc_sizem1 + 1) << 1) + 2; i++)
 		nix_dump(file, "sg[%u] = %p", i, (void *)sgs[i]);
 }
 
