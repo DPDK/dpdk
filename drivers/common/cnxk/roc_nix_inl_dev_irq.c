@@ -48,41 +48,57 @@ again:
 static void
 nix_inl_cpt_cq_cb(struct roc_cpt_lf *lf)
 {
-	struct roc_nix *roc_nix = (struct roc_nix *)lf->dev->roc_nix;
-	struct nix *nix = roc_nix_to_nix_priv(roc_nix);
 	struct idev_cfg *idev = idev_get_cfg();
-	uint32_t port_id = roc_nix->port_id;
 	struct nix_inl_dev *inl_dev = NULL;
 	enum nix_inl_event_type cq_type;
 	union cpt_lf_cq_base cq_base;
 	union cpt_lf_cq_ptr cq_ptr;
+	struct roc_nix *roc_nix;
 	struct cpt_cq_s *cq_s;
 	uint8_t fmt_msk = 0x3;
 	uint32_t count, head;
+	uint32_t port_id = UINT32_MAX;
 	uint32_t nq_ptr;
+	struct nix *nix;
 	uint64_t i;
 	void *sa;
 
-	if (idev)
-		inl_dev = idev->nix_inl_dev;
-
-	if (!inl_dev) {
-		plt_nix_dbg("Inline Device could not be detected");
-		return;
-	}
-
+	/* Read CQ state early so we can always acknowledge the interrupt */
 	head = lf->cq_head;
 	cq_base.u = plt_read64(lf->rbase + CPT_LF_CQ_BASE);
 	cq_ptr.u = plt_read64(lf->rbase + CPT_LF_CQ_PTR);
 	count = cq_ptr.s.count;
 	nq_ptr = cq_ptr.s.nq_ptr;
 
-	if (lf->dev == &inl_dev->dev)
+	if (idev)
+		inl_dev = idev->nix_inl_dev;
+
+	if (!inl_dev) {
+		plt_nix_dbg("Inline Device could not be detected");
+		goto cq_ack;
+	}
+
+	if (lf->dev == &inl_dev->dev) {
+		/* Inbound: CPT LF belongs to inline device.
+		 * roc_nix is NULL here as inline dev is not an ethdev.
+		 * port_id will be derived from SA in the PMD work callback.
+		 */
 		cq_type = NIX_INL_INB_CPT_CQ;
-	else if (lf->dev == &nix->dev)
+	} else {
+		/* Outbound: CPT LF belongs to an ethdev */
+		roc_nix = (struct roc_nix *)lf->dev->roc_nix;
+		if (!roc_nix) {
+			plt_nix_dbg("CPT LF dev has no roc_nix");
+			goto cq_ack;
+		}
+		nix = roc_nix_to_nix_priv(roc_nix);
+		if (lf->dev != &nix->dev) {
+			plt_nix_dbg("CPT LF dev mismatch with nix dev");
+			goto cq_ack;
+		}
 		cq_type = NIX_INL_OUTB_CPT_CQ;
-	else
-		return;
+		port_id = roc_nix->port_id;
+	}
 
 	for (i = 0; i < count; i++) {
 		cq_s = (struct cpt_cq_s *)(uintptr_t)(((cq_base.s.addr << 7)) + (head << 5));
@@ -106,11 +122,13 @@ done:
 		head = (head + 1) % lf->cq_size;
 	}
 
+cq_ack:
+	/* Drain unprocessed entries and acknowledge the interrupt */
+	head = (lf->cq_head + count) % lf->cq_size;
 	lf->cq_head = head;
 	if (unlikely(nq_ptr != head))
 		plt_err("CPT LF[%d] CQ head %d != NQ ptr %d", lf->lf_id, head, nq_ptr);
 
-	/* Acknowledge the number of completed requests */
 	plt_write64(count, lf->rbase + CPT_LF_DONE_ACK);
 }
 
