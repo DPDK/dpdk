@@ -51,13 +51,15 @@ nix_inl_cpt_cq_cb(struct roc_cpt_lf *lf)
 	struct idev_cfg *idev = idev_get_cfg();
 	struct nix_inl_dev *inl_dev = NULL;
 	enum nix_inl_event_type cq_type;
+	uint32_t port_id = UINT32_MAX;
 	union cpt_lf_cq_base cq_base;
 	union cpt_lf_cq_ptr cq_ptr;
+	uint64_t gw[2] = {~0ULL, 0};
 	struct roc_nix *roc_nix;
 	struct cpt_cq_s *cq_s;
 	uint8_t fmt_msk = 0x3;
 	uint32_t count, head;
-	uint32_t port_id = UINT32_MAX;
+	void *wqe = NULL;
 	uint32_t nq_ptr;
 	struct nix *nix;
 	uint64_t i;
@@ -107,16 +109,26 @@ nix_inl_cpt_cq_cb(struct roc_cpt_lf *lf)
 			switch (cq_s->w2.s.fmt & fmt_msk) {
 			case WQE_PTR_CPTR:
 				sa = (void *)cq_s->w1.esn;
+				wqe = (void *)((uintptr_t)cq_s->w3.comp_ptr & ~0x7ULL);
 				break;
 			case CPTR_WQE_PTR:
 				sa = (void *)cq_s->w3.comp_ptr;
+				wqe = (void *)((uintptr_t)cq_s->w1.esn & ~0x7ULL);
+				break;
+			case WQE_PTR_ANTI_REPLAY:
+				sa = NULL;
+				wqe = (void *)((uintptr_t)cq_s->w3.comp_ptr & ~0x7ULL);
+				break;
+			case CPTR_ANTI_REPLAY:
+				sa = (void *)cq_s->w3.comp_ptr;
+				wqe = NULL;
 				break;
 			default:
 				plt_err("Invalid event Received ");
 				goto done;
 			}
-			uint64_t tmp = ~(uint32_t)0x0;
-			inl_dev->work_cb(&tmp, sa, cq_type, (void *)cq_s, port_id);
+			gw[1] = (uint64_t)(uintptr_t)wqe;
+			inl_dev->work_cb(gw, sa, cq_type, (void *)cq_s, port_id);
 		}
 done:
 		head = (head + 1) % lf->cq_size;
