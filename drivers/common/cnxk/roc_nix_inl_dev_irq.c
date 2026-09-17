@@ -308,6 +308,7 @@ nix_inl_nix_register_irqs(struct nix_inl_dev *inl_dev)
 	struct nix_inl_qint *qints_mem;
 	int rc, q, ret = 0;
 	uint16_t msixoff;
+	uint64_t cnt;
 	int qints;
 
 	msixoff = inl_dev->nix_msixoff;
@@ -346,8 +347,10 @@ nix_inl_nix_register_irqs(struct nix_inl_dev *inl_dev)
 
 	for (q = 0; q < qints; q++) {
 		/* Clear QINT CNT, interrupt */
-		plt_write64(0, nix_base + NIX_LF_QINTX_CNT(q));
 		plt_write64(~0ull, nix_base + NIX_LF_QINTX_ENA_W1C(q));
+		cnt = plt_read64(nix_base + NIX_LF_QINTX_CNT(q));
+		plt_write64((uint64_t)(-(int64_t)cnt), nix_base + NIX_LF_QINTX_CNT(q));
+		plt_write64(~0ull, nix_base + NIX_LF_QINTX_INT(q));
 
 		/* Register queue irq vector */
 		ret = dev_irq_register(handle, nix_inl_nix_q_irq, &qints_mem[q],
@@ -355,9 +358,7 @@ nix_inl_nix_register_irqs(struct nix_inl_dev *inl_dev)
 		if (ret)
 			break;
 
-		plt_write64(0, nix_base + NIX_LF_QINTX_CNT(q));
-		plt_write64(0, nix_base + NIX_LF_QINTX_INT(q));
-		/* Enable QINT interrupt */
+		/* Enable QINT interrupt (count/INT already drained above) */
 		plt_write64(~0ull, nix_base + NIX_LF_QINTX_ENA_W1S(q));
 
 		qints_mem[q].inl_dev = inl_dev;
@@ -375,6 +376,7 @@ nix_inl_nix_unregister_irqs(struct nix_inl_dev *inl_dev)
 	struct nix_inl_qint *qints_mem = inl_dev->qints_mem;
 	uintptr_t nix_base = inl_dev->nix_base;
 	uint16_t msixoff;
+	uint64_t cnt;
 	int q;
 
 	msixoff = inl_dev->nix_msixoff;
@@ -389,17 +391,18 @@ nix_inl_nix_unregister_irqs(struct nix_inl_dev *inl_dev)
 			   msixoff + NIX_LF_INT_VEC_POISON);
 
 	for (q = 0; q < inl_dev->configured_qints; q++) {
-		/* Clear QINT CNT */
-		plt_write64(0, nix_base + NIX_LF_QINTX_CNT(q));
-		plt_write64(0, nix_base + NIX_LF_QINTX_INT(q));
-
-		/* Disable QINT interrupt */
+		/* Clear QINT CNT, interrupt */
 		plt_write64(~0ull, nix_base + NIX_LF_QINTX_ENA_W1C(q));
+
+		cnt = plt_read64(nix_base + NIX_LF_QINTX_CNT(q));
+		plt_write64((uint64_t)(-(int64_t)cnt), nix_base + NIX_LF_QINTX_CNT(q));
+		plt_write64(~0ull, nix_base + NIX_LF_QINTX_INT(q));
 
 		/* Unregister queue irq vector */
 		dev_irq_unregister(handle, nix_inl_nix_q_irq, &qints_mem[q],
 				   msixoff + NIX_LF_INT_VEC_QINT_START + q);
 	}
+	inl_dev->configured_qints = 0;
 
 	plt_free(inl_dev->qints_mem);
 	inl_dev->qints_mem = NULL;
