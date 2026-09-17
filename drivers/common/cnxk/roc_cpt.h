@@ -260,4 +260,6 @@ int __roc_api roc_cpt_int_misc_cb_unregister(roc_cpt_int_misc_cb_t cb, void *arg
 
 bool roc_cpt_has_ie_engines(void);
 
+void __roc_api roc_cpt_cq_dump(FILE *file, const struct cpt_cq_s *cq);
+
 #endif /* _ROC_CPT_H_ */

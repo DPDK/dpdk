@@ -544,24 +544,18 @@ npc_parse_spi_to_sa_action(struct roc_npc *roc_npc, const struct roc_npc_action 
 	struct nix_spi_to_sa_add_rsp *rsp;
 	struct nix_inl_dev *inl_dev;
 	struct idev_cfg *idev;
+	uint64_t npc_action2 = 0;
 	union {
 		uint64_t reg;
 		union nix_rx_vtag_action_u act;
-	} vtag_act;
+	} vtag_act = {0};
 	struct mbox *mbox;
+	uint8_t alg = 0;
 	int rc;
 
 	if (roc_npc->roc_nix->custom_sa_action == 0 || roc_model_is_cn9k() == 1 ||
 	    act->conf == NULL || flow->is_validate)
 		return 0;
-
-	*has_spi_to_sa_action = true;
-	sec_action = act->conf;
-
-	vtag_act.reg = 0;
-	vtag_act.act.sa_xor = sec_action->sa_xor;
-	vtag_act.act.sa_hi = sec_action->sa_hi;
-	vtag_act.act.sa_lo = sec_action->sa_lo;
 
 	idev = idev_get_cfg();
 	if (!idev)
@@ -569,24 +563,18 @@ npc_parse_spi_to_sa_action(struct roc_npc *roc_npc, const struct roc_npc_action 
 
 	inl_dev = idev->nix_inl_dev;
 
+	*has_spi_to_sa_action = true;
+	sec_action = act->conf;
+
 	switch (sec_action->alg) {
 	case ROC_NPC_SEC_ACTION_ALG0:
-		break;
 	case ROC_NPC_SEC_ACTION_ALG1:
-		vtag_act.act.vtag1_valid = false;
-		vtag_act.act.vtag1_lid = ROC_NPC_SEC_ACTION_ALG1;
-		break;
 	case ROC_NPC_SEC_ACTION_ALG2:
-		vtag_act.act.vtag1_valid = false;
-		vtag_act.act.vtag1_lid = ROC_NPC_SEC_ACTION_ALG2;
-		break;
 	case ROC_NPC_SEC_ACTION_ALG3:
-		vtag_act.act.vtag1_valid = false;
-		vtag_act.act.vtag1_lid = ROC_NPC_SEC_ACTION_ALG3;
+		alg = sec_action->alg;
 		break;
 	case ROC_NPC_SEC_ACTION_ALG4:
-		vtag_act.act.vtag1_valid = false;
-		vtag_act.act.vtag1_lid = 0;
+		alg = 0;
 		mbox = inl_dev->dev.mbox;
 		req = mbox_alloc_msg_nix_spi_to_sa_add(mbox);
 		if (req == NULL)
@@ -595,7 +583,7 @@ npc_parse_spi_to_sa_action(struct roc_npc *roc_npc, const struct roc_npc_action 
 		req->spi_index = plt_be_to_cpu_32(flow->spi_to_sa_info.spi);
 		req->match_id = flow->match_id;
 		req->valid = true;
-		if (roc_model_is_cn20k()) {
+		if (roc_feature_nix_has_inl_profile()) {
 			if (sec_action->use_custom_profile)
 				req->inline_profile_id = sec_action->profile_id;
 			else
@@ -614,7 +602,21 @@ npc_parse_spi_to_sa_action(struct roc_npc *roc_npc, const struct roc_npc_action 
 		return -1;
 	}
 
+	if (!roc_feature_nix_has_inl_profile()) {
+		vtag_act.act.sa_xor = sec_action->sa_xor;
+		vtag_act.act.sa_hi = sec_action->sa_hi;
+		vtag_act.act.sa_lo = sec_action->sa_lo;
+		vtag_act.act.vtag1_valid = false;
+		vtag_act.act.vtag1_lid = alg;
+
+	} else {
+		npc_action2 = ((uint64_t)sec_action->sa_xor << 7);
+		npc_action2 |= ((uint64_t)sec_action->sa_hi << 48);
+		npc_action2 |= ((uint64_t)sec_action->sa_lo << 32);
+		npc_action2 |= ((uint64_t)alg << 17);
+	}
 	flow->vtag_action = vtag_act.reg;
+	flow->npc_action2 |= npc_action2;
 
 	return 0;
 }
@@ -679,6 +681,7 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 	/* Initialize actions */
 	flow->ctr_id = NPC_COUNTER_NONE;
 	flow->mtr_id = ROC_NIX_MTR_ID_INVALID;
+	flow->npc_action2 = 0;
 	pf_func = npc->pf_func;
 	if (flow->has_rep)
 		pf_func = flow->rep_pf_func;
@@ -988,19 +991,20 @@ npc_parse_actions(struct roc_npc *roc_npc, const struct roc_npc_attr *attr,
 	} else if (req_act & ROC_NPC_ACTION_TYPE_RSS) {
 		flow->npc_action = NIX_RX_ACTIONOP_UCAST;
 	} else if (req_act & ROC_NPC_ACTION_TYPE_SEC) {
-		if (roc_model_is_cn20k()) {
+		if (roc_feature_nix_has_inl_profile()) {
 			const struct roc_npc_sec_action *sa_action = NULL;
 			uint16_t profile_id;
 
-			flow->npc_action = NIX_RX_ACTIONOP_UCAST_CPT;
-			flow->npc_action |= (uint64_t)rq << 20;
 			profile_id = roc_nix_inl_inb_ipsec_profile_id_get(roc_nix, true);
 			if (sec_action && sec_action->conf) {
 				sa_action = (const struct roc_npc_sec_action *)sec_action->conf;
 				if (sa_action->use_custom_profile)
 					profile_id = sa_action->profile_id;
 			}
-			flow->npc_action2 = (is_non_inp ? (1ULL << 15) : 0) | (profile_id << 8);
+			flow->npc_action2 |= (is_non_inp ? (1ULL << 15) : 0) | (profile_id << 8);
+
+			flow->npc_action = NIX_RX_ACTIONOP_UCAST_CPT;
+			flow->npc_action |= (uint64_t)rq << 20;
 		} else {
 			flow->npc_action = NIX_RX_ACTIONOP_UCAST_IPSEC;
 			flow->npc_action |= (uint64_t)rq << 20;

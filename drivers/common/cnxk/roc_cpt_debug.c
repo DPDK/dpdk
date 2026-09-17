@@ -191,6 +191,28 @@ roc_cpt_parse_hdr_dump(FILE *file, const union cpt_parse_hdr_u *cpth)
 		cpt_cnxk_parse_hdr_dump(file, &cpth->s);
 }
 
+void
+roc_cpt_cq_dump(FILE *file, const struct cpt_cq_s *cq)
+{
+	cpt_dump(file, "CPT_CQ \t%p:", cq);
+
+	/* W0 */
+	cpt_dump(file, "W0: compcode \t0x%x\t\tdoneint \t%u\t", cq->w0.s.compcode,
+		 cq->w0.s.doneint);
+	cpt_dump(file, "W0: uc_compcode \t0x%x\t\tuc_info \t0%" PRIu64, cq->w0.s.uc_compcode,
+		 (uint64_t)cq->w0.s.uc_info);
+
+	/* W1 */
+	cpt_dump(file, "W1: esn \t%" PRIx64 "\t\n", cq->w1.esn);
+
+	/* W2 */
+	cpt_dump(file, "W2: fmt \t0x%x\t\tuc_info2 \t%" PRIu64, cq->w2.s.fmt,
+		 (uint64_t)cq->w2.s.uc_info2);
+
+	/* W3 */
+	cpt_dump(file, "W3: comp_ptr \t0x%" PRIx64 "\t\n", cq->w3.comp_ptr);
+}
+
 static int
 cpt_af_reg_read(struct roc_cpt *roc_cpt, uint64_t reg, uint64_t *val)
 {
