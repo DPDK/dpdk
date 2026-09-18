@@ -3399,6 +3399,7 @@ next:
 			flow->filter_type = RTE_ETH_FILTER_L2_TUNNEL;
 			return flow;
 		}
+		goto out;
 	}
 
 	memset(&rss_conf, 0, sizeof(struct txgbe_rte_flow_rss_conf));
