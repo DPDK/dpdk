@@ -3,6 +3,7 @@
  * Copyright(c) 2010-2017 Intel Corporation
  */
 
+#include <errno.h>
 #include <sys/queue.h>
 #include <bus_pci_driver.h>
 #include <rte_malloc.h>
@@ -3246,26 +3247,26 @@ txgbe_flow_create(struct rte_eth_dev *dev,
 #endif
 
 	if (!ret) {
-		ret = txgbe_add_del_ntuple_filter(dev, &ntuple_filter, TRUE);
-		if (!ret) {
-			ntuple_filter_ptr = rte_zmalloc("txgbe_ntuple_filter",
-				sizeof(struct txgbe_ntuple_filter_ele), 0);
-			if (!ntuple_filter_ptr) {
-				PMD_DRV_LOG(ERR, "failed to allocate memory");
-				goto out;
-			}
-			rte_memcpy(&ntuple_filter_ptr->filter_info,
-				&ntuple_filter,
-				sizeof(struct rte_eth_ntuple_filter));
-			TAILQ_INSERT_TAIL(&filter_ntuple_list,
-				ntuple_filter_ptr, entries);
-			flow->rule = ntuple_filter_ptr;
-			flow->filter_type = RTE_ETH_FILTER_NTUPLE;
-			return flow;
-		} else if (filter_info->ntuple_is_full) {
-			goto next;
+		ntuple_filter_ptr = rte_zmalloc("txgbe_ntuple_filter",
+			sizeof(struct txgbe_ntuple_filter_ele), 0);
+		if (!ntuple_filter_ptr) {
+			PMD_DRV_LOG(ERR, "failed to allocate memory");
+			ret = -ENOMEM;
+			goto out;
 		}
-		goto out;
+		ntuple_filter_ptr->filter_info = ntuple_filter;
+		ret = txgbe_add_del_ntuple_filter(dev, &ntuple_filter, TRUE);
+		if (ret) {
+			rte_free(ntuple_filter_ptr);
+			if (filter_info->ntuple_is_full)
+				goto next;
+			goto out;
+		}
+		TAILQ_INSERT_TAIL(&filter_ntuple_list,
+			ntuple_filter_ptr, entries);
+		flow->rule = ntuple_filter_ptr;
+		flow->filter_type = RTE_ETH_FILTER_NTUPLE;
+		return flow;
 	}
 
 next:
@@ -3273,51 +3274,49 @@ next:
 	ret = txgbe_parse_ethertype_filter(dev, attr, pattern,
 				actions, &ethertype_filter, error);
 	if (!ret) {
+		ethertype_filter_ptr = rte_zmalloc("txgbe_ethertype_filter",
+			sizeof(struct txgbe_ethertype_filter_ele), 0);
+		if (!ethertype_filter_ptr) {
+			PMD_DRV_LOG(ERR, "failed to allocate memory");
+			ret = -ENOMEM;
+			goto out;
+		}
+		ethertype_filter_ptr->filter_info = ethertype_filter;
 		ret = txgbe_add_del_ethertype_filter(dev,
 				&ethertype_filter, TRUE);
-		if (!ret) {
-			ethertype_filter_ptr =
-				rte_zmalloc("txgbe_ethertype_filter",
-				sizeof(struct txgbe_ethertype_filter_ele), 0);
-			if (!ethertype_filter_ptr) {
-				PMD_DRV_LOG(ERR, "failed to allocate memory");
-				goto out;
-			}
-			rte_memcpy(&ethertype_filter_ptr->filter_info,
-				&ethertype_filter,
-				sizeof(struct rte_eth_ethertype_filter));
-			TAILQ_INSERT_TAIL(&filter_ethertype_list,
-				ethertype_filter_ptr, entries);
-			flow->rule = ethertype_filter_ptr;
-			flow->filter_type = RTE_ETH_FILTER_ETHERTYPE;
-			return flow;
+		if (ret) {
+			rte_free(ethertype_filter_ptr);
+			goto out;
 		}
-		goto out;
+		TAILQ_INSERT_TAIL(&filter_ethertype_list,
+			ethertype_filter_ptr, entries);
+		flow->rule = ethertype_filter_ptr;
+		flow->filter_type = RTE_ETH_FILTER_ETHERTYPE;
+		return flow;
 	}
 
 	memset(&syn_filter, 0, sizeof(struct rte_eth_syn_filter));
 	ret = txgbe_parse_syn_filter(dev, attr, pattern,
 				actions, &syn_filter, error);
 	if (!ret) {
-		ret = txgbe_syn_filter_set(dev, &syn_filter, TRUE);
-		if (!ret) {
-			syn_filter_ptr = rte_zmalloc("txgbe_syn_filter",
-				sizeof(struct txgbe_eth_syn_filter_ele), 0);
-			if (!syn_filter_ptr) {
-				PMD_DRV_LOG(ERR, "failed to allocate memory");
-				goto out;
-			}
-			rte_memcpy(&syn_filter_ptr->filter_info,
-				&syn_filter,
-				sizeof(struct rte_eth_syn_filter));
-			TAILQ_INSERT_TAIL(&filter_syn_list,
-				syn_filter_ptr,
-				entries);
-			flow->rule = syn_filter_ptr;
-			flow->filter_type = RTE_ETH_FILTER_SYN;
-			return flow;
+		syn_filter_ptr = rte_zmalloc("txgbe_syn_filter",
+			sizeof(struct txgbe_eth_syn_filter_ele), 0);
+		if (!syn_filter_ptr) {
+			PMD_DRV_LOG(ERR, "failed to allocate memory");
+			ret = -ENOMEM;
+			goto out;
 		}
-		goto out;
+		syn_filter_ptr->filter_info = syn_filter;
+		ret = txgbe_syn_filter_set(dev, &syn_filter, TRUE);
+		if (ret) {
+			rte_free(syn_filter_ptr);
+			goto out;
+		}
+		TAILQ_INSERT_TAIL(&filter_syn_list,
+			syn_filter_ptr, entries);
+		flow->rule = syn_filter_ptr;
+		flow->filter_type = RTE_ETH_FILTER_SYN;
+		return flow;
 	}
 
 	memset(&fdir_rule, 0, sizeof(struct txgbe_fdir_rule));
@@ -3325,24 +3324,35 @@ next:
 				actions, &fdir_rule, error);
 	if (!ret) {
 		if (!txgbe_is_pf(TXGBE_DEV_HW(dev))) {
-			ret = txgbevf_fdir_filter_program(dev, &fdir_rule, FALSE);
-			if (ret < 0)
-				goto out;
-
 			fdir_rule_ptr = rte_zmalloc("txgbe_fdir_filter",
-					    sizeof(struct txgbe_fdir_rule_ele), 0);
+					sizeof(struct txgbe_fdir_rule_ele), 0);
 			if (!fdir_rule_ptr) {
 				PMD_DRV_LOG(ERR, "failed to allocate memory");
+				ret = -ENOMEM;
 				goto out;
 			}
-			rte_memcpy(&fdir_rule_ptr->filter_info,
-				   &fdir_rule,
-				   sizeof(struct txgbe_fdir_rule));
+
+			ret = txgbevf_fdir_filter_program(dev, &fdir_rule,
+							  FALSE);
+			if (ret < 0) {
+				rte_free(fdir_rule_ptr);
+				goto out;
+			}
+
+			fdir_rule_ptr->filter_info = fdir_rule;
 			TAILQ_INSERT_TAIL(&filter_fdir_list,
 					  fdir_rule_ptr, entries);
 			flow->rule = fdir_rule_ptr;
 			flow->filter_type = RTE_ETH_FILTER_FDIR;
 			return flow;
+		}
+
+		fdir_rule_ptr = rte_zmalloc("txgbe_fdir_filter",
+				sizeof(struct txgbe_fdir_rule_ele), 0);
+		if (!fdir_rule_ptr) {
+			PMD_DRV_LOG(ERR, "failed to allocate memory");
+			ret = -ENOMEM;
+			goto out;
 		}
 
 		/* A mask cannot be deleted. */
@@ -3366,8 +3376,10 @@ next:
 				fdir_info->mask.pkt_type_mask =
 					fdir_rule.mask.pkt_type_mask;
 				ret = txgbe_fdir_set_input_mask(dev);
-				if (ret)
+				if (ret) {
+					rte_free(fdir_rule_ptr);
 					goto out;
+				}
 
 				fdir_info->mask_added = TRUE;
 				first_mask = TRUE;
@@ -3381,40 +3393,25 @@ next:
 					sizeof(struct txgbe_hw_fdir_mask));
 				if (ret) {
 					PMD_DRV_LOG(ERR, "only support one global mask");
+					rte_free(fdir_rule_ptr);
 					goto out;
 				}
 
 				if (fdir_info->flex_bytes_offset !=
 				    fdir_rule.flex_bytes_offset ||
 				    fdir_info->flex_relative !=
-				    fdir_rule.flex_relative)
+				    fdir_rule.flex_relative) {
+					rte_free(fdir_rule_ptr);
 					goto out;
+				}
 			}
 		}
 
 		if (fdir_rule.b_spec) {
 			ret = txgbe_fdir_filter_program(dev, &fdir_rule,
 					FALSE, FALSE);
-			if (!ret) {
-				fdir_rule_ptr = rte_zmalloc("txgbe_fdir_filter",
-					sizeof(struct txgbe_fdir_rule_ele), 0);
-				if (!fdir_rule_ptr) {
-					PMD_DRV_LOG(ERR,
-						"failed to allocate memory");
-					goto out;
-				}
-				rte_memcpy(&fdir_rule_ptr->filter_info,
-					&fdir_rule,
-					sizeof(struct txgbe_fdir_rule));
-				TAILQ_INSERT_TAIL(&filter_fdir_list,
-					fdir_rule_ptr, entries);
-				flow->rule = fdir_rule_ptr;
-				flow->filter_type = RTE_ETH_FILTER_FDIR;
-
-				return flow;
-			}
-
 			if (ret) {
+				rte_free(fdir_rule_ptr);
 				/**
 				 * clean the mask_added flag if fail to
 				 * program
@@ -3423,8 +3420,17 @@ next:
 					fdir_info->mask_added = FALSE;
 				goto out;
 			}
+
+			fdir_rule_ptr->filter_info = fdir_rule;
+			TAILQ_INSERT_TAIL(&filter_fdir_list,
+				fdir_rule_ptr, entries);
+			flow->rule = fdir_rule_ptr;
+			flow->filter_type = RTE_ETH_FILTER_FDIR;
+
+			return flow;
 		}
 
+		rte_free(fdir_rule_ptr);
 		goto out;
 	}
 
@@ -3432,46 +3438,49 @@ next:
 	ret = txgbe_parse_l2_tn_filter(dev, attr, pattern,
 					actions, &l2_tn_filter, error);
 	if (!ret) {
-		ret = txgbe_dev_l2_tunnel_filter_add(dev, &l2_tn_filter, FALSE);
-		if (!ret) {
-			l2_tn_filter_ptr = rte_zmalloc("txgbe_l2_tn_filter",
-				sizeof(struct txgbe_eth_l2_tunnel_conf_ele), 0);
-			if (!l2_tn_filter_ptr) {
-				PMD_DRV_LOG(ERR, "failed to allocate memory");
-				goto out;
-			}
-			rte_memcpy(&l2_tn_filter_ptr->filter_info,
-				&l2_tn_filter,
-				sizeof(struct txgbe_l2_tunnel_conf));
-			TAILQ_INSERT_TAIL(&filter_l2_tunnel_list,
-				l2_tn_filter_ptr, entries);
-			flow->rule = l2_tn_filter_ptr;
-			flow->filter_type = RTE_ETH_FILTER_L2_TUNNEL;
-			return flow;
+		l2_tn_filter_ptr = rte_zmalloc("txgbe_l2_tn_filter",
+			sizeof(struct txgbe_eth_l2_tunnel_conf_ele), 0);
+		if (!l2_tn_filter_ptr) {
+			PMD_DRV_LOG(ERR, "failed to allocate memory");
+			ret = -ENOMEM;
+			goto out;
 		}
-		goto out;
+		l2_tn_filter_ptr->filter_info = l2_tn_filter;
+		ret = txgbe_dev_l2_tunnel_filter_add(dev, &l2_tn_filter, FALSE);
+		if (ret) {
+			rte_free(l2_tn_filter_ptr);
+			goto out;
+		}
+		TAILQ_INSERT_TAIL(&filter_l2_tunnel_list,
+			l2_tn_filter_ptr, entries);
+		flow->rule = l2_tn_filter_ptr;
+		flow->filter_type = RTE_ETH_FILTER_L2_TUNNEL;
+		return flow;
 	}
 
 	memset(&rss_conf, 0, sizeof(struct txgbe_rte_flow_rss_conf));
 	ret = txgbe_parse_rss_filter(dev, attr,
 					actions, &rss_conf, error);
 	if (!ret) {
-		ret = txgbe_config_rss_filter(dev, &rss_conf, TRUE);
-		if (!ret) {
-			rss_filter_ptr = rte_zmalloc("txgbe_rss_filter",
-				sizeof(struct txgbe_rss_conf_ele), 0);
-			if (!rss_filter_ptr) {
-				PMD_DRV_LOG(ERR, "failed to allocate memory");
-				goto out;
-			}
-			txgbe_rss_conf_init(&rss_filter_ptr->filter_info,
-					    &rss_conf.conf);
-			TAILQ_INSERT_TAIL(&filter_rss_list,
-				rss_filter_ptr, entries);
-			flow->rule = rss_filter_ptr;
-			flow->filter_type = RTE_ETH_FILTER_HASH;
-			return flow;
+		rss_filter_ptr = rte_zmalloc("txgbe_rss_filter",
+			sizeof(struct txgbe_rss_conf_ele), 0);
+		if (!rss_filter_ptr) {
+			PMD_DRV_LOG(ERR, "failed to allocate memory");
+			ret = -ENOMEM;
+			goto out;
 		}
+		ret = txgbe_config_rss_filter(dev, &rss_conf, TRUE);
+		if (ret) {
+			rte_free(rss_filter_ptr);
+			goto out;
+		}
+		txgbe_rss_conf_init(&rss_filter_ptr->filter_info,
+				    &rss_conf.conf);
+		TAILQ_INSERT_TAIL(&filter_rss_list,
+			rss_filter_ptr, entries);
+		flow->rule = rss_filter_ptr;
+		flow->filter_type = RTE_ETH_FILTER_HASH;
+		return flow;
 	}
 
 out:
