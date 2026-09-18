@@ -520,6 +520,13 @@ API Changes
 * vhost: Removed ``get_vfio_group_fd`` from ``struct rte_vdpa_dev_ops``.
   vDPA drivers should now use the VFIO container device assignment API.
 
+* bpf: Made the ``bpf_def.h`` header file private,
+  so eBPF instruction opcodes are no longer publicly available
+  (their numerical values follow the RFC and e.g. Linux headers).
+  The definition of the instruction struct and number of program arguments
+  were moved to ``rte_bpf.h`` and gained the public ``RTE_`` prefix:
+  ``struct rte_ebpf_insn`` and ``RTE_BPF_FUNC_MAX_ARGS``.
+
 * telemetry: Promoted the following API from experimental to stable:
 
   * ``rte_tel_data_add_array_uint_hex``

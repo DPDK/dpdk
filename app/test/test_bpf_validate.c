@@ -2,9 +2,9 @@
  * Copyright(c) 2025 Huawei Technologies Co., Ltd
  */
 
+#include "bpf_def.h"
 #include "test.h"
 
-#include <bpf_def.h>
 #include <rte_bpf.h>
 #include <rte_bpf_validate_debug.h>
 #include <rte_errno.h>
@@ -96,7 +96,7 @@ struct state {
 
 /* Instruction verification parameters. */
 struct verify_instruction_param {
-	struct ebpf_insn tested_instruction;
+	struct rte_ebpf_insn tested_instruction;
 	size_t area_size;
 	/* States just before the tested instruction, just after, or if jumped. */
 	struct state pre;
@@ -264,7 +264,7 @@ format_register(struct rte_bpf_validate_debug *debug, char *buffer, size_t bufsz
 /* Return true the specified conditional jump _may_ occur at current state. */
 static bool
 may_jump(const struct rte_bpf_validate_debug *debug,
-	const struct ebpf_insn *jump, uint64_t imm64)
+	const struct rte_ebpf_insn *jump, uint64_t imm64)
 {
 	const int result = rte_bpf_validate_debug_may_jump(debug, jump, imm64);
 	RTE_VERIFY(result >= 0);
@@ -279,7 +279,7 @@ check_signed_interval(struct rte_bpf_validate_debug *debug,
 	char buffer[VALUE_FORMAT_BUFFER_SIZE];
 
 	TEST_ASSERT_EQUAL(may_jump(debug,
-		&(struct ebpf_insn){
+		&(struct rte_ebpf_insn){
 			.code = (BPF_JMP | EBPF_JSLT | BPF_K),
 			.dst_reg = reg,
 		}, interval.min),
@@ -288,7 +288,7 @@ check_signed_interval(struct rte_bpf_validate_debug *debug,
 		format_value(buffer, sizeof(buffer), 'd', interval.min));
 
 	TEST_ASSERT_EQUAL(may_jump(debug,
-		&(struct ebpf_insn){
+		&(struct rte_ebpf_insn){
 			.code = (BPF_JMP | BPF_JEQ | BPF_K),
 			.dst_reg = reg,
 		}, interval.min),
@@ -297,7 +297,7 @@ check_signed_interval(struct rte_bpf_validate_debug *debug,
 		format_value(buffer, sizeof(buffer), 'd', interval.min));
 
 	TEST_ASSERT_EQUAL(may_jump(debug,
-		&(struct ebpf_insn){
+		&(struct rte_ebpf_insn){
 			.code = (BPF_JMP | BPF_JEQ | BPF_K),
 			.dst_reg = reg,
 		}, interval.max),
@@ -306,7 +306,7 @@ check_signed_interval(struct rte_bpf_validate_debug *debug,
 		format_value(buffer, sizeof(buffer), 'd', interval.max));
 
 	TEST_ASSERT_EQUAL(may_jump(debug,
-		&(struct ebpf_insn){
+		&(struct rte_ebpf_insn){
 			.code = (BPF_JMP | EBPF_JSGT | BPF_K),
 			.dst_reg = reg,
 		}, interval.max),
@@ -325,7 +325,7 @@ check_unsigned_interval(struct rte_bpf_validate_debug *debug,
 	char buffer[VALUE_FORMAT_BUFFER_SIZE];
 
 	TEST_ASSERT_EQUAL(may_jump(debug,
-		&(struct ebpf_insn){
+		&(struct rte_ebpf_insn){
 			.code = (BPF_JMP | EBPF_JLT | BPF_K),
 			.dst_reg = reg,
 		}, interval.min),
@@ -334,7 +334,7 @@ check_unsigned_interval(struct rte_bpf_validate_debug *debug,
 		format_value(buffer, sizeof(buffer), 'x', interval.min));
 
 	TEST_ASSERT_EQUAL(may_jump(debug,
-		&(struct ebpf_insn){
+		&(struct rte_ebpf_insn){
 			.code = (BPF_JMP | BPF_JEQ | BPF_K),
 			.dst_reg = reg,
 		}, interval.min),
@@ -343,7 +343,7 @@ check_unsigned_interval(struct rte_bpf_validate_debug *debug,
 		format_value(buffer, sizeof(buffer), 'x', interval.min));
 
 	TEST_ASSERT_EQUAL(may_jump(debug,
-		&(struct ebpf_insn){
+		&(struct rte_ebpf_insn){
 			.code = (BPF_JMP | BPF_JEQ | BPF_K),
 			.dst_reg = reg,
 		}, interval.max),
@@ -352,7 +352,7 @@ check_unsigned_interval(struct rte_bpf_validate_debug *debug,
 		format_value(buffer, sizeof(buffer), 'x', interval.max));
 
 	TEST_ASSERT_EQUAL(may_jump(debug,
-		&(struct ebpf_insn){
+		&(struct rte_ebpf_insn){
 			.code = (BPF_JMP | BPF_JGT | BPF_K),
 			.dst_reg = reg,
 		}, interval.max),
@@ -371,7 +371,7 @@ check_relative_interval(struct rte_bpf_validate_debug *debug,
 	char buffer[VALUE_FORMAT_BUFFER_SIZE];
 
 	TEST_ASSERT_EQUAL(may_jump(debug,
-		&(struct ebpf_insn){
+		&(struct rte_ebpf_insn){
 			.code = (BPF_JMP | EBPF_JLT | BPF_X),
 			.dst_reg = reg,
 			.src_reg = base_reg,
@@ -381,7 +381,7 @@ check_relative_interval(struct rte_bpf_validate_debug *debug,
 		format_value(buffer, sizeof(buffer), 'd', interval.min));
 
 	TEST_ASSERT_EQUAL(may_jump(debug,
-		&(struct ebpf_insn){
+		&(struct rte_ebpf_insn){
 			.code = (BPF_JMP | BPF_JEQ | BPF_X),
 			.dst_reg = reg,
 			.src_reg = base_reg,
@@ -391,7 +391,7 @@ check_relative_interval(struct rte_bpf_validate_debug *debug,
 		format_value(buffer, sizeof(buffer), 'd', interval.min));
 
 	TEST_ASSERT_EQUAL(may_jump(debug,
-		&(struct ebpf_insn){
+		&(struct rte_ebpf_insn){
 			.code = (BPF_JMP | BPF_JEQ | BPF_X),
 			.dst_reg = reg,
 			.src_reg = base_reg,
@@ -401,7 +401,7 @@ check_relative_interval(struct rte_bpf_validate_debug *debug,
 		format_value(buffer, sizeof(buffer), 'd', interval.max));
 
 	TEST_ASSERT_EQUAL(may_jump(debug,
-		&(struct ebpf_insn){
+		&(struct rte_ebpf_insn){
 			.code = (BPF_JMP | BPF_JGT | BPF_X),
 			.dst_reg = reg,
 			.src_reg = base_reg,
@@ -437,7 +437,7 @@ check_pointer_access(struct rte_bpf_validate_debug *debug, uint8_t reg,
 	const bool window_empty = (interval_size >= area_size);
 
 	TEST_ASSERT_EQUAL(rte_bpf_validate_debug_can_access(debug,
-		&(struct ebpf_insn){
+		&(struct rte_ebpf_insn){
 			.code = (BPF_LDX | BPF_B | BPF_MEM),
 			.src_reg = reg
 		}, window_begin - 1),
@@ -446,7 +446,7 @@ check_pointer_access(struct rte_bpf_validate_debug *debug, uint8_t reg,
 		format_value(buffer, sizeof(buffer), 'd', window_begin - 1));
 
 	TEST_ASSERT_EQUAL(rte_bpf_validate_debug_can_access(debug,
-		&(struct ebpf_insn){
+		&(struct rte_ebpf_insn){
 			.code = (BPF_LDX | BPF_B | BPF_MEM),
 			.src_reg = reg
 		}, window_begin),
@@ -456,7 +456,7 @@ check_pointer_access(struct rte_bpf_validate_debug *debug, uint8_t reg,
 		window_empty ? "invalid for empty window" : "valid");
 
 	TEST_ASSERT_EQUAL(rte_bpf_validate_debug_can_access(debug,
-		&(struct ebpf_insn){
+		&(struct rte_ebpf_insn){
 			.code = (BPF_LDX | BPF_B | BPF_MEM),
 			.src_reg = reg
 		}, window_end - 1),
@@ -466,7 +466,7 @@ check_pointer_access(struct rte_bpf_validate_debug *debug, uint8_t reg,
 		window_empty ? "invalid for empty window" : "valid");
 
 	TEST_ASSERT_EQUAL(rte_bpf_validate_debug_can_access(debug,
-		&(struct ebpf_insn){
+		&(struct rte_ebpf_insn){
 			.code = (BPF_LDX | BPF_B | BPF_MEM),
 			.src_reg = reg
 		}, window_end),
@@ -548,23 +548,23 @@ fits_in_imm32(int64_t value)
 
 /* Load constant into the register.  */
 static void
-load_constant(struct ebpf_insn **ins, uint8_t reg, int64_t value)
+load_constant(struct rte_ebpf_insn **ins, uint8_t reg, int64_t value)
 {
 	if (fits_in_imm32(value)) {
-		*(*ins)++ = (struct ebpf_insn){
+		*(*ins)++ = (struct rte_ebpf_insn){
 			.code = (EBPF_ALU64 | EBPF_MOV | BPF_K),
 			.dst_reg = reg,
 			.imm = (int32_t)value,
 		};
 	} else {
 		/* Load imm64 into tmp_reg using wide load, lower bits first... */
-		*(*ins)++ = (struct ebpf_insn){
+		*(*ins)++ = (struct rte_ebpf_insn){
 			.code = (BPF_LD | BPF_IMM | EBPF_DW),
 			.dst_reg = reg,
 			.imm = (uint32_t)value,
 		};
 		/* ... then higher bits. */
-		*(*ins)++ = (struct ebpf_insn){
+		*(*ins)++ = (struct rte_ebpf_insn){
 			.imm = (uint32_t)(value >> 32),
 		};
 	}
@@ -576,12 +576,12 @@ load_constant(struct ebpf_insn **ins, uint8_t reg, int64_t value)
  * Jump offset is not filled and should be patched in by the caller.
  */
 static void
-compare_and_jump(struct ebpf_insn **ins, uint8_t op, uint8_t reg,
+compare_and_jump(struct rte_ebpf_insn **ins, uint8_t op, uint8_t reg,
 	int64_t value, uint8_t tmp_reg)
 {
 	if (fits_in_imm32(value)) {
 		/* Jump on specified condition between reg and immediate. */
-		*(*ins)++ = (struct ebpf_insn){
+		*(*ins)++ = (struct rte_ebpf_insn){
 			.code = (BPF_JMP | op | BPF_K),
 			.dst_reg = reg,
 			.imm = (int32_t)value,
@@ -591,7 +591,7 @@ compare_and_jump(struct ebpf_insn **ins, uint8_t op, uint8_t reg,
 		load_constant(ins, tmp_reg, value);
 
 		/* Jump on specified condition between reg and tmp_reg. */
-		*(*ins)++ = (struct ebpf_insn){
+		*(*ins)++ = (struct rte_ebpf_insn){
 			.code = (BPF_JMP | op | BPF_X),
 			.dst_reg = reg,
 			.src_reg = tmp_reg,
@@ -606,7 +606,7 @@ compare_and_jump(struct ebpf_insn **ins, uint8_t op, uint8_t reg,
  * (Jump offsets are not filled and should be patched in by the caller.)
  */
 static void
-prepare_scalar_domain(struct ebpf_insn **ins, uint8_t reg,
+prepare_scalar_domain(struct rte_ebpf_insn **ins, uint8_t reg,
 	const struct domain *domain, uint8_t base_reg, int *service_cell_count,
 	uint8_t tmp_reg)
 {
@@ -617,7 +617,7 @@ prepare_scalar_domain(struct ebpf_insn **ins, uint8_t reg,
 	}
 
 	/* Load value from memory area into the register. */
-	*(*ins)++ = (struct ebpf_insn){
+	*(*ins)++ = (struct rte_ebpf_insn){
 		.code = (BPF_LDX | EBPF_DW | BPF_MEM),
 		.dst_reg = reg,
 		.src_reg = base_reg,
@@ -648,7 +648,7 @@ prepare_scalar_domain(struct ebpf_insn **ins, uint8_t reg,
  * and then add base register to it to convert it to a pointer, if needed.
  */
 static void
-prepare_domain(struct ebpf_insn **ins, uint8_t reg,
+prepare_domain(struct rte_ebpf_insn **ins, uint8_t reg,
 	const struct domain *domain, uint8_t base_reg, int *service_cell_count,
 	uint8_t tmp_reg)
 {
@@ -656,7 +656,7 @@ prepare_domain(struct ebpf_insn **ins, uint8_t reg,
 
 	if (domain->is_pointer)
 		/* Add base_reg to convert resulting scalar into a pointer. */
-		*(*ins)++ = (struct ebpf_insn){
+		*(*ins)++ = (struct rte_ebpf_insn){
 			.code = (EBPF_ALU64 | BPF_ADD | BPF_X),
 			.dst_reg = reg,
 			.src_reg = base_reg,
@@ -717,9 +717,9 @@ fill_verify_instruction_defaults(struct verify_instruction_param *prm)
  * - Wide instructions are not supported yet.
  */
 static uint32_t
-generate_program(struct verify_instruction_context *ctx, struct ebpf_insn *ins)
+generate_program(struct verify_instruction_context *ctx, struct rte_ebpf_insn *ins)
 {
-	struct ebpf_insn *const ins_buf = ins;
+	struct rte_ebpf_insn *const ins_buf = ins;
 	/* Number of double words used for service purposes. */
 	int service_cell_count = 0;
 
@@ -784,7 +784,7 @@ generate_program(struct verify_instruction_context *ctx, struct ebpf_insn *ins)
 		ctx->jump.program_counter = NO_PROGRAM_COUNTER;
 	else {
 		/* Finish previous branch by issuing exit. */
-		*ins++ = (struct ebpf_insn){ .code = (BPF_JMP | EBPF_EXIT) };
+		*ins++ = (struct rte_ebpf_insn){ .code = (BPF_JMP | EBPF_EXIT) };
 
 		/* Issue jump target instruction (for setting jump breakpoint). */
 		ctx->jump.program_counter = ins - ins_buf;
@@ -798,7 +798,7 @@ generate_program(struct verify_instruction_context *ctx, struct ebpf_insn *ins)
 
 	/* Issue exit instruction. */
 	const uint32_t exit_pc = ins - ins_buf;
-	*ins++ = (struct ebpf_insn){ .code = (BPF_JMP | EBPF_EXIT) };
+	*ins++ = (struct rte_ebpf_insn){ .code = (BPF_JMP | EBPF_EXIT) };
 
 	/* Patch all jumps to point to exit. */
 	for (uint32_t pc = 0; pc != ctx->pre.program_counter; ++pc)
@@ -925,7 +925,7 @@ jump_callback(struct rte_bpf_validate_debug *debug, void *void_ctx)
 }
 
 static int
-debug_validation(struct verify_instruction_context *ctx, const struct ebpf_insn *ins,
+debug_validation(struct verify_instruction_context *ctx, const struct rte_ebpf_insn *ins,
 	uint32_t nb_ins)
 {
 	struct rte_bpf_validate_debug *const debug = rte_bpf_validate_debug_create();
@@ -994,7 +994,7 @@ debug_validation(struct verify_instruction_context *ctx, const struct ebpf_insn 
 
 /* Dump whole program to log. */
 static void
-log_program_dump(const struct ebpf_insn *ins, uint32_t nb_ins, uint32_t pre_pc)
+log_program_dump(const struct rte_ebpf_insn *ins, uint32_t nb_ins, uint32_t pre_pc)
 {
 	char hexadecimal[DISASSEMBLY_FORMAT_BUFFER_SIZE];
 	char disassembly[DISASSEMBLY_FORMAT_BUFFER_SIZE];
@@ -1054,7 +1054,7 @@ verify_instruction(struct verify_instruction_param prm)
 	struct verify_instruction_context ctx = {
 		.prm = prm,
 	};
-	struct ebpf_insn ins_buf[64];
+	struct rte_ebpf_insn ins_buf[64];
 
 	const uint32_t nb_ins = generate_program(&ctx, ins_buf);
 	RTE_ASSERT(nb_ins <= RTE_DIM(ins_buf));

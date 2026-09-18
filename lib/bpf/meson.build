@@ -37,7 +37,6 @@ elif dpdk_conf.has('RTE_ARCH_ARM64')
 endif
 
 headers = files(
-        'bpf_def.h',
         'rte_bpf.h',
         'rte_bpf_ethdev.h',
         'rte_bpf_validate_debug.h',

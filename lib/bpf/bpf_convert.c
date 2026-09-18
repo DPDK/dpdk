@@ -82,7 +82,7 @@
 /* ALU ops on registers, bpf_add|sub|...: dst_reg += src_reg */
 
 #define EBPF_ALU64_REG(OP, DST, SRC)				\
-	((struct ebpf_insn) {					\
+	((struct rte_ebpf_insn) {					\
 		.code  = EBPF_ALU64 | BPF_OP(OP) | BPF_X,	\
 		.dst_reg = DST,					\
 		.src_reg = SRC,					\
@@ -90,7 +90,7 @@
 		.imm   = 0 })
 
 #define BPF_ALU32_REG(OP, DST, SRC)				\
-	((struct ebpf_insn) {					\
+	((struct rte_ebpf_insn) {					\
 		.code  = BPF_ALU | BPF_OP(OP) | BPF_X,		\
 		.dst_reg = DST,					\
 		.src_reg = SRC,					\
@@ -100,7 +100,7 @@
 /* ALU ops on immediates, bpf_add|sub|...: dst_reg += imm32 */
 
 #define BPF_ALU32_IMM(OP, DST, IMM)				\
-	((struct ebpf_insn) {					\
+	((struct rte_ebpf_insn) {					\
 		.code  = BPF_ALU | BPF_OP(OP) | BPF_K,		\
 		.dst_reg = DST,					\
 		.src_reg = 0,					\
@@ -110,7 +110,7 @@
 /* Short form of mov, dst_reg = src_reg */
 
 #define BPF_MOV64_REG(DST, SRC)					\
-	((struct ebpf_insn) {					\
+	((struct rte_ebpf_insn) {					\
 		.code  = EBPF_ALU64 | EBPF_MOV | BPF_X,		\
 		.dst_reg = DST,					\
 		.src_reg = SRC,					\
@@ -118,7 +118,7 @@
 		.imm   = 0 })
 
 #define BPF_MOV32_REG(DST, SRC)					\
-	((struct ebpf_insn) {					\
+	((struct rte_ebpf_insn) {					\
 		.code  = BPF_ALU | EBPF_MOV | BPF_X,		\
 		.dst_reg = DST,					\
 		.src_reg = SRC,					\
@@ -128,7 +128,7 @@
 /* Short form of mov, dst_reg = imm32 */
 
 #define BPF_MOV32_IMM(DST, IMM)					\
-	((struct ebpf_insn) {					\
+	((struct rte_ebpf_insn) {					\
 		.code  = BPF_ALU | EBPF_MOV | BPF_K,		\
 		.dst_reg = DST,					\
 		.src_reg = 0,					\
@@ -138,7 +138,7 @@
 /* Short form of mov based on type, BPF_X: dst_reg = src_reg, BPF_K: dst_reg = imm32 */
 
 #define BPF_MOV32_RAW(TYPE, DST, SRC, IMM)			\
-	((struct ebpf_insn) {					\
+	((struct rte_ebpf_insn) {					\
 		.code  = BPF_ALU | EBPF_MOV | BPF_SRC(TYPE),	\
 		.dst_reg = DST,					\
 		.src_reg = SRC,					\
@@ -148,7 +148,7 @@
 /* Direct packet access, R0 = *(uint *) (skb->data + imm32) */
 
 #define BPF_LD_ABS(SIZE, IMM)					\
-	((struct ebpf_insn) {					\
+	((struct rte_ebpf_insn) {					\
 		.code  = BPF_LD | BPF_SIZE(SIZE) | BPF_ABS,	\
 		.dst_reg = 0,					\
 		.src_reg = 0,					\
@@ -158,7 +158,7 @@
 /* Memory load, dst_reg = *(uint *) (src_reg + off16) */
 
 #define BPF_LDX_MEM(SIZE, DST, SRC, OFF)			\
-	((struct ebpf_insn) {					\
+	((struct rte_ebpf_insn) {					\
 		.code  = BPF_LDX | BPF_SIZE(SIZE) | BPF_MEM,	\
 		.dst_reg = DST,					\
 		.src_reg = SRC,					\
@@ -168,7 +168,7 @@
 /* Memory store, *(uint *) (dst_reg + off16) = src_reg */
 
 #define BPF_STX_MEM(SIZE, DST, SRC, OFF)			\
-	((struct ebpf_insn) {					\
+	((struct rte_ebpf_insn) {					\
 		.code  = BPF_STX | BPF_SIZE(SIZE) | BPF_MEM,	\
 		.dst_reg = DST,					\
 		.src_reg = SRC,					\
@@ -178,7 +178,7 @@
 /* Conditional jumps against immediates, if (dst_reg 'op' imm32) goto pc + off16 */
 
 #define BPF_JMP_IMM(OP, DST, IMM, OFF)				\
-	((struct ebpf_insn) {					\
+	((struct rte_ebpf_insn) {					\
 		.code  = BPF_JMP | BPF_OP(OP) | BPF_K,		\
 		.dst_reg = DST,					\
 		.src_reg = 0,					\
@@ -188,7 +188,7 @@
 /* Raw code statement block */
 
 #define BPF_RAW_INSN(CODE, DST, SRC, OFF, IMM)			\
-	((struct ebpf_insn) {					\
+	((struct rte_ebpf_insn) {					\
 		.code  = CODE,					\
 		.dst_reg = DST,					\
 		.src_reg = SRC,					\
@@ -198,7 +198,7 @@
 /* Program exit */
 
 #define BPF_EXIT_INSN()						\
-	((struct ebpf_insn) {					\
+	((struct rte_ebpf_insn) {					\
 		.code  = BPF_JMP | EBPF_EXIT,			\
 		.dst_reg = 0,					\
 		.src_reg = 0,					\
@@ -210,7 +210,7 @@
  * If and when DPDK BPF supports them.
  */
 static bool convert_bpf_load(const struct bpf_insn *fp,
-			     struct ebpf_insn **new_insnp __rte_unused)
+			     struct rte_ebpf_insn **new_insnp __rte_unused)
 {
 	switch (fp->k) {
 	case SKF_AD_OFF + SKF_AD_PROTOCOL:
@@ -240,11 +240,11 @@ static bool convert_bpf_load(const struct bpf_insn *fp,
 }
 
 static int bpf_convert_filter(const struct bpf_insn *prog, size_t len,
-			      struct ebpf_insn *new_prog, uint32_t *new_len)
+			      struct rte_ebpf_insn *new_prog, uint32_t *new_len)
 {
 	unsigned int pass = 0;
 	size_t new_flen = 0, target, i;
-	struct ebpf_insn *new_insn;
+	struct rte_ebpf_insn *new_insn;
 	const struct bpf_insn *fp;
 	int *addrs = NULL;
 	uint8_t bpf_src;
@@ -284,8 +284,8 @@ do_pass:
 	}
 
 	for (i = 0; i < len; fp++, i++) {
-		struct ebpf_insn tmp_insns[6] = { };
-		struct ebpf_insn *insn = tmp_insns;
+		struct rte_ebpf_insn tmp_insns[6] = { };
+		struct rte_ebpf_insn *insn = tmp_insns;
 
 		if (addrs)
 			addrs[i] = new_insn - new_prog;
@@ -526,7 +526,7 @@ struct rte_bpf_prm *
 rte_bpf_convert(const struct bpf_program *prog)
 {
 	struct rte_bpf_prm *prm = NULL;
-	struct ebpf_insn *ebpf = NULL;
+	struct rte_ebpf_insn *ebpf = NULL;
 	uint32_t ebpf_len = 0;
 	int ret;
 

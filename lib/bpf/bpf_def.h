@@ -129,20 +129,5 @@ enum {
  */
 #define	EBPF_PSEUDO_CALL	EBPF_REG_1
 
-/*
- * eBPF instruction format
- */
-struct ebpf_insn {
-	uint8_t code;
-	uint8_t dst_reg:4;
-	uint8_t src_reg:4;
-	int16_t off;
-	int32_t imm;
-};
-
-/*
- * eBPF allows functions with R1-R5 as arguments.
- */
-#define	EBPF_FUNC_MAX_ARGS	(EBPF_REG_6 - EBPF_REG_1)
 
 #endif /* RTE_BPF_DEF_H_ */

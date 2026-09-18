@@ -9,6 +9,7 @@
 
 #include <eal_export.h>
 #include "rte_bpf.h"
+#include "bpf_def.h"
 
 #define BPF_OP_INDEX(x) (BPF_OP(x) >> 4)
 #define BPF_SIZE_INDEX(x) (BPF_SIZE(x) >> 3)
@@ -48,7 +49,7 @@ static const char *const jump_tbl[16] = {
 
 RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_bpf_insn_is_wide, 26.07)
 bool
-rte_bpf_insn_is_wide(const struct ebpf_insn *ins)
+rte_bpf_insn_is_wide(const struct rte_ebpf_insn *ins)
 {
 	return ins->code == (BPF_LD | BPF_IMM | EBPF_DW);
 }
@@ -56,7 +57,7 @@ rte_bpf_insn_is_wide(const struct ebpf_insn *ins)
 
 /* Format one (possibly wide) eBPF command as hexadecimal in objdump format. */
 static int
-format_hexadecimal(char *buffer, size_t bufsz, const struct ebpf_insn *ins,
+format_hexadecimal(char *buffer, size_t bufsz, const struct rte_ebpf_insn *ins,
 	uint32_t flags)
 {
 	const char *const b = (const char *)ins;
@@ -93,7 +94,7 @@ atomic_op(int32_t imm)
 
 /* Format one (possibly wide) eBPF command as assembler. */
 static int
-format_disassembly(char *buffer, size_t bufsz, const struct ebpf_insn *ins,
+format_disassembly(char *buffer, size_t bufsz, const struct rte_ebpf_insn *ins,
 	uint32_t pc, uint32_t flags)
 {
 	uint8_t cls = BPF_CLASS(ins->code);
@@ -221,7 +222,7 @@ format_disassembly(char *buffer, size_t bufsz, const struct ebpf_insn *ins,
 
 RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_bpf_format, 26.07)
 int
-rte_bpf_format(char *buffer, size_t bufsz, const struct ebpf_insn *ins,
+rte_bpf_format(char *buffer, size_t bufsz, const struct rte_ebpf_insn *ins,
 	uint32_t pc, uint32_t flags)
 {
 	if ((flags & RTE_BPF_FORMAT_FLAG_HEXADECIMAL) != 0)
@@ -231,13 +232,13 @@ rte_bpf_format(char *buffer, size_t bufsz, const struct ebpf_insn *ins,
 }
 
 RTE_EXPORT_SYMBOL(rte_bpf_dump)
-void rte_bpf_dump(FILE *f, const struct ebpf_insn *buf, uint32_t len)
+void rte_bpf_dump(FILE *f, const struct rte_ebpf_insn *buf, uint32_t len)
 {
 	uint32_t i;
 	char buffer[256];
 
 	for (i = 0; i < len; ++i) {
-		const struct ebpf_insn *ins = buf + i;
+		const struct rte_ebpf_insn *ins = buf + i;
 
 		format_disassembly(buffer, sizeof(buffer), ins, i,
 			RTE_BPF_FORMAT_FLAG_DISASSEMBLY	|

@@ -117,8 +117,8 @@ struct bpf_ins_check {
 		uint32_t min;
 		uint32_t max;
 	} imm;
-	const char * (*check)(const struct ebpf_insn *);
-	const char * (*eval)(struct bpf_verifier *, const struct ebpf_insn *);
+	const char * (*check)(const struct rte_ebpf_insn *ins);
+	const char * (*eval)(struct bpf_verifier *bpf, const struct rte_ebpf_insn *ins);
 };
 
 #define	ALL_REGS	RTE_LEN2MASK(EBPF_REG_NUM, uint16_t)
@@ -171,7 +171,7 @@ __rte_bpf_validate_state_is_valid(const struct bpf_verifier *verifier)
 
 int
 __rte_bpf_validate_can_access(const struct bpf_verifier *verifier,
-	const struct ebpf_insn *access, uint64_t off64)
+	const struct rte_ebpf_insn *access, uint64_t off64)
 {
 	const struct bpf_eval_state *const st = verifier->evst;
 	const struct bpf_reg_val *rv;
@@ -308,7 +308,7 @@ may_jump_code_complement(uint8_t code)
 
 int
 __rte_bpf_validate_may_jump(const struct bpf_verifier *verifier,
-	const struct ebpf_insn *jump, uint64_t imm64)
+	const struct rte_ebpf_insn *jump, uint64_t imm64)
 {
 	const struct bpf_eval_state *const st = verifier->evst;
 	const struct bpf_reg_val *rd, *rs;
@@ -543,7 +543,7 @@ __rte_bpf_validate_get_frame_size(const struct bpf_verifier *verifier)
  */
 
 static const char *
-check_alu_bele(const struct ebpf_insn *ins)
+check_alu_bele(const struct rte_ebpf_insn *ins)
 {
 	if (ins->imm != 16 && ins->imm != 32 && ins->imm != 64)
 		return "invalid imm field";
@@ -551,7 +551,7 @@ check_alu_bele(const struct ebpf_insn *ins)
 }
 
 static const char *
-eval_exit(struct bpf_verifier *bvf, const struct ebpf_insn *ins)
+eval_exit(struct bpf_verifier *bvf, const struct rte_ebpf_insn *ins)
 {
 	RTE_SET_USED(ins);
 	if (bvf->evst->rv[EBPF_REG_0].v.type == RTE_BPF_ARG_UNDEF)
@@ -611,7 +611,7 @@ eval_fill_imm(struct bpf_reg_val *rv, uint64_t mask, int32_t imm)
 }
 
 static const char *
-eval_ld_imm64(struct bpf_verifier *bvf, const struct ebpf_insn *ins)
+eval_ld_imm64(struct bpf_verifier *bvf, const struct rte_ebpf_insn *ins)
 {
 	uint32_t i;
 	uint64_t val;
@@ -1051,7 +1051,7 @@ eval_neg(struct bpf_reg_val *rd, size_t opsz, uint64_t msk)
 }
 
 static const char *
-eval_ld_mbuf(struct bpf_verifier *bvf, const struct ebpf_insn *ins)
+eval_ld_mbuf(struct bpf_verifier *bvf, const struct rte_ebpf_insn *ins)
 {
 	uint32_t i, mode;
 	struct bpf_reg_val *rv, ri, rs;
@@ -1100,7 +1100,7 @@ eval_defined(const struct bpf_reg_val *dst, const struct bpf_reg_val *src)
 }
 
 static const char *
-eval_alu(struct bpf_verifier *bvf, const struct ebpf_insn *ins)
+eval_alu(struct bpf_verifier *bvf, const struct rte_ebpf_insn *ins)
 {
 	uint64_t msk;
 	uint32_t op;
@@ -1172,7 +1172,7 @@ eval_alu(struct bpf_verifier *bvf, const struct ebpf_insn *ins)
 }
 
 static const char *
-eval_bele(struct bpf_verifier *bvf, const struct ebpf_insn *ins)
+eval_bele(struct bpf_verifier *bvf, const struct rte_ebpf_insn *ins)
 {
 	uint64_t msk;
 	struct bpf_eval_state *st;
@@ -1263,7 +1263,7 @@ eval_max_load(struct bpf_reg_val *rv, uint64_t mask)
 
 
 static const char *
-eval_load(struct bpf_verifier *bvf, const struct ebpf_insn *ins)
+eval_load(struct bpf_verifier *bvf, const struct rte_ebpf_insn *ins)
 {
 	uint32_t opsz;
 	uint64_t msk;
@@ -1349,7 +1349,7 @@ eval_mbuf_store(const struct bpf_reg_val *rv, uint32_t opsz)
 }
 
 static const char *
-eval_store(struct bpf_verifier *bvf, const struct ebpf_insn *ins)
+eval_store(struct bpf_verifier *bvf, const struct rte_ebpf_insn *ins)
 {
 	uint32_t opsz;
 	uint64_t msk;
@@ -1407,7 +1407,7 @@ eval_store(struct bpf_verifier *bvf, const struct ebpf_insn *ins)
 }
 
 static const char *
-eval_ja(struct bpf_verifier *bvf, const struct ebpf_insn *ins)
+eval_ja(struct bpf_verifier *bvf, const struct rte_ebpf_insn *ins)
 {
 	RTE_SET_USED(bvf);
 	RTE_SET_USED(ins);
@@ -1459,7 +1459,7 @@ eval_func_arg(struct bpf_verifier *bvf, const struct rte_bpf_arg *arg,
 }
 
 static const char *
-eval_call(struct bpf_verifier *bvf, const struct ebpf_insn *ins)
+eval_call(struct bpf_verifier *bvf, const struct rte_ebpf_insn *ins)
 {
 	uint32_t i, idx;
 	struct bpf_reg_val *rv;
@@ -1599,7 +1599,7 @@ eval_jslt_jsge(struct bpf_reg_val *trd, struct bpf_reg_val *trs,
 }
 
 static const char *
-eval_jcc(struct bpf_verifier *bvf, const struct ebpf_insn *ins)
+eval_jcc(struct bpf_verifier *bvf, const struct rte_ebpf_insn *ins)
 {
 	uint32_t op;
 	const char *err;
@@ -2266,7 +2266,7 @@ static const struct bpf_ins_check ins_chk[UINT8_MAX + 1] = {
  * and its fields don't violate particular instruction type restrictions.
  */
 static const char *
-check_syntax(const struct ebpf_insn *ins)
+check_syntax(const struct rte_ebpf_insn *ins)
 {
 
 	uint8_t op;
@@ -2453,7 +2453,7 @@ log_unreachable(const struct bpf_verifier *bvf)
 {
 	uint32_t i;
 	struct inst_node *node;
-	const struct ebpf_insn *ins;
+	const struct rte_ebpf_insn *ins;
 
 	for (i = 0; i != bvf->prm->raw.nb_ins; i++) {
 
@@ -2503,7 +2503,7 @@ validate(struct bpf_verifier *bvf)
 	int32_t rc;
 	uint32_t i;
 	struct inst_node *node;
-	const struct ebpf_insn *ins;
+	const struct rte_ebpf_insn *ins;
 	const char *err;
 
 	rc = 0;
@@ -2779,7 +2779,7 @@ restore_cur_eval_state(struct bpf_verifier *bvf, struct inst_node *node)
 }
 
 static void
-log_dbg_eval_state(const struct bpf_verifier *bvf, const struct ebpf_insn *ins,
+log_dbg_eval_state(const struct bpf_verifier *bvf, const struct rte_ebpf_insn *ins,
 	uint32_t pc)
 {
 	const struct bpf_eval_state *st;
@@ -2916,7 +2916,7 @@ evaluate(struct bpf_verifier *bvf)
 {
 	uint32_t idx, op;
 	const char *err;
-	const struct ebpf_insn *ins;
+	const struct rte_ebpf_insn *ins;
 	struct inst_node *next, *node;
 	int prev_nb_edge;  /* branching number of the previous instruction */
 	int rc, debug_rc;
@@ -3116,10 +3116,10 @@ __rte_bpf_validate(const struct rte_bpf_prm_ex *prm, uint32_t *stack_sz)
 	int32_t rc;
 	struct bpf_verifier bvf;
 
-	if (prm->nb_prog_arg > EBPF_FUNC_MAX_ARGS) {
+	if (prm->nb_prog_arg > RTE_BPF_FUNC_MAX_ARGS) {
 		RTE_BPF_LOG_FUNC_LINE(ERR,
 			"support up to %u arguments, found %u",
-			EBPF_FUNC_MAX_ARGS, prm->nb_prog_arg);
+			RTE_BPF_FUNC_MAX_ARGS, prm->nb_prog_arg);
 		return -ENOTSUP;
 	}
 
