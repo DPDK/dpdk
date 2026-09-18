@@ -1454,18 +1454,19 @@ static struct rte_vdpa_dev_ops ifcvf_net_ops = {
 	.get_dev_type = ifcvf_get_device_type,
 };
 
-static inline int
-open_int(const char *key __rte_unused, const char *value, void *extra_args)
+static int
+parse_bool(const char *key __rte_unused, const char *value, void *extra_args)
 {
-	uint16_t *n = extra_args;
+	char *endp = NULL;
 
-	if (value == NULL || extra_args == NULL)
+	if (value == NULL || extra_args == NULL || value[0] == '\0')
 		return -EINVAL;
 
-	*n = (uint16_t)strtoul(value, NULL, 0);
-	if (*n == USHRT_MAX && errno == ERANGE)
+	unsigned long n = strtoul(value, &endp, 0);
+	if (*endp != '\0' || n > 1)
 		return -1;
 
+	*(bool *)extra_args = (n == 1);
 	return 0;
 }
 
@@ -1608,8 +1609,8 @@ ifcvf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	uint64_t features;
 	struct ifcvf_internal *internal = NULL;
 	struct internal_list *list = NULL;
-	int vdpa_mode = 0;
-	int sw_fallback_lm = 0;
+	bool vdpa_mode = false;
+	bool sw_fallback_lm = false;
 	struct rte_kvargs *kvlist = NULL;
 	int ret = 0;
 	int16_t device_id;
@@ -1635,9 +1636,9 @@ ifcvf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		return 1;
 	}
 
-	ret = rte_kvargs_process(kvlist, IFCVF_VDPA_MODE, &open_int,
+	ret = rte_kvargs_process(kvlist, IFCVF_VDPA_MODE, &parse_bool,
 			&vdpa_mode);
-	if (ret < 0 || vdpa_mode == 0) {
+	if (ret < 0 || !vdpa_mode) {
 		rte_kvargs_free(kvlist);
 		return 1;
 	}
@@ -1730,7 +1731,7 @@ ifcvf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 
 	if (rte_kvargs_count(kvlist, IFCVF_SW_FALLBACK_LM)) {
 		ret = rte_kvargs_process(kvlist, IFCVF_SW_FALLBACK_LM,
-				&open_int, &sw_fallback_lm);
+				&parse_bool, &sw_fallback_lm);
 		if (ret < 0)
 			goto error;
 	}
