@@ -7,6 +7,7 @@
 
 #include <rte_bpf.h>
 #include <sys/mman.h>
+#include "bpf_def.h"
 
 #define MAX_BPF_STACK_SIZE	0x200
 
@@ -22,7 +23,7 @@ struct __rte_bpf_load {
 	struct rte_bpf_prm_ex prm;
 
 	/* Conversion from cBPF. */
-	struct ebpf_insn *ins;
+	struct rte_ebpf_insn *ins;
 
 	/* Loading ELF and applying relocations. */
 	int elf_fd;  /* ELF fd, must be negative (not zero) by default. */

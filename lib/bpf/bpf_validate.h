@@ -11,7 +11,7 @@
  * Internal-use headers for eBPF validation observability.
  */
 
-#include <bpf_def.h>
+#include <rte_bpf.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -32,12 +32,12 @@ __rte_bpf_validate_state_is_valid(const struct bpf_verifier *verifier);
  */
 int
 __rte_bpf_validate_can_access(const struct bpf_verifier *verifier,
-	const struct ebpf_insn *access, uint64_t off64);
+	const struct rte_ebpf_insn *access, uint64_t off64);
 
 /* Get possible truth values of the specified jump condition. */
 int
 __rte_bpf_validate_may_jump(const struct bpf_verifier *verifier,
-	const struct ebpf_insn *jump, uint64_t imm64);
+	const struct rte_ebpf_insn *jump, uint64_t imm64);
 
 /* Format known information about the register for the user. */
 int

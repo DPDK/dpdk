@@ -58,7 +58,7 @@ bpf_find_xsym(const char *sn, enum rte_bpf_xtype type,
  * symbol *sn*
  */
 static int
-resolve_xsym(const char *sn, size_t ofs, struct ebpf_insn *ins, size_t ins_sz,
+resolve_xsym(const char *sn, size_t ofs, struct rte_ebpf_insn *ins, size_t ins_sz,
 	const struct rte_bpf_prm_ex *prm)
 {
 	uint32_t idx, fidx;
@@ -169,7 +169,7 @@ find_elf_code(Elf *elf, const char *section, Elf_Data **psd, size_t *pidx)
 
 	sd = elf_getdata(sc, NULL);
 	if (sd == NULL || sd->d_size == 0 ||
-			sd->d_size % sizeof(struct ebpf_insn) != 0) {
+			sd->d_size % sizeof(struct rte_ebpf_insn) != 0) {
 		rc = elf_errno();
 		RTE_BPF_LOG_LINE(ERR, "%s(%p, %s) error code: %d(%s)",
 			__func__, elf, section, rc, elf_errmsg(rc));
@@ -186,7 +186,7 @@ find_elf_code(Elf *elf, const char *section, Elf_Data **psd, size_t *pidx)
  */
 static int
 process_reloc(Elf *elf, size_t sym_idx, Elf64_Rel *re, size_t re_sz,
-	struct ebpf_insn *ins, size_t ins_sz, const struct rte_bpf_prm_ex *prm)
+	struct rte_ebpf_insn *ins, size_t ins_sz, const struct rte_bpf_prm_ex *prm)
 {
 	int32_t rc;
 	uint32_t i, n;
@@ -235,7 +235,7 @@ process_reloc(Elf *elf, size_t sym_idx, Elf64_Rel *re, size_t re_sz,
  * and update bpf code.
  */
 static int
-elf_reloc_code(Elf *elf, struct ebpf_insn *ins, size_t ins_sz, size_t sidx,
+elf_reloc_code(Elf *elf, struct rte_ebpf_insn *ins, size_t ins_sz, size_t sidx,
 	const struct rte_bpf_prm_ex *prm)
 {
 	Elf64_Rel *re;
@@ -355,7 +355,7 @@ __rte_bpf_load_elf_code(struct __rte_bpf_load *load)
 
 	prm->origin = RTE_BPF_ORIGIN_RAW;
 	prm->raw.ins = sd->d_buf;
-	prm->raw.nb_ins = sd->d_size / sizeof(struct ebpf_insn);
+	prm->raw.nb_ins = sd->d_size / sizeof(struct rte_ebpf_insn);
 
 	rc = elf_reloc_code(load->elf, sd->d_buf, sd->d_size, sidx, prm);
 	if (rc < 0)

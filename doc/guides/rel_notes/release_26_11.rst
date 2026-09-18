@@ -527,6 +527,13 @@ API Changes
   have been replaced with a topological bitmap scheduler.
   ``struct rte_node`` has a new internal field to hold the scheduling order.
 
+* bpf: Made the ``bpf_def.h`` header file private,
+  so eBPF instruction opcodes are no longer publicly available
+  (their numerical values follow the RFC and e.g. Linux headers).
+  The definition of the instruction struct and number of program arguments
+  were moved to ``rte_bpf.h`` and gained the public ``RTE_`` prefix:
+  ``struct rte_ebpf_insn`` and ``RTE_BPF_FUNC_MAX_ARGS``.
+
 * telemetry: Promoted the following API from experimental to stable:
 
   * ``rte_tel_data_add_array_uint_hex``

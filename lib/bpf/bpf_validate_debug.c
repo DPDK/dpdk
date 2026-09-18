@@ -319,7 +319,7 @@ rte_bpf_validate_debug_get_bpf_param(const struct rte_bpf_validate_debug *debug)
 RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_bpf_validate_debug_get_ins, 26.07)
 int
 rte_bpf_validate_debug_get_ins(const struct rte_bpf_validate_debug *debug,
-	const struct ebpf_insn **ins, uint32_t *nb_ins)
+	const struct rte_ebpf_insn **ins, uint32_t *nb_ins)
 {
 	if (debug == NULL)
 		return -EINVAL;
@@ -378,7 +378,7 @@ rte_bpf_validate_debug_get_validation_result(const struct rte_bpf_validate_debug
 RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_bpf_validate_debug_can_access, 26.07)
 int
 rte_bpf_validate_debug_can_access(const struct rte_bpf_validate_debug *debug,
-	const struct ebpf_insn *access, uint64_t off64)
+	const struct rte_ebpf_insn *access, uint64_t off64)
 {
 	if (debug == NULL || access == NULL)
 		return -EINVAL;
@@ -392,7 +392,7 @@ rte_bpf_validate_debug_can_access(const struct rte_bpf_validate_debug *debug,
 RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_bpf_validate_debug_may_jump, 26.07)
 int
 rte_bpf_validate_debug_may_jump(const struct rte_bpf_validate_debug *debug,
-	const struct ebpf_insn *jump, uint64_t imm64)
+	const struct rte_ebpf_insn *jump, uint64_t imm64)
 {
 	if (debug == NULL || jump == NULL)
 		return -EINVAL;

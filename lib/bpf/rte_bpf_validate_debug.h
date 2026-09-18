@@ -13,7 +13,7 @@
  * Can be used for debugging BPF validation problems as well as in tests.
  */
 
-#include <bpf_def.h>
+#include <rte_bpf.h>
 #include <rte_compat.h>
 
 #include <stdbool.h>
@@ -181,7 +181,7 @@ rte_bpf_validate_debug_get_bpf_param(const struct rte_bpf_validate_debug *debug)
 __rte_experimental
 int
 rte_bpf_validate_debug_get_ins(const struct rte_bpf_validate_debug *debug,
-	const struct ebpf_insn **ins, uint32_t *nb_ins);
+	const struct rte_ebpf_insn **ins, uint32_t *nb_ins);
 
 /**
  * Get last triggered breakpoint or catchpoint.
@@ -249,7 +249,7 @@ rte_bpf_validate_debug_get_validation_result(const struct rte_bpf_validate_debug
 __rte_experimental
 int
 rte_bpf_validate_debug_can_access(const struct rte_bpf_validate_debug *debug,
-	const struct ebpf_insn *access, uint64_t off64);
+	const struct rte_ebpf_insn *access, uint64_t off64);
 
 /**
  * Get possible truth values of the specified jump condition.
@@ -269,7 +269,7 @@ rte_bpf_validate_debug_can_access(const struct rte_bpf_validate_debug *debug,
 __rte_experimental
 int
 rte_bpf_validate_debug_may_jump(const struct rte_bpf_validate_debug *debug,
-	const struct ebpf_insn *jump, uint64_t imm64);
+	const struct rte_ebpf_insn *jump, uint64_t imm64);
 
 /**
  * Format information about specified register for the user.

@@ -61,7 +61,7 @@ bpf_check_xsym(const struct rte_bpf_xsym *xsym)
 			return -EINVAL;
 	} else if (xsym->type == RTE_BPF_XTYPE_FUNC) {
 
-		if (xsym->func.nb_args > EBPF_FUNC_MAX_ARGS)
+		if (xsym->func.nb_args > RTE_BPF_FUNC_MAX_ARGS)
 			return -EINVAL;
 
 		/* check function arguments */

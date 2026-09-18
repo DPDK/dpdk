@@ -19,11 +19,26 @@
 #include <rte_common.h>
 #include <rte_mbuf.h>
 #include <rte_malloc.h>
-#include <bpf_def.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/*
+ * eBPF instruction format
+ */
+struct rte_ebpf_insn {
+	uint8_t code;
+	uint8_t dst_reg:4;
+	uint8_t src_reg:4;
+	int16_t off;
+	int32_t imm;
+};
+
+/*
+ * eBPF allows functions with up to 5 arguments.
+ */
+#define	RTE_BPF_FUNC_MAX_ARGS	5
 
 #define RTE_BPF_EXEC_FLAG_JIT	RTE_BIT64(0)	/**< use JIT-compiled version */
 
@@ -96,7 +111,7 @@ struct rte_bpf_xsym {
 			uint64_t (*val)(uint64_t, uint64_t, uint64_t,
 				uint64_t, uint64_t);
 			uint32_t nb_args;
-			struct rte_bpf_arg args[EBPF_FUNC_MAX_ARGS];
+			struct rte_bpf_arg args[RTE_BPF_FUNC_MAX_ARGS];
 			/**< Function arguments descriptions. */
 			struct rte_bpf_arg ret; /**< function return value. */
 		} func;
@@ -135,7 +150,7 @@ struct rte_bpf_prm_ex {
 	/** program origin parameters, member in use depends on origin */
 	union {
 		struct {
-			const struct ebpf_insn *ins;  /**< eBPF instructions */
+			const struct rte_ebpf_insn *ins;  /**< eBPF instructions */
 			uint32_t nb_ins;  /**< number of instructions in ins */
 		} raw;
 		struct {
@@ -157,7 +172,7 @@ struct rte_bpf_prm_ex {
 	/**< array of external symbols that eBPF code is allowed to reference */
 	uint32_t nb_xsym;  /**< number of elements in xsym */
 
-	struct rte_bpf_arg prog_arg[EBPF_FUNC_MAX_ARGS];  /**< program arguments */
+	struct rte_bpf_arg prog_arg[RTE_BPF_FUNC_MAX_ARGS];  /**< program arguments */
 	uint32_t nb_prog_arg;  /**< program argument count */
 
 	/* Validate debug instance. */
@@ -168,7 +183,7 @@ struct rte_bpf_prm_ex {
  * Input parameters for loading eBPF code, legacy version.
  */
 struct rte_bpf_prm {
-	const struct ebpf_insn *ins; /**< array of eBPF instructions */
+	const struct rte_ebpf_insn *ins; /**< array of eBPF instructions */
 	uint32_t nb_ins;            /**< number of instructions in ins */
 	const struct rte_bpf_xsym *xsym;
 	/**< array of external symbols that eBPF code is allowed to reference */
@@ -217,7 +232,7 @@ struct rte_bpf_jit_ex {
 
 /* Tuple of eBPF program arguments. */
 struct rte_bpf_prog_ctx {
-	union rte_bpf_func_arg arg[EBPF_FUNC_MAX_ARGS];
+	union rte_bpf_func_arg arg[RTE_BPF_FUNC_MAX_ARGS];
 };
 
 struct rte_bpf;
@@ -420,7 +435,7 @@ rte_bpf_get_jit_ex(const struct rte_bpf *bpf, struct rte_bpf_jit_ex *jit);
  */
 __rte_experimental
 bool
-rte_bpf_insn_is_wide(const struct ebpf_insn *ins);
+rte_bpf_insn_is_wide(const struct rte_ebpf_insn *ins);
 
 /**
  * Print eBPF instruction into a buffer.
@@ -443,7 +458,7 @@ rte_bpf_insn_is_wide(const struct ebpf_insn *ins);
  */
 __rte_experimental
 int
-rte_bpf_format(char *buffer, size_t bufsz, const struct ebpf_insn *ins,
+rte_bpf_format(char *buffer, size_t bufsz, const struct rte_ebpf_insn *ins,
 	uint32_t pc, uint32_t flags);
 
 /**
@@ -457,7 +472,7 @@ rte_bpf_format(char *buffer, size_t bufsz, const struct ebpf_insn *ins,
  *   Number of BPF instructions to dump.
  */
 void
-rte_bpf_dump(FILE *f, const struct ebpf_insn *buf, uint32_t len);
+rte_bpf_dump(FILE *f, const struct rte_ebpf_insn *buf, uint32_t len);
 
 struct bpf_program;
 

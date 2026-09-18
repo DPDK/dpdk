@@ -1315,7 +1315,7 @@ static int
 emit(struct bpf_jit_state *st, const struct rte_bpf *bpf)
 {
 	uint32_t i, dr, op, sr;
-	const struct ebpf_insn *ins;
+	const struct rte_ebpf_insn *ins;
 
 	/* reset state fields */
 	st->sz = 0;

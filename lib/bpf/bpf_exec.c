@@ -120,7 +120,7 @@
 
 
 static inline void
-bpf_alu_be(uint64_t reg[EBPF_REG_NUM], const struct ebpf_insn *ins)
+bpf_alu_be(uint64_t reg[EBPF_REG_NUM], const struct rte_ebpf_insn *ins)
 {
 	uint64_t *v;
 
@@ -139,7 +139,7 @@ bpf_alu_be(uint64_t reg[EBPF_REG_NUM], const struct ebpf_insn *ins)
 }
 
 static inline void
-bpf_alu_le(uint64_t reg[EBPF_REG_NUM], const struct ebpf_insn *ins)
+bpf_alu_le(uint64_t reg[EBPF_REG_NUM], const struct rte_ebpf_insn *ins)
 {
 	uint64_t *v;
 
@@ -159,7 +159,7 @@ bpf_alu_le(uint64_t reg[EBPF_REG_NUM], const struct ebpf_insn *ins)
 
 static inline const void *
 bpf_ld_mbuf(const struct rte_bpf *bpf, uint64_t reg[EBPF_REG_NUM],
-	const struct ebpf_insn *ins, uint32_t off, uint32_t len)
+	const struct rte_ebpf_insn *ins, uint32_t off, uint32_t len)
 {
 	const struct rte_mbuf *mb;
 	const void *p;
@@ -177,7 +177,7 @@ bpf_ld_mbuf(const struct rte_bpf *bpf, uint64_t reg[EBPF_REG_NUM],
 static inline uint64_t
 bpf_exec(const struct rte_bpf *bpf, uint64_t reg[EBPF_REG_NUM])
 {
-	const struct ebpf_insn *ins;
+	const struct rte_ebpf_insn *ins;
 
 	for (ins = bpf->prm.raw.ins; ; ins++) {
 		switch (ins->code) {
