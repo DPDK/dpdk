@@ -3347,6 +3347,11 @@ next:
 			return flow;
 		}
 
+		if (!fdir_rule.b_spec) {
+			ret = -EINVAL;
+			goto out;
+		}
+
 		fdir_rule_ptr = rte_zmalloc("txgbe_fdir_filter",
 				sizeof(struct txgbe_fdir_rule_ele), 0);
 		if (!fdir_rule_ptr) {
@@ -3388,12 +3393,12 @@ next:
 				 * Only support one global mask,
 				 * all the masks should be the same.
 				 */
-				ret = memcmp(&fdir_info->mask,
+				if (memcmp(&fdir_info->mask,
 					&fdir_rule.mask,
-					sizeof(struct txgbe_hw_fdir_mask));
-				if (ret) {
+					sizeof(struct txgbe_hw_fdir_mask)) != 0) {
 					PMD_DRV_LOG(ERR, "only support one global mask");
 					rte_free(fdir_rule_ptr);
+					ret = -EINVAL;
 					goto out;
 				}
 
@@ -3401,37 +3406,35 @@ next:
 				    fdir_rule.flex_bytes_offset ||
 				    fdir_info->flex_relative !=
 				    fdir_rule.flex_relative) {
+					PMD_DRV_LOG(ERR,
+						"flex bytes offset mismatch");
 					rte_free(fdir_rule_ptr);
+					ret = -EINVAL;
 					goto out;
 				}
 			}
 		}
 
-		if (fdir_rule.b_spec) {
-			ret = txgbe_fdir_filter_program(dev, &fdir_rule,
-					FALSE, FALSE);
-			if (ret) {
-				rte_free(fdir_rule_ptr);
-				/**
-				 * clean the mask_added flag if fail to
-				 * program
-				 **/
-				if (first_mask)
-					fdir_info->mask_added = FALSE;
-				goto out;
-			}
-
-			fdir_rule_ptr->filter_info = fdir_rule;
-			TAILQ_INSERT_TAIL(&filter_fdir_list,
-				fdir_rule_ptr, entries);
-			flow->rule = fdir_rule_ptr;
-			flow->filter_type = RTE_ETH_FILTER_FDIR;
-
-			return flow;
+		ret = txgbe_fdir_filter_program(dev, &fdir_rule,
+				FALSE, FALSE);
+		if (ret) {
+			rte_free(fdir_rule_ptr);
+			/**
+			 * clean the mask_added flag if fail to
+			 * program
+			 **/
+			if (first_mask)
+				fdir_info->mask_added = FALSE;
+			goto out;
 		}
 
-		rte_free(fdir_rule_ptr);
-		goto out;
+		fdir_rule_ptr->filter_info = fdir_rule;
+		TAILQ_INSERT_TAIL(&filter_fdir_list,
+			fdir_rule_ptr, entries);
+		flow->rule = fdir_rule_ptr;
+		flow->filter_type = RTE_ETH_FILTER_FDIR;
+
+		return flow;
 	}
 
 	memset(&l2_tn_filter, 0, sizeof(struct txgbe_l2_tunnel_conf));
