@@ -1846,8 +1846,10 @@ int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 		goto error;
 
 	rc = bnxt_mpc_open(bp);
-	if (rc != 0)
-		PMD_DRV_LOG_LINE(DEBUG, "MPC open failed");
+	if (rc != 0) {
+		PMD_DRV_LOG_LINE(ERR, "MPC open failed rc:%d", rc);
+		goto error;
+	}
 
 	rc = bnxt_alloc_prev_ring_stats(bp);
 	if (rc)
