@@ -260,6 +260,8 @@ plt_thread_is_valid(plt_thread_t thr)
 
 #define plt_strlcpy rte_strlcpy
 
+#define plt_uuid_t rte_uuid_t
+
 #define PLT_TEL_INT_VAL              RTE_TEL_INT_VAL
 #define PLT_TEL_STRING_VAL           RTE_TEL_STRING_VAL
 #define plt_tel_data                 rte_tel_data
@@ -347,6 +349,14 @@ extern int cnxk_logtype_esw;
 #define plt_dp_dbg(...) \
 	RTE_LOG_DP_LINE_PREFIX(DEBUG, CNXK, "%s():%u ", __func__ RTE_LOG_COMMA __LINE__, \
 		__VA_ARGS__)
+
+/* append dbdf to name */
+#define plt_pci_dev_name(devname, name, dev)                                                       \
+	({                                                                                         \
+		snprintf((devname), sizeof(devname), "%s" PCI_PRI_FMT, (name), (dev)->addr.domain, \
+			 (dev)->addr.bus, (dev)->addr.devid, (dev)->addr.function);                \
+		devname;                                                                           \
+	})
 
 #ifdef __cplusplus
 #define CNXK_PCI_ID(subsystem_dev, dev)                                        \

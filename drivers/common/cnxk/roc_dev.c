@@ -1412,6 +1412,7 @@ dev_vf_hwcap_update(struct plt_pci_device *pci_dev, struct dev *dev)
 	case PCI_DEVID_CNXK_RVU_NIX_INL_VF:
 	case PCI_DEVID_CNXK_RVU_BPHY_VF:
 	case PCI_DEVID_CNXK_RVU_ESWITCH_VF:
+	case PCI_DEVID_CN20K_DPI_VF:
 		dev->hwcap |= DEV_HWCAP_F_VF;
 		break;
 	}
