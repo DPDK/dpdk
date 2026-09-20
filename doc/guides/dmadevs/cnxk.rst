@@ -7,8 +7,37 @@ CNXK DMA Device Driver
 ======================
 
 The ``cnxk`` dmadev driver provides a poll-mode driver (PMD) for Marvell DPI DMA
-Hardware Accelerator block found in OCTEON 9 and OCTEON 10 family of SoCs.
-Each DMA queue is exposed as a VF function when SRIOV is enabled.
+Hardware Accelerator block found in OCTEON CN9K, CN10K and CN20K family of SoCs.
+
+Supported OCTEON cnxk SoCs
+--------------------------
+
+- CN9XX
+- CN10XX
+- CN20XX
+
+Supported PCI devices
+---------------------
+
+.. list-table::
+   :widths: 30 20 50
+   :header-rows: 1
+
+   * - SoC family
+     - PCI device ID
+     - Description
+   * - CN9K/CN10K
+     - 0xA081
+     - DPI VF
+   * - CN20K
+     - 0xA0E8
+     - DPI PF
+   * - CN20K
+     - 0xA0E9
+     - DPI VF
+
+On CN9K/CN10K, each DMA queue is exposed as a VF function when SRIOV is enabled.
+On CN20K, both DPI PF and VF devices can be used directly by the PMD.
 
 The block supports following modes of DMA transfers:
 
@@ -38,14 +67,38 @@ For example::
 
      $ dpdk-devbind.py -b vfio-pci 0000:05:00.1
 
+On CN20K, DPI PF and VF devices can be bound directly to the ``vfio-pci`` driver
+and used by the DPDK PMD. The ``octeontx2_dpi.ko`` kernel driver is not required
+on CN20K.
+
 Device Probing and Initialization
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To use the devices from an application, the dmadev API can be used.
 CNXK DMA device configuration requirements:
 
-* Only one ``vchan`` is supported per device.
+* CN9K/CN10K: only one ``vchan`` is supported per device.
+* CN20K: multiple ``vchans`` are supported per device.
 * CNXK DMA devices do not support silent mode.
+
+CN20K runtime config options
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The following ``devargs`` parameters can be used to configure CN20K DPI devices.
+For example::
+
+     -a 0002:02:00.0,num_vchans=16,num_lfs=8
+
+``num_vchans``
+
+  Number of virtual channels to configure per device (default ``8``).
+  The value must be a power of 2 and must not exceed ``512``.
+
+``num_lfs``
+
+  Number of local functions to configure per device (default ``num_vchans / 2``).
+  Each LF has two hardware rings. The value must be a power of 2
+  and must not exceed ``256``.
 
 Once configured, the device can then be made ready for use
 by calling the ``rte_dma_start()`` API.
@@ -60,7 +113,7 @@ for details on operation enqueue and submission API usage.
 Performance Tuning Parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-To achieve higher performance, DMA device needs to be tuned
+On CN9K/CN10K, to achieve higher performance, DMA device needs to be tuned
 using PF kernel driver module parameters.
 The PF kernel driver is part of the OCTEON SDK.
 Module parameters shall be configured during module insert as in below example::
@@ -95,3 +148,7 @@ Module parameters shall be configured during module insert as in below example::
    MPS and MRRS performance tuning parameters help achieve higher performance
    only for inbound and outbound DMA transfers.
    The parameter has no effect for internal only DMA transfer.
+
+   Performance tuning via ``octeontx2_dpi.ko`` applies to CN9K/CN10K only.
+   CN20K DPI devices do not require the kernel driver and can be used directly
+   after binding to ``vfio-pci``.
