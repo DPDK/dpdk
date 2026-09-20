@@ -47,6 +47,7 @@
 							     CNXK_DPI_MAX_POINTER)
 #define CNXK_DPI_CHUNKS_FROM_DESC(cz, desc) (((desc) / (((cz) / 8) / CNXK_DPI_MAX_CMD_SZ)) + 1)
 #define CNXK_DPI_COMPL_OFFSET		    ROC_CACHE_LINE_SZ
+#define CNXK_DPI_SRC_DST_KEY(src, dst)	    ((0x2040) | ((src & 0x3F) << 7) | (dst & 0x3F))
 
 #define CN20K_DPI_MAX_POINTER		    4
 #define CN20K_DPI_MAX_DESC		    2048

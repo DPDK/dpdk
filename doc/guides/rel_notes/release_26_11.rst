@@ -231,6 +231,11 @@ New Features
   The driver exposes each eDMA5 instance as a DPDK dmadev device and
   supports memory-to-memory copy and scatter-gather copy operations.
 
+* **Updated Marvell cnxk dmadev driver.**
+
+  * Added support for CN20K DPI DMA hardware.
+  * Added support for inter-process domain DMA transfers using access pair group API.
+
 * **Added per-queue statistics API in bbdev.**
 
   Added ``rte_bbdev_queue_stats_get()`` function to retrieve statistics

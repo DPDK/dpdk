@@ -98,7 +98,7 @@ cnxk_dmadev_info_get(const struct rte_dma_dev *dev, struct rte_dma_info *dev_inf
 		dev_info->min_desc = CN20K_DPI_MIN_DESC;
 		dev_info->max_sges = CN20K_DPI_MAX_POINTER;
 		dev_info->max_vchans = dpivf->max_vchans;
-		dev_info->dev_capa |= RTE_DMA_CAPA_OPS_FILL;
+		dev_info->dev_capa |= (RTE_DMA_CAPA_OPS_FILL | RTE_DMA_CAPA_INTER_PROCESS_DOMAIN);
 	} else {
 		dev_info->max_desc = CNXK_DPI_MAX_DESC;
 		dev_info->min_desc = CNXK_DPI_MIN_DESC;
@@ -443,6 +443,13 @@ cn20k_dmadev_setup(struct cnxk_dpi_vf_s *dpivf, uint16_t vchan,
 		break;
 	case RTE_DMA_DIR_MEM_TO_MEM:
 		dpi_conf->cfg.xtype = DPI_XTYPE_INTERNAL_ONLY;
+		if (conf->domain.type == RTE_DMA_INTER_PROCESS_DOMAIN) {
+			dpi_conf->chan_cfg.type = RTE_DMA_INTER_PROCESS_DOMAIN;
+			dpi_conf->chan_cfg.src_key = conf->domain.src_handler;
+			dpi_conf->chan_cfg.dst_key = conf->domain.dst_handler;
+			header->cn20k.chan = CNXK_DPI_SRC_DST_KEY(dpi_conf->chan_cfg.src_key,
+								  dpi_conf->chan_cfg.dst_key);
+		}
 		dpi_conf->cfg.rport = 0;
 		dpi_conf->cfg.wport = 0;
 		break;
@@ -1016,6 +1023,140 @@ cnxk_set_fp_ops(struct rte_dma_dev *dev, uint8_t ena_enq_deq)
 	}
 }
 
+static int
+cnxk_dmadev_access_pair_group_create(const struct rte_dma_dev *dev, rte_uuid_t domain_id,
+				       rte_uuid_t token, int16_t *group_id,
+				       rte_dma_access_pair_group_event_cb_t cb)
+{
+	struct cnxk_dpi_vf_s *dpivf = dev->fp_obj->dev_private;
+	struct roc_dpi_lf *lf;
+	int rc;
+
+	RTE_SET_USED(cb);
+
+	if (!roc_model_is_cn20k())
+		return -ENOTSUP;
+
+	if (dpivf->rdpi.lfs == NULL || dpivf->rdpi.nr_lfs == 0) {
+		plt_err("DPI LF resources are not initialized");
+		return -EINVAL;
+	}
+
+	lf = &(dpivf->rdpi.lfs[0]);
+
+	rc = roc_dpi_access_pair_group_create(lf, domain_id, token, group_id);
+
+	return rc;
+}
+
+static int
+cnxk_dmadev_access_pair_group_destroy(const struct rte_dma_dev *dev, int16_t group_id)
+{
+	struct cnxk_dpi_vf_s *dpivf = dev->fp_obj->dev_private;
+	struct roc_dpi_lf *lf;
+	int rc;
+
+	if (!roc_model_is_cn20k())
+		return -ENOTSUP;
+
+	if (dpivf->rdpi.lfs == NULL || dpivf->rdpi.nr_lfs == 0) {
+		plt_err("DPI LF resources are not initialized");
+		return -EINVAL;
+	}
+
+	lf = &(dpivf->rdpi.lfs[0]);
+
+	if (lf->group_id != group_id) {
+		plt_err("Invalid access pair group is passed");
+		return -EINVAL;
+	}
+
+	rc = roc_dpi_access_pair_group_destroy(lf, group_id);
+
+	return rc;
+}
+
+static int
+cnxk_dmadev_access_pair_group_join(const struct rte_dma_dev *dev, rte_uuid_t domain_id,
+				   rte_uuid_t token, int16_t group_id,
+				   rte_dma_access_pair_group_event_cb_t cb)
+{
+	struct cnxk_dpi_vf_s *dpivf = dev->fp_obj->dev_private;
+	struct roc_dpi_lf *lf;
+	int rc;
+
+	RTE_SET_USED(cb);
+
+	if (!roc_model_is_cn20k())
+		return -ENOTSUP;
+
+	if (dpivf->rdpi.lfs == NULL || dpivf->rdpi.nr_lfs == 0) {
+		plt_err("DPI LF resources are not initialized");
+		return -EINVAL;
+	}
+
+	lf = &(dpivf->rdpi.lfs[0]);
+
+	rc = roc_dpi_access_pair_group_join(lf, domain_id, token, group_id);
+
+	return rc;
+}
+
+static int
+cnxk_dmadev_access_pair_group_leave(const struct rte_dma_dev *dev, int16_t group_id)
+{
+	struct cnxk_dpi_vf_s *dpivf = dev->fp_obj->dev_private;
+	struct roc_dpi_lf *lf;
+	int rc;
+
+	if (!roc_model_is_cn20k())
+		return -ENOTSUP;
+
+	if (dpivf->rdpi.lfs == NULL || dpivf->rdpi.nr_lfs == 0) {
+		plt_err("DPI LF resources are not initialized");
+		return -EINVAL;
+	}
+
+	lf = &(dpivf->rdpi.lfs[0]);
+
+	if (lf->group_id != group_id) {
+		plt_err("Invalid access pair group is passed");
+		return -EINVAL;
+	}
+
+	rc = roc_dpi_access_pair_group_leave(lf, group_id);
+
+	return rc;
+}
+
+static int
+cnxk_dmadev_access_pair_group_handler_get(const struct rte_dma_dev *dev, int16_t group_id,
+					  rte_uuid_t domain_id, uint16_t *handler)
+{
+	struct cnxk_dpi_vf_s *dpivf = dev->fp_obj->dev_private;
+	struct roc_dpi_lf *lf;
+	int rc;
+
+	if (!roc_model_is_cn20k())
+		return -ENOTSUP;
+
+	if (dpivf->rdpi.lfs == NULL || dpivf->rdpi.nr_lfs == 0) {
+		plt_err("DPI LF resources are not initialized");
+		return -EINVAL;
+	}
+
+	lf = &(dpivf->rdpi.lfs[0]);
+
+	if (lf->group_id != group_id) {
+		plt_err("Invalid access pair group is passed");
+		return -EINVAL;
+	}
+
+	rc = roc_dpi_access_pair_group_handler_get(lf, group_id, domain_id, handler);
+
+	return rc;
+}
+
 static const struct rte_dma_dev_ops cnxk_dmadev_ops = {
 	.dev_close = cnxk_dmadev_close,
 	.dev_configure = cnxk_dmadev_configure,
@@ -1025,6 +1166,11 @@ static const struct rte_dma_dev_ops cnxk_dmadev_ops = {
 	.stats_get = cnxk_stats_get,
 	.stats_reset = cnxk_stats_reset,
 	.vchan_setup = cnxk_dmadev_vchan_setup,
+	.access_pair_group_create = cnxk_dmadev_access_pair_group_create,
+	.access_pair_group_destroy = cnxk_dmadev_access_pair_group_destroy,
+	.access_pair_group_join = cnxk_dmadev_access_pair_group_join,
+	.access_pair_group_leave = cnxk_dmadev_access_pair_group_leave,
+	.access_pair_group_handler_get = cnxk_dmadev_access_pair_group_handler_get,
 };
 
 static int

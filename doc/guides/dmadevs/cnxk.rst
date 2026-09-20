@@ -110,6 +110,79 @@ Refer to the :ref:`dmadev_enqueue_dequeue` section
 of the dmadev library documentation
 for details on operation enqueue and submission API usage.
 
+CN20K inter-process domain DMA transfers
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+CN20K DPI devices advertise the ``RTE_DMA_CAPA_INTER_PROCESS_DOMAIN`` capability.
+This enables DMA transfers between memory owned by different DPDK processes
+running on the same CN20K SoC.
+
+Each participating process must bind its own CN20K DPI PF or VF device to
+``vfio-pci`` and probe it through the ``cnxk`` dmadev PMD.
+Inter-process domain transfers are supported only with
+``RTE_DMA_DIR_MEM_TO_MEM`` direction.
+
+Access pair group setup
+^^^^^^^^^^^^^^^^^^^^^^^
+
+Before configuring a virtual channel for inter-process DMA, each process must
+join a common access pair group using the dmadev access pair group API.
+The general setup flow is described in
+:doc:`/prog_guide/dmadev` under *Inter-domain DMA Transfers*.
+
+At a high level:
+
+#. Each process generates a unique ``domain_id`` (``rte_uuid_t``) to identify
+   its process domain.
+#. Process#1 generates a ``token`` and calls ``rte_dma_access_pair_group_create()``.
+#. Process#1 shares the ``group_id``, ``token`` and its ``domain_id`` with
+   Process#2 through an out-of-band channel.
+#. Process#2 calls ``rte_dma_access_pair_group_join()`` with the shared
+   ``group_id``, ``token`` and its own ``domain_id``.
+#. Each process retrieves source and destination handler values using
+   ``rte_dma_access_pair_group_handler_get()``.
+#. Each process configures its virtual channel and performs DMA transfers.
+#. Process#2 calls ``rte_dma_access_pair_group_leave()`` when finished.
+#. Process#1 calls ``rte_dma_access_pair_group_destroy()`` to tear down the group.
+
+Virtual channel configuration
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+After the access pair group is established and handler values are exchanged,
+configure the virtual channel with ``RTE_DMA_INTER_PROCESS_DOMAIN`` domain type.
+For example::
+
+     struct rte_dma_vchan_conf vchan_conf = {0};
+
+     vchan_conf.direction = RTE_DMA_DIR_MEM_TO_MEM;
+     vchan_conf.nb_desc = 128;
+     vchan_conf.domain.type = RTE_DMA_INTER_PROCESS_DOMAIN;
+     vchan_conf.domain.src_handler = local_src_handler;
+     vchan_conf.domain.dst_handler = peer_dst_handler;
+
+     rte_dma_vchan_setup(dma_dev_id, vchan, &vchan_conf);
+
+``src_handler``
+
+  Handler for the local process domain, obtained from
+  ``rte_dma_access_pair_group_handler_get()`` using the local domain_id.
+
+``dst_handler``
+
+  Handler for the peer process domain, obtained from
+  ``rte_dma_access_pair_group_handler_get()`` using the peer domain_id.
+
+Once the virtual channel is configured, start the device and issue copy or
+copy-SG operations as for a regular memory-to-memory transfer.
+
+.. note::
+
+   Inter-process domain DMA is supported on CN20K only.
+   CN9K/CN10K DPI devices do not advertise
+   ``RTE_DMA_CAPA_INTER_PROCESS_DOMAIN``.
+
+   The access pair group APIs are experimental and may change in future releases.
+
 Performance Tuning Parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
