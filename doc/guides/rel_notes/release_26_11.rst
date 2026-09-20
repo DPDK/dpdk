@@ -229,6 +229,11 @@ New Features
   dmadev per channel with a single virtual channel and supports
   memory-to-memory copy operations.
 
+* **Updated Marvell cnxk DMA driver.**
+
+  * Added support for CN20K DPI DMA hardware.
+  * Added support for inter-process domain DMA transfers using access pair group API.
+
 * **Added NXP i.MX95 eDMA5 DMA driver.**
 
   Added a DMA driver for the NXP i.MX95 eDMA5 controller.
