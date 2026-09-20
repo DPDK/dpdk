@@ -198,7 +198,7 @@ struct mbox_msghdr {
 	M(CPT_GET_CAPS, 0xBFD, cpt_caps_get, msg_req, cpt_caps_rsp_msg)        \
 	M(CPT_GET_ENG_GRP, 0xBFF, cpt_eng_grp_get, cpt_eng_grp_req,            \
 	  cpt_eng_grp_rsp)                                                     \
-	M(CPT_SET_QUEUE_PRI, 0xBFB, cpt_set_que_pri, cpt_queue_pri_req_msg,	\
+	M(CPT_SET_QUEUE_PRI, 0xBFB, cpt_set_que_pri, cpt_queue_pri_req_msg,     \
 			       msg_rsp)					\
 	/* REE mbox IDs (range 0xE00 - 0xFFF) */                               \
 	M(REE_CONFIG_LF, 0xE01, ree_config_lf, ree_lf_req_msg, msg_rsp)        \
@@ -403,7 +403,34 @@ struct mbox_msghdr {
 	M(MCS_FIPS_KEY_SET, 0xa045, mcs_fips_key_set, mcs_fips_key_req, msg_rsp)                   \
 	M(MCS_FIPS_BLOCK_SET, 0xa046, mcs_fips_block_set, mcs_fips_block_req, msg_rsp)             \
 	M(MCS_FIPS_START, 0xa047, mcs_fips_start, mcs_fips_req, msg_rsp)                           \
-	M(MCS_FIPS_RESULT_GET, 0xa048, mcs_fips_result_get, mcs_fips_req, mcs_fips_result_rsp)
+	M(MCS_FIPS_RESULT_GET, 0xa048, mcs_fips_result_get, mcs_fips_req, mcs_fips_result_rsp)     \
+	/* DPI mbox IDs (range 0xc000 - 0xcfff) */                                                 \
+	M(DPI_ATTACH_RESOURCES, 0xc000, dpi_attach_resources, dpi_rsrc_attach_req, msg_rsp)        \
+	M(DPI_DETACH_RESOURCES, 0xc001, dpi_detach_resources, dpi_rsrc_detach, msg_rsp)            \
+	M(DPI_LF_RING_CFG, 0xc002, dpi_lf_ring_cfg, dpi_lf_ring_cfg_req, msg_rsp)                  \
+	M(DPI_LF_PF_FUNC_CFG, 0xc003, dpi_lf_pf_func_cfg, dpi_lf_pf_func_cfg_req, msg_rsp)         \
+	M(DPI_LF_FREE, 0xc004, dpi_lf_free, msg_req, msg_rsp)                                      \
+	M(DPI_FREE_RSRC_CNT, 0xc005, dpi_free_rsrc_cnt, msg_req, dpi_free_rsrcs_rsp)               \
+	M(DPI_LF_CHAN_CFG, 0xc006, dpi_lf_chan_cfg, dpi_lf_chan_cfg_req, msg_rsp)                  \
+	M(DPI_LF_CHAN_TBL_ALLOC, 0xc007, dpi_lf_chan_tbl_alloc, dpi_lf_chan_tbl_alloc_req,         \
+	  dpi_lf_chan_tbl_alloc_rsp)                                                               \
+	M(DPI_LF_CHAN_TBL_FREE, 0xc008, dpi_lf_chan_tbl_free, dpi_lf_chan_tbl_free_req, msg_rsp)   \
+	M(DPI_LF_CHAN_TBL_SELECT, 0xc009, dpi_lf_chan_tbl_select, dpi_lf_chan_tbl_select_req,      \
+	  msg_rsp)                                                                                 \
+	M(DPI_LF_CHAN_TBL_ENA_DIS, 0xc00a, dpi_lf_chan_tbl_ena_dis, dpi_lf_chan_tbl_ena_dis_req,   \
+	  msg_rsp)                                                                                 \
+	M(DPI_LF_CHAN_TBL_UPDATE, 0xc00b, dpi_lf_chan_tbl_update, dpi_lf_chan_tbl_update_req,      \
+	  msg_rsp)                                                                                 \
+	M(DPI_LF_ACCESS_GROUP_ALLOC, 0xc00d, dpi_lf_access_group_alloc,                            \
+	  dpi_lf_access_group_alloc_req,  dpi_lf_access_group_alloc_rsp)                           \
+	M(DPI_LF_ACCESS_GROUP_JOIN, 0xc00e, dpi_lf_access_group_join, dpi_lf_access_group_join_req,\
+	  msg_rsp)                                                                                 \
+	M(DPI_LF_ACCESS_GROUP_LEAVE, 0xc00f, dpi_lf_access_group_leave,                            \
+	  dpi_lf_access_group_leave_req, msg_rsp)                                                  \
+	M(DPI_LF_ACCESS_GROUP_HANDLE_GET, 0xc010, dpi_lf_access_group_handle_get,                  \
+	  dpi_lf_access_group_handle_get_req, dpi_lf_access_group_handle_get_rsp)                  \
+	M(DPI_LF_ACCESS_GROUP_FREE, 0xc011, dpi_lf_access_group_free, dpi_lf_access_group_free_req,\
+	  msg_rsp)
 
 /* Messages initiated by AF (range 0xC00 - 0xDFF) */
 #define MBOX_UP_CGX_MESSAGES                                                   \
@@ -1320,7 +1347,6 @@ struct mcs_fips_result_rsp {
 	uint64_t __io icv_bits63_0;
 	uint8_t __io result_pass;
 };
-
 /* NPA mbox message formats */
 
 /* NPA mailbox error codes
@@ -3380,6 +3406,148 @@ struct rep_event {
 #define RVU_EVENT_RX_MODE_CHANGE BIT_ULL(3)
 	uint16_t __io event;
 	struct rep_evt_data evt_data;
+};
+
+/* DPI mbox message formats */
+
+struct dpi_lf_chan_tbl_alloc_req {
+	struct mbox_msghdr hdr;
+
+	uint32_t __io dpi_blkaddr;
+	uint32_t __io tbl_size; /* No of table entries */
+};
+
+struct dpi_lf_chan_tbl_alloc_rsp {
+	struct mbox_msghdr hdr;
+
+	uint16_t __io tbl_num; /* Allocated channel table num */
+};
+
+struct dpi_lf_chan_tbl_free_req {
+	struct mbox_msghdr hdr;
+
+	uint32_t __io dpi_blkaddr;
+	uint16_t __io tbl_num;
+};
+
+struct dpi_lf_ring_cfg_req {
+	struct mbox_msghdr hdr;
+
+	uint32_t __io dpi_blkaddr;
+	uint16_t __io lf_slot;
+	uint8_t __io xtype; /* Transfer type */
+	uint8_t __io pri;   /* Queue priority */
+	uint8_t __io ring_idx;
+	uint8_t __io err_rsp_en;
+	uint8_t __io wport; /* Write port */
+	uint8_t __io rport; /* Read port */
+};
+
+struct dpi_rsrc_attach_req {
+	struct mbox_msghdr hdr;
+	uint32_t __io dpi_blkaddr;
+	uint8_t __io modify : 1;
+	uint8_t __io dpilfs : 1;
+	uint16_t __io dpi_lfs;
+};
+
+struct dpi_rsrc_detach {
+	struct mbox_msghdr hdr;
+	uint32_t __io dpi_blkaddr;
+	uint8_t __io partial : 1;
+	uint8_t __io dpilfs : 1;
+	uint8_t __io dpi1_lfs : 1;
+};
+
+struct dpi_free_rsrcs_rsp {
+	struct mbox_msghdr hdr;
+	uint8_t __io dpi;
+	uint8_t __io dpi1;
+};
+
+struct dpi_lf_pf_func_cfg_req {
+	struct mbox_msghdr hdr;
+	uint32_t __io dpi_blkaddr;
+	uint16_t __io npa_pf_func;
+	uint16_t __io sso_pf_func;
+	uint16_t __io lf_slot;
+};
+
+struct dpi_lf_chan_cfg_req {
+	struct mbox_msghdr hdr;
+	uint64_t __io def_config; /* DPI_CHANNEL_TABLE_S value */
+	uint32_t __io dpi_blkaddr;
+	uint16_t __io lf_slot;
+	uint16_t __io ring_idx;
+};
+
+struct dpi_lf_chan_tbl_select_req {
+	struct mbox_msghdr hdr;
+	uint32_t __io dpi_blkaddr;
+	uint16_t __io lf_slot;
+	uint16_t __io chan_tbl; /* Channel table  */
+	uint8_t __io ena;
+};
+
+struct dpi_lf_chan_tbl_ena_dis_req {
+	struct mbox_msghdr hdr;
+	uint32_t __io dpi_blkaddr;
+	uint16_t __io lf_slot;
+	uint8_t __io ena_dis;
+};
+
+struct dpi_lf_chan_tbl_update_req {
+	struct mbox_msghdr hdr;
+#define DPI_LF_CHAN_TBL_UPDATE_SIZE 64
+	uint64_t __io config[DPI_LF_CHAN_TBL_UPDATE_SIZE]; /* DPI_CHANNEL_TABLE_S value */
+	uint32_t __io dpi_blkaddr;
+	uint16_t __io idx_offset;  /* Offset within the channel table */
+	uint16_t __io num_entries; /* Num of entries to be updated from idx_offset */
+	uint16_t __io chan_tbl;
+};
+
+struct dpi_lf_access_group_alloc_req {
+	struct mbox_msghdr hdr;
+	uint32_t __io dpi_blkaddr;
+	uint8_t __io lf_handle[16];
+	uint8_t __io access_key[16];
+};
+
+struct dpi_lf_access_group_alloc_rsp {
+	struct mbox_msghdr hdr;
+	uint16_t __io group_id;
+};
+
+struct dpi_lf_access_group_join_req {
+	struct mbox_msghdr hdr;
+	uint32_t __io dpi_blkaddr;
+	uint8_t __io lf_handle[16];
+	uint8_t __io access_key[16];
+	uint16_t __io group_id;
+};
+
+struct dpi_lf_access_group_leave_req {
+	struct mbox_msghdr hdr;
+	uint32_t __io dpi_blkaddr;
+	uint16_t __io group_id;
+};
+
+struct dpi_lf_access_group_handle_get_req {
+	struct mbox_msghdr hdr;
+	uint32_t __io dpi_blkaddr;
+	uint8_t __io lf_handle[16];
+	uint16_t __io group_id;
+};
+
+struct dpi_lf_access_group_handle_get_rsp {
+	struct mbox_msghdr hdr;
+	uint16_t __io handle;
+};
+
+struct dpi_lf_access_group_free_req {
+	struct mbox_msghdr hdr;
+	uint32_t __io dpi_blkaddr;
+	uint16_t __io group_id;
 };
 
 #endif /* __ROC_MBOX_H__ */
