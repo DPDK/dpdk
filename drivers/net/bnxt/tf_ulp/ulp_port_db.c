@@ -159,6 +159,11 @@ int32_t	ulp_port_db_port_update(struct bnxt_ulp_context *ulp_ctxt,
 	intf->drv_func_id = bnxt_pmd_get_fw_func_id(port_id,
 						BNXT_ULP_INTF_TYPE_INVALID);
 
+	if (intf->drv_func_id >= BNXT_PORT_DB_MAX_FUNC) {
+		BNXT_DRV_DBG(ERR, "Invalid drv_func_id %u", intf->drv_func_id);
+		return -EINVAL;
+	}
+
 	func = &port_db->ulp_func_id_tbl[intf->drv_func_id];
 	if (!func->func_valid) {
 		func->func_svif = bnxt_pmd_get_svif(port_id, true,
@@ -180,6 +185,11 @@ int32_t	ulp_port_db_port_update(struct bnxt_ulp_context *ulp_ctxt,
 		intf->vf_func_id =
 			bnxt_pmd_get_fw_func_id(port_id, BNXT_ULP_INTF_TYPE_VF_REP);
 
+		if (intf->vf_func_id >= BNXT_PORT_DB_MAX_FUNC) {
+			BNXT_DRV_DBG(ERR, "Invalid vf_func_id %u", intf->vf_func_id);
+			return -EINVAL;
+		}
+
 		func = &port_db->ulp_func_id_tbl[intf->vf_func_id];
 		func->func_svif =
 			bnxt_pmd_get_svif(port_id, true, BNXT_ULP_INTF_TYPE_VF_REP);
@@ -196,6 +206,11 @@ int32_t	ulp_port_db_port_update(struct bnxt_ulp_context *ulp_ctxt,
 						      intf->vf_func_id);
 		if (!bnxt_ulp_cntxt_tsid_get(ulp_ctxt, &tsid))
 			func->table_scope = tsid;
+	}
+
+	if (func->phy_port_id >= port_db->phy_port_cnt) {
+		BNXT_DRV_DBG(ERR, "Invalid phy_port_id %u", func->phy_port_id);
+		return -EINVAL;
 	}
 
 	/* When there is no match, the default action is to send the packet to
