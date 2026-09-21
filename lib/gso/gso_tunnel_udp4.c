@@ -78,8 +78,8 @@ gso_tunnel_udp4_segment(struct rte_mbuf *pkt,
 		return 0;
 
 	hdr_offset += pkt->l3_len;
-	/* Don't process the packet without data */
-	if ((hdr_offset + pkt->l4_len) >= pkt->pkt_len)
+	/* Don't process the packet without data or hdrs larger than seg size */
+	if ((hdr_offset + pkt->l4_len) >= pkt->pkt_len || hdr_offset >= gso_size)
 		return 0;
 
 	/* pyld_unit_size must be a multiple of 8 because frag_off

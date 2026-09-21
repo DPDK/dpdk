@@ -50,7 +50,19 @@ gso_do_segment(struct rte_mbuf *pkt,
 	struct rte_mbuf *hdr_segment, *pyld_segment, *prev_segment;
 	uint16_t pkt_in_data_pos, segment_bytes_remaining;
 	uint16_t pyld_len, nb_segs;
+	uint16_t direct_buf_size, direct_tailroom;
 	bool more_in_pkt, more_out_segs;
+
+	/*
+	 * The header must be fully contained in pkt's first segment and must fit
+	 * in a freshly allocated direct_pool mbuf.
+	 */
+	direct_buf_size = rte_pktmbuf_data_room_size(direct_pool);
+	if (unlikely(direct_buf_size <= (uint16_t)RTE_PKTMBUF_HEADROOM))
+		return -EINVAL;
+	direct_tailroom = direct_buf_size - RTE_PKTMBUF_HEADROOM;
+	if (unlikely(pkt_hdr_offset > pkt->data_len || pkt_hdr_offset > direct_tailroom))
+		return -EINVAL;
 
 	pkt_in = pkt;
 	nb_segs = 0;

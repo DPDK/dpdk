@@ -53,11 +53,10 @@ gso_tcp4_segment(struct rte_mbuf *pkt,
 		return 0;
 	}
 
-	/* Don't process the packet without data */
+	/* Don't process the packet without data or hdr larger than seg size */
 	hdr_offset = pkt->l2_len + pkt->l3_len + pkt->l4_len;
-	if (unlikely(hdr_offset >= pkt->pkt_len)) {
+	if (unlikely(hdr_offset >= pkt->pkt_len || hdr_offset >= gso_size))
 		return 0;
-	}
 
 	pyld_unit_size = gso_size - hdr_offset;
 
