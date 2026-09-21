@@ -62,10 +62,9 @@ gso_udp4_segment(struct rte_mbuf *pkt,
 	 */
 	hdr_offset = pkt->l2_len + pkt->l3_len;
 
-	/* Don't process the packet without data. */
-	if (unlikely(hdr_offset + pkt->l4_len >= pkt->pkt_len)) {
+	/* Don't process the packet without data or header larger than seg size. */
+	if (unlikely(hdr_offset + pkt->l4_len >= pkt->pkt_len || hdr_offset >= gso_size))
 		return 0;
-	}
 
 	/* pyld_unit_size must be a multiple of 8 because frag_off
 	 * uses 8 bytes as unit.
