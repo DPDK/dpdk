@@ -98,6 +98,7 @@ struct pmd_internals {
 
 	struct memif_control_channel *cc;	/**< control channel */
 	rte_spinlock_t cc_lock;			/**< control channel lock */
+	RTE_ATOMIC(bool) bad_desc;		/**< peer supplied bad descriptor */
 
 	/* remote info */
 	char remote_name[RTE_DEV_NAME_MAX_LEN];		/**< remote app name */
