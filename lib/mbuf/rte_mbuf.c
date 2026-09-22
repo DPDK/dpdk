@@ -555,15 +555,15 @@ __rte_pktmbuf_free_seg_via_array(struct rte_mbuf *m,
  */
 #define RTE_PKTMBUF_FREE_PENDING_SZ 64
 
-/* Free a bulk of packet mbufs back into their original mempools. */
-RTE_EXPORT_SYMBOL(rte_pktmbuf_free_bulk)
-void rte_pktmbuf_free_bulk(struct rte_mbuf **mbufs, unsigned int count)
+static void
+__rte_pktmbuf_free_bulk_fallback(struct rte_mbuf **mbufs, unsigned int count)
 {
 	struct rte_mbuf *m, *m_next, *pending[RTE_PKTMBUF_FREE_PENDING_SZ];
 	unsigned int idx, nb_pending = 0;
 
 	for (idx = 0; idx < count; idx++) {
 		m = mbufs[idx];
+
 		if (unlikely(m == NULL))
 			continue;
 
@@ -580,6 +580,71 @@ void rte_pktmbuf_free_bulk(struct rte_mbuf **mbufs, unsigned int count)
 
 	if (nb_pending > 0)
 		rte_mbuf_raw_free_bulk(pending[0]->pool, pending, nb_pending);
+}
+
+/* Free a bulk of packet mbufs back into their original mempools. */
+RTE_EXPORT_SYMBOL(rte_pktmbuf_free_bulk)
+void rte_pktmbuf_free_bulk(struct rte_mbuf **mbufs, unsigned int count)
+{
+	struct rte_mempool *run_pool = NULL;
+	unsigned int run_start = 0;
+	unsigned int run_count = 0;
+	unsigned int idx;
+
+	for (idx = 0; idx < count; idx++) {
+		struct rte_mbuf *m = mbufs[idx];
+
+		if (unlikely(m == NULL)) {
+			if (run_count != 0) {
+				rte_mbuf_raw_free_bulk(run_pool,
+						&mbufs[run_start], run_count);
+				run_count = 0;
+			}
+			continue;
+		}
+
+		__rte_mbuf_sanity_check(m, 1);
+
+		/*
+		 * Preserve the generic path for chained packets. No mbuf in
+		 * this suffix has been modified yet.
+		 */
+		if (unlikely(m->next != NULL)) {
+			if (run_count != 0)
+				rte_mbuf_raw_free_bulk(run_pool,
+						&mbufs[run_start], run_count);
+
+			__rte_pktmbuf_free_bulk_fallback(&mbufs[idx],
+					count - idx);
+			return;
+		}
+
+		m = rte_pktmbuf_prefree_seg(m);
+		if (unlikely(m == NULL)) {
+			if (run_count != 0) {
+				rte_mbuf_raw_free_bulk(run_pool,
+						&mbufs[run_start], run_count);
+				run_count = 0;
+			}
+			continue;
+		}
+
+		if (run_count != 0 && m->pool != run_pool) {
+			rte_mbuf_raw_free_bulk(run_pool,
+					&mbufs[run_start], run_count);
+			run_count = 0;
+		}
+
+		if (run_count == 0) {
+			run_pool = m->pool;
+			run_start = idx;
+		}
+
+		run_count++;
+	}
+
+	if (run_count != 0)
+		rte_mbuf_raw_free_bulk(run_pool, &mbufs[run_start], run_count);
 }
 
 /* Creates a shallow copy of mbuf */
