@@ -27,6 +27,8 @@
 #include <rte_memory.h>
 #include <rte_memzone.h>
 #include <rte_eal_memconfig.h>
+#include <rte_stdatomic.h>
+#include <rte_alarm.h>
 
 #include "rte_eth_memif.h"
 #include "memif_socket.h"
@@ -245,10 +247,147 @@ memif_get_ring_from_queue(struct pmd_process_private *proc_private,
 	return (memif_ring_t *)((uint8_t *)r->addr + mq->ring_offset);
 }
 
-static void *
-memif_get_buffer(struct pmd_process_private *proc_private, memif_desc_t *d)
+/*
+ * Result of validating a peer supplied descriptor.
+ * The names match the descriptor status codes used by the VPP memif plugin.
+ */
+enum memif_desc_status {
+	MEMIF_DESC_STATUS_OK = 0,
+	MEMIF_DESC_STATUS_ERR_BAD_REGION,
+	MEMIF_DESC_STATUS_ERR_REGION_OVERRUN,
+	MEMIF_DESC_STATUS_ERR_DATA_TOO_BIG,
+	MEMIF_DESC_STATUS_ERR_ZERO_LENGTH,
+};
+
+static const char * const memif_desc_status_str[] = {
+	[MEMIF_DESC_STATUS_OK]			= "ok",
+	[MEMIF_DESC_STATUS_ERR_BAD_REGION]	= "bad region",
+	[MEMIF_DESC_STATUS_ERR_REGION_OVERRUN]	= "region overrun",
+	[MEMIF_DESC_STATUS_ERR_DATA_TOO_BIG]	= "data too big",
+	[MEMIF_DESC_STATUS_ERR_ZERO_LENGTH]	= "zero length",
+};
+
+/* Take a private copy of descriptor for validation. */
+static inline memif_desc_t
+memif_desc_read(const memif_desc_t *dp)
 {
-	return ((uint8_t *)proc_private->regions[d->region]->addr + d->offset);
+	memif_desc_t desc = *(const volatile memif_desc_t *)dp;
+
+	rte_compiler_barrier();	/* avoid TOCTOU issues */
+	return desc;
+}
+
+/*
+ * Validate a peer supplied descriptor.
+ * The region index and offset are controlled by the peer, so check that the
+ * [offset, offset + len) window the caller intends to access lies inside a
+ * valid shared region.
+ */
+static enum memif_desc_status
+memif_desc_is_valid(const struct pmd_process_private *proc_private,
+		    const memif_desc_t *d, uint32_t len, uint32_t max_len,
+		    uint8_t **data)
+{
+	const struct memif_region *region;
+	uint64_t start = d->offset;
+
+	if (unlikely(d->region >= proc_private->regions_num))
+		return MEMIF_DESC_STATUS_ERR_BAD_REGION;
+
+	region = proc_private->regions[d->region];
+	if (unlikely(region == NULL || region->addr == NULL))
+		return MEMIF_DESC_STATUS_ERR_BAD_REGION;
+
+	if (unlikely(start + len > region->region_size))
+		return MEMIF_DESC_STATUS_ERR_REGION_OVERRUN;
+
+	if (unlikely(len > max_len || len > UINT16_MAX))
+		return MEMIF_DESC_STATUS_ERR_DATA_TOO_BIG;
+
+	*data = (uint8_t *)region->addr + start;
+	return MEMIF_DESC_STATUS_OK;
+}
+
+/*
+ * Tear down a connection whose peer supplied an invalid descriptor.
+ * Runs on the control thread from an alarm when started in data path.
+ */
+static void
+memif_bad_desc_disconnect(void *arg)
+{
+	struct rte_eth_dev *dev = arg;
+	struct pmd_internals *pmd = dev->data->dev_private;
+
+	if (!rte_atomic_exchange_explicit(&pmd->bad_desc, false, rte_memory_order_relaxed))
+		return;
+
+	strlcpy(pmd->local_disc_string, "bad descriptor",
+		sizeof(pmd->local_disc_string));
+
+	rte_spinlock_lock(&pmd->cc_lock);
+	if (pmd->cc != NULL)
+		memif_msg_enq_disconnect(pmd->cc, pmd->local_disc_string, 0);
+	rte_spinlock_unlock(&pmd->cc_lock);
+
+	memif_disconnect(dev);
+}
+
+/*
+ * Report a peer supplied descriptor that failed validation.
+ *
+ * A bad descriptor means the peer is buggy or malicious, so the rings can no longer be trusted.
+ * The data path only latches the error and defers the teardown to the control thread.
+ */
+static void __rte_cold
+memif_desc_error(struct memif_queue *mq, const memif_desc_t *d, enum memif_desc_status status)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[mq->in_port];
+	struct pmd_internals *pmd = dev->data->dev_private;
+
+	++mq->n_err;
+
+	/*
+	 * Only the primary owns the control channel, so only it can tear the
+	 * connection down. A secondary can just count the error here; the
+	 * disconnect then waits until the primary sees a bad descriptor of
+	 * its own. Telling the primary directly needs an mp message.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return;
+
+	/* Report only the descriptor that broke the connection. */
+	if (rte_atomic_exchange_explicit(&pmd->bad_desc, true, rte_memory_order_relaxed))
+		return;
+
+	MIF_LOG(ERR, "Port %u disconnecting, bad descriptor from peer "
+		"(region %u offset %u length %u): %s",
+		mq->in_port, d->region, d->offset, d->length,
+		memif_desc_status_str[status]);
+
+	if (rte_eal_alarm_set(1, memif_bad_desc_disconnect, dev) < 0) {
+		MIF_LOG(ERR, "Port %u failed to schedule disconnect", mq->in_port);
+		rte_atomic_store_explicit(&pmd->bad_desc, false, rte_memory_order_relaxed);
+	}
+}
+
+/*
+ * Resolve a peer supplied descriptor to a buffer address,
+ * or NULL if the descriptor is invalid.
+ */
+static uint8_t *
+memif_get_buffer(const struct pmd_process_private *proc_private, struct memif_queue *mq,
+		 const memif_desc_t *d, uint32_t len, uint32_t max_len)
+{
+	enum memif_desc_status status;
+	uint8_t *data = NULL;
+
+	status = memif_desc_is_valid(proc_private, d, len, max_len, &data);
+	if (unlikely(status != MEMIF_DESC_STATUS_OK)) {
+		memif_desc_error(mq, d, status);
+		return NULL;
+	}
+
+	return data;
 }
 
 /* Free mbufs received by server */
@@ -307,6 +446,8 @@ eth_memif_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	uint16_t src_len, src_off, dst_len, dst_off, cp_len;
 	memif_ring_type_t type = mq->type;
 	memif_desc_t *d0;
+	memif_desc_t desc;
+	const uint8_t *src_data;
 	struct rte_mbuf *mbuf, *mbuf_head, *mbuf_tail;
 	uint64_t b;
 	ssize_t size __rte_unused;
@@ -362,22 +503,29 @@ next_bulk:
 next_slot1:
 			mbuf->port = mq->in_port;
 			s0 = cur_slot & mask;
-			d0 = &ring->desc[s0];
+			desc = memif_desc_read(&ring->desc[s0]);
 
-			cp_len = d0->length;
+			/*
+			 * One descriptor per mbuf, so length must fit the mbuf.
+			 * Validate the full 32-bit peer length before narrowing it.
+			 */
+			src_data = memif_get_buffer(proc_private, mq, &desc, desc.length,
+						    mbuf_size);
+			if (unlikely(src_data == NULL))
+				goto discard1;
+			cp_len = desc.length;
 
 			rte_pktmbuf_data_len(mbuf) = cp_len;
 			rte_pktmbuf_pkt_len(mbuf) = cp_len;
 			if (mbuf != mbuf_head)
 				rte_pktmbuf_pkt_len(mbuf_head) += cp_len;
 
-			rte_memcpy(rte_pktmbuf_mtod(mbuf, void *),
-				(uint8_t *)memif_get_buffer(proc_private, d0), cp_len);
+			rte_memcpy(rte_pktmbuf_mtod(mbuf, void *), src_data, cp_len);
 
 			cur_slot++;
 			n_slots--;
 
-			if (d0->flags & MEMIF_DESC_FLAG_NEXT) {
+			if (desc.flags & MEMIF_DESC_FLAG_NEXT) {
 				if (unlikely(n_slots == 0)) {
 					mq->n_err++;
 					rte_pktmbuf_free_bulk(mbufs + rx_pkts,
@@ -406,6 +554,25 @@ next_slot1:
 			*bufs++ = mbuf_head;
 			rx_pkts++;
 			n_rx_pkts++;
+			continue;
+
+discard1:
+			/* Skip the remainder of this descriptor chain and
+			 * reuse mbuf_head for the next packet.
+			 */
+			while (1) {
+				cur_slot++;
+				n_slots--;
+				if (n_slots == 0 || (desc.flags & MEMIF_DESC_FLAG_NEXT) == 0)
+					break;
+				desc = memif_desc_read(&ring->desc[cur_slot & mask]);
+			}
+
+			/* Free any segments already chained, then reset the
+			 * head so it can be reused for the next packet.
+			 */
+			rte_pktmbuf_free(mbuf_head->next);
+			rte_pktmbuf_reset(mbuf_head);
 		}
 
 		if (rx_pkts < MAX_PKT_BURST) {
@@ -426,10 +593,21 @@ next_slot1:
 
 next_slot2:
 			s0 = cur_slot & mask;
-			d0 = &ring->desc[s0];
+			desc = memif_desc_read(&ring->desc[s0]);
 
-			src_len = d0->length;
 			src_off = 0;
+
+			/*
+			 * Descriptor may span several mbufs, only bound by the region.
+			 * Validate the full 32-bit peer length before narrowing it.
+			 */
+			src_data = memif_get_buffer(proc_private, mq, &desc, desc.length,
+						    UINT32_MAX);
+			if (unlikely(src_data == NULL)) {
+				rte_pktmbuf_free(mbuf_head);
+				goto discard2;
+			}
+			src_len = desc.length;
 
 			do {
 				dst_len = mbuf_size - dst_off;
@@ -457,10 +635,8 @@ next_slot2:
 				if (mbuf != mbuf_head)
 					rte_pktmbuf_pkt_len(mbuf_head) += cp_len;
 
-				rte_memcpy(rte_pktmbuf_mtod_offset(mbuf, void *,
-								   dst_off),
-					(uint8_t *)memif_get_buffer(proc_private, d0) +
-					src_off, cp_len);
+				rte_memcpy(rte_pktmbuf_mtod_offset(mbuf, void *, dst_off),
+					   src_data + src_off, cp_len);
 
 				src_off += cp_len;
 				dst_off += cp_len;
@@ -470,7 +646,7 @@ next_slot2:
 			cur_slot++;
 			n_slots--;
 
-			if (d0->flags & MEMIF_DESC_FLAG_NEXT) {
+			if (desc.flags & MEMIF_DESC_FLAG_NEXT) {
 				if (unlikely(n_slots == 0)) {
 					mq->n_err++;
 					rte_pktmbuf_free(mbuf_head);
@@ -482,6 +658,17 @@ next_slot2:
 			mq->n_bytes += rte_pktmbuf_pkt_len(mbuf_head);
 			*bufs++ = mbuf_head;
 			n_rx_pkts++;
+			continue;
+
+discard2:
+			/* Skip the remainder of this descriptor chain. */
+			while (1) {
+				cur_slot++;
+				n_slots--;
+				if (n_slots == 0 || (desc.flags & MEMIF_DESC_FLAG_NEXT) == 0)
+					break;
+				desc = memif_desc_read(&ring->desc[cur_slot & mask]);
+			}
 		}
 	}
 
@@ -657,9 +844,14 @@ eth_memif_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		rte_eth_devices[mq->in_port].process_private;
 	memif_ring_t *ring = memif_get_ring_from_queue(proc_private, mq);
 	uint16_t slot, saved_slot, n_free, ring_size, mask, n_tx_pkts = 0;
+	/* Counted in n_tx_pkts to pass ownership, but never transmitted. */
+	uint16_t n_drop_pkts = 0;
 	uint16_t src_len, src_off, dst_len, dst_off, cp_len, nb_segs;
+	uint32_t len;
+	uint8_t *dst_data;
 	memif_ring_type_t type = mq->type;
 	memif_desc_t *d0;
+	memif_desc_t desc;
 	struct rte_mbuf *mbuf;
 	struct rte_mbuf *mbuf_head;
 	uint64_t a;
@@ -726,12 +918,24 @@ eth_memif_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 next_in_chain1:
 			d0 = &ring->desc[slot & mask];
-			d0->flags = 0;
+			desc = memif_desc_read(d0);
 			cp_len = rte_pktmbuf_data_len(mbuf);
 
-			rte_memcpy((uint8_t *)memif_get_buffer(proc_private, d0),
-				rte_pktmbuf_mtod(mbuf, void *), cp_len);
+			dst_data = memif_get_buffer(proc_private, mq, &desc, cp_len, cp_len);
+			if (unlikely(dst_data == NULL)) {
+				/*
+				 * The descriptor is bad, so this packet can never be sent.
+				 * Rewind the slots it used and count it as transmitted.
+				 */
+				slot = saved_slot;
+				n_tx_pkts++;
+				n_drop_pkts++;
+				goto free_mbufs;
+			}
 
+			rte_memcpy(dst_data, rte_pktmbuf_mtod(mbuf, void *), cp_len);
+
+			d0->flags = 0;
 			d0->length = cp_len;
 			mq->n_bytes += cp_len;
 			slot++;
@@ -760,10 +964,25 @@ free_mbufs:
 
 			saved_slot = slot;
 			d0 = &ring->desc[slot & mask];
+			desc = memif_desc_read(d0);
 			d0->flags = 0;
 			dst_off = 0;
-			dst_len = (type == MEMIF_RING_C2S) ?
-				pmd->run.pkt_buffer_size : d0->length;
+			/*
+			 * On a S2C ring the buffer length is supplied by the peer,
+			 * so validate it at full width before narrowing. A zero
+			 * length buffer makes no progress, so reject it here.
+			 */
+			len = (type == MEMIF_RING_C2S) ?
+				pmd->run.pkt_buffer_size : desc.length;
+			if (unlikely(len == 0)) {
+				memif_desc_error(mq, &desc, MEMIF_DESC_STATUS_ERR_ZERO_LENGTH);
+				goto drop_mbuf;
+			}
+
+			dst_data = memif_get_buffer(proc_private, mq, &desc, len, len);
+			if (unlikely(dst_data == NULL))
+				goto drop_mbuf;
+			dst_len = len;
 
 next_in_chain2:
 			src_off = 0;
@@ -776,10 +995,25 @@ next_in_chain2:
 						n_free--;
 						d0->flags = MEMIF_DESC_FLAG_NEXT;
 						d0 = &ring->desc[slot & mask];
+						desc = memif_desc_read(d0);
 						d0->flags = 0;
 						dst_off = 0;
-						dst_len = (type == MEMIF_RING_C2S) ?
-						    pmd->run.pkt_buffer_size : d0->length;
+						len = (type == MEMIF_RING_C2S) ?
+						    pmd->run.pkt_buffer_size : desc.length;
+						if (unlikely(len == 0)) {
+							memif_desc_error(mq, &desc,
+								MEMIF_DESC_STATUS_ERR_ZERO_LENGTH);
+							slot = saved_slot;
+							goto drop_mbuf;
+						}
+
+						dst_data = memif_get_buffer(proc_private, mq,
+									    &desc, len, len);
+						if (unlikely(dst_data == NULL)) {
+							slot = saved_slot;
+							goto drop_mbuf;
+						}
+						dst_len = len;
 					} else {
 						slot = saved_slot;
 						goto no_free_slots;
@@ -787,10 +1021,9 @@ next_in_chain2:
 				}
 				cp_len = RTE_MIN(dst_len, src_len);
 
-				rte_memcpy((uint8_t *)memif_get_buffer(proc_private,
-								       d0) + dst_off,
-					rte_pktmbuf_mtod_offset(mbuf, void *, src_off),
-					cp_len);
+				rte_memcpy(dst_data + dst_off,
+					   rte_pktmbuf_mtod_offset(mbuf, void *, src_off),
+					   cp_len);
 
 				mq->n_bytes += cp_len;
 				src_off += cp_len;
@@ -811,6 +1044,13 @@ next_in_chain2:
 			n_free--;
 			rte_pktmbuf_free(mbuf_head);
 		}
+		goto no_free_slots;
+
+drop_mbuf:
+		/* The descriptor is bad, this packet can not be sent. */
+		n_tx_pkts++;
+		n_drop_pkts++;
+		rte_pktmbuf_free(mbuf_head);
 	}
 
 no_free_slots:
@@ -830,7 +1070,11 @@ no_free_slots:
 		}
 	}
 
-	mq->n_pkts += n_tx_pkts;
+	/*
+	 * Dropped packets are counted in n_tx_pkts so the caller does not
+	 * free them again, but they were never put on the wire.
+	 */
+	mq->n_pkts += n_tx_pkts - n_drop_pkts;
 	return n_tx_pkts;
 }
 
@@ -1412,7 +1656,12 @@ memif_dev_start(struct rte_eth_dev *dev)
 static int
 memif_dev_stop(struct rte_eth_dev *dev)
 {
+	struct pmd_internals *pmd = dev->data->dev_private;
 	uint16_t i;
+
+	/* Drop any deferred bad descriptor disconnect, this supersedes it. */
+	rte_eal_alarm_cancel(memif_bad_desc_disconnect, dev);
+	rte_atomic_store_explicit(&pmd->bad_desc, false, rte_memory_order_relaxed);
 
 	memif_disconnect(dev);
 
@@ -1619,6 +1868,7 @@ memif_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 		}
 		stats->opackets += mq->n_pkts;
 		stats->obytes += mq->n_bytes;
+		stats->oerrors += mq->n_err;
 	}
 	return 0;
 }
