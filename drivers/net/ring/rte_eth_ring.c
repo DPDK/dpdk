@@ -11,6 +11,7 @@
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
 #include <rte_os_shim.h>
+#include <rte_per_lcore.h>
 #include <rte_string_fns.h>
 #include <bus_vdev_driver.h>
 #include <rte_kvargs.h>
@@ -20,12 +21,9 @@
 #define ETH_RING_ACTION_CREATE		"CREATE"
 #define ETH_RING_ACTION_ATTACH		"ATTACH"
 #define ETH_RING_ACTION_MAX_LEN		8 /* CREATE | ACTION */
-#define ETH_RING_INTERNAL_ARG		"internal"
-#define ETH_RING_INTERNAL_ARG_MAX_LEN	19 /* "0x..16chars..\0" */
 
 static const char *valid_arguments[] = {
 	ETH_RING_NUMA_NODE_ACTION_ARG,
-	ETH_RING_INTERNAL_ARG,
 	NULL
 };
 
@@ -35,8 +33,10 @@ struct ring_internal_args {
 	struct rte_ring * const *tx_queues;
 	const unsigned int nb_tx_queues;
 	const unsigned int numa_node;
-	void *addr; /* self addr for sanity check */
 };
+
+/* rte_eth_from_rings() stashes a pointer to its on-stack args here */
+static RTE_DEFINE_PER_LCORE(struct ring_internal_args *, eth_ring_internal_args);
 
 enum dev_action {
 	DEV_CREATE,
@@ -472,9 +472,7 @@ rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 		.tx_queues = tx_queues,
 		.nb_tx_queues = nb_tx_queues,
 		.numa_node = numa_node,
-		.addr = &args,
 	};
-	char args_str[32];
 	char ring_name[RTE_RING_NAMESIZE];
 	uint16_t port_id = RTE_MAX_ETHPORTS;
 	int ret;
@@ -493,16 +491,16 @@ rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 		return -1;
 	}
 
-	snprintf(args_str, sizeof(args_str), "%s=%p",
-		 ETH_RING_INTERNAL_ARG, &args);
-
 	ret = snprintf(ring_name, sizeof(ring_name), "net_ring_%s", name);
 	if (ret >= (int)sizeof(ring_name)) {
 		rte_errno = ENAMETOOLONG;
 		return -1;
 	}
 
-	ret = rte_vdev_init(ring_name, args_str);
+	/* mark this thread's pending request; consumed and cleared by probe */
+	RTE_PER_LCORE(eth_ring_internal_args) = &args;
+	ret = rte_vdev_init(ring_name, NULL);
+	RTE_PER_LCORE(eth_ring_internal_args) = NULL;
 	if (ret) {
 		rte_errno = EINVAL;
 		return -1;
@@ -648,36 +646,6 @@ out:
 }
 
 static int
-parse_internal_args(const char *key __rte_unused, const char *value,
-		void *data)
-{
-	struct ring_internal_args **internal_args = data;
-	void *args;
-	int ret, n;
-
-	/* make sure 'value' is valid pointer length */
-	if (strnlen(value, ETH_RING_INTERNAL_ARG_MAX_LEN) >=
-			ETH_RING_INTERNAL_ARG_MAX_LEN) {
-		PMD_LOG(ERR, "Error parsing internal args, argument is too long");
-		return -1;
-	}
-
-	ret = sscanf(value, "%p%n", &args, &n);
-	if (ret == 0 || (size_t)n != strlen(value)) {
-		PMD_LOG(ERR, "Error parsing internal args");
-
-		return -1;
-	}
-
-	*internal_args = args;
-
-	if ((*internal_args)->addr != args)
-		return -1;
-
-	return 0;
-}
-
-static int
 rte_pmd_ring_probe(struct rte_vdev_device *dev)
 {
 	const char *name, *params;
@@ -709,6 +677,21 @@ rte_pmd_ring_probe(struct rte_vdev_device *dev)
 		return 0;
 	}
 
+	/* set only by rte_eth_from_rings() */
+	internal_args = RTE_PER_LCORE(eth_ring_internal_args);
+	if (internal_args != NULL) {
+		RTE_PER_LCORE(eth_ring_internal_args) = NULL;
+		ret = do_eth_dev_ring_create(name, dev,
+			internal_args->rx_queues,
+			internal_args->nb_rx_queues,
+			internal_args->tx_queues,
+			internal_args->nb_tx_queues,
+			internal_args->numa_node,
+			DEV_ATTACH,
+			&eth_dev);
+		return ret >= 0 ? 0 : ret;
+	}
+
 	if (params == NULL || params[0] == '\0') {
 		ret = eth_dev_ring_create(name, dev, rte_socket_id(), DEV_CREATE,
 				&eth_dev);
@@ -737,57 +720,37 @@ rte_pmd_ring_probe(struct rte_vdev_device *dev)
 			return ret;
 		}
 
-		if (rte_kvargs_count(kvlist, ETH_RING_INTERNAL_ARG) == 1) {
-			ret = rte_kvargs_process(kvlist, ETH_RING_INTERNAL_ARG,
-						 parse_internal_args,
-						 &internal_args);
-			if (ret < 0)
-				goto out_free;
+		ret = rte_kvargs_count(kvlist, ETH_RING_NUMA_NODE_ACTION_ARG);
+		info = rte_zmalloc("struct node_action_list",
+				   sizeof(struct node_action_list) +
+				   (sizeof(struct node_action_pair) * ret),
+				   0);
+		if (!info)
+			goto out_free;
 
-			ret = do_eth_dev_ring_create(name, dev,
-				internal_args->rx_queues,
-				internal_args->nb_rx_queues,
-				internal_args->tx_queues,
-				internal_args->nb_tx_queues,
-				internal_args->numa_node,
-				DEV_ATTACH,
-				&eth_dev);
-			if (ret >= 0)
-				ret = 0;
-		} else {
-			ret = rte_kvargs_count(kvlist, ETH_RING_NUMA_NODE_ACTION_ARG);
-			info = rte_zmalloc("struct node_action_list",
-					   sizeof(struct node_action_list) +
-					   (sizeof(struct node_action_pair) * ret),
-					   0);
-			if (!info)
-				goto out_free;
+		info->total = ret;
+		info->list = (struct node_action_pair *)(info + 1);
 
-			info->total = ret;
-			info->list = (struct node_action_pair *)(info + 1);
+		ret = rte_kvargs_process(kvlist, ETH_RING_NUMA_NODE_ACTION_ARG,
+					 parse_kvlist, info);
 
-			ret = rte_kvargs_process(kvlist, ETH_RING_NUMA_NODE_ACTION_ARG,
-						 parse_kvlist, info);
+		if (ret < 0)
+			goto out_free;
 
-			if (ret < 0)
-				goto out_free;
-
-			for (info->count = 0; info->count < info->total; info->count++) {
-				ret = eth_dev_ring_create(info->list[info->count].name,
-							  dev,
-							  info->list[info->count].node,
-							  info->list[info->count].action,
-							  &eth_dev);
-				if ((ret == -1) &&
-				    (info->list[info->count].action == DEV_CREATE)) {
-					PMD_LOG(INFO,
-						"Attach to pmd_ring for %s",
-						name);
-					ret = eth_dev_ring_create(name, dev,
-							info->list[info->count].node,
-							DEV_ATTACH,
-							&eth_dev);
-				}
+		for (info->count = 0; info->count < info->total; info->count++) {
+			ret = eth_dev_ring_create(info->list[info->count].name,
+						  dev,
+						  info->list[info->count].node,
+						  info->list[info->count].action,
+						  &eth_dev);
+			if (ret == -1 && info->list[info->count].action == DEV_CREATE) {
+				PMD_LOG(INFO,
+					"Attach to pmd_ring for %s",
+					name);
+				ret = eth_dev_ring_create(name, dev,
+						info->list[info->count].node,
+						DEV_ATTACH,
+						&eth_dev);
 			}
 		}
 	}
