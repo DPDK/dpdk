@@ -177,6 +177,7 @@ if [ -z "$cross_file" ]; then
     failed=
     configure_coredump
     devtools/test-null.sh || failed="true"
+    devtools/test-memif.sh || [ $? = 77 ] || failed="true"
     catch_coredump
     catch_ubsan DPDK:fast-tests build/meson-logs/testlog.txt
     check_traces
