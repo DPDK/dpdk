@@ -618,6 +618,7 @@ struct ice_pf {
 	 * and link status update during dev_start.
 	 */
 	rte_spinlock_t link_lock;
+	struct rte_eth_fc_conf fc_conf; /* cached link flow control config */
 };
 
 #define ICE_MAX_QUEUE_NUM  2048
