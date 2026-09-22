@@ -1595,23 +1595,11 @@ static int
 memif_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 		struct eth_queue_stats *qstats)
 {
-	struct pmd_internals *pmd = dev->data->dev_private;
 	struct memif_queue *mq;
-	int i;
-	uint8_t tmp, nq;
-
-	stats->ipackets = 0;
-	stats->ibytes = 0;
-	stats->opackets = 0;
-	stats->obytes = 0;
-
-	tmp = (pmd->role == MEMIF_ROLE_CLIENT) ? pmd->run.num_s2c_rings :
-	    pmd->run.num_c2s_rings;
-	nq = (tmp < dev->data->nb_rx_queues) ? tmp :
-	    dev->data->nb_rx_queues;
+	unsigned int i;
 
 	/* RX stats */
-	for (i = 0; i < nq; i++) {
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		mq = dev->data->rx_queues[i];
 		if (qstats != NULL) {
 			qstats[i].q_ipackets = mq->n_pkts;
@@ -1622,13 +1610,8 @@ memif_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 		stats->ierrors += mq->n_err;
 	}
 
-	tmp = (pmd->role == MEMIF_ROLE_CLIENT) ? pmd->run.num_c2s_rings :
-	    pmd->run.num_s2c_rings;
-	nq = (tmp < dev->data->nb_tx_queues) ? tmp :
-	    dev->data->nb_tx_queues;
-
 	/* TX stats */
-	for (i = 0; i < nq; i++) {
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		mq = dev->data->tx_queues[i];
 		if (qstats != NULL) {
 			qstats[i].q_opackets = mq->n_pkts;
@@ -1643,20 +1626,18 @@ memif_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats,
 static int
 memif_stats_reset(struct rte_eth_dev *dev)
 {
-	struct pmd_internals *pmd = dev->data->dev_private;
-	int i;
 	struct memif_queue *mq;
+	unsigned int i;
 
-	for (i = 0; i < pmd->run.num_c2s_rings; i++) {
-		mq = (pmd->role == MEMIF_ROLE_CLIENT) ? dev->data->tx_queues[i] :
-		    dev->data->rx_queues[i];
+	/* Same as memif_stats_get(), pmd->run is cleared on disconnect. */
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		mq = dev->data->rx_queues[i];
 		mq->n_pkts = 0;
 		mq->n_bytes = 0;
 		mq->n_err = 0;
 	}
-	for (i = 0; i < pmd->run.num_s2c_rings; i++) {
-		mq = (pmd->role == MEMIF_ROLE_CLIENT) ? dev->data->rx_queues[i] :
-		    dev->data->tx_queues[i];
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		mq = dev->data->tx_queues[i];
 		mq->n_pkts = 0;
 		mq->n_bytes = 0;
 		mq->n_err = 0;
