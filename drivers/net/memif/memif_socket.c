@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <errno.h>
 
@@ -262,6 +263,8 @@ memif_msg_receive_add_region(struct rte_eth_dev *dev, memif_msg_t *msg,
 	struct pmd_process_private *proc_private = dev->process_private;
 	memif_msg_add_region_t *ar = &msg->add_region;
 	struct memif_region *r;
+	struct stat st;
+	int seals;
 
 	if (fd < 0) {
 		memif_msg_enq_disconnect(pmd->cc, "Missing region fd", 0);
@@ -272,13 +275,32 @@ memif_msg_receive_add_region(struct rte_eth_dev *dev, memif_msg_t *msg,
 			ar->index != proc_private->regions_num ||
 			proc_private->regions[ar->index] != NULL) {
 		memif_msg_enq_disconnect(pmd->cc, "Invalid region index", 0);
-		return -1;
+		goto error;
 	}
+
+	/* The client is not trusted to describe the region it shares. */
+	if (ar->size == 0 || fstat(fd, &st) < 0 || (uint64_t)st.st_size < ar->size) {
+		memif_msg_enq_disconnect(pmd->cc, "Invalid region size", 0);
+		goto error;
+	}
+
+	/*
+	 * Prefer regions sealed against shrinking so the peer can not truncate
+	 * the file after connect and fault the server. Sealing is not supported
+	 * on all fd types (for example hugetlbfs).
+	 */
+	seals = fcntl(fd, F_GET_SEALS);
+	if (seals < 0)
+		MIF_LOG(INFO, "Port %u region %u fd does not support sealing",
+			dev->data->port_id, ar->index);
+	else if ((seals & F_SEAL_SHRINK) == 0)
+		MIF_LOG(NOTICE, "Port %u region %u fd is not sealed against shrinking",
+			dev->data->port_id, ar->index);
 
 	r = rte_zmalloc("region", sizeof(struct memif_region), 0);
 	if (r == NULL) {
 		memif_msg_enq_disconnect(pmd->cc, "Failed to alloc memif region.", 0);
-		return -ENOMEM;
+		goto error;
 	}
 
 	r->fd = fd;
@@ -289,46 +311,92 @@ memif_msg_receive_add_region(struct rte_eth_dev *dev, memif_msg_t *msg,
 	proc_private->regions_num++;
 
 	return 0;
+error:
+	close(fd);
+	return -1;
 }
 
 static int
 memif_msg_receive_add_ring(struct rte_eth_dev *dev, memif_msg_t *msg, int fd)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
+	struct pmd_process_private *proc_private = dev->process_private;
 	memif_msg_add_ring_t *ar = &msg->add_ring;
+	const struct memif_region *r;
 	struct memif_queue *mq;
+	uint64_t ring_size;
 
 	if (fd < 0) {
 		memif_msg_enq_disconnect(pmd->cc, "Missing interrupt fd", 0);
 		return -1;
 	}
 
-	/* check if we have enough queues */
+	/* rings must be added in order, exactly once */
 	if (ar->flags & MEMIF_MSG_ADD_RING_FLAG_C2S) {
-		if (ar->index >= pmd->cfg.num_c2s_rings) {
+		if (ar->index >= pmd->cfg.num_c2s_rings ||
+				ar->index != pmd->run.num_c2s_rings) {
 			memif_msg_enq_disconnect(pmd->cc, "Invalid ring index", 0);
-			return -1;
+			goto error;
 		}
-		pmd->run.num_c2s_rings++;
 	} else {
-		if (ar->index >= pmd->cfg.num_s2c_rings) {
+		if (ar->index >= pmd->cfg.num_s2c_rings ||
+				ar->index != pmd->run.num_s2c_rings) {
 			memif_msg_enq_disconnect(pmd->cc, "Invalid ring index", 0);
-			return -1;
+			goto error;
 		}
-		pmd->run.num_s2c_rings++;
+	}
+
+	if (ar->log2_ring_size > ETH_MEMIF_MAX_LOG2_RING_SIZE) {
+		memif_msg_enq_disconnect(pmd->cc, "Invalid ring size", 0);
+		goto error;
+	}
+
+	/* private headers are not supported */
+	if (ar->private_hdr_size != 0) {
+		memif_msg_enq_disconnect(pmd->cc, "Unsupported private header", 0);
+		goto error;
+	}
+
+	if (ar->region >= proc_private->regions_num ||
+			proc_private->regions[ar->region] == NULL) {
+		memif_msg_enq_disconnect(pmd->cc, "Invalid region index", 0);
+		goto error;
+	}
+
+	/*
+	 * The ring and its descriptors must lie inside the region.
+	 * Require natural alignment of the ring for atomic load/store.
+	 * Existing DPDK and VPP put it on cache line boundary.
+	 */
+	r = proc_private->regions[ar->region];
+	ring_size = sizeof(memif_ring_t) +
+		sizeof(memif_desc_t) * ((uint64_t)1 << ar->log2_ring_size);
+	if ((ar->offset & (sizeof(uint64_t) - 1)) != 0 ||
+			ar->offset + ring_size > r->region_size) {
+		memif_msg_enq_disconnect(pmd->cc, "Invalid ring offset", 0);
+		goto error;
 	}
 
 	mq = (ar->flags & MEMIF_MSG_ADD_RING_FLAG_C2S) ?
 	    dev->data->rx_queues[ar->index] : dev->data->tx_queues[ar->index];
 
+	/* Takes ownership of the fd, so nothing to close after this point. */
 	if (rte_intr_fd_set(mq->intr_handle, fd))
-		return -1;
+		goto error;
+
+	if (ar->flags & MEMIF_MSG_ADD_RING_FLAG_C2S)
+		pmd->run.num_c2s_rings++;
+	else
+		pmd->run.num_s2c_rings++;
 
 	mq->log2_ring_size = ar->log2_ring_size;
 	mq->region = ar->region;
 	mq->ring_offset = ar->offset;
 
 	return 0;
+error:
+	close(fd);
+	return -1;
 }
 
 static int
@@ -658,17 +726,11 @@ memif_msg_receive(struct memif_control_channel *cc)
 		return -1;
 
 	size = recvmsg(rte_intr_fd_get(cc->intr_handle), &mh, 0);
-	if (size != sizeof(memif_msg_t)) {
-		MIF_LOG(DEBUG, "Invalid message size = %zd", size);
-		if (size > 0)
-			/* 0 means end-of-file, negative size means error,
-			 * don't send further disconnect message in such cases.
-			 */
-			memif_msg_enq_disconnect(cc, "Invalid message size", 0);
-		return -1;
-	}
-	MIF_LOG(DEBUG, "Received msg type: %u.", msg.type);
 
+	/*
+	 * Collect any passed fd first; a short message can still carry one,
+	 * and it has to be closed on every path out of this function.
+	 */
 	cmsg = CMSG_FIRSTHDR(&mh);
 	while (cmsg) {
 		if (cmsg->cmsg_level == SOL_SOCKET) {
@@ -680,10 +742,23 @@ memif_msg_receive(struct memif_control_channel *cc)
 		cmsg = CMSG_NXTHDR(&mh, cmsg);
 	}
 
+	if (size != sizeof(memif_msg_t)) {
+		MIF_LOG(DEBUG, "Invalid message size = %zd", size);
+		if (size > 0)
+			/* 0 means end-of-file, negative size means error,
+			 * don't send further disconnect message in such cases.
+			 */
+			memif_msg_enq_disconnect(cc, "Invalid message size", 0);
+		ret = -1;
+		goto exit;
+	}
+	MIF_LOG(DEBUG, "Received msg type: %u.", msg.type);
+
 	if (cc->dev == NULL && msg.type != MEMIF_MSG_TYPE_INIT) {
 		MIF_LOG(DEBUG, "Unexpected message.");
 		memif_msg_enq_disconnect(cc, "Unexpected message", 0);
-		return -1;
+		ret = -1;
+		goto exit;
 	}
 
 	/* get device from hash data */
@@ -736,7 +811,9 @@ memif_msg_receive(struct memif_control_channel *cc)
 			goto exit;
 		break;
 	case MEMIF_MSG_TYPE_ADD_REGION:
+		/* The handler owns the fd from here, on success and on error. */
 		ret = memif_msg_receive_add_region(cc->dev, &msg, afd);
+		afd = -1;
 		if (ret < 0)
 			goto exit;
 		ret = memif_msg_enq_ack(cc->dev);
@@ -744,7 +821,9 @@ memif_msg_receive(struct memif_control_channel *cc)
 			goto exit;
 		break;
 	case MEMIF_MSG_TYPE_ADD_RING:
+		/* The handler owns the fd from here, on success and on error. */
 		ret = memif_msg_receive_add_ring(cc->dev, &msg, afd);
+		afd = -1;
 		if (ret < 0)
 			goto exit;
 		ret = memif_msg_enq_ack(cc->dev);
@@ -774,6 +853,14 @@ memif_msg_receive(struct memif_control_channel *cc)
 	}
 
  exit:
+	/*
+	 * A peer can attach an fd to any message, but only add region and
+	 * add ring take one. Close the rest, otherwise a client could
+	 * exhaust the file descriptors of the server.
+	 */
+	if (afd >= 0)
+		close(afd);
+
 	return ret;
 }
 
