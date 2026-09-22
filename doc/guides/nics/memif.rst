@@ -47,8 +47,26 @@ client.
    "owner-uid=1000", "Set socket listener owner uid. Only relevant to server with socket-abstract=no", "unchanged", "uid_t"
    "owner-gid=1000", "Set socket listener owner gid. Only relevant to server with socket-abstract=no", "unchanged", "gid_t"
    "mac=01:23:45:ab:cd:ef", "Mac address", "01:ab:23:cd:45:ef", ""
-   "secret=abc123", "Secret is an optional security option, which if specified, must be matched by peer", "", "string len 24"
+   "secret=abc123", "Optional identifier which, if specified, must be matched by peer", "", "string len 24"
    "zero-copy=yes", "Enable/disable zero-copy client mode. Only relevant to client, requires '--single-file-segments' eal argument", "no", "yes|no"
+
+**Access control**
+
+Any process able to connect to the socket of a server interface is able to
+reach its shared memory rings, so what restricts access to that socket is
+the security boundary.
+
+By default the socket is in the abstract namespace (``socket-abstract=yes``).
+An abstract socket has no filesystem entry.
+Use a network namespace to restrict access to such an interface.
+
+With ``socket-abstract=no`` the socket is a filesystem object and normal
+file permissions apply, together with the ``owner-uid`` and ``owner-gid``
+options.
+
+The ``secret`` option is *not* an access control mechanism.
+It only guards against connecting mismatched interfaces by mistake,
+for example where several interfaces share one socket.
 
 **Connection establishment**
 
