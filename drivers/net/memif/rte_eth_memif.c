@@ -1592,41 +1592,28 @@ memif_link_update(struct rte_eth_dev *dev,
 static int
 memif_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
-	struct pmd_internals *pmd = dev->data->dev_private;
 	struct memif_queue *mq;
-	int i;
-	uint8_t tmp, nq;
-
-	stats->ipackets = 0;
-	stats->ibytes = 0;
-	stats->opackets = 0;
-	stats->obytes = 0;
-
-	tmp = (pmd->role == MEMIF_ROLE_CLIENT) ? pmd->run.num_s2c_rings :
-	    pmd->run.num_c2s_rings;
-	nq = (tmp < RTE_ETHDEV_QUEUE_STAT_CNTRS) ? tmp :
-	    RTE_ETHDEV_QUEUE_STAT_CNTRS;
+	unsigned int i;
 
 	/* RX stats */
-	for (i = 0; i < nq; i++) {
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		mq = dev->data->rx_queues[i];
-		stats->q_ipackets[i] = mq->n_pkts;
-		stats->q_ibytes[i] = mq->n_bytes;
+		if (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			stats->q_ipackets[i] = mq->n_pkts;
+			stats->q_ibytes[i] = mq->n_bytes;
+		}
 		stats->ipackets += mq->n_pkts;
 		stats->ibytes += mq->n_bytes;
 		stats->ierrors += mq->n_err;
 	}
 
-	tmp = (pmd->role == MEMIF_ROLE_CLIENT) ? pmd->run.num_c2s_rings :
-	    pmd->run.num_s2c_rings;
-	nq = (tmp < RTE_ETHDEV_QUEUE_STAT_CNTRS) ? tmp :
-	    RTE_ETHDEV_QUEUE_STAT_CNTRS;
-
 	/* TX stats */
-	for (i = 0; i < nq; i++) {
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		mq = dev->data->tx_queues[i];
-		stats->q_opackets[i] = mq->n_pkts;
-		stats->q_obytes[i] = mq->n_bytes;
+		if (i < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
+			stats->q_opackets[i] = mq->n_pkts;
+			stats->q_obytes[i] = mq->n_bytes;
+		}
 		stats->opackets += mq->n_pkts;
 		stats->obytes += mq->n_bytes;
 	}
@@ -1636,20 +1623,18 @@ memif_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 static int
 memif_stats_reset(struct rte_eth_dev *dev)
 {
-	struct pmd_internals *pmd = dev->data->dev_private;
-	int i;
 	struct memif_queue *mq;
+	unsigned int i;
 
-	for (i = 0; i < pmd->run.num_c2s_rings; i++) {
-		mq = (pmd->role == MEMIF_ROLE_CLIENT) ? dev->data->tx_queues[i] :
-		    dev->data->rx_queues[i];
+	/* Same as memif_stats_get(), pmd->run is cleared on disconnect. */
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		mq = dev->data->rx_queues[i];
 		mq->n_pkts = 0;
 		mq->n_bytes = 0;
 		mq->n_err = 0;
 	}
-	for (i = 0; i < pmd->run.num_s2c_rings; i++) {
-		mq = (pmd->role == MEMIF_ROLE_CLIENT) ? dev->data->rx_queues[i] :
-		    dev->data->tx_queues[i];
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		mq = dev->data->tx_queues[i];
 		mq->n_pkts = 0;
 		mq->n_bytes = 0;
 		mq->n_err = 0;
