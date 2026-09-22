@@ -517,6 +517,56 @@ Example PFC configuration using DPDK API:
    ret = rte_eth_dev_priority_flow_ctrl_set(port_id, &pfc_conf);
 
 
+Link Flow Control (LFC)
+~~~~~~~~~~~~~~~~~~~~~~~
+
+The ice PMD supports IEEE 802.3x link flow control through
+``rte_eth_dev_flow_ctrl_set()`` and ``rte_eth_dev_flow_ctrl_get()``.
+
+The requested mode (``RTE_ETH_FC_NONE``, ``RTE_ETH_FC_RX_PAUSE``,
+``RTE_ETH_FC_TX_PAUSE`` or ``RTE_ETH_FC_FULL``) is advertised to the link
+partner and takes effect once the link has been renegotiated.
+Pause frames are only exchanged when the link partner agrees to them,
+so ``rte_eth_dev_flow_ctrl_get()`` reports the negotiated mode,
+which may differ from the requested one.
+Link flow control is disabled (``RTE_ETH_FC_NONE`` advertised) until a mode is requested.
+The request is retained across ``rte_eth_dev_stop()`` and ``rte_eth_dev_start()``.
+
+Link flow control and priority flow control are mutually exclusive:
+``rte_eth_dev_flow_ctrl_set()`` fails with ``-ENOTSUP`` on a port configured
+with ``RTE_ETH_MQ_RX_DCB_FLAG``.
+
+The single traffic class configuration that arms the MAC for link flow control
+is programmed when the link comes up, from the link status change interrupt.
+Link status change interrupts (``intr_conf.lsc``) must therefore be enabled
+for link flow control to operate.
+
+Fields of ``struct rte_eth_fc_conf``:
+
+high_water, low_water
+   Rx buffer watermarks, in bytes, of the traffic class carrying link flow control.
+   A value of 0 keeps the current setting.
+
+pause_time
+   Pause quanta (in 512 bit-time units) carried in the transmitted pause frames.
+   A value of 0 keeps the current setting.
+
+mac_ctrl_frame_fwd
+   Forwarding of MAC control frames other than pause frames.
+
+autoneg, send_xon
+   Not used.
+
+Example configuration in testpmd:
+
+.. code-block:: console
+
+   set flow_ctrl rx on tx on 100000 50000 65535 0 mac_ctrl_frame_fwd off autoneg off 0
+
+This requests symmetric link flow control on port 0 with a high watermark of 100000 bytes,
+a low watermark of 50000 bytes and a pause time of 65535.
+
+
 Forward Error Correction (FEC)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
