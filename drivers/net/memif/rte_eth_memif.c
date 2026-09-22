@@ -711,7 +711,11 @@ eth_memif_rx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	memif_ring_t *ring = memif_get_ring_from_queue(proc_private, mq);
 	uint16_t cur_slot, last_slot, n_slots, ring_size, mask, s0, head;
 	uint16_t n_rx_pkts = 0;
+	/* Buffer size advertised to the peer by the refill loop below. */
+	const uint16_t buf_size = rte_pktmbuf_data_room_size(mq->mempool) -
+		RTE_PKTMBUF_HEADROOM;
 	memif_desc_t *d0;
+	memif_desc_t desc;
 	struct rte_mbuf *mbuf, *mbuf_tail;
 	struct rte_mbuf *mbuf_head = NULL;
 	int ret;
@@ -763,14 +767,31 @@ next_slot:
 			rte_prefetch0(&ring->desc[(cur_slot + 1) & mask]);
 
 		mbuf->port = mq->in_port;
-		rte_pktmbuf_data_len(mbuf) = d0->length;
-		rte_pktmbuf_pkt_len(mbuf) = rte_pktmbuf_data_len(mbuf);
+		desc = memif_desc_read(d0);
 
-		mq->n_bytes += rte_pktmbuf_data_len(mbuf);
+		/* The peer only supplies the length here */
+		if (unlikely(desc.length > buf_size)) {
+			memif_desc_error(mq, &desc, MEMIF_DESC_STATUS_ERR_DATA_TOO_BIG);
+			/* Consume the slot before discarding */
+			cur_slot++;
+			n_slots--;
+			goto discard;
+		}
+
+		rte_pktmbuf_data_len(mbuf) = desc.length;
+		rte_pktmbuf_pkt_len(mbuf) = desc.length;
+		if (mbuf != mbuf_head)
+			rte_pktmbuf_pkt_len(mbuf_head) += desc.length;
+
+		mq->n_bytes += desc.length;
 
 		cur_slot++;
 		n_slots--;
-		if (d0->flags & MEMIF_DESC_FLAG_NEXT) {
+		if (desc.flags & MEMIF_DESC_FLAG_NEXT) {
+			if (unlikely(n_slots == 0)) {
+				mq->n_err++;
+				goto discard;
+			}
 			s0 = cur_slot & mask;
 			d0 = &ring->desc[s0];
 			mbuf_tail = mbuf;
@@ -778,7 +799,8 @@ next_slot:
 			ret = memif_pktmbuf_chain(mbuf_head, mbuf_tail, mbuf);
 			if (unlikely(ret < 0)) {
 				MIF_LOG(ERR, "number-of-segments-overflow");
-				goto refill;
+				mq->n_err++;
+				goto discard;
 			}
 			goto next_slot;
 		}
@@ -787,6 +809,17 @@ next_slot:
 		n_rx_pkts++;
 	}
 
+	mq->last_tail = cur_slot;
+	goto refill;
+
+discard:
+	/*
+	 * The peer is buggy or hostile, remaining descriptors cannot be trusted.
+	 * Drop the partially built packet and the slots not yet consumed.
+	 */
+	rte_pktmbuf_free(mbuf_head);
+	while (n_slots--)
+		rte_pktmbuf_free_seg(mq->buffers[cur_slot++ & mask]);
 	mq->last_tail = cur_slot;
 
 /* Supply server with new buffers */
@@ -820,8 +853,9 @@ refill:
 		d0->length = rte_pktmbuf_data_room_size(mq->mempool) -
 				RTE_PKTMBUF_HEADROOM;
 		d0->region = 1;
+		/* Use the constant, the peer can change d0->region at any time. */
 		d0->offset = rte_pktmbuf_mtod(mbuf, uint8_t *) -
-			(uint8_t *)proc_private->regions[d0->region]->addr;
+			(uint8_t *)proc_private->regions[1]->addr;
 	}
 no_free_mbufs:
 	/* The ring->head acts as a guard variable between Tx and Rx
@@ -1096,8 +1130,9 @@ next_in_chain:
 	mq->n_bytes += rte_pktmbuf_data_len(mbuf);
 	/* FIXME: get region index */
 	d0->region = 1;
+	/* Use the constant, the peer can change d0->region at any time. */
 	d0->offset = rte_pktmbuf_mtod(mbuf, uint8_t *) -
-		(uint8_t *)proc_private->regions[d0->region]->addr;
+		(uint8_t *)proc_private->regions[1]->addr;
 	d0->flags = 0;
 
 	/* check if buffer is chained */
