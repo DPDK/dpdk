@@ -28,6 +28,7 @@
 #define IXGBE_FLAG_PHY_INTERRUPT    (uint32_t)(1 << 2)
 #define IXGBE_FLAG_MACSEC           (uint32_t)(1 << 3)
 #define IXGBE_FLAG_NEED_LINK_CONFIG (uint32_t)(1 << 4)
+#define IXGBE_FLAG_FW_EVENT         (uint32_t)(1 << 5)
 
 /*
  * Defines that were not part of ixgbe_type.h as they are not used by the
