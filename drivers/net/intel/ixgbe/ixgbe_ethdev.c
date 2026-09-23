@@ -39,6 +39,7 @@
 #include "base/ixgbe_api.h"
 #include "base/ixgbe_vf.h"
 #include "base/ixgbe_common.h"
+#include "base/ixgbe_e610.h"
 #include "ixgbe_ethdev.h"
 #include "ixgbe_bypass.h"
 #include "ixgbe_rxtx.h"
@@ -4605,8 +4606,17 @@ ixgbe_dev_interrupt_get_status(struct rte_eth_dev *dev)
 	if (eicr & IXGBE_EICR_MAILBOX)
 		intr->flags |= IXGBE_FLAG_MAILBOX;
 
-	if (eicr & IXGBE_EICR_LINKSEC)
-		intr->flags |= IXGBE_FLAG_MACSEC;
+	/*
+	 * Bit 0x00200000 is LINKSEC (MACsec) on 82599/X5xx, but FW_EVENT
+	 * (async firmware event) on E610, which has no MACsec. Decode it per
+	 * MAC type to avoid reporting a spurious RTE_ETH_EVENT_MACSEC on E610.
+	 */
+	if (eicr & IXGBE_EICR_LINKSEC) {
+		if (hw->mac.type == ixgbe_mac_E610)
+			intr->flags |= IXGBE_FLAG_FW_EVENT;
+		else
+			intr->flags |= IXGBE_FLAG_MACSEC;
+	}
 
 	if (hw->mac.type ==  ixgbe_mac_X550EM_x &&
 	    hw->phy.type == ixgbe_phy_x550em_ext_t &&
@@ -4651,6 +4661,33 @@ ixgbe_dev_link_status_print(struct rte_eth_dev *dev)
 				pci_dev->addr.function);
 }
 
+static void
+ixgbe_dev_handle_fw_event(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint8_t buf[IXGBE_ACI_MAX_BUFFER_SIZE];
+	struct ixgbe_aci_event event;
+	bool pending = false;
+	s32 status;
+
+	memset(&event, 0, sizeof(event));
+	event.buf_len = sizeof(buf);
+	event.msg_buf = buf;
+
+	do {
+		status = ixgbe_aci_get_event(hw, &event, &pending);
+		if (status) {
+			if (status != IXGBE_ERR_ACI_NO_EVENTS)
+				PMD_DRV_LOG(DEBUG,
+					"Failed to read FW event from ACI: %d",
+					status);
+			break;
+		}
+		PMD_DRV_LOG(DEBUG, "Received FW event, opcode 0x%04x",
+			rte_le_to_cpu_16(event.desc.opcode));
+	} while (pending);
+}
+
 /*
  * It executes link_update after knowing an interrupt occurred.
  *
@@ -4680,6 +4717,11 @@ ixgbe_dev_interrupt_action(struct rte_eth_dev *dev)
 	if (intr->flags & IXGBE_FLAG_PHY_INTERRUPT) {
 		ixgbe_handle_lasi(hw);
 		intr->flags &= ~IXGBE_FLAG_PHY_INTERRUPT;
+	}
+
+	if (intr->flags & IXGBE_FLAG_FW_EVENT) {
+		ixgbe_dev_handle_fw_event(dev);
+		intr->flags &= ~IXGBE_FLAG_FW_EVENT;
 	}
 
 	if (intr->flags & IXGBE_FLAG_NEED_LINK_UPDATE) {
