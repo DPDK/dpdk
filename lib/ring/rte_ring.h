@@ -132,7 +132,7 @@ void rte_ring_free(struct rte_ring *r);
 /**
  * Create a new ring named *name* in memory.
  *
- * This function uses ``memzone_reserve()`` to allocate memory. Then it
+ * This function uses ``rte_memzone_reserve()`` to allocate memory. Then it
  * calls rte_ring_init() to initialize an empty ring.
  *
  * The new ring size is set to *count*, which must be a power of two.
