@@ -4,6 +4,83 @@
 
 /* Override readthedocs theme */
 
+/* Spacing before a list item must be bigger than spacing inside the item.
+ * Complex list items start with a p.first element. */
+.section li > .first {
+	margin-top: 18px;
+}
+
+/* Table head row more visible */
+th.head {
+	background-color: #ccc;
+}
+
+/* Overview matrix with small cells and yellow cross.
+ * Usage: insert the following line in the doc.
+ *        .. rst-class:: matrix
+ */
+.wy-nav-content:has(.matrix) {
+	opacity: .99;
+}
+table.matrix {
+	cursor: default;
+	overflow: hidden;
+}
+table.matrix.docutils.align-default tr > :is(th, td) > p {
+	margin: 0;
+	line-height: inherit;
+}
+table.matrix.docutils.align-default tr > :is(th, td) {
+	text-align: center;
+	border: solid 1px #ddd;
+}
+table.matrix.docutils th {
+	padding: 0.5em 0;
+}
+table.matrix.docutils th,
+table.matrix.docutils.align-default tr > th > p {
+	font-size: 11px;
+	white-space: pre-wrap;
+	vertical-align: top;
+	min-width: 0.9em;
+}
+table.matrix col:first-child {
+	width: 0;
+}
+table.matrix.docutils.align-default th:first-child {
+	vertical-align: bottom;
+}
+table.matrix.docutils td {
+	padding: 1px;
+}
+table.matrix.docutils td,
+table.matrix.docutils.align-default tr > td > p {
+	font-size: 11px;
+}
+table.matrix.docutils.align-default td:first-child {
+	padding-left: 1em;
+	text-align: left;
+}
+table.matrix.docutils.align-default tr:nth-child(2n-1) td {
+	background-color: rgba(210, 210, 210, 0.2);
+}
+table.matrix :is(th, td):not(:first-child):hover {
+	position: relative;
+}
+table.matrix :is(th, td):not(:first-child):hover::after {
+	content: '';
+	height: 6000px;
+	top: -3000px;
+	width: 100%;
+	left: 0;
+	position: absolute;
+	z-index: -1;
+	background-color: #ffb;
+}
+table.matrix.docutils.align-default tr:hover td {
+	background-color: #ffb;
+}
+
 /* Set full width for all responsive tables of a page.
  * Usage: insert the following line in the doc.
  *        .. rst-class:: widepage
@@ -15,17 +92,6 @@
     .wy-nav-content:has(.widepage) .wy-table-responsive {
         overflow: visible !important;
     }
-}
-
-/* Spacing before a list item must be bigger than spacing inside the item.
- * Complex list items start with a p.first element. */
-.section li > .first {
-	margin-top: 18px;
-}
-
-/* Table head row more visible */
-th.head {
-	background-color: #ccc;
 }
 
 /* Class numbering table rows in the first column.
