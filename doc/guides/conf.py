@@ -253,7 +253,7 @@ def generate_overview_table(output_filename, table_id, section, table_name, titl
     outfile = open(output_filename, 'w')
     num_cols = len(header_names)
 
-    print_table_css(outfile, table_id)
+    print('.. rst-class:: matrix', file=outfile)
     print('.. _' + table_name + ':', file=outfile)
     print('.. table:: ' + table_name + '\n', file=outfile)
     print_table_header(outfile, num_cols, header_names, title)
@@ -309,77 +309,6 @@ def print_table_divider(outfile, num_cols):
     feature = '=' * feature_str_len
 
     print_table_row(outfile, feature, line)
-
-
-def print_table_css(outfile, table_id):
-    template = """
-.. raw:: html
-
-   <style>
-      .wy-nav-content {
-         opacity: .99;
-      }
-      table#idx {
-         cursor: default;
-         overflow: hidden;
-      }
-      table#idx p {
-         margin: 0;
-         line-height: inherit;
-      }
-      table#idx th, table#idx td {
-         text-align: center;
-         border: solid 1px #ddd;
-      }
-      table#idx th {
-         padding: 0.5em 0;
-      }
-      table#idx th, table#idx th p {
-         font-size: 11px;
-         white-space: pre-wrap;
-         vertical-align: top;
-         min-width: 0.9em;
-      }
-      table#idx col:first-child {
-         width: 0;
-      }
-      table#idx th:first-child {
-         vertical-align: bottom;
-      }
-      table#idx td {
-         padding: 1px;
-      }
-      table#idx td, table#idx td p {
-         font-size: 11px;
-      }
-      table#idx td:first-child {
-         padding-left: 1em;
-         text-align: left;
-      }
-      table#idx tr:nth-child(2n-1) td {
-         background-color: rgba(210, 210, 210, 0.2);
-      }
-      table#idx th:not(:first-child):hover,
-      table#idx td:not(:first-child):hover {
-         position: relative;
-      }
-      table#idx th:not(:first-child):hover::after,
-      table#idx td:not(:first-child):hover::after {
-         content: '';
-         height: 6000px;
-         top: -3000px;
-         width: 100%;
-         left: 0;
-         position: absolute;
-         z-index: -1;
-         background-color: #ffb;
-      }
-      table#idx tr:hover td {
-         background-color: #ffb;
-      }
-   </style>
-"""
-    print(template.replace("idx", "id%d" % (table_id)), file=outfile)
 
 
 def setup(app):
