@@ -19,11 +19,9 @@ th.head {
  * Usage: insert the following line in the doc.
  *        .. rst-class:: matrix
  */
-.wy-nav-content:has(.matrix) {
-	opacity: .99;
-}
 table.matrix {
 	cursor: default;
+	isolation: isolate;
 	overflow: hidden;
 }
 table.matrix.docutils.align-default tr > :is(th, td) > p {
@@ -61,7 +59,7 @@ table.matrix.docutils.align-default td:first-child {
 	padding-left: 1em;
 	text-align: left;
 }
-table.matrix.docutils.align-default tr:nth-child(2n-1) td {
+table.matrix.docutils.align-default tbody tr.row-even td {
 	background-color: rgba(210, 210, 210, 0.2);
 }
 table.matrix :is(th, td):not(:first-child):hover {
@@ -75,10 +73,11 @@ table.matrix :is(th, td):not(:first-child):hover::after {
 	left: 0;
 	position: absolute;
 	z-index: -1;
-	background-color: #ffb;
+	background-color: #ffa;
 }
-table.matrix.docutils.align-default tr:hover td {
-	background-color: #ffb;
+table.matrix.docutils.align-default thead th:not(:first-child):hover,
+table.matrix.docutils.align-default tbody tr:hover td {
+	background-color: #ffa;
 }
 
 /* Set full width for all responsive tables of a page.
