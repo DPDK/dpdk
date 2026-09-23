@@ -157,6 +157,18 @@ This is required for use deferred start configuration option.
   ``rte_eth_dev_tx_queue_start()``, ``rte_eth_dev_tx_queue_stop()``.
 
 
+.. _nic_features_runtime_queue_setup:
+
+Runtime queue setup
+-------------------
+
+Supports Rx and Tx queue setup after the device has started.
+
+* **[provides] rte_eth_dev_info**: ``dev_capa:RTE_ETH_DEV_CAPA_RUNTIME_RX_QUEUE_SETUP``,
+  ``dev_capa:RTE_ETH_DEV_CAPA_RUNTIME_TX_QUEUE_SETUP``.
+* **[related]  API**: ``rte_eth_dev_info_get()``.
+
+
 .. _nic_features_mtu_update:
 
 MTU update
@@ -703,28 +715,17 @@ Supports IEEE1588/802.1AS timestamping.
   ``rte_eth_timesync_read_time()``, ``rte_eth_timesync_write_time()``.
 
 
-.. _nic_features_rx_descriptor_status:
+.. _nic_features_descriptor_status:
 
-Rx descriptor status
---------------------
+Descriptor status
+-----------------
 
-Supports check the status of a Rx descriptor. When ``rx_descriptor_status`` is
-used, status can be "Available", "Done" or "Unavailable".
+Supports checking the status of Rx and Tx descriptors.
+Rx status can be "Available", "Done" or "Unavailable".
+Tx status can be "Full", "Done" or "Unavailable".
 
-* **[implements] rte_eth_dev**: ``rx_descriptor_status``.
-* **[related]    API**: ``rte_eth_rx_descriptor_status()``.
-
-
-.. _nic_features_tx_descriptor_status:
-
-Tx descriptor status
---------------------
-
-Supports checking the status of a Tx descriptor. Status can be "Full", "Done"
-or "Unavailable."
-
-* **[implements] rte_eth_dev**: ``tx_descriptor_status``.
-* **[related]    API**: ``rte_eth_tx_descriptor_status()``.
+* **[implements] rte_eth_dev**: ``rx_descriptor_status``, ``tx_descriptor_status``.
+* **[related]    API**: ``rte_eth_rx_descriptor_status()``, ``rte_eth_tx_descriptor_status()``.
 
 
 .. _nic_features_tx_queue_count:
@@ -947,54 +948,6 @@ x86-64
 
 Support 64bits x86 architecture.
 
-.. _nic_features_usage_doc:
-
-Usage doc
----------
-
-Documentation describes usage.
-
-See ``doc/guides/nics/*.rst``
-
-
-.. _nic_features_design_doc:
-
-Design doc
-----------
-
-Documentation describes design.
-
-See ``doc/guides/nics/*.rst``.
-
-
-.. _nic_features_perf_doc:
-
-Perf doc
---------
-
-Documentation describes performance values.
-
-See ``dpdk.org/doc/perf/*``.
-
-.. _nic_features_runtime_rx_queue_setup:
-
-Runtime Rx queue setup
-----------------------
-
-Supports Rx queue setup after device started.
-
-* **[provides] rte_eth_dev_info**: ``dev_capa:RTE_ETH_DEV_CAPA_RUNTIME_RX_QUEUE_SETUP``.
-* **[related]  API**: ``rte_eth_dev_info_get()``.
-
-.. _nic_features_runtime_tx_queue_setup:
-
-Runtime Tx queue setup
-----------------------
-
-Supports Tx queue setup after device started.
-
-* **[provides] rte_eth_dev_info**: ``dev_capa:RTE_ETH_DEV_CAPA_RUNTIME_TX_QUEUE_SETUP``.
-* **[related]  API**: ``rte_eth_dev_info_get()``.
 
 .. _nic_features_burst_mode_info:
 
