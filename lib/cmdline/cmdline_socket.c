@@ -4,7 +4,6 @@
  * All rights reserved.
  */
 
-#include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
 
@@ -38,7 +37,7 @@ cmdline_stdin_new(cmdline_parse_ctx_t *ctx, const char *prompt)
 {
 	struct cmdline *cl;
 
-	cl = cmdline_new(ctx, prompt, 0, 1);
+	cl = cmdline_new(ctx, prompt, STDIN_FILENO, STDOUT_FILENO);
 
 	if (cl != NULL)
 		terminal_adjust(cl);
