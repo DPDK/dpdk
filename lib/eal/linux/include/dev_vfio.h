@@ -146,21 +146,6 @@ int dev_vfio_noiommu_is_enabled(void);
 
 /**
  * @internal
- * Remove group fd from internal VFIO group fd array.
- *
- * @param vfio_group_fd
- *   VFIO Group FD.
- *
- * @return
- *   0 on success.
- *   <0 on failure.
- */
-__rte_internal
-int
-dev_vfio_clear_group(int vfio_group_fd);
-
-/**
- * @internal
  * Parse IOMMU group number for a device.
  *
  * @param sysfs_base
@@ -213,21 +198,6 @@ dev_vfio_get_device_info(int vfio_dev_fd, struct vfio_device_info *device_info);
 __rte_internal
 int
 dev_vfio_get_container_fd(void);
-
-/**
- * @internal
- * Open VFIO group fd or get an existing one.
- *
- * @param iommu_group_num
- *   iommu group number
- *
- * @return
- *  > 0 group fd
- *  < 0 for errors
- */
-__rte_internal
-int
-dev_vfio_get_group_fd(int iommu_group_num);
 
 /**
  * @internal
@@ -287,42 +257,6 @@ __rte_internal
 int
 dev_vfio_container_assign_device(int vfio_container_fd, const char *sysfs_base,
 		const char *dev_addr);
-
-/**
- * @internal
- * Bind a IOMMU group to a container.
- *
- * @param container_fd
- *   the container's fd
- *
- * @param iommu_group_num
- *   the iommu group number to bind to container
- *
- * @return
- *   group fd if successful
- *   <0 if failed
- */
-__rte_internal
-int
-dev_vfio_container_group_bind(int container_fd, int iommu_group_num);
-
-/**
- * @internal
- * Unbind a IOMMU group from a container.
- *
- * @param container_fd
- *   the container fd of container
- *
- * @param iommu_group_num
- *   the iommu group number to delete from container
- *
- * @return
- *    0 if successful
- *   <0 if failed
- */
-__rte_internal
-int
-dev_vfio_container_group_unbind(int container_fd, int iommu_group_num);
 
 /**
  * @internal
