@@ -2556,6 +2556,9 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 		mlx5_list_destroy(priv->hrxqs);
 	mlx5_free(priv->ext_rxqs);
 	mlx5_free(priv->ext_txqs);
+	mlx5_free(priv->mac);
+	dev->data->mac_addrs = NULL;
+	mlx5_free(priv->mac_own);
 	sh->port[priv->dev_port - 1].nl_ih_port_id = RTE_MAX_ETHPORTS;
 	/*
 	 * The interrupt handler port id must be reset before priv is reset
@@ -2590,12 +2593,6 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	mlx5_flow_pools_destroy(priv);
 	memset(priv, 0, sizeof(*priv));
 	priv->domain_id = RTE_ETH_DEV_SWITCH_DOMAIN_ID_INVALID;
-	/*
-	 * Reset mac_addrs to NULL such that it is not freed as part of
-	 * rte_eth_dev_release_port(). mac_addrs is part of dev_private so
-	 * it is freed when dev_private is freed.
-	 */
-	dev->data->mac_addrs = NULL;
 	return 0;
 }
 

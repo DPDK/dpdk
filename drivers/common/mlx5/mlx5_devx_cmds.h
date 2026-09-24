@@ -356,6 +356,8 @@ struct mlx5_hca_attr {
 	uint8_t tx_sw_owner_v2:1;
 	uint8_t esw_sw_owner:1;
 	uint8_t esw_sw_owner_v2:1;
+	uint8_t log_max_current_uc_list:5;
+	uint8_t log_max_current_mc_list:5;
 };
 
 /* LAG Context. */

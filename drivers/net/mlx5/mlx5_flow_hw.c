@@ -11576,22 +11576,37 @@ static uint32_t ctrl_rx_rss_priority_map[MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_MAX] 
 	[MLX5_FLOW_HW_CTRL_RX_EXPANDED_RSS_IPV6_TCP] = MLX5_HW_CTRL_RX_PRIO_L4,
 };
 
-static uint32_t ctrl_rx_nb_flows_map[MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_MAX] = {
-	[MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_ALL] = 1,
-	[MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_ALL_MCAST] = 1,
-	[MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_BCAST] = 1,
-	[MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_BCAST_VLAN] = MLX5_MAX_VLAN_IDS,
-	[MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_IPV4_MCAST] = 1,
-	[MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_IPV4_MCAST_VLAN] = MLX5_MAX_VLAN_IDS,
-	[MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_IPV6_MCAST] = 1,
-	[MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_IPV6_MCAST_VLAN] = MLX5_MAX_VLAN_IDS,
-	[MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_DMAC] = MLX5_MAX_UC_MAC_ADDRESSES,
-	[MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_DMAC_VLAN] =
-			MLX5_MAX_UC_MAC_ADDRESSES * MLX5_MAX_VLAN_IDS,
-};
+static uint32_t
+flow_hw_get_ctrl_rx_nb_flows(struct rte_eth_dev *dev,
+			     enum mlx5_flow_ctrl_rx_eth_pattern_type eth_pattern_type)
+{
+	struct mlx5_priv *priv = dev->data->dev_private;
+	uint32_t max_uc_mac_addrs = priv->sh->dev_cap.max_uc_mac_addrs;
+
+	switch (eth_pattern_type) {
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_ALL:
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_ALL_MCAST:
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_BCAST:
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_IPV4_MCAST:
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_IPV6_MCAST:
+		return 1;
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_BCAST_VLAN:
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_IPV4_MCAST_VLAN:
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_IPV6_MCAST_VLAN:
+		return MLX5_MAX_VLAN_IDS;
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_DMAC:
+		return max_uc_mac_addrs;
+	case MLX5_FLOW_HW_CTRL_RX_ETH_PATTERN_DMAC_VLAN:
+		return max_uc_mac_addrs * MLX5_MAX_VLAN_IDS;
+	default:
+		MLX5_ASSERT(false);
+		return 0;
+	}
+}
 
 static struct rte_flow_template_table_attr
-flow_hw_get_ctrl_rx_table_attr(enum mlx5_flow_ctrl_rx_eth_pattern_type eth_pattern_type,
+flow_hw_get_ctrl_rx_table_attr(struct rte_eth_dev *dev,
+			       enum mlx5_flow_ctrl_rx_eth_pattern_type eth_pattern_type,
 			       const enum mlx5_flow_ctrl_rx_expanded_rss_type rss_type)
 {
 	return (struct rte_flow_template_table_attr){
@@ -11600,7 +11615,7 @@ flow_hw_get_ctrl_rx_table_attr(enum mlx5_flow_ctrl_rx_eth_pattern_type eth_patte
 			.priority = ctrl_rx_rss_priority_map[rss_type],
 			.ingress = 1,
 		},
-		.nb_flows = ctrl_rx_nb_flows_map[eth_pattern_type],
+		.nb_flows = flow_hw_get_ctrl_rx_nb_flows(dev, eth_pattern_type),
 	};
 }
 
@@ -11763,7 +11778,8 @@ mlx5_flow_hw_create_ctrl_rx_tables(struct rte_eth_dev *dev)
 			struct rte_flow_template_table_attr attr;
 			struct rte_flow_pattern_template *pt;
 
-			attr = flow_hw_get_ctrl_rx_table_attr(eth_pattern_type, rss_type);
+			attr = flow_hw_get_ctrl_rx_table_attr(dev, eth_pattern_type,
+							      rss_type);
 			pt = flow_hw_create_ctrl_rx_pattern_template(dev, eth_pattern_type,
 								     rss_type);
 			if (!pt)
@@ -16697,10 +16713,11 @@ __flow_hw_ctrl_flows_unicast(struct rte_eth_dev *dev,
 			     struct rte_flow_template_table *tbl,
 			     const enum mlx5_flow_ctrl_rx_expanded_rss_type rss_type)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
 	unsigned int i;
 	int ret;
 
-	for (i = 0; i < MLX5_MAX_MAC_ADDRESSES; ++i) {
+	for (i = 0; i < priv->sh->dev_cap.max_mac_addrs; ++i) {
 		struct rte_ether_addr *mac = &dev->data->mac_addrs[i];
 
 		if (rte_is_zero_ether_addr(mac))
@@ -16767,7 +16784,7 @@ __flow_hw_ctrl_flows_unicast_vlan(struct rte_eth_dev *dev,
 	unsigned int i;
 	unsigned int j;
 
-	for (i = 0; i < MLX5_MAX_MAC_ADDRESSES; ++i) {
+	for (i = 0; i < priv->sh->dev_cap.max_mac_addrs; ++i) {
 		struct rte_ether_addr *mac = &dev->data->mac_addrs[i];
 
 		if (rte_is_zero_ether_addr(mac))

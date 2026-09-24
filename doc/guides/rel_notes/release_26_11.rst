@@ -133,6 +133,11 @@ New Features
   Added ``fdir_buffer_size`` devarg to select the Flow Director table size
   (``64k``, ``128k`` or ``256k``) at probe time. The default remains ``64k``.
 
+* **Updated NVIDIA mlx5 ethernet driver.**
+
+  * Increased the maximum number of secondary unicast MAC addresses from 128 to up to 4096
+    (depending on devlink configuration on the associated kernel netdevice).
+
 * **Updated NXP DPAA2 ethernet driver.**
 
   * Added the inner IP header to the RSS hash so tunneled traffic is
