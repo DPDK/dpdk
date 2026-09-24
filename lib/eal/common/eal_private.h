@@ -207,20 +207,6 @@ int rte_eal_alarm_init(void);
 void rte_eal_alarm_cleanup(void);
 
 /**
- * Function is to check if the kernel module(like, vfio, vfio_iommu_type1,
- * etc.) loaded.
- *
- * @param module_name
- *	The module's name which need to be checked
- *
- * @return
- *	-1 means some error happens(NULL pointer or open failure)
- *	0  means the module not loaded
- *	1  means the module loaded
- */
-int rte_eal_check_module(const char *module_name);
-
-/**
  * Memory reservation flags.
  */
 enum eal_mem_reserve_flags {

@@ -4,9 +4,12 @@
 
 #include <uapi/linux/vfio.h>
 
+#include <errno.h>
 #include <inttypes.h>
+#include <limits.h>
 #include <string.h>
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <dirent.h>
@@ -57,6 +60,48 @@ struct vfio_config {
 /* per-process VFIO config */
 static struct vfio_config vfio_cfgs[RTE_MAX_VFIO_CONTAINERS];
 static struct vfio_config *default_vfio_cfg = &vfio_cfgs[0];
+
+static int
+vfio_check_module(enum dev_vfio_module module)
+{
+	const char *module_name;
+	char sysfs_mod_name[PATH_MAX];
+	struct stat st;
+	int n;
+
+	switch (module) {
+	case DEV_VFIO_MODULE_VFIO:
+		module_name = "vfio";
+		break;
+	case DEV_VFIO_MODULE_VFIO_PCI:
+		module_name = "vfio_pci";
+		break;
+	default:
+		return -1;
+	}
+
+	/* Check if there is sysfs mounted */
+	if (stat("/sys/module", &st) != 0) {
+		EAL_LOG(DEBUG, "sysfs is not mounted! error %i (%s)", errno, strerror(errno));
+		return -1;
+	}
+
+	/* A module might be built-in, therefore try sysfs */
+	n = snprintf(sysfs_mod_name, PATH_MAX, "/sys/module/%s", module_name);
+	if (n < 0 || n >= PATH_MAX) {
+		EAL_LOG(DEBUG, "Could not format module path");
+		return -1;
+	}
+
+	if (stat(sysfs_mod_name, &st) != 0) {
+		EAL_LOG(DEBUG, "Module %s not found! error %i (%s)", sysfs_mod_name, errno,
+			strerror(errno));
+		return 0;
+	}
+
+	/* Module has been found */
+	return 1;
+}
 
 static int vfio_type1_dma_map(int);
 static int vfio_type1_dma_mem_map(int, uint64_t, uint64_t, uint64_t, int);
@@ -1100,7 +1145,7 @@ out:
 
 RTE_EXPORT_INTERNAL_SYMBOL(dev_vfio_enable)
 int
-dev_vfio_enable(const char *modname)
+dev_vfio_enable(void)
 {
 	/* initialize group list */
 	unsigned int i, j;
@@ -1127,7 +1172,7 @@ dev_vfio_enable(const char *modname)
 	EAL_LOG(DEBUG, "Probing VFIO support...");
 
 	/* check if vfio module is loaded */
-	vfio_available = rte_eal_check_module(modname);
+	vfio_available = vfio_check_module(DEV_VFIO_MODULE_VFIO);
 
 	/* return error directly */
 	if (vfio_available == -1) {
@@ -1175,12 +1220,18 @@ dev_vfio_enable(const char *modname)
 	return 0;
 }
 
+RTE_EXPORT_INTERNAL_SYMBOL(dev_vfio_module_is_loaded)
+int
+dev_vfio_module_is_loaded(enum dev_vfio_module module)
+{
+	return vfio_check_module(module) > 0;
+}
+
 RTE_EXPORT_INTERNAL_SYMBOL(dev_vfio_is_enabled)
 int
-dev_vfio_is_enabled(const char *modname)
+dev_vfio_is_enabled(void)
 {
-	const int mod_available = rte_eal_check_module(modname) > 0;
-	return default_vfio_cfg->vfio_enabled && mod_available;
+	return default_vfio_cfg->vfio_enabled;
 }
 
 int

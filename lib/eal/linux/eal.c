@@ -17,9 +17,7 @@
 #include <fnmatch.h>
 #include <stddef.h>
 #include <errno.h>
-#include <limits.h>
 #include <sys/mman.h>
-#include <sys/stat.h>
 #if defined(RTE_ARCH_X86)
 #include <sys/io.h>
 #endif
@@ -772,7 +770,7 @@ rte_eal_init(int argc, char **argv)
 #endif
 	}
 
-	if (dev_vfio_enable("vfio")) {
+	if (dev_vfio_enable()) {
 		rte_eal_init_alert("Cannot init VFIO");
 		rte_errno = EAGAIN;
 		goto err_out;
@@ -1029,36 +1027,3 @@ rte_eal_vfio_get_vf_token(rte_uuid_t vf_token)
 	rte_uuid_copy(vf_token, cfg->vfio_vf_token);
 }
 
-int
-rte_eal_check_module(const char *module_name)
-{
-	char sysfs_mod_name[PATH_MAX];
-	struct stat st;
-	int n;
-
-	if (NULL == module_name)
-		return -1;
-
-	/* Check if there is sysfs mounted */
-	if (stat("/sys/module", &st) != 0) {
-		EAL_LOG(DEBUG, "sysfs is not mounted! error %i (%s)",
-			errno, strerror(errno));
-		return -1;
-	}
-
-	/* A module might be built-in, therefore try sysfs */
-	n = snprintf(sysfs_mod_name, PATH_MAX, "/sys/module/%s", module_name);
-	if (n < 0 || n > PATH_MAX) {
-		EAL_LOG(DEBUG, "Could not format module path");
-		return -1;
-	}
-
-	if (stat(sysfs_mod_name, &st) != 0) {
-		EAL_LOG(DEBUG, "Module %s not found! error %i (%s)",
-		        sysfs_mod_name, errno, strerror(errno));
-		return 0;
-	}
-
-	/* Module has been found */
-	return 1;
-}

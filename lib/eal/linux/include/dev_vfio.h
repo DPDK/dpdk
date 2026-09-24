@@ -36,6 +36,17 @@ struct vfio_device_info;
 #define DEV_VFIO_DEFAULT_CONTAINER_FD (-1)
 
 /**
+ * @enum dev_vfio_module
+ * VFIO kernel modules.
+ *
+ * These values identify kernel modules used by VFIO.
+ */
+enum dev_vfio_module {
+	DEV_VFIO_MODULE_VFIO,     /**< Core VFIO module. */
+	DEV_VFIO_MODULE_VFIO_PCI, /**< VFIO PCI module. */
+};
+
+/**
  * @internal
  * Setup vfio_cfg for the device identified by its address.
  * It discovers the configured I/O MMU groups or sets a new one for the device.
@@ -84,31 +95,39 @@ int dev_vfio_release_device(const char *sysfs_base, const char *dev_addr, int fd
 
 /**
  * @internal
- * Enable a VFIO-related kmod.
- *
- * @param modname
- *   kernel module name.
+ * Initialize VFIO.
  *
  * @return
  *   0 on success.
  *   <0 on failure.
  */
 __rte_internal
-int dev_vfio_enable(const char *modname);
+int dev_vfio_enable(void);
 
 /**
  * @internal
- * Check whether a VFIO-related kmod is enabled.
+ * Check whether a VFIO module is loaded.
  *
- * @param modname
- *   kernel module name.
+ * @param module
+ *   VFIO module to check.
  *
  * @return
- *   1 if true.
+ *   1 if the requested module is loaded.
  *   0 otherwise.
  */
 __rte_internal
-int dev_vfio_is_enabled(const char *modname);
+int dev_vfio_module_is_loaded(enum dev_vfio_module module);
+
+/**
+ * @internal
+ * Check whether VFIO was initialized.
+ *
+ * @return
+ *   1 if VFIO was initialized.
+ *   0 otherwise.
+ */
+__rte_internal
+int dev_vfio_is_enabled(void);
 
 /**
  * @internal
