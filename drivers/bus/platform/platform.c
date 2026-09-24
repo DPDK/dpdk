@@ -23,7 +23,7 @@
 #include <rte_log.h>
 #include <rte_memory.h>
 #include <rte_string_fns.h>
-#include <rte_vfio.h>
+#include <dev_vfio.h>
 
 #include "private.h"
 
@@ -282,7 +282,7 @@ static void
 device_cleanup(struct rte_platform_device *pdev)
 {
 	device_unmap_resources(pdev);
-	rte_vfio_release_device(PLATFORM_BUS_DEVICES_PATH, pdev->name, pdev->dev_fd);
+	dev_vfio_release_device(PLATFORM_BUS_DEVICES_PATH, pdev->name, pdev->dev_fd);
 }
 
 static int
@@ -292,7 +292,7 @@ device_setup(struct rte_platform_device *pdev)
 	const char *name = pdev->name;
 	int ret;
 
-	ret = rte_vfio_setup_device(PLATFORM_BUS_DEVICES_PATH, name, &pdev->dev_fd, &dev_info);
+	ret = dev_vfio_setup_device(PLATFORM_BUS_DEVICES_PATH, name, &pdev->dev_fd, &dev_info);
 	if (ret) {
 		PLATFORM_LOG_LINE(ERR, "failed to setup %s", name);
 		return -ENODEV;
@@ -458,7 +458,7 @@ platform_bus_dma_map(struct rte_device *dev, void *addr, uint64_t iova, size_t l
 	if (pdrv->dma_map != NULL)
 		return pdrv->dma_map(pdev, addr, iova, len);
 
-	return rte_vfio_container_dma_map(RTE_VFIO_DEFAULT_CONTAINER_FD, (uint64_t)addr, iova, len);
+	return dev_vfio_container_dma_map(DEV_VFIO_DEFAULT_CONTAINER_FD, (uint64_t)addr, iova, len);
 }
 
 static int
@@ -470,7 +470,7 @@ platform_bus_dma_unmap(struct rte_device *dev, void *addr, uint64_t iova, size_t
 	if (pdrv->dma_unmap != NULL)
 		return pdrv->dma_unmap(pdev, addr, iova, len);
 
-	return rte_vfio_container_dma_unmap(RTE_VFIO_DEFAULT_CONTAINER_FD, (uint64_t)addr, iova,
+	return dev_vfio_container_dma_unmap(DEV_VFIO_DEFAULT_CONTAINER_FD, (uint64_t)addr, iova,
 					    len);
 }
 

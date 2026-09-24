@@ -34,7 +34,7 @@
 #include <rte_kvargs.h>
 #include <dev_driver.h>
 #include <rte_eal_memconfig.h>
-#include <rte_vfio.h>
+#include <dev_vfio.h>
 
 #include "private.h"
 #include "fslmc_vfio.h"
@@ -204,7 +204,7 @@ fslmc_vfio_add_group(int vfio_group_fd,
 	group->fd = vfio_group_fd;
 	group->groupid = iommu_group_num;
 	rte_strscpy(group->group_name, group_name, sizeof(group->group_name));
-	if (rte_vfio_noiommu_is_enabled() > 0)
+	if (dev_vfio_noiommu_is_enabled() > 0)
 		group->iommu_type = VFIO_NOIOMMU_IOMMU;
 	else
 		group->iommu_type = VFIO_TYPE1_IOMMU;
@@ -374,7 +374,7 @@ fslmc_get_group_id(const char *group_name,
 	int ret;
 
 	/* get group number */
-	ret = rte_vfio_get_group_num(SYSFS_FSL_MC_DEVICES,
+	ret = dev_vfio_get_group_num(SYSFS_FSL_MC_DEVICES,
 			group_name, groupid);
 	if (ret <= 0) {
 		DPAA2_BUS_ERR("Find %s IOMMU group", group_name);
@@ -411,7 +411,7 @@ fslmc_vfio_open_group_fd(const char *group_name)
 	/* if primary, try to open the group */
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		/* try regular group format */
-		snprintf(filename, sizeof(filename), RTE_VFIO_GROUP_FMT, iommu_group_num);
+		snprintf(filename, sizeof(filename), DEV_VFIO_GROUP_FMT, iommu_group_num);
 		vfio_group_fd = open(filename, O_RDWR);
 
 		goto add_vfio_group;
@@ -509,10 +509,10 @@ fslmc_vfio_open_container_fd(void)
 
 	/* if we're in a primary process, try to open the container */
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		vfio_container_fd = open(RTE_VFIO_CONTAINER_PATH, O_RDWR);
+		vfio_container_fd = open(DEV_VFIO_CONTAINER_PATH, O_RDWR);
 		if (vfio_container_fd < 0) {
 			DPAA2_BUS_ERR("Open VFIO container(%s), err(%d)",
-				RTE_VFIO_CONTAINER_PATH, vfio_container_fd);
+				DEV_VFIO_CONTAINER_PATH, vfio_container_fd);
 			ret = vfio_container_fd;
 			goto err_exit;
 		}

@@ -12,7 +12,7 @@
 #include <rte_malloc.h>
 #include <rte_devargs.h>
 #include <rte_memcpy.h>
-#include <rte_vfio.h>
+#include <dev_vfio.h>
 
 #include <eal_export.h>
 #include "eal_filesystem.h"
@@ -489,7 +489,7 @@ pci_device_dma_map(struct rte_device *dev, void *addr, uint64_t iova, size_t len
 
 		/* In case driver doesn't provide any specific mapping try fallback to VFIO. */
 		if (pdev->kdrv == RTE_PCI_KDRV_VFIO)
-			ret = rte_vfio_container_dma_map(RTE_VFIO_DEFAULT_CONTAINER_FD,
+			ret = dev_vfio_container_dma_map(DEV_VFIO_DEFAULT_CONTAINER_FD,
 				(uintptr_t)addr, iova, len);
 	}
 
@@ -506,7 +506,7 @@ pci_device_dma_unmap(struct rte_device *dev, void *addr, uint64_t iova, size_t l
 
 		/* In case driver doesn't provide any specific mapping try fallback to VFIO. */
 		if (pdev->kdrv == RTE_PCI_KDRV_VFIO)
-			return rte_vfio_container_dma_unmap(RTE_VFIO_DEFAULT_CONTAINER_FD,
+			return dev_vfio_container_dma_unmap(DEV_VFIO_DEFAULT_CONTAINER_FD,
 				(uintptr_t)addr, iova, len);
 	}
 
@@ -635,7 +635,7 @@ pci_device_iova_mode(const struct rte_pci_driver *pdrv,
 		static int is_vfio_noiommu_enabled = -1;
 
 		if (is_vfio_noiommu_enabled == -1) {
-			if (rte_vfio_noiommu_is_enabled() == 1)
+			if (dev_vfio_noiommu_is_enabled() == 1)
 				is_vfio_noiommu_enabled = 1;
 			else
 				is_vfio_noiommu_enabled = 0;

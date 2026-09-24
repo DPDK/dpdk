@@ -12,7 +12,7 @@
 #include <rte_errno.h>
 #include <rte_kvargs.h>
 #include <rte_string_fns.h>
-#include <rte_vfio.h>
+#include <dev_vfio.h>
 #include <rte_vhost.h>
 
 #include "efx.h"
@@ -74,13 +74,13 @@ sfc_vdpa_vfio_setup(struct sfc_vdpa_adapter *sva)
 
 	rte_pci_device_name(&dev->addr, dev_name, RTE_DEV_NAME_MAX_LEN);
 
-	sva->vfio_container_fd = rte_vfio_container_create();
+	sva->vfio_container_fd = dev_vfio_container_create();
 	if (sva->vfio_container_fd < 0)	{
 		sfc_vdpa_err(sva, "failed to create VFIO container");
 		goto fail_container_create;
 	}
 
-	rc = rte_vfio_get_group_num(rte_pci_get_sysfs_path(), dev_name,
+	rc = dev_vfio_get_group_num(rte_pci_get_sysfs_path(), dev_name,
 				    &sva->iommu_group_num);
 	if (rc <= 0) {
 		sfc_vdpa_err(sva, "failed to get IOMMU group for %s : %s",
@@ -89,7 +89,7 @@ sfc_vdpa_vfio_setup(struct sfc_vdpa_adapter *sva)
 	}
 
 	sva->vfio_group_fd =
-		rte_vfio_container_group_bind(sva->vfio_container_fd,
+		dev_vfio_container_group_bind(sva->vfio_container_fd,
 					      sva->iommu_group_num);
 	if (sva->vfio_group_fd < 0) {
 		sfc_vdpa_err(sva,
@@ -109,7 +109,7 @@ sfc_vdpa_vfio_setup(struct sfc_vdpa_adapter *sva)
 	return 0;
 
 fail_pci_map_device:
-	if (rte_vfio_container_group_unbind(sva->vfio_container_fd,
+	if (dev_vfio_container_group_unbind(sva->vfio_container_fd,
 					sva->iommu_group_num) != 0) {
 		sfc_vdpa_err(sva,
 			     "failed to unbind IOMMU group %d from container %d",
@@ -118,7 +118,7 @@ fail_pci_map_device:
 
 fail_group_bind:
 fail_get_group_num:
-	if (rte_vfio_container_destroy(sva->vfio_container_fd) != 0) {
+	if (dev_vfio_container_destroy(sva->vfio_container_fd) != 0) {
 		sfc_vdpa_err(sva, "failed to destroy container %d",
 			     sva->vfio_container_fd);
 	}
@@ -132,14 +132,14 @@ sfc_vdpa_vfio_teardown(struct sfc_vdpa_adapter *sva)
 {
 	rte_pci_unmap_device(sva->pdev);
 
-	if (rte_vfio_container_group_unbind(sva->vfio_container_fd,
+	if (dev_vfio_container_group_unbind(sva->vfio_container_fd,
 					    sva->iommu_group_num) != 0) {
 		sfc_vdpa_err(sva,
 			     "failed to unbind IOMMU group %d from container %d",
 			     sva->iommu_group_num, sva->vfio_container_fd);
 	}
 
-	if (rte_vfio_container_destroy(sva->vfio_container_fd) != 0) {
+	if (dev_vfio_container_destroy(sva->vfio_container_fd) != 0) {
 		sfc_vdpa_err(sva,
 			     "failed to destroy container %d",
 			     sva->vfio_container_fd);

@@ -261,6 +261,10 @@ API Changes
   are now declared with an alignment of 1 on all architectures.
   The compiler may generate narrower loads and stores than before.
 
+* eal: The entire VFIO API (``rte_vfio_*``) was made internal.
+  These functions are now available only to EAL and drivers,
+  and are no longer part of the public API.
+
 * ethdev: Updated VMDq related API.
 
   * At port configuration time, the number of VMDq pools advertised by a driver

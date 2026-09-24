@@ -42,7 +42,7 @@
 #include <rte_common.h>
 #include <rte_malloc.h>
 #include <rte_log.h>
-#include <rte_vfio.h>
+#include <dev_vfio.h>
 #include <rte_errno.h>
 
 #include "iotlb.h"
@@ -191,7 +191,7 @@ async_dma_map_region(struct virtio_net *dev, struct rte_vhost_mem_region *reg, b
 			continue;
 
 		if (do_map) {
-			ret = rte_vfio_container_dma_map(RTE_VFIO_DEFAULT_CONTAINER_FD,
+			ret = dev_vfio_container_dma_map(DEV_VFIO_DEFAULT_CONTAINER_FD,
 					page->host_user_addr,
 					page->host_iova,
 					page->size);
@@ -216,7 +216,7 @@ async_dma_map_region(struct virtio_net *dev, struct rte_vhost_mem_region *reg, b
 				return -1;
 			}
 		} else {
-			ret = rte_vfio_container_dma_unmap(RTE_VFIO_DEFAULT_CONTAINER_FD,
+			ret = dev_vfio_container_dma_unmap(DEV_VFIO_DEFAULT_CONTAINER_FD,
 					page->host_user_addr,
 					page->host_iova,
 					page->size);

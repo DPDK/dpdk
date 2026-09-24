@@ -6,7 +6,7 @@
 
 #include <rte_common.h>
 #include <rte_errno.h>
-#include <rte_vfio.h>
+#include <dev_vfio.h>
 #include <rte_vhost.h>
 
 #include "efx.h"
@@ -64,7 +64,7 @@ sfc_vdpa_dma_alloc(struct sfc_vdpa_adapter *sva, const char *name,
 	mcdi_iova = SFC_VDPA_DEFAULT_MCDI_IOVA;
 
 	for (;;) {
-		ret = rte_vfio_container_dma_map(sva->vfio_container_fd,
+		ret = dev_vfio_container_dma_map(sva->vfio_container_fd,
 						 (uint64_t)mz->addr, mcdi_iova,
 						 mcdi_buff_size);
 		if (ret == 0)
@@ -98,7 +98,7 @@ sfc_vdpa_dma_free(struct sfc_vdpa_adapter *sva, efsys_mem_t *esmp)
 
 	sfc_vdpa_log_init(sva, "name=%s", esmp->esm_mz->name);
 
-	ret = rte_vfio_container_dma_unmap(sva->vfio_container_fd,
+	ret = dev_vfio_container_dma_unmap(sva->vfio_container_fd,
 					   (uint64_t)esmp->esm_base,
 					   esmp->esm_addr, sva->mcdi_buff_size);
 	if (ret < 0)
@@ -140,7 +140,7 @@ sfc_vdpa_dma_map(struct sfc_vdpa_ops_data *ops_data, bool do_map)
 		mem_reg = &vhost_mem->regions[i];
 
 		if (do_map) {
-			rc = rte_vfio_container_dma_map(vfio_container_fd,
+			rc = dev_vfio_container_dma_map(vfio_container_fd,
 						mem_reg->host_user_addr,
 						mem_reg->guest_phys_addr,
 						mem_reg->size);
@@ -151,7 +151,7 @@ sfc_vdpa_dma_map(struct sfc_vdpa_ops_data *ops_data, bool do_map)
 				goto failed_vfio_dma_map;
 			}
 		} else {
-			rc = rte_vfio_container_dma_unmap(vfio_container_fd,
+			rc = dev_vfio_container_dma_unmap(vfio_container_fd,
 						mem_reg->host_user_addr,
 						mem_reg->guest_phys_addr,
 						mem_reg->size);
@@ -171,7 +171,7 @@ sfc_vdpa_dma_map(struct sfc_vdpa_ops_data *ops_data, bool do_map)
 failed_vfio_dma_map:
 	for (j = 0; j < i; j++) {
 		mem_reg = &vhost_mem->regions[j];
-		rte_vfio_container_dma_unmap(vfio_container_fd,
+		dev_vfio_container_dma_unmap(vfio_container_fd,
 					     mem_reg->host_user_addr,
 					     mem_reg->guest_phys_addr,
 					     mem_reg->size);

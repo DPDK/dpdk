@@ -73,7 +73,7 @@
 #include <rte_devargs.h>
 #include <rte_kvargs.h>
 #include <rte_malloc.h>
-#include <rte_vfio.h>
+#include <dev_vfio.h>
 
 #include <eal_export.h>
 #include <eal_filesystem.h>
@@ -403,7 +403,7 @@ cdx_dma_map(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
 {
 	RTE_SET_USED(dev);
 
-	return rte_vfio_container_dma_map(RTE_VFIO_DEFAULT_CONTAINER_FD,
+	return dev_vfio_container_dma_map(DEV_VFIO_DEFAULT_CONTAINER_FD,
 					  (uintptr_t)addr, iova, len);
 }
 
@@ -412,7 +412,7 @@ cdx_dma_unmap(struct rte_device *dev, void *addr, uint64_t iova, size_t len)
 {
 	RTE_SET_USED(dev);
 
-	return rte_vfio_container_dma_unmap(RTE_VFIO_DEFAULT_CONTAINER_FD,
+	return dev_vfio_container_dma_unmap(DEV_VFIO_DEFAULT_CONTAINER_FD,
 					    (uintptr_t)addr, iova, len);
 }
 

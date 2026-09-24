@@ -9,7 +9,7 @@
 #include <sys/mman.h>
 #include <sys/ioctl.h>
 
-#include <rte_vfio.h>
+#include <dev_vfio.h>
 
 #include "bcmfs_device.h"
 #include "bcmfs_logs.h"
@@ -25,7 +25,7 @@ vfio_map_dev_obj(const char *path, const char *dev_obj,
 	struct vfio_device_info d_info = { .argsz = sizeof(d_info) };
 	struct vfio_region_info reg_info = { .argsz = sizeof(reg_info) };
 
-	ret = rte_vfio_setup_device(path, dev_obj, dev_fd, &d_info);
+	ret = dev_vfio_setup_device(path, dev_obj, dev_fd, &d_info);
 	if (ret) {
 		BCMFS_LOG(ERR, "VFIO Setting for device failed");
 		return ret;
@@ -51,7 +51,7 @@ vfio_map_dev_obj(const char *path, const char *dev_obj,
 	return 0;
 
 map_failed:
-	rte_vfio_release_device(path, dev_obj, *dev_fd);
+	dev_vfio_release_device(path, dev_obj, *dev_fd);
 
 	return ret;
 }
@@ -87,7 +87,7 @@ bcmfs_release_vfio(struct bcmfs_device *dev)
 	/* unmap the addr */
 	munmap(dev->mmap_addr, dev->mmap_size);
 	/* release the device */
-	ret = rte_vfio_release_device(dev->dirname, dev->name,
+	ret = dev_vfio_release_device(dev->dirname, dev->name,
 				      dev->vfio_dev_fd);
 	if (ret < 0) {
 		BCMFS_LOG(ERR, "cannot release device");

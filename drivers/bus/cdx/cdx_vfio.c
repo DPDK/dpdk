@@ -23,7 +23,7 @@
 #include <eal_export.h>
 #include <rte_eal_paging.h>
 #include <rte_malloc.h>
-#include <rte_vfio.h>
+#include <dev_vfio.h>
 
 #include "bus_cdx_driver.h"
 #include "cdx_logs.h"
@@ -121,7 +121,7 @@ cdx_vfio_unmap_resource_primary(struct rte_cdx_device *dev)
 	if (vfio_dev_fd < 0)
 		return -1;
 
-	ret = rte_vfio_release_device(RTE_CDX_BUS_DEVICES_PATH, dev->device.name,
+	ret = dev_vfio_release_device(RTE_CDX_BUS_DEVICES_PATH, dev->device.name,
 				      vfio_dev_fd);
 	if (ret < 0) {
 		CDX_BUS_ERR("Cannot release VFIO device");
@@ -155,7 +155,7 @@ cdx_vfio_unmap_resource_secondary(struct rte_cdx_device *dev)
 	if (vfio_dev_fd < 0)
 		return -1;
 
-	ret = rte_vfio_release_device(RTE_CDX_BUS_DEVICES_PATH, dev->device.name,
+	ret = dev_vfio_release_device(RTE_CDX_BUS_DEVICES_PATH, dev->device.name,
 				      vfio_dev_fd);
 	if (ret < 0) {
 		CDX_BUS_ERR("Cannot release VFIO device");
@@ -407,7 +407,7 @@ cdx_vfio_map_resource_primary(struct rte_cdx_device *dev)
 	if (rte_intr_fd_set(dev->intr_handle, -1))
 		return -1;
 
-	ret = rte_vfio_setup_device(RTE_CDX_BUS_DEVICES_PATH, dev_name,
+	ret = dev_vfio_setup_device(RTE_CDX_BUS_DEVICES_PATH, dev_name,
 				    &vfio_dev_fd, &device_info);
 	if (ret)
 		return ret;
@@ -484,7 +484,7 @@ err_vfio_res:
 	cdx_vfio_find_and_unmap_resource(vfio_res_list, dev);
 	rte_free(vfio_res);
 err_vfio_dev_fd:
-	rte_vfio_release_device(RTE_CDX_BUS_DEVICES_PATH, dev_name, vfio_dev_fd);
+	dev_vfio_release_device(RTE_CDX_BUS_DEVICES_PATH, dev_name, vfio_dev_fd);
 	return -1;
 }
 
@@ -516,7 +516,7 @@ cdx_vfio_map_resource_secondary(struct rte_cdx_device *dev)
 		return -1;
 	}
 
-	ret = rte_vfio_setup_device(RTE_CDX_BUS_DEVICES_PATH, dev_name,
+	ret = dev_vfio_setup_device(RTE_CDX_BUS_DEVICES_PATH, dev_name,
 					&vfio_dev_fd, &device_info);
 	if (ret)
 		return ret;
@@ -542,7 +542,7 @@ cdx_vfio_map_resource_secondary(struct rte_cdx_device *dev)
 
 	return 0;
 err_vfio_dev_fd:
-	rte_vfio_release_device(RTE_CDX_BUS_DEVICES_PATH, dev_name, vfio_dev_fd);
+	dev_vfio_release_device(RTE_CDX_BUS_DEVICES_PATH, dev_name, vfio_dev_fd);
 	return -1;
 }
 

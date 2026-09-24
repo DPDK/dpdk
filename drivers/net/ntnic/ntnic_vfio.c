@@ -6,7 +6,7 @@
 
 #include <rte_malloc.h>
 #include <rte_memory.h>
-#include <rte_vfio.h>
+#include <dev_vfio.h>
 #include <rte_dev.h>
 #include <rte_bus_pci.h>
 #include <rte_spinlock.h>
@@ -70,16 +70,16 @@ nthw_vfio_setup(struct rte_pci_device *dev)
 	vfio->iova_addr = START_VF_IOVA;
 
 	rte_pci_device_name(&dev->addr, devname, RTE_DEV_NAME_MAX_LEN);
-	ret = rte_vfio_get_group_num(rte_pci_get_sysfs_path(), devname, &iommu_group_num);
+	ret = dev_vfio_get_group_num(rte_pci_get_sysfs_path(), devname, &iommu_group_num);
 	if (ret <= 0)
 		return -1;
 
 	if (vf_num == 0) {
 		/* use default container for pf0 */
-		vfio->container_fd = RTE_VFIO_DEFAULT_CONTAINER_FD;
+		vfio->container_fd = DEV_VFIO_DEFAULT_CONTAINER_FD;
 
 	} else {
-		vfio->container_fd = rte_vfio_container_create();
+		vfio->container_fd = dev_vfio_container_create();
 
 		if (vfio->container_fd < 0) {
 			NT_LOG(ERR, NTNIC,
@@ -88,7 +88,7 @@ nthw_vfio_setup(struct rte_pci_device *dev)
 		}
 	}
 
-	vfio->group_fd = rte_vfio_container_group_bind(vfio->container_fd, iommu_group_num);
+	vfio->group_fd = dev_vfio_container_group_bind(vfio->container_fd, iommu_group_num);
 
 	if (vfio->group_fd < 0) {
 		NT_LOG(ERR, NTNIC,
@@ -115,8 +115,8 @@ nthw_vfio_setup(struct rte_pci_device *dev)
 
 err:
 
-	if (vfio->container_fd != RTE_VFIO_DEFAULT_CONTAINER_FD)
-		rte_vfio_container_destroy(vfio->container_fd);
+	if (vfio->container_fd != DEV_VFIO_DEFAULT_CONTAINER_FD)
+		dev_vfio_container_destroy(vfio->container_fd);
 
 	return -1;
 }
@@ -135,7 +135,7 @@ nthw_vfio_remove(int vf_num)
 		return -1;
 	}
 
-	rte_vfio_container_destroy(vfio->container_fd);
+	dev_vfio_container_destroy(vfio->container_fd);
 	return 0;
 }
 
@@ -169,14 +169,14 @@ nthw_vfio_dma_map(int vf_num, void *virt_addr, uint64_t *iova_addr, uint64_t siz
 		vf_num, virt_addr, rte_malloc_virt2iova(virt_addr), gp_virt_base, vfio->iova_addr,
 		size);
 
-	int res = rte_vfio_container_dma_map(vfio->container_fd, gp_virt_base, vfio->iova_addr,
+	int res = dev_vfio_container_dma_map(vfio->container_fd, gp_virt_base, vfio->iova_addr,
 			size);
 
 	NT_LOG(DBG, NTNIC, "VFIO MMAP res %i, container_fd %i, vf_num %i", res,
 		vfio->container_fd, vf_num);
 
 	if (res) {
-		NT_LOG(ERR, NTNIC, "rte_vfio_container_dma_map failed: res %d", res);
+		NT_LOG(ERR, NTNIC, "dev_vfio_container_dma_map failed: res %d", res);
 		return -1;
 	}
 
@@ -210,7 +210,7 @@ nthw_vfio_dma_unmap(int vf_num, void *virt_addr, uint64_t iova_addr, uint64_t si
 		return -1;
 	}
 
-	int res = rte_vfio_container_dma_unmap(vfio->container_fd, gp_virt_base, iova_addr, size);
+	int res = dev_vfio_container_dma_unmap(vfio->container_fd, gp_virt_base, iova_addr, size);
 
 	if (res != 0) {
 		NT_LOG(ERR, NTNIC,

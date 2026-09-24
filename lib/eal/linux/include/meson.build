@@ -5,5 +5,8 @@ includes += include_directories('.')
 
 headers += files(
         'rte_os.h',
-        'rte_vfio.h',
+)
+
+driver_sdk_headers += files(
+        'dev_vfio.h',
 )

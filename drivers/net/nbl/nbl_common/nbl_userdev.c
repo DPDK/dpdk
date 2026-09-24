@@ -5,7 +5,7 @@
 #include <uapi/linux/vfio.h>
 
 #include "nbl_userdev.h"
-#include <rte_vfio.h>
+#include <dev_vfio.h>
 
 #define NBL_USERDEV_EVENT_CLB_NAME	"nbl_userspace_mem_event_clb"
 #define NBL_USERDEV_BAR0_SIZE		65536
@@ -406,7 +406,7 @@ static int nbl_mdev_map_device(struct nbl_adapter *adapter)
 	snprintf(pathname, sizeof(pathname),
 		 "%s/%s/", rte_pci_get_sysfs_path(), dev_name);
 
-	ret = rte_vfio_get_group_num(pathname, dev_name, &common->iommu_group_num);
+	ret = dev_vfio_get_group_num(pathname, dev_name, &common->iommu_group_num);
 	if (ret <= 0) {
 		NBL_LOG(ERR, "nbl vfio group number failed");
 		return -1;
@@ -415,7 +415,7 @@ static int nbl_mdev_map_device(struct nbl_adapter *adapter)
 	NBL_LOG(DEBUG, "nbl vfio group number %d", common->iommu_group_num);
 	/* vfio_container */
 	if (nbl_default_container < 0) {
-		container = rte_vfio_container_create();
+		container = dev_vfio_container_create();
 		container_create = 1;
 
 		if (container < 0) {
@@ -425,7 +425,7 @@ static int nbl_mdev_map_device(struct nbl_adapter *adapter)
 	}
 
 	NBL_LOG(DEBUG, "nbl vfio container %d", container);
-	vfio_group_fd = rte_vfio_container_group_bind(container, common->iommu_group_num);
+	vfio_group_fd = dev_vfio_container_group_bind(container, common->iommu_group_num);
 	if (vfio_group_fd < 0) {
 		NBL_LOG(ERR, "nbl vfio group bind failed, %d", vfio_group_fd);
 		goto free_container;
@@ -536,10 +536,10 @@ unset_container:
 	}
 free_group:
 	close(vfio_group_fd);
-	rte_vfio_clear_group(vfio_group_fd);
+	dev_vfio_clear_group(vfio_group_fd);
 free_container:
 	if (container_create)
-		rte_vfio_container_destroy(container);
+		dev_vfio_container_destroy(container);
 	return -1;
 }
 
@@ -551,7 +551,7 @@ static int nbl_mdev_unmap_device(struct nbl_adapter *adapter)
 	rte_mcfg_mem_read_lock();
 	TAILQ_REMOVE(&nbl_adapter_list, adapter, next);
 	close(common->devfd);
-	vfio_group_fd = rte_vfio_container_group_bind(nbl_default_container,
+	vfio_group_fd = dev_vfio_container_group_bind(nbl_default_container,
 						      common->iommu_group_num);
 	NBL_LOG(DEBUG, "close vfio_group_fd %d", vfio_group_fd);
 	ret = ioctl(vfio_group_fd, VFIO_GROUP_UNSET_CONTAINER, &nbl_default_container);
@@ -559,7 +559,7 @@ static int nbl_mdev_unmap_device(struct nbl_adapter *adapter)
 		NBL_LOG(ERR, "unset container, error %i (%s) %d",
 			errno, strerror(errno), ret);
 	nbl_group_count--;
-	ret = rte_vfio_container_group_unbind(nbl_default_container, common->iommu_group_num);
+	ret = dev_vfio_container_group_unbind(nbl_default_container, common->iommu_group_num);
 	if (ret)
 		NBL_LOG(ERR, "vfio container group unbind failed %d", ret);
 	if (!nbl_group_count) {

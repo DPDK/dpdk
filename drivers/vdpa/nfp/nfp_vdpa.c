@@ -12,7 +12,7 @@
 
 #include <nfp_common_pci.h>
 #include <nfp_dev.h>
-#include <rte_vfio.h>
+#include <dev_vfio.h>
 #include <rte_eal_paging.h>
 #include <rte_malloc.h>
 #include <vdpa_driver.h>
@@ -120,16 +120,16 @@ nfp_vdpa_vfio_setup(struct nfp_vdpa_dev *device)
 	struct rte_pci_device *pci_dev = device->pci_dev;
 
 	rte_pci_device_name(&pci_dev->addr, dev_name, RTE_DEV_NAME_MAX_LEN);
-	ret = rte_vfio_get_group_num(rte_pci_get_sysfs_path(), dev_name,
+	ret = dev_vfio_get_group_num(rte_pci_get_sysfs_path(), dev_name,
 			&device->iommu_group);
 	if (ret <= 0)
 		return -1;
 
-	device->vfio_container_fd = rte_vfio_container_create();
+	device->vfio_container_fd = dev_vfio_container_create();
 	if (device->vfio_container_fd < 0)
 		return -1;
 
-	device->vfio_group_fd = rte_vfio_container_group_bind(
+	device->vfio_group_fd = dev_vfio_container_group_bind(
 			device->vfio_container_fd, device->iommu_group);
 	if (device->vfio_group_fd < 0)
 		goto container_destroy;
@@ -146,9 +146,9 @@ nfp_vdpa_vfio_setup(struct nfp_vdpa_dev *device)
 	return 0;
 
 group_unbind:
-	rte_vfio_container_group_unbind(device->vfio_container_fd, device->iommu_group);
+	dev_vfio_container_group_unbind(device->vfio_container_fd, device->iommu_group);
 container_destroy:
-	rte_vfio_container_destroy(device->vfio_container_fd);
+	dev_vfio_container_destroy(device->vfio_container_fd);
 
 	return -1;
 }
@@ -157,8 +157,8 @@ static void
 nfp_vdpa_vfio_teardown(struct nfp_vdpa_dev *device)
 {
 	rte_pci_unmap_device(device->pci_dev);
-	rte_vfio_container_group_unbind(device->vfio_container_fd, device->iommu_group);
-	rte_vfio_container_destroy(device->vfio_container_fd);
+	dev_vfio_container_group_unbind(device->vfio_container_fd, device->iommu_group);
+	dev_vfio_container_destroy(device->vfio_container_fd);
 }
 
 static int
@@ -173,7 +173,7 @@ nfp_vdpa_dma_do_unmap(struct rte_vhost_memory *mem,
 	for (i = 0; i < times; i++) {
 		region = &mem->regions[i];
 
-		ret = rte_vfio_container_dma_unmap(vfio_container_fd,
+		ret = dev_vfio_container_dma_unmap(vfio_container_fd,
 				region->host_user_addr, region->guest_phys_addr,
 				region->size);
 		if (ret < 0) {
@@ -197,7 +197,7 @@ nfp_vdpa_dma_do_map(struct rte_vhost_memory *mem,
 	for (i = 0; i < times; i++) {
 		region = &mem->regions[i];
 
-		ret = rte_vfio_container_dma_map(vfio_container_fd,
+		ret = dev_vfio_container_dma_map(vfio_container_fd,
 				region->host_user_addr, region->guest_phys_addr,
 				region->size);
 		if (ret < 0) {
@@ -282,7 +282,7 @@ nfp_vdpa_relay_vring_free(struct nfp_vdpa_dev *device,
 
 		size = RTE_ALIGN_CEIL(vring_size(vring.size, rte_mem_page_size()),
 				rte_mem_page_size());
-		rte_vfio_container_dma_unmap(device->vfio_container_fd,
+		dev_vfio_container_dma_unmap(device->vfio_container_fd,
 				(uint64_t)(uintptr_t)device->hw.m_vring[i].desc,
 				m_vring_iova, size);
 
@@ -315,7 +315,7 @@ nfp_vdpa_relay_vring_alloc(struct nfp_vdpa_dev *device)
 
 		vring_init(&vdpa_hw->m_vring[i], vring.size, vring_buf, page_size);
 
-		ret = rte_vfio_container_dma_map(device->vfio_container_fd,
+		ret = dev_vfio_container_dma_map(device->vfio_container_fd,
 				(uint64_t)(uintptr_t)vring_buf, m_vring_iova, size);
 		if (ret != 0) {
 			DRV_VDPA_LOG(ERR, "vDPA vring relay dma map failed.");

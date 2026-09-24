@@ -20,7 +20,7 @@
 #include <rte_vhost.h>
 #include <rte_vdpa.h>
 #include <vdpa_driver.h>
-#include <rte_vfio.h>
+#include <dev_vfio.h>
 #include <rte_spinlock.h>
 #include <rte_log.h>
 #include <rte_kvargs.h>
@@ -183,18 +183,18 @@ ifcvf_vfio_setup(struct ifcvf_internal *internal)
 	internal->vfio_container_fd = -1;
 
 	rte_pci_device_name(&dev->addr, devname, RTE_DEV_NAME_MAX_LEN);
-	ret = rte_vfio_get_group_num(rte_pci_get_sysfs_path(), devname,
+	ret = dev_vfio_get_group_num(rte_pci_get_sysfs_path(), devname,
 			&iommu_group_num);
 	if (ret <= 0) {
 		DRV_LOG(ERR, "%s failed to get IOMMU group", devname);
 		return -1;
 	}
 
-	internal->vfio_container_fd = rte_vfio_container_create();
+	internal->vfio_container_fd = dev_vfio_container_create();
 	if (internal->vfio_container_fd < 0)
 		return -1;
 
-	internal->vfio_group_fd = rte_vfio_container_group_bind(
+	internal->vfio_group_fd = dev_vfio_container_group_bind(
 			internal->vfio_container_fd, iommu_group_num);
 	if (internal->vfio_group_fd < 0)
 		goto err;
@@ -217,7 +217,7 @@ ifcvf_vfio_setup(struct ifcvf_internal *internal)
 	return 0;
 
 err:
-	rte_vfio_container_destroy(internal->vfio_container_fd);
+	dev_vfio_container_destroy(internal->vfio_container_fd);
 	return -1;
 }
 
@@ -247,7 +247,7 @@ ifcvf_dma_map(struct ifcvf_internal *internal, bool do_map)
 			reg->host_user_addr, reg->guest_phys_addr, reg->size);
 
 		if (do_map) {
-			ret = rte_vfio_container_dma_map(vfio_container_fd,
+			ret = dev_vfio_container_dma_map(vfio_container_fd,
 				reg->host_user_addr, reg->guest_phys_addr,
 				reg->size);
 			if (ret < 0) {
@@ -255,7 +255,7 @@ ifcvf_dma_map(struct ifcvf_internal *internal, bool do_map)
 				goto exit;
 			}
 		} else {
-			ret = rte_vfio_container_dma_unmap(vfio_container_fd,
+			ret = dev_vfio_container_dma_unmap(vfio_container_fd,
 				reg->host_user_addr, reg->guest_phys_addr,
 				reg->size);
 			if (ret < 0) {
@@ -389,7 +389,7 @@ vdpa_ifcvf_stop(struct ifcvf_internal *internal)
 	if (RTE_VHOST_NEED_LOG(features)) {
 		ifcvf_disable_logging(hw);
 		rte_vhost_get_log_base(internal->vid, &log_base, &log_size);
-		rte_vfio_container_dma_unmap(internal->vfio_container_fd,
+		dev_vfio_container_dma_unmap(internal->vfio_container_fd,
 				log_base, IFCVF_LOG_BASE, log_size);
 		/*
 		 * IFCVF marks dirty memory pages for only packet buffer,
@@ -792,7 +792,7 @@ m_ifcvf_start(struct ifcvf_internal *internal)
 		vring_init(&internal->m_vring[i], vq.size, vring_buf,
 				rte_mem_page_size());
 
-		ret = rte_vfio_container_dma_map(internal->vfio_container_fd,
+		ret = dev_vfio_container_dma_map(internal->vfio_container_fd,
 			(uint64_t)(uintptr_t)vring_buf, m_vring_iova, size);
 		if (ret < 0) {
 			DRV_LOG(ERR, "mediated vring DMA map failed.");
@@ -901,7 +901,7 @@ m_ifcvf_stop(struct ifcvf_internal *internal)
 
 		size = RTE_ALIGN_CEIL(vring_size(vq.size, rte_mem_page_size()),
 				rte_mem_page_size());
-		rte_vfio_container_dma_unmap(internal->vfio_container_fd,
+		dev_vfio_container_dma_unmap(internal->vfio_container_fd,
 			(uint64_t)(uintptr_t)internal->m_vring[i].desc,
 			m_vring_iova, size);
 
@@ -1206,7 +1206,7 @@ ifcvf_set_features(int vid)
 		ifcvf_sw_fallback_switchover(internal);
 	} else {
 		rte_vhost_get_log_base(vid, &log_base, &log_size);
-		rte_vfio_container_dma_map(internal->vfio_container_fd,
+		dev_vfio_container_dma_map(internal->vfio_container_fd,
 				log_base, IFCVF_LOG_BASE, log_size);
 		ifcvf_enable_logging(&internal->hw, IFCVF_LOG_BASE, log_size);
 	}
@@ -1825,7 +1825,7 @@ ifcvf_pci_remove(struct rte_pci_device *pci_dev)
 		DRV_LOG(ERR, "failed to update datapath %s", pci_dev->name);
 
 	rte_pci_unmap_device(internal->pdev);
-	rte_vfio_container_destroy(internal->vfio_container_fd);
+	dev_vfio_container_destroy(internal->vfio_container_fd);
 	rte_vdpa_unregister_device(internal->vdev);
 
 	pthread_mutex_lock(&internal_list_lock);

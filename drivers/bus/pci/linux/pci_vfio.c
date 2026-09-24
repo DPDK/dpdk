@@ -18,7 +18,7 @@
 #include <rte_bus_pci.h>
 #include <rte_eal_paging.h>
 #include <rte_malloc.h>
-#include <rte_vfio.h>
+#include <dev_vfio.h>
 #include <rte_eal.h>
 #include <bus_driver.h>
 #include <rte_spinlock.h>
@@ -29,10 +29,10 @@
 #include "pci_init.h"
 #include "private.h"
 
-static struct rte_tailq_elem rte_vfio_tailq = {
+static struct rte_tailq_elem dev_vfio_tailq = {
 	.name = "VFIO_RESOURCE_LIST",
 };
-EAL_REGISTER_TAILQ(rte_vfio_tailq)
+EAL_REGISTER_TAILQ(dev_vfio_tailq)
 
 static int
 pci_vfio_get_region(const struct rte_pci_device *dev, int index,
@@ -418,7 +418,7 @@ pci_vfio_is_ioport_bar(const struct rte_pci_device *dev, int vfio_dev_fd,
 }
 
 static int
-pci_rte_vfio_setup_device(struct rte_pci_device *dev, int vfio_dev_fd)
+pci_vfio_setup_device(struct rte_pci_device *dev, int vfio_dev_fd)
 {
 	if (pci_vfio_setup_interrupts(dev, vfio_dev_fd) != 0) {
 		PCI_LOG(ERR, "Error setting up interrupts!");
@@ -738,7 +738,7 @@ pci_vfio_map_resource_primary(struct rte_pci_device *dev)
 	int i, j, ret;
 	struct mapped_pci_resource *vfio_res = NULL;
 	struct mapped_pci_res_list *vfio_res_list =
-		RTE_TAILQ_CAST(rte_vfio_tailq.head, mapped_pci_res_list);
+		RTE_TAILQ_CAST(dev_vfio_tailq.head, mapped_pci_res_list);
 
 	struct pci_map *maps;
 
@@ -752,7 +752,7 @@ pci_vfio_map_resource_primary(struct rte_pci_device *dev)
 	snprintf(pci_addr, sizeof(pci_addr), PCI_PRI_FMT,
 			loc->domain, loc->bus, loc->devid, loc->function);
 
-	ret = rte_vfio_setup_device(rte_pci_get_sysfs_path(), pci_addr,
+	ret = dev_vfio_setup_device(rte_pci_get_sysfs_path(), pci_addr,
 					&vfio_dev_fd, &device_info);
 	if (ret)
 		return ret;
@@ -897,7 +897,7 @@ pci_vfio_map_resource_primary(struct rte_pci_device *dev)
 		free(reg);
 	}
 
-	if (pci_rte_vfio_setup_device(dev, vfio_dev_fd) < 0) {
+	if (pci_vfio_setup_device(dev, vfio_dev_fd) < 0) {
 		PCI_LOG(ERR, "%s setup device failed", pci_addr);
 		goto err_map;
 	}
@@ -920,7 +920,7 @@ err_map:
 err_vfio_res:
 	rte_free(vfio_res);
 err_vfio_dev_fd:
-	rte_vfio_release_device(rte_pci_get_sysfs_path(),
+	dev_vfio_release_device(rte_pci_get_sysfs_path(),
 			pci_addr, vfio_dev_fd);
 	return -1;
 }
@@ -935,7 +935,7 @@ pci_vfio_map_resource_secondary(struct rte_pci_device *dev)
 	int j, ret, i = 0;
 	struct mapped_pci_resource *vfio_res = NULL;
 	struct mapped_pci_res_list *vfio_res_list =
-		RTE_TAILQ_CAST(rte_vfio_tailq.head, mapped_pci_res_list);
+		RTE_TAILQ_CAST(dev_vfio_tailq.head, mapped_pci_res_list);
 
 	struct pci_map *maps;
 
@@ -961,7 +961,7 @@ pci_vfio_map_resource_secondary(struct rte_pci_device *dev)
 		return -1;
 	}
 
-	ret = rte_vfio_setup_device(rte_pci_get_sysfs_path(), pci_addr,
+	ret = dev_vfio_setup_device(rte_pci_get_sysfs_path(), pci_addr,
 					&vfio_dev_fd, &device_info);
 	if (ret)
 		return ret;
@@ -1006,7 +1006,7 @@ err_map:
 			pci_unmap_resource(maps[j].addr, maps[j].size);
 	}
 err_vfio_dev_fd:
-	rte_vfio_release_device(rte_pci_get_sysfs_path(),
+	dev_vfio_release_device(rte_pci_get_sysfs_path(),
 			pci_addr, vfio_dev_fd);
 	return -1;
 }
@@ -1101,7 +1101,7 @@ pci_vfio_unmap_resource_primary(struct rte_pci_device *dev)
 		return -1;
 	}
 
-	ret = rte_vfio_release_device(rte_pci_get_sysfs_path(), pci_addr,
+	ret = dev_vfio_release_device(rte_pci_get_sysfs_path(), pci_addr,
 				      vfio_dev_fd);
 	if (ret < 0) {
 		PCI_LOG(ERR, "Cannot release VFIO device");
@@ -1109,7 +1109,7 @@ pci_vfio_unmap_resource_primary(struct rte_pci_device *dev)
 	}
 
 	vfio_res_list =
-		RTE_TAILQ_CAST(rte_vfio_tailq.head, mapped_pci_res_list);
+		RTE_TAILQ_CAST(dev_vfio_tailq.head, mapped_pci_res_list);
 	vfio_res = find_and_unmap_vfio_resource(vfio_res_list, dev, pci_addr);
 
 	/* if we haven't found our tailq entry, something's wrong */
@@ -1140,7 +1140,7 @@ pci_vfio_unmap_resource_secondary(struct rte_pci_device *dev)
 	if (vfio_dev_fd < 0)
 		return -1;
 
-	ret = rte_vfio_release_device(rte_pci_get_sysfs_path(), pci_addr,
+	ret = dev_vfio_release_device(rte_pci_get_sysfs_path(), pci_addr,
 				      vfio_dev_fd);
 	if (ret < 0) {
 		PCI_LOG(ERR, "Cannot release VFIO device");
@@ -1148,7 +1148,7 @@ pci_vfio_unmap_resource_secondary(struct rte_pci_device *dev)
 	}
 
 	vfio_res_list =
-		RTE_TAILQ_CAST(rte_vfio_tailq.head, mapped_pci_res_list);
+		RTE_TAILQ_CAST(dev_vfio_tailq.head, mapped_pci_res_list);
 	vfio_res = find_and_unmap_vfio_resource(vfio_res_list, dev, pci_addr);
 
 	/* if we haven't found our tailq entry, something's wrong */
@@ -1195,7 +1195,7 @@ pci_vfio_ioport_map(struct rte_pci_device *dev, int bar,
 		if (vfio_dev_fd < 0) {
 			return -1;
 		} else if (vfio_dev_fd == 0) {
-			if (rte_vfio_get_device_info(rte_pci_get_sysfs_path(), pci_addr,
+			if (dev_vfio_get_device_info(rte_pci_get_sysfs_path(), pci_addr,
 				&vfio_dev_fd, &device_info) != 0)
 				return -1;
 			/* save vfio_dev_fd so it can be used during release */
@@ -1300,11 +1300,11 @@ pci_vfio_mmio_write(const struct rte_pci_device *dev, int bar,
 int
 pci_vfio_is_enabled(void)
 {
-	int status = rte_vfio_is_enabled("vfio_pci");
+	int status = dev_vfio_is_enabled("vfio_pci");
 
 	if (!status) {
-		rte_vfio_enable("vfio");
-		status = rte_vfio_is_enabled("vfio_pci");
+		dev_vfio_enable("vfio");
+		status = dev_vfio_is_enabled("vfio_pci");
 	}
 	return status;
 }

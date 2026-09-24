@@ -8,7 +8,7 @@
 
 #include <rte_errno.h>
 #include <rte_log.h>
-#include <rte_vfio.h>
+#include <dev_vfio.h>
 #include <rte_eal.h>
 
 #include "eal_private.h"
@@ -34,7 +34,7 @@ vfio_mp_primary(const struct rte_mp_msg *msg, const void *peer)
 	case SOCKET_REQ_GROUP:
 		r->req = SOCKET_REQ_GROUP;
 		r->group_num = m->group_num;
-		fd = rte_vfio_get_group_fd(m->group_num);
+		fd = dev_vfio_get_group_fd(m->group_num);
 		if (fd < 0 && fd != -ENOENT)
 			r->result = SOCKET_ERR;
 		else if (fd == -ENOENT)
@@ -49,7 +49,7 @@ vfio_mp_primary(const struct rte_mp_msg *msg, const void *peer)
 		break;
 	case SOCKET_REQ_CONTAINER:
 		r->req = SOCKET_REQ_CONTAINER;
-		fd = rte_vfio_get_container_fd();
+		fd = dev_vfio_get_container_fd();
 		if (fd < 0)
 			r->result = SOCKET_ERR;
 		else {
