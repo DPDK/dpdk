@@ -20,6 +20,7 @@
 #include <rte_malloc.h>
 #include <dev_vfio.h>
 #include <rte_eal.h>
+#include <rte_errno.h>
 #include <bus_driver.h>
 #include <rte_spinlock.h>
 #include <rte_tailq.h>
@@ -753,8 +754,12 @@ pci_vfio_map_resource_primary(struct rte_pci_device *dev)
 			loc->domain, loc->bus, loc->devid, loc->function);
 
 	ret = dev_vfio_setup_device(rte_pci_get_sysfs_path(), pci_addr, &vfio_dev_fd);
-	if (ret)
+	if (ret < 0) {
+		/* Device not managed by VFIO - skip */
+		if (rte_errno == ENODEV)
+			ret = 1;
 		return ret;
+	}
 
 	ret = dev_vfio_get_device_info(vfio_dev_fd, &device_info);
 	if (ret)
@@ -965,8 +970,12 @@ pci_vfio_map_resource_secondary(struct rte_pci_device *dev)
 	}
 
 	ret = dev_vfio_setup_device(rte_pci_get_sysfs_path(), pci_addr, &vfio_dev_fd);
-	if (ret)
+	if (ret < 0) {
+		/* Device not managed by VFIO - skip */
+		if (rte_errno == ENODEV)
+			ret = 1;
 		return ret;
+	}
 
 	ret = dev_vfio_get_device_info(vfio_dev_fd, &device_info);
 	if (ret)

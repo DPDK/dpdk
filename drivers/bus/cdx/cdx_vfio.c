@@ -22,6 +22,7 @@
 
 #include <eal_export.h>
 #include <rte_eal_paging.h>
+#include <rte_errno.h>
 #include <rte_malloc.h>
 #include <dev_vfio.h>
 
@@ -409,8 +410,12 @@ cdx_vfio_map_resource_primary(struct rte_cdx_device *dev)
 
 	ret = dev_vfio_setup_device(RTE_CDX_BUS_DEVICES_PATH, dev_name,
 				    &vfio_dev_fd);
-	if (ret)
+	if (ret < 0) {
+		/* Device not managed by VFIO - skip */
+		if (rte_errno == ENODEV)
+			ret = 1;
 		return ret;
+	}
 
 	ret = dev_vfio_get_device_info(vfio_dev_fd, &device_info);
 	if (ret)
@@ -521,8 +526,12 @@ cdx_vfio_map_resource_secondary(struct rte_cdx_device *dev)
 	}
 
 	ret = dev_vfio_setup_device(RTE_CDX_BUS_DEVICES_PATH, dev_name, &vfio_dev_fd);
-	if (ret)
+	if (ret < 0) {
+		/* Device not managed by VFIO - skip */
+		if (rte_errno == ENODEV)
+			ret = 1;
 		return ret;
+	}
 
 	ret = dev_vfio_get_device_info(vfio_dev_fd, &device_info);
 	if (ret)

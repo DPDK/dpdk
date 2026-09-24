@@ -33,6 +33,7 @@
  * rte_errno convention:
  *
  * - EINVAL: invalid parameters
+ * - ENODEV: device not managed by VFIO
  */
 
 /* per-process VFIO config */
@@ -771,14 +772,6 @@ dev_vfio_setup_device(const char *sysfs_base, const char *dev_addr, int *vfio_de
 
 	/* get group number */
 	ret = dev_vfio_get_group_num(sysfs_base, dev_addr, &iommu_group_num);
-	if (ret == 0) {
-		EAL_LOG(NOTICE,
-				"%s not managed by VFIO driver, skipping",
-				dev_addr);
-		return 1;
-	}
-
-	/* if negative, something failed */
 	if (ret < 0)
 		return -1;
 
@@ -792,10 +785,8 @@ dev_vfio_setup_device(const char *sysfs_base, const char *dev_addr, int *vfio_de
 	 * isn't managed by VFIO
 	 */
 	if (vfio_group_fd == -ENOENT) {
-		EAL_LOG(NOTICE,
-				"%s not managed by VFIO driver, skipping",
-				dev_addr);
-		return 1;
+		rte_errno = ENODEV;
+		return -1;
 	}
 
 	/*
@@ -1013,11 +1004,9 @@ dev_vfio_release_device(const char *sysfs_base, const char *dev_addr,
 
 	/* get group number */
 	ret = dev_vfio_get_group_num(sysfs_base, dev_addr, &iommu_group_num);
-	if (ret <= 0) {
+	if (ret < 0) {
 		EAL_LOG(WARNING, "%s not managed by VFIO driver",
 			dev_addr);
-		/* This is an error at this point. */
-		ret = -1;
 		goto out;
 	}
 
@@ -1304,8 +1293,7 @@ dev_vfio_get_container_fd(void)
 
 RTE_EXPORT_INTERNAL_SYMBOL(dev_vfio_get_group_num)
 int
-dev_vfio_get_group_num(const char *sysfs_base,
-		const char *dev_addr, int *iommu_group_num)
+dev_vfio_get_group_num(const char *sysfs_base, const char *dev_addr, int *iommu_group_num)
 {
 	char linkname[PATH_MAX];
 	char filename[PATH_MAX];
@@ -1330,8 +1318,10 @@ dev_vfio_get_group_num(const char *sysfs_base,
 	ret = readlink(linkname, filename, sizeof(filename));
 
 	/* if the link doesn't exist, no VFIO for us */
-	if (ret < 0)
-		return 0;
+	if (ret < 0) {
+		rte_errno = ENODEV;
+		return -1;
+	}
 
 	ret = rte_strsplit(filename, sizeof(filename),
 			tok, RTE_DIM(tok), '/');
@@ -1351,7 +1341,7 @@ dev_vfio_get_group_num(const char *sysfs_base,
 		return -1;
 	}
 
-	return 1;
+	return 0;
 }
 
 static int
@@ -1644,9 +1634,6 @@ dev_vfio_container_assign_device(int vfio_container_fd, const char *sysfs_base,
 	ret = dev_vfio_get_group_num(sysfs_base, dev_addr, &iommu_group_num);
 	if (ret < 0) {
 		EAL_LOG(ERR, "Cannot get IOMMU group number for device %s", dev_addr);
-		return -1;
-	} else if (ret == 0) {
-		EAL_LOG(ERR, "Device %s is not assigned to any IOMMU group", dev_addr);
 		return -1;
 	}
 

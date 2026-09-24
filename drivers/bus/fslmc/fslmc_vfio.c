@@ -376,9 +376,9 @@ fslmc_get_group_id(const char *group_name,
 	/* get group number */
 	ret = dev_vfio_get_group_num(SYSFS_FSL_MC_DEVICES,
 			group_name, groupid);
-	if (ret <= 0) {
+	if (ret < 0) {
 		DPAA2_BUS_ERR("Find %s IOMMU group", group_name);
-		if (ret < 0)
+		if (rte_errno != ENODEV)
 			return ret;
 
 		return -EIO;

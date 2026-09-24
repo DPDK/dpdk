@@ -62,7 +62,6 @@ enum dev_vfio_module {
  *
  * @return
  *   0 on success.
- *   >1 if the device cannot be managed this way.
  *   <0 on failure, rte_errno is set.
  *
  * Possible rte_errno values include:
@@ -159,8 +158,7 @@ int dev_vfio_noiommu_is_enabled(void);
  *   Pointer to where IOMMU group number will be stored.
  *
  * @return
- *  >0 on success
- *   0 for non-existent group or VFIO
+ *   0 on success.
  *   <0 on failure, rte_errno is set.
  *
  * Possible rte_errno values include:
