@@ -44,7 +44,6 @@ struct vfio_group {
 struct vfio_container {
 	int container_fd;
 	int vfio_active_groups;
-	const struct vfio_iommu_type *vfio_iommu_type;
 	struct vfio_group vfio_groups[RTE_MAX_VFIO_GROUPS];
 	struct vfio_user_mem_maps mem_maps;
 };
@@ -63,7 +62,7 @@ typedef int (*vfio_dma_func_t)(struct vfio_container *cfg);
 typedef int (*vfio_dma_user_func_t)(struct vfio_container *cfg, uint64_t vaddr, uint64_t iova,
 		uint64_t len, int do_map);
 
-struct vfio_iommu_type {
+struct vfio_iommu_ops {
 	int type_id;
 	const char *name;
 	bool partial_unmap;
@@ -74,8 +73,17 @@ struct vfio_iommu_type {
 /* get the vfio container that devices are bound to by default */
 int vfio_open_container_fd(bool mp_request);
 
-/* pick IOMMU type. returns a pointer to vfio_iommu_type or NULL for error */
-const struct vfio_iommu_type *
+/* global configuration */
+struct vfio_config {
+	struct vfio_container *default_cfg;
+	const struct vfio_iommu_ops *ops;
+};
+
+/* current configuration */
+extern struct vfio_config vfio_global_cfg;
+
+/* pick IOMMU type. returns a pointer to vfio_iommu_ops or NULL for error */
+const struct vfio_iommu_ops *
 vfio_set_iommu_type(int vfio_container_fd);
 
 int
