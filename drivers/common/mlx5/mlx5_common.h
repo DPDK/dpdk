@@ -30,22 +30,6 @@
 #define MLX5_PCI_DRIVER_NAME "mlx5_pci"
 #define MLX5_AUXILIARY_DRIVER_NAME "mlx5_auxiliary"
 
-/* Bit-field manipulation. */
-#define BITFIELD_DECLARE(bf, type, size) \
-	type bf[(((size_t)(size) / (sizeof(type) * CHAR_BIT)) + \
-		!!((size_t)(size) % (sizeof(type) * CHAR_BIT)))]
-#define BITFIELD_DEFINE(bf, type, size) \
-	BITFIELD_DECLARE((bf), type, (size)) = { 0 }
-#define BITFIELD_SET(bf, b) \
-	(void)((bf)[((b) / (sizeof((bf)[0]) * CHAR_BIT))] |= \
-		((size_t)1 << ((b) % (sizeof((bf)[0]) * CHAR_BIT))))
-#define BITFIELD_RESET(bf, b) \
-	(void)((bf)[((b) / (sizeof((bf)[0]) * CHAR_BIT))] &= \
-		~((size_t)1 << ((b) % (sizeof((bf)[0]) * CHAR_BIT))))
-#define BITFIELD_ISSET(bf, b) \
-	!!(((bf)[((b) / (sizeof((bf)[0]) * CHAR_BIT))] & \
-		((size_t)1 << ((b) % (sizeof((bf)[0]) * CHAR_BIT)))))
-
 /*
  * Helper macros to work around __VA_ARGS__ limitations in a C99 compliant
  * manner.

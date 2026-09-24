@@ -14,6 +14,7 @@
 
 #include <rte_pci.h>
 #include <rte_ether.h>
+#include <rte_bitset.h>
 #include <ethdev_driver.h>
 #include <rte_rwlock.h>
 #include <rte_interrupts.h>
@@ -2018,7 +2019,7 @@ struct mlx5_priv {
 	uint32_t dev_port; /* Device port number. */
 	struct rte_pci_device *pci_dev; /* Backend PCI device. */
 	struct rte_ether_addr mac[MLX5_MAX_MAC_ADDRESSES]; /* MAC addresses. */
-	BITFIELD_DECLARE(mac_own, uint64_t, MLX5_MAX_MAC_ADDRESSES);
+	RTE_BITSET_DECLARE(mac_own, MLX5_MAX_MAC_ADDRESSES);
 	/* Bit-field of MAC addresses owned by the PMD. */
 	uint16_t vlan_filter[MLX5_MAX_VLAN_IDS]; /* VLAN filters table. */
 	unsigned int vlan_filter_n; /* Number of configured VLAN filters. */
