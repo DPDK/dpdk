@@ -133,6 +133,32 @@ For proper operation of VFIO when running DPDK applications as a non-privileged 
 For more information, please refer to :ref:`linux_gsg_running_without_root_privileges`.
 
 
+.. _linux_gsg_vfio_modes:
+
+VFIO group and cdev modes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The Linux kernel provides two different interfaces for VFIO:
+
+group mode
+   The original interface, based on IOMMU groups.
+   It is accessed through the container device ``/dev/vfio/vfio`` and the per-group devices under ``/dev/vfio/``.
+
+cdev mode
+   The newer interface, based on iommufd.
+   It is accessed through ``/dev/iommu`` and the per-device character devices under ``/dev/vfio/devices/``.
+
+DPDK selects the mode automatically; there is no EAL option to force a particular mode.
+Currently, group mode is preferred and is used whenever the container device ``/dev/vfio/vfio`` is usable.
+Using cdev mode requires ``/dev/iommu`` to be present and accessible.
+
+.. note::
+
+   Using VF tokens in cdev mode requires Linux kernel version 6.17 or later.
+   On older kernels the device is bound without the token,
+   so the kernel should be configured to use group mode if VF token support is required.
+
+
 .. _linux_gsg_vfio_noiommu:
 
 VFIO no-IOMMU mode
@@ -264,6 +290,11 @@ The token will be used for all PF and VF ports within the application.
 
    Linux versions earlier than version 5.7 do not support the creation of
    virtual functions within the VFIO framework.
+
+.. note::
+
+   When VFIO uses cdev mode, VF tokens require a newer kernel.
+   See :ref:`linux_gsg_vfio_modes` for details.
 
 Troubleshooting VFIO
 ~~~~~~~~~~~~~~~~~~~~

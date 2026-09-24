@@ -103,6 +103,48 @@ vfio_mp_primary(const struct rte_mp_msg *msg, const void *peer)
 		r->iova_mode = vfio_global_cfg.iova_mode;
 		r->result = VFIO_SOCKET_OK;
 		break;
+	case VFIO_SOCKET_REQ_CDEV:
+	{
+		struct vfio_container *cfg;
+		struct vfio_device *dev;
+
+		if (vfio_global_cfg.mode != DEV_VFIO_MODE_CDEV) {
+			EAL_LOG(ERR, "VFIO not initialized in cdev mode");
+			r->result = VFIO_SOCKET_ERR;
+			break;
+		}
+
+		r->req = VFIO_SOCKET_REQ_CDEV;
+		r->cdev_dev_num = m->cdev_dev_num;
+
+		cfg = vfio_global_cfg.default_cfg;
+		dev = vfio_cdev_get_dev_by_num(cfg, m->cdev_dev_num);
+		if (dev == NULL) {
+			r->result = VFIO_SOCKET_NO_FD;
+		} else {
+			r->result = VFIO_SOCKET_OK;
+			reply.num_fds = 1;
+			reply.fds[0] = dev->fd;
+		}
+		break;
+	}
+	case VFIO_SOCKET_REQ_IOAS_ID:
+	{
+		struct vfio_container *cfg;
+
+		if (vfio_global_cfg.mode != DEV_VFIO_MODE_CDEV) {
+			EAL_LOG(ERR, "VFIO not initialized in cdev mode");
+			r->result = VFIO_SOCKET_ERR;
+			break;
+		}
+
+		r->req = VFIO_SOCKET_REQ_IOAS_ID;
+		cfg = vfio_global_cfg.default_cfg;
+		r->ioas_id = cfg->cdev_cfg.ioas_id;
+
+		r->result = VFIO_SOCKET_OK;
+		break;
+	}
 	default:
 		EAL_LOG(ERR, "vfio received invalid message!");
 		return -1;

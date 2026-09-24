@@ -51,10 +51,12 @@ enum dev_vfio_module {
  *
  * - DEV_VFIO_MODE_NONE: VFIO is not enabled.
  * - DEV_VFIO_MODE_GROUP: Legacy group mode.
+ * - DEV_VFIO_MODE_CDEV: Character device mode.
  */
 enum dev_vfio_mode {
 	DEV_VFIO_MODE_NONE = 0, /**< VFIO not enabled */
 	DEV_VFIO_MODE_GROUP,    /**< Group mode */
+	DEV_VFIO_MODE_CDEV,     /**< Cdev mode */
 };
 
 /**
@@ -159,6 +161,18 @@ void dev_vfio_cleanup(void);
 
 /**
  * @internal
+ * Initialize VFIO memory mapping. Must be called after `dev_vfio_enable()` and
+ * after EAL memory initialization has completed.
+ *
+ * @return
+ *   0 on success.
+ *   <0 on failure.
+ */
+__rte_internal
+int dev_vfio_init_mem(void);
+
+/**
+ * @internal
  * Check whether a VFIO module is loaded.
  *
  * @param module
@@ -227,6 +241,31 @@ dev_vfio_get_iova_mode(void);
 __rte_internal
 int
 dev_vfio_get_group_num(const char *sysfs_base, const char *dev_addr, int *iommu_group_num);
+
+/**
+ * @internal
+ * Parse VFIO cdev device number for a device.
+ *
+ * @param sysfs_base
+ *   Sysfs path prefix.
+ * @param dev_addr
+ *   Device identifier.
+ * @param vfio_device_num
+ *   Pointer to where VFIO cdev device number will be stored.
+ *
+ * @return
+ *   0 on success.
+ *   <0 on failure, rte_errno is set.
+ *
+ * Possible rte_errno values include:
+ * - ENODEV  - Device not managed by VFIO.
+ * - EINVAL  - Invalid parameters.
+ * - ENXIO   - VFIO support not initialized.
+ * - ENOTSUP - Unsupported VFIO mode.
+ */
+__rte_internal
+int
+dev_vfio_get_device_num(const char *sysfs_base, const char *dev_addr, int *vfio_device_num);
 
 /**
  * @internal

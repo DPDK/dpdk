@@ -816,6 +816,13 @@ rte_eal_init(int argc, char **argv)
 		goto err_out;
 	}
 
+	/* VFIO memory setup that requires DPDK memory to be available. */
+	if (dev_vfio_init_mem() < 0) {
+		rte_eal_init_alert("Cannot init VFIO memory");
+		rte_errno = EAGAIN;
+		goto err_out;
+	}
+
 	/* register multi-process action callbacks for hotplug after memory init */
 	if (eal_mp_dev_hotplug_init() < 0) {
 		rte_eal_init_alert("failed to register mp callback for hotplug");

@@ -438,6 +438,24 @@ vfio_container_get_by_group_num(int group_num)
 }
 
 static struct vfio_container *
+vfio_container_get_by_dev_num(int dev_num)
+{
+	struct vfio_container *cfg;
+	struct vfio_device *dev;
+
+	VFIO_CONTAINER_FOREACH_ACTIVE(cfg) {
+		VFIO_DEVICE_FOREACH_ACTIVE(cfg, dev) {
+			/* only cdev mode has dev_num */
+			if (dev->mode != DEV_VFIO_MODE_CDEV)
+				continue;
+			if (dev->dev_num == dev_num)
+				return cfg;
+		}
+	}
+	return NULL;
+}
+
+static struct vfio_container *
 vfio_container_create(void)
 {
 	struct vfio_container *cfg;
@@ -623,6 +641,55 @@ vfio_setup_dma_mem(struct vfio_container *cfg)
 }
 
 static enum vfio_result
+vfio_cdev_assign_device(struct vfio_container *cfg, const char *sysfs_base, const char *dev_addr,
+		struct vfio_device **out_dev)
+{
+	struct vfio_device *dev, *found_dev;
+	enum vfio_result res;
+	int dev_num, ret;
+
+	/* get the cdev device number from sysfs */
+	ret = vfio_cdev_get_device_num(sysfs_base, dev_addr, &dev_num);
+	if (ret < 0) {
+		EAL_LOG(ERR, "Failed to get cdev device number for %s", dev_addr);
+		return VFIO_ERROR;
+	} else if (ret == 0) {
+		EAL_LOG(ERR, "Device %s not bound to vfio-pci cdev", dev_addr);
+		return VFIO_NOT_MANAGED;
+	}
+
+	/* do we already have this device? */
+	found_dev = vfio_cdev_get_dev_by_num(cfg, dev_num);
+	if (found_dev != NULL) {
+		EAL_LOG(DEBUG, "Device %s already assigned to this container", dev_addr);
+		*out_dev = found_dev;
+		return VFIO_EXISTS;
+	}
+	/* create new device structure */
+	dev = vfio_device_create(cfg, DEV_VFIO_MODE_CDEV);
+	if (dev == NULL) {
+		EAL_LOG(ERR, "No space to track new VFIO cdev device");
+		return VFIO_NO_SPACE;
+	}
+	/* store device number */
+	dev->dev_num = dev_num;
+
+	/* set up our device now and store it in config */
+	ret = vfio_cdev_setup_device(cfg, dev);
+	if (ret < 0) {
+		EAL_LOG(ERR, "Cannot setup cdev device %s", dev_addr);
+		res = VFIO_ERROR;
+		goto err;
+	}
+	*out_dev = dev;
+	return VFIO_SUCCESS;
+
+err:
+	vfio_device_erase(cfg, dev);
+	return res;
+}
+
+static enum vfio_result
 vfio_group_assign_device(struct vfio_container *cfg, const char *sysfs_base, const char *dev_addr,
 		struct vfio_device **out_dev)
 {
@@ -784,6 +851,59 @@ dev_vfio_container_assign_device(int container_fd, const char *sysfs_base, const
 		return -1;
 	}
 
+	/*
+	 * The device-to-container assignment is a complex problem to solve,
+	 * for the following reasons:
+	 *
+	 * 1. PCI infrastructure is decoupled from VFIO, so PCI does not know
+	 *    anything about VFIO
+	 *
+	 * This means that while 99% of VFIO usage is PCI-related, we cannot
+	 * communicate to PCI that we want to map a particular device using a
+	 * particular container. Previously, this was achieved using
+	 * back-channel communication between VFIO and PCI bus via IOMMU group
+	 * binding, so that whenever PCI map actually happens, VFIO knows which
+	 * container to use, so this is roughly the model we are going with.
+	 *
+	 * 2. VFIO cannot depend on PCI because VFIO is in EAL
+	 *
+	 * We cannot "assign" a PCI device to container using rte_pci_device
+	 * pointer because VFIO cannot depend on PCI definitions, nor can we
+	 * even assume that our device is in fact a PCI device, even though in
+	 * practice this is true (at the time of this writing, FSLMC is the only
+	 * bus doing non-PCI VFIO mappings, but FSLMC manages all VFIO
+	 * infrastructure by itself, so in practice even counting FSLMC bus,
+	 * we're always dealing with PCI devices).
+	 *
+	 * 3. The "assignment" means different things for group and cdev mode
+	 *
+	 * In group mode, to "bind" a device to a specific container, it is
+	 * enough to bind its IOMMU group, so that when dev_vfio_setup_device()
+	 * is called, we simply retrieve already existing group, and through
+	 * that we figure out which container to use.
+	 *
+	 * For cdev mode, there are no "groups", so "assignment" either means we
+	 * store some kind of uniquely identifying token (such as device number,
+	 * or an opaque pointer), or we simply open the device straight away,
+	 * and when dev_vfio_setup_device() comes we simply return the fd that
+	 * was already opened at assign.
+	 *
+	 * Doing it the latter way (opening the device at assign for both group
+	 * and cdev modes) actually solves all of these problems, so that's what
+	 * we're going to do - the device setup API call will actually just
+	 * assign the device to default container, while release will
+	 * automatically cleanup and unassign anything that needs to be
+	 * unassigned. There will be no "unassign" call, as it is not necessary.
+	 *
+	 * The cdev mode can deduplicate on "device number", which is assigned
+	 * by the kernel and is unique per device. The group mode keeps its
+	 * deduplication mechanism based on a combination of sysfs path and
+	 * device address, which is unique per device as well. This way we can
+	 * ensure that assigning a device before setting it up works correctly,
+	 * and that we do not open the same device fd twice or leak any
+	 * resources on device release.
+	 */
+
 	if (vfio_global_cfg.mode == DEV_VFIO_MODE_NONE) {
 		EAL_LOG(ERR, "VFIO support not initialized");
 		rte_errno = ENXIO;
@@ -802,6 +922,9 @@ dev_vfio_container_assign_device(int container_fd, const char *sysfs_base, const
 	switch (vfio_global_cfg.mode) {
 	case DEV_VFIO_MODE_GROUP:
 		res = vfio_group_assign_device(cfg, sysfs_base, dev_addr, &dev);
+		break;
+	case DEV_VFIO_MODE_CDEV:
+		res = vfio_cdev_assign_device(cfg, sysfs_base, dev_addr, &dev);
 		break;
 	default:
 		EAL_LOG(ERR, "Unsupported VFIO mode");
@@ -875,6 +998,24 @@ dev_vfio_setup_device(const char *sysfs_base, const char *dev_addr, int *vfio_de
 			cfg = vfio_global_cfg.default_cfg;
 
 		res = vfio_group_assign_device(cfg, sysfs_base, dev_addr, &dev);
+		break;
+	}
+	case DEV_VFIO_MODE_CDEV:
+	{
+		int dev_num;
+
+		/* find device number */
+		ret = vfio_cdev_get_device_num(sysfs_base, dev_addr, &dev_num);
+		if (ret < 0)
+			goto assign_fail;
+		else if (ret == 0)
+			goto not_managed;
+
+		cfg = vfio_container_get_by_dev_num(dev_num);
+		if (cfg == NULL)
+			cfg = vfio_global_cfg.default_cfg;
+
+		res = vfio_cdev_assign_device(cfg, sysfs_base, dev_addr, &dev);
 		break;
 	}
 	default:
@@ -998,6 +1139,12 @@ found:
 		}
 		break;
 	}
+	case DEV_VFIO_MODE_CDEV:
+	{
+		/* for cdev, just erase the device and we're done */
+		vfio_device_erase(cfg, dev);
+		break;
+	}
 	default:
 		EAL_LOG(ERR, "Unsupported VFIO mode");
 		rte_errno = ENOTSUP;
@@ -1079,6 +1226,7 @@ vfio_select_mode(void)
 	struct vfio_container *cfg;
 	enum dev_vfio_mode mode = DEV_VFIO_MODE_NONE;
 	enum dev_vfio_iova_mode iova_mode = DEV_VFIO_IOVA_MODE_UNKNOWN;
+	int ret;
 
 	cfg = vfio_container_create();
 	/* cannot happen */
@@ -1091,32 +1239,56 @@ vfio_select_mode(void)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
 		if (vfio_sync_mode(cfg, &mode) < 0 || vfio_sync_iova_mode(&iova_mode) < 0)
 			goto err;
-
-		/* primary handles DMA setup for default containers */
-		cfg->dma_setup_done = true;
 		vfio_global_cfg.iova_mode = iova_mode;
+
+		if (mode == DEV_VFIO_MODE_CDEV) {
+			/* set up ops and sync IOAS */
+			vfio_cdev_setup_ops();
+			if (vfio_cdev_sync_ioas(cfg) < 0)
+				goto err;
+
+			/* primary handles DMA */
+			cfg->dma_setup_done = true;
+		} else if (mode == DEV_VFIO_MODE_GROUP) {
+			/* primary handles DMA */
+			cfg->dma_setup_done = true;
+		} else {
+			/* shouldn't happen */
+			EAL_LOG(ERR, "Unknown VFIO mode %d", mode);
+			goto err;
+		}
+
 		return mode;
 	}
 	/* if we failed mp sync setup, we cannot initialize VFIO */
 	if (vfio_mp_sync_setup() < 0)
 		return DEV_VFIO_MODE_NONE;
 
+	/* check no-IOMMU mode */
+	ret = vfio_noiommu_is_enabled();
+	if (ret < 0)
+		goto err_mpsync;
+	iova_mode = ret == 1 ? DEV_VFIO_IOVA_MODE_PA : DEV_VFIO_IOVA_MODE_VA;
+
 	/* try group mode first */
 	if (vfio_group_enable(cfg) == 0) {
-		/* check for noiommu */
-		int ret = vfio_noiommu_is_enabled();
-		if (ret < 0)
-			goto err_mpsync;
-		vfio_global_cfg.iova_mode = ret == 1 ?
-				DEV_VFIO_IOVA_MODE_PA :
-				DEV_VFIO_IOVA_MODE_VA;
+		vfio_global_cfg.iova_mode = iova_mode;
 		return DEV_VFIO_MODE_GROUP;
 	}
+	EAL_LOG(DEBUG, "VFIO group mode not available, trying cdev mode...");
+	/* cdev ops, IOAS and DMA setup are deferred to dev_vfio_init_mem() */
+	if (vfio_cdev_enable(cfg) == 0) {
+		vfio_global_cfg.iova_mode = iova_mode;
+		return DEV_VFIO_MODE_CDEV;
+	}
+	EAL_LOG(DEBUG, "VFIO cdev mode not available");
 err_mpsync:
 	vfio_mp_sync_cleanup();
 err:
 	vfio_container_erase(cfg);
 	vfio_global_cfg.iova_mode = DEV_VFIO_IOVA_MODE_UNKNOWN;
+	/* reset ops as well */
+	vfio_global_cfg.ops = NULL;
 
 	return DEV_VFIO_MODE_NONE;
 }
@@ -1126,6 +1298,7 @@ vfio_mode_to_str(enum dev_vfio_mode mode)
 {
 	switch (mode) {
 	case DEV_VFIO_MODE_GROUP: return "group";
+	case DEV_VFIO_MODE_CDEV: return "cdev";
 	default: return "not initialized";
 	}
 }
@@ -1187,6 +1360,36 @@ int
 dev_vfio_module_is_loaded(enum dev_vfio_module module)
 {
 	return vfio_check_module(module) > 0;
+}
+
+RTE_EXPORT_INTERNAL_SYMBOL(dev_vfio_init_mem)
+int
+dev_vfio_init_mem(void)
+{
+	struct vfio_container *cfg = vfio_global_cfg.default_cfg;
+
+	/* secondary already synced everything during dev_vfio_enable() */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
+	switch (vfio_global_cfg.mode) {
+	case DEV_VFIO_MODE_CDEV:
+		/* iommufd IOAS is populated once DPDK memory is available */
+		vfio_cdev_setup_ops();
+		if (vfio_cdev_setup_ioas(cfg) < 0)
+			return -1;
+		if (vfio_setup_dma_mem(cfg) < 0)
+			return -1;
+		if (vfio_register_mem_event_callback() < 0)
+			return -1;
+		cfg->dma_setup_done = true;
+		break;
+	default:
+		/* group/noiommu map memory at device attach, or no VFIO */
+		break;
+	}
+
+	return 0;
 }
 
 RTE_EXPORT_INTERNAL_SYMBOL(dev_vfio_is_enabled)
@@ -1270,6 +1473,40 @@ dev_vfio_get_group_num(const char *sysfs_base, const char *dev_addr, int *iommu_
 		return -1;
 	}
 	ret = vfio_group_get_num(sysfs_base, dev_addr, iommu_group_num);
+	if (ret < 0) {
+		rte_errno = EINVAL;
+		return -1;
+	} else if (ret == 0) {
+		rte_errno = ENODEV;
+		return -1;
+	}
+	return 0;
+}
+
+RTE_EXPORT_INTERNAL_SYMBOL(dev_vfio_get_device_num)
+int
+dev_vfio_get_device_num(const char *sysfs_base, const char *dev_addr, int *device_num)
+{
+	int ret;
+
+	if (sysfs_base == NULL || dev_addr == NULL || device_num == NULL) {
+		rte_errno = EINVAL;
+		return -1;
+	}
+
+	if (vfio_global_cfg.mode == DEV_VFIO_MODE_NONE) {
+		EAL_LOG(ERR, "VFIO support not initialized");
+		rte_errno = ENXIO;
+		return -1;
+	}
+
+	if (vfio_global_cfg.mode != DEV_VFIO_MODE_CDEV) {
+		EAL_LOG(ERR, "VFIO not initialized in cdev mode");
+		rte_errno = ENOTSUP;
+		return -1;
+	}
+
+	ret = vfio_cdev_get_device_num(sysfs_base, dev_addr, device_num);
 	if (ret < 0) {
 		rte_errno = EINVAL;
 		return -1;
@@ -1472,6 +1709,27 @@ dev_vfio_container_create(void)
 		cfg->container_fd = container_fd;
 		break;
 	}
+	case DEV_VFIO_MODE_CDEV:
+	{
+		/* Open new iommufd for custom container */
+		container_fd = vfio_cdev_get_iommufd();
+		if (container_fd < 0) {
+			EAL_LOG(ERR, "Cannot open iommufd for cdev container");
+			rte_errno = EIO;
+			goto err;
+		}
+		cfg->container_fd = container_fd;
+
+		/* Set up IOAS for this container */
+		if (vfio_cdev_setup_ioas(cfg) < 0) {
+			EAL_LOG(ERR, "Cannot setup IOAS for cdev container");
+			rte_errno = EIO;
+			goto err;
+		}
+		/* we only need to set up IOAS for DMA to work */
+		cfg->dma_setup_done = true;
+		break;
+	}
 	default:
 		EAL_LOG(NOTICE, "Unsupported VFIO mode");
 		rte_errno = ENOTSUP;
@@ -1532,6 +1790,13 @@ dev_vfio_container_destroy(int container_fd)
 		}
 		break;
 	}
+	case DEV_VFIO_MODE_CDEV:
+		/* erase all devices */
+		VFIO_DEVICE_FOREACH_ACTIVE(cfg, dev) {
+			EAL_LOG(DEBUG, "Device vfio%d still open, closing", dev->dev_num);
+			vfio_device_erase(cfg, dev);
+		}
+		break;
 	default:
 		EAL_LOG(ERR, "Unsupported VFIO mode");
 		rte_errno = ENOTSUP;

@@ -77,6 +77,11 @@ New Features
 
   Added ``rte_vlan_insert_tpid()`` to the net library.
 
+* **Added VFIO cdev (IOMMUFD) mode.**
+
+  Added support for the VFIO character device (cdev) API, also known as IOMMUFD.
+  DPDK now supports both the group mode and the new cdev mode.
+
 * **Updated AF_XDP driver.**
 
   * Changed the default device plugin endpoint path used when
