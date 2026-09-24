@@ -3382,9 +3382,8 @@ mlx5_os_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 	if (vf)
 		mlx5_nl_mac_addr_remove(priv->nl_socket_route,
 					mlx5_ifindex(dev),
-					&dev->data->mac_addrs[index], index);
-	if (index < MLX5_MAX_MAC_ADDRESSES)
-		BITFIELD_RESET(priv->mac_own, index);
+					&dev->data->mac_addrs[index]);
+	BITFIELD_RESET(priv->mac_own, index);
 }
 
 /**
@@ -3411,7 +3410,7 @@ mlx5_os_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
 	if (vf)
 		ret = mlx5_nl_mac_addr_add(priv->nl_socket_route,
 					   mlx5_ifindex(dev),
-					   mac, index);
+					   mac);
 	if (!ret)
 		BITFIELD_SET(priv->mac_own, index);
 
@@ -3536,7 +3535,7 @@ mlx5_os_mac_addr_flush(struct rte_eth_dev *dev)
 			if (vf)
 				mlx5_nl_mac_addr_remove(priv->nl_socket_route,
 							mlx5_ifindex(dev),
-							&dev->data->mac_addrs[i], i);
+							&dev->data->mac_addrs[i]);
 			BITFIELD_RESET(priv->mac_own, i);
 		}
 	}

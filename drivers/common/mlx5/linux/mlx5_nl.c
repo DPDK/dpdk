@@ -719,8 +719,6 @@ error:
  *   Net device interface index.
  * @param mac
  *   MAC address to register.
- * @param index
- *   MAC address index.
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
@@ -728,16 +726,11 @@ error:
 RTE_EXPORT_INTERNAL_SYMBOL(mlx5_nl_mac_addr_add)
 int
 mlx5_nl_mac_addr_add(int nlsk_fd, unsigned int iface_idx,
-		     struct rte_ether_addr *mac, uint32_t index)
+		     struct rte_ether_addr *mac)
 {
 	int ret;
 
 	ret = mlx5_nl_mac_addr_modify(nlsk_fd, iface_idx, mac, 1);
-	if (!ret) {
-		MLX5_ASSERT(index < MLX5_MAX_MAC_ADDRESSES);
-		if (index >= MLX5_MAX_MAC_ADDRESSES)
-			return -EINVAL;
-	}
 	if (ret == -EEXIST)
 		return 0;
 	return ret;
@@ -752,8 +745,6 @@ mlx5_nl_mac_addr_add(int nlsk_fd, unsigned int iface_idx,
  *   Net device interface index.
  * @param mac
  *   MAC address to remove.
- * @param index
- *   MAC address index.
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
@@ -761,12 +752,8 @@ mlx5_nl_mac_addr_add(int nlsk_fd, unsigned int iface_idx,
 RTE_EXPORT_INTERNAL_SYMBOL(mlx5_nl_mac_addr_remove)
 int
 mlx5_nl_mac_addr_remove(int nlsk_fd, unsigned int iface_idx,
-			struct rte_ether_addr *mac, uint32_t index)
+			struct rte_ether_addr *mac)
 {
-	MLX5_ASSERT(index < MLX5_MAX_MAC_ADDRESSES);
-	if (index >= MLX5_MAX_MAC_ADDRESSES)
-		return -EINVAL;
-
 	return mlx5_nl_mac_addr_modify(nlsk_fd, iface_idx, mac, 0);
 }
 
