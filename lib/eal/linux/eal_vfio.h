@@ -70,6 +70,8 @@ struct vfio_iommu_ops {
 	vfio_dma_func_t dma_map_func;
 };
 
+extern const struct vfio_iommu_ops iommu_types[3];
+
 /* get the vfio container that devices are bound to by default */
 int vfio_open_container_fd(bool mp_request);
 

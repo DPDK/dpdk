@@ -16,6 +16,7 @@ sources += files(
         'eal_thread.c',
         'eal_timer.c',
         'eal_vfio.c',
+        'eal_vfio_group.c',
         'eal_vfio_mp_sync.c',
 )
 
