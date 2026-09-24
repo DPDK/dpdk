@@ -1921,7 +1921,7 @@ mlx5_traffic_enable(struct rte_eth_dev *dev)
 
 		/* Add flows for unicast and multicast mac addresses added by API. */
 		if (!memcmp(mac, &cmp, sizeof(*mac)) ||
-		    !BITFIELD_ISSET(priv->mac_own, i) ||
+		    !rte_bitset_test(priv->mac_own, i) ||
 		    (dev->data->all_multicast && rte_is_multicast_ether_addr(mac)))
 			continue;
 		memcpy(&unicast.hdr.dst_addr.addr_bytes,
