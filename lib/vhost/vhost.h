@@ -499,6 +499,7 @@ struct __rte_cache_aligned virtio_net {
 	RTE_ATOMIC(int16_t)	broadcast_rarp;
 	uint32_t		nr_vring;
 	int			async_copy;
+	bool			dma_map_available;
 
 	int			extbuf;
 	int			linearbuf;

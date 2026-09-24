@@ -267,7 +267,7 @@ free_all_mem_regions(struct virtio_net *dev)
 	if (!dev || !dev->mem)
 		return;
 
-	if (dev->async_copy && rte_vfio_is_enabled("vfio"))
+	if (dev->async_copy && dev->dma_map_available)
 		async_dma_map(dev, false);
 
 	for (i = 0; i < VHOST_MEMORY_MAX_NREGIONS; i++) {
@@ -1571,7 +1571,7 @@ vhost_user_set_mem_table(struct virtio_net **pdev,
 		dev->mem->nregions++;
 	}
 
-	if (dev->async_copy && rte_vfio_is_enabled("vfio"))
+	if (dev->async_copy && dev->dma_map_available)
 		async_dma_map(dev, true);
 
 	if (vhost_user_postcopy_register(dev, main_fd, ctx) < 0)
@@ -1757,7 +1757,7 @@ vhost_user_add_mem_reg(struct virtio_net **pdev,
 
 	dev->mem->nregions++;
 
-	if (dev->async_copy && rte_vfio_is_enabled("vfio")) {
+	if (dev->async_copy && dev->dma_map_available) {
 		if (async_dma_map_region(dev, reg, true) < 0)
 			goto free_new_region_no_dma;
 	}
@@ -1798,7 +1798,7 @@ vhost_user_add_mem_reg(struct virtio_net **pdev,
 	return RTE_VHOST_MSG_RESULT_OK;
 
 free_new_region:
-	if (dev->async_copy && rte_vfio_is_enabled("vfio"))
+	if (dev->async_copy && dev->dma_map_available)
 		async_dma_map_region(dev, reg, false);
 free_new_region_no_dma:
 	remove_guest_pages(dev, reg);
@@ -1834,7 +1834,7 @@ vhost_user_rem_mem_reg(struct virtio_net **pdev,
 		if (region->userspace_addr == current_region->guest_user_addr
 			&& region->guest_phys_addr == current_region->guest_phys_addr
 			&& region->memory_size == current_region->size) {
-			if (dev->async_copy && rte_vfio_is_enabled("vfio"))
+			if (dev->async_copy && dev->dma_map_available)
 				async_dma_map_region(dev, current_region, false);
 			if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
 				vhost_user_iotlb_cache_remove(dev,

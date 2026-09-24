@@ -17,6 +17,7 @@
 #include <eal_export.h>
 #include <rte_thread.h>
 #include <rte_log.h>
+#include <rte_vfio.h>
 
 #include "fd_man.h"
 #include "vduse.h"
@@ -242,8 +243,10 @@ vhost_user_add_connection(int fd, struct vhost_user_socket *vsocket)
 	if (vsocket->async_copy) {
 		dev = get_device(vid);
 
-		if (dev)
+		if (dev != NULL) {
 			dev->async_copy = 1;
+			dev->dma_map_available = rte_vfio_is_enabled("vfio");
+		}
 	}
 
 	VHOST_CONFIG_LOG(vsocket->path, INFO, "new device, handle is %d", vid);
