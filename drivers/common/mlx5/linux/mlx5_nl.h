@@ -65,11 +65,6 @@ __rte_internal
 void mlx5_nl_mac_addr_sync(int nlsk_fd, unsigned int iface_idx,
 			   struct rte_ether_addr *mac_addrs, int n);
 __rte_internal
-void mlx5_nl_mac_addr_flush(int nlsk_fd, unsigned int iface_idx,
-			    struct rte_ether_addr *mac_addrs, int n,
-			    uint64_t *mac_own,
-			    bool vf);
-__rte_internal
 int mlx5_nl_promisc(int nlsk_fd, unsigned int iface_idx, int enable);
 __rte_internal
 int mlx5_nl_allmulti(int nlsk_fd, unsigned int iface_idx, int enable);
