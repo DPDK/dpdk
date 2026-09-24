@@ -11,6 +11,7 @@
 #define NBL_USERDEV_INIT_COMMON(common) do {		\
 	typeof(common) _comm = (common);		\
 	_comm->devfd = -1;				\
+	_comm->groupfd = -1;				\
 	_comm->eventfd = -1;				\
 	_comm->specific_dma = false;			\
 	_comm->dma_set_msb = false;			\

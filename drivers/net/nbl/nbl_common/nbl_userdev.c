@@ -388,6 +388,28 @@ nbl_userdev_mem_event_callback(enum rte_mem_event type, const void *addr, size_t
 	}
 }
 
+static int
+nbl_open_group_fd(int iommu_group_num)
+{
+	char path[PATH_MAX];
+
+	snprintf(path, sizeof(path), DEV_VFIO_GROUP_FMT, iommu_group_num);
+	return open(path, O_RDWR);
+}
+
+static int
+nbl_find_group_fd(int iommu_group_num)
+{
+	struct nbl_adapter *adapter;
+
+	TAILQ_FOREACH(adapter, &nbl_adapter_list, next) {
+		if (adapter->common.iommu_group_num == iommu_group_num)
+			return adapter->common.groupfd;
+	}
+
+	return -1;
+}
+
 static int nbl_mdev_map_device(struct nbl_adapter *adapter)
 {
 	const struct rte_pci_device *pci_dev = adapter->pci_dev;
@@ -401,6 +423,7 @@ static int nbl_mdev_map_device(struct nbl_adapter *adapter)
 	u64 dma_limit = NBL_USERDEV_DMA_LIMIT;
 	int ret, container_create = 0, container_set = 0;
 	int vfio_group_fd, container = nbl_default_container;
+	bool new_group = false;
 
 	rte_pci_device_name(&pci_dev->addr, dev_name, RTE_DEV_NAME_MAX_LEN);
 	snprintf(pathname, sizeof(pathname),
@@ -425,11 +448,18 @@ static int nbl_mdev_map_device(struct nbl_adapter *adapter)
 	}
 
 	NBL_LOG(DEBUG, "nbl vfio container %d", container);
-	vfio_group_fd = dev_vfio_container_group_bind(container, common->iommu_group_num);
+	rte_mcfg_mem_read_lock();
+	vfio_group_fd = nbl_find_group_fd(common->iommu_group_num);
+	rte_mcfg_mem_read_unlock();
+	if (vfio_group_fd < 0) {
+		vfio_group_fd = nbl_open_group_fd(common->iommu_group_num);
+		new_group = true;
+	}
 	if (vfio_group_fd < 0) {
 		NBL_LOG(ERR, "nbl vfio group bind failed, %d", vfio_group_fd);
 		goto free_container;
 	}
+	common->groupfd = vfio_group_fd;
 
 	/* check if the group is viable */
 	ret = ioctl(vfio_group_fd, VFIO_GROUP_GET_STATUS, &group_status);
@@ -518,13 +548,13 @@ static int nbl_mdev_map_device(struct nbl_adapter *adapter)
 close_fd:
 	close(common->devfd);
 unregister_mem_event:
-	if (nbl_group_count == 1) {
+	if (container_set && nbl_group_count == 1) {
 		rte_mcfg_mem_read_lock();
 		rte_mem_event_callback_unregister(NBL_USERDEV_EVENT_CLB_NAME, NULL);
 		rte_mcfg_mem_read_unlock();
 	}
 free_dma_map:
-	if (nbl_group_count == 1) {
+	if (container_set && nbl_group_count == 1) {
 		rte_mcfg_mem_read_lock();
 		nbl_userdev_dma_free();
 		rte_mcfg_mem_read_unlock();
@@ -535,8 +565,8 @@ unset_container:
 		nbl_group_count--;
 	}
 free_group:
-	close(vfio_group_fd);
-	dev_vfio_clear_group(vfio_group_fd);
+	if (new_group)
+		close(vfio_group_fd);
 free_container:
 	if (container_create)
 		dev_vfio_container_destroy(container);
@@ -547,21 +577,24 @@ static int nbl_mdev_unmap_device(struct nbl_adapter *adapter)
 {
 	struct nbl_common_info *common = &adapter->common;
 	int vfio_group_fd, ret;
+	bool last_group_user;
 
 	rte_mcfg_mem_read_lock();
 	TAILQ_REMOVE(&nbl_adapter_list, adapter, next);
 	close(common->devfd);
-	vfio_group_fd = dev_vfio_container_group_bind(nbl_default_container,
-						      common->iommu_group_num);
+	common->devfd = -1;
+	vfio_group_fd = common->groupfd;
+	last_group_user = nbl_find_group_fd(common->iommu_group_num) < 0;
 	NBL_LOG(DEBUG, "close vfio_group_fd %d", vfio_group_fd);
-	ret = ioctl(vfio_group_fd, VFIO_GROUP_UNSET_CONTAINER, &nbl_default_container);
-	if (ret)
-		NBL_LOG(ERR, "unset container, error %i (%s) %d",
-			errno, strerror(errno), ret);
-	nbl_group_count--;
-	ret = dev_vfio_container_group_unbind(nbl_default_container, common->iommu_group_num);
-	if (ret)
-		NBL_LOG(ERR, "vfio container group unbind failed %d", ret);
+	if (last_group_user) {
+		ret = ioctl(vfio_group_fd, VFIO_GROUP_UNSET_CONTAINER, &nbl_default_container);
+		if (ret)
+			NBL_LOG(ERR, "unset container, error %i (%s) %d",
+				errno, strerror(errno), ret);
+		nbl_group_count--;
+		close(vfio_group_fd);
+		common->groupfd = -1;
+	}
 	if (!nbl_group_count) {
 		rte_mem_event_callback_unregister(NBL_USERDEV_EVENT_CLB_NAME, NULL);
 		nbl_userdev_dma_free();
