@@ -31,46 +31,46 @@ vfio_mp_primary(const struct rte_mp_msg *msg, const void *peer)
 	memset(&reply, 0, sizeof(reply));
 
 	switch (m->req) {
-	case SOCKET_REQ_GROUP:
-		r->req = SOCKET_REQ_GROUP;
+	case VFIO_SOCKET_REQ_GROUP:
+		r->req = VFIO_SOCKET_REQ_GROUP;
 		r->group_num = m->group_num;
 		fd = vfio_get_group_fd_by_num(m->group_num);
 		if (fd < 0 && fd != -ENOENT)
-			r->result = SOCKET_ERR;
+			r->result = VFIO_SOCKET_ERR;
 		else if (fd == -ENOENT)
 			/* if VFIO group exists but isn't bound to VFIO driver */
-			r->result = SOCKET_NO_FD;
+			r->result = VFIO_SOCKET_NO_FD;
 		else {
 			/* if group exists and is bound to VFIO driver */
-			r->result = SOCKET_OK;
+			r->result = VFIO_SOCKET_OK;
 			reply.num_fds = 1;
 			reply.fds[0] = fd;
 		}
 		break;
-	case SOCKET_REQ_CONTAINER:
-		r->req = SOCKET_REQ_CONTAINER;
+	case VFIO_SOCKET_REQ_CONTAINER:
+		r->req = VFIO_SOCKET_REQ_CONTAINER;
 		fd = dev_vfio_get_container_fd();
 		if (fd < 0)
-			r->result = SOCKET_ERR;
+			r->result = VFIO_SOCKET_ERR;
 		else {
-			r->result = SOCKET_OK;
+			r->result = VFIO_SOCKET_OK;
 			reply.num_fds = 1;
 			reply.fds[0] = fd;
 		}
 		break;
-	case SOCKET_REQ_IOMMU_TYPE:
+	case VFIO_SOCKET_REQ_IOMMU_TYPE:
 	{
 		int iommu_type_id;
 
-		r->req = SOCKET_REQ_IOMMU_TYPE;
+		r->req = VFIO_SOCKET_REQ_IOMMU_TYPE;
 
 		iommu_type_id = vfio_get_iommu_type();
 
 		if (iommu_type_id < 0)
-			r->result = SOCKET_ERR;
+			r->result = VFIO_SOCKET_ERR;
 		else {
 			r->iommu_type_id = iommu_type_id;
-			r->result = SOCKET_OK;
+			r->result = VFIO_SOCKET_OK;
 		}
 		break;
 	}

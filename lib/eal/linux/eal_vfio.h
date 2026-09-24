@@ -9,6 +9,28 @@
 
 #include <stdint.h>
 
+/* hot plug/unplug of VFIO groups may cause all DMA maps to be dropped. we can
+ * recreate the mappings for DPDK segments, but we cannot do so for memory that
+ * was registered by the user themselves, so we need to store the user mappings
+ * somewhere, to recreate them later.
+ */
+#define EAL_VFIO_MAX_USER_MEM_MAPS 256
+
+/* user memory map entry */
+struct vfio_user_mem_map {
+	uint64_t addr;  /**< start VA */
+	uint64_t iova;  /**< start IOVA */
+	uint64_t len;   /**< total length of the mapping */
+	uint64_t chunk; /**< this mapping can be split in chunks of this size */
+};
+
+/* user memory maps container (common for all API modes) */
+struct vfio_user_mem_maps {
+	rte_spinlock_recursive_t lock;
+	int n_maps;
+	struct vfio_user_mem_map maps[EAL_VFIO_MAX_USER_MEM_MAPS];
+};
+
 /*
  * we don't need to store device fd's anywhere since they can be obtained from
  * the group fd via an ioctl() call.
@@ -19,18 +41,26 @@ struct vfio_group {
 	int devices;
 };
 
+struct vfio_container {
+	int container_fd;
+	int vfio_active_groups;
+	const struct vfio_iommu_type *vfio_iommu_type;
+	struct vfio_group vfio_groups[RTE_MAX_VFIO_GROUPS];
+	struct vfio_user_mem_maps mem_maps;
+};
+
 /* DMA mapping function prototype.
- * Takes VFIO container fd as a parameter.
+ * Takes VFIO container config as a parameter.
  * Returns 0 on success, -1 on error.
  */
-typedef int (*vfio_dma_func_t)(int);
+typedef int (*vfio_dma_func_t)(struct vfio_container *cfg);
 
 /* Custom memory region DMA mapping function prototype.
- * Takes VFIO container fd, virtual address, physical address, length and
+ * Takes VFIO container config, virtual address, physical address, length and
  * operation type (0 to unmap 1 for map) as a parameters.
  * Returns 0 on success, -1 on error.
  */
-typedef int (*vfio_dma_user_func_t)(int fd, uint64_t vaddr, uint64_t iova,
+typedef int (*vfio_dma_user_func_t)(struct vfio_container *cfg, uint64_t vaddr, uint64_t iova,
 		uint64_t len, int do_map);
 
 struct vfio_iommu_type {
@@ -62,12 +92,12 @@ void vfio_mp_sync_cleanup(void);
 
 #define EAL_VFIO_MP "eal_vfio_mp_sync"
 
-#define SOCKET_REQ_CONTAINER 0x100
-#define SOCKET_REQ_GROUP 0x200
-#define SOCKET_REQ_IOMMU_TYPE 0x400
-#define SOCKET_OK 0x0
-#define SOCKET_NO_FD 0x1
-#define SOCKET_ERR 0xFF
+#define VFIO_SOCKET_REQ_CONTAINER 0x100
+#define VFIO_SOCKET_REQ_GROUP 0x200
+#define VFIO_SOCKET_REQ_IOMMU_TYPE 0x400
+#define VFIO_SOCKET_OK 0x0
+#define VFIO_SOCKET_NO_FD 0x1
+#define VFIO_SOCKET_ERR 0xFF
 
 struct vfio_mp_param {
 	int req;
