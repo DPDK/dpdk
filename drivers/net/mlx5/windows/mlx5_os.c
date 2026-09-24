@@ -261,6 +261,16 @@ mlx5_os_capabilities_prepare(struct mlx5_dev_ctx_shared *sh)
 		 MLX5_GET(initial_seg, pv_iseg, fw_rev_subminor));
 	DRV_LOG(DEBUG, "Packet pacing is not supported.");
 	mlx5_rt_timestamp_config(sh, hca_attr);
+	if (hca_attr->log_max_current_uc_list > 0)
+		sh->dev_cap.max_uc_mac_addrs = RTE_BIT32(hca_attr->log_max_current_uc_list);
+	else
+		sh->dev_cap.max_uc_mac_addrs = MLX5_MAX_UC_MAC_ADDRESSES;
+	if (hca_attr->log_max_current_mc_list > 0)
+		sh->dev_cap.max_mc_mac_addrs = RTE_BIT32(hca_attr->log_max_current_mc_list);
+	else
+		sh->dev_cap.max_mc_mac_addrs = MLX5_MAX_MC_MAC_ADDRESSES;
+	sh->dev_cap.max_mac_addrs =
+		sh->dev_cap.max_uc_mac_addrs + sh->dev_cap.max_mc_mac_addrs;
 	return 0;
 }
 
@@ -396,6 +406,22 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 	priv->sh = sh;
 	priv->dev_port = spawn->phys_port;
 	priv->pci_dev = spawn->pci_dev;
+	priv->mac = mlx5_malloc(MLX5_MEM_ZERO | MLX5_MEM_RTE,
+				sizeof(*priv->mac) * sh->dev_cap.max_mac_addrs,
+				RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+	if (priv->mac == NULL) {
+		DRV_LOG(ERR, "Failed to allocate MAC address array.");
+		err = ENOMEM;
+		goto error;
+	}
+	priv->mac_own = mlx5_malloc(MLX5_MEM_ZERO | MLX5_MEM_RTE,
+				    RTE_BITSET_SIZE(sh->dev_cap.max_mac_addrs),
+				    RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+	if (priv->mac_own == NULL) {
+		DRV_LOG(ERR, "Failed to allocate MAC ownership bitmap.");
+		err = ENOMEM;
+		goto error;
+	}
 	priv->mp_id.port_id = port_id;
 	strlcpy(priv->mp_id.name, MLX5_MP_NAME, RTE_MP_MAX_NAME_LEN);
 	priv->representor = !!switch_info->representor;
@@ -612,17 +638,16 @@ error:
 			mlx5_l3t_destroy(priv->mtr_profile_tbl);
 		if (own_domain_id)
 			claim_zero(rte_eth_switch_domain_free(priv->domain_id));
+		mlx5_free(priv->mac);
+		mlx5_free(priv->mac_own);
 		mlx5_free(priv);
-		if (eth_dev != NULL)
+		if (eth_dev != NULL) {
+			eth_dev->data->mac_addrs = NULL;
 			eth_dev->data->dev_private = NULL;
+		}
 	}
-	if (eth_dev != NULL) {
-		/* mac_addrs must not be freed alone because part of
-		 * dev_private
-		 **/
-		eth_dev->data->mac_addrs = NULL;
+	if (eth_dev != NULL)
 		rte_eth_dev_release_port(eth_dev);
-	}
 	if (sh)
 		mlx5_free_shared_dev_ctx(sh);
 	MLX5_ASSERT(err > 0);
@@ -698,7 +723,7 @@ mlx5_os_mac_addr_flush(struct rte_eth_dev *dev)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	int i;
 
-	for (i = MLX5_MAX_MAC_ADDRESSES - 1; i >= 0; --i) {
+	for (i = priv->sh->dev_cap.max_mac_addrs - 1; i >= 0; --i) {
 		if (rte_bitset_test(priv->mac_own, i))
 			rte_bitset_clear(priv->mac_own, i);
 	}
