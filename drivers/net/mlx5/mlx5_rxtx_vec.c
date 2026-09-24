@@ -105,6 +105,15 @@ mlx5_rx_replenish_bulk_mbuf(struct mlx5_rxq_data *rxq)
 		n = RTE_MIN(n - MLX5_VPMD_DESCS_PER_LOOP, q_n - elts_idx);
 		if (rte_mempool_get_bulk(rxq->mp, (void *)elts, n) < 0) {
 			rxq->stats.rx_nombuf += n;
+			/*
+			 * A failed bulk get may have partially filled elts[]
+			 * from the cache without dequeueing those objects.
+			 * Restore the fake_mbuf guards so a following
+			 * decompression does not write into mbufs that are
+			 * still owned by the mempool (or by the application).
+			 */
+			for (i = 0; i < MLX5_VPMD_DESCS_PER_LOOP; ++i)
+				elts[i] = &rxq->fake_mbuf;
 			return;
 		}
 		if (unlikely(mlx5_mr_btree_len(&rxq->mr_ctrl.cache_bh) > 1)) {
@@ -169,6 +178,9 @@ mlx5_rx_mprq_replenish_bulk_mbuf(struct mlx5_rxq_data *rxq)
 		n = RTE_MIN(n, rxq->rq_repl_thresh);
 		if (rte_mempool_get_bulk(rxq->mp, (void *)elts, n) < 0) {
 			rxq->stats.rx_nombuf += n;
+			/* See mlx5_rx_replenish_bulk_mbuf(). */
+			for (i = 0; i < MLX5_VPMD_DESCS_PER_LOOP; ++i)
+				elts[i] = &rxq->fake_mbuf;
 			return;
 		}
 		rxq->elts_ci += n;
