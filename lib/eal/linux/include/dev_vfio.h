@@ -18,15 +18,14 @@
 #include <stdint.h>
 
 #include <rte_compat.h>
+#include <rte_common.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define DEV_VFIO_DIR "/dev/vfio"
 #define DEV_VFIO_CONTAINER_PATH "/dev/vfio/vfio"
 #define DEV_VFIO_GROUP_FMT "/dev/vfio/%u"
-#define DEV_VFIO_NOIOMMU_GROUP_FMT "/dev/vfio/noiommu-%u"
 
 /* we don't need an actual definition, only pointer is used */
 struct vfio_device_info;
@@ -42,6 +41,20 @@ struct vfio_device_info;
 enum dev_vfio_module {
 	DEV_VFIO_MODULE_VFIO,     /**< Core VFIO module. */
 	DEV_VFIO_MODULE_VFIO_PCI, /**< VFIO PCI module. */
+};
+
+/**
+ * @enum dev_vfio_mode
+ * Enumeration of VFIO operational modes.
+ *
+ * These modes define how VFIO devices are accessed.
+ *
+ * - DEV_VFIO_MODE_NONE: VFIO is not enabled.
+ * - DEV_VFIO_MODE_GROUP: Legacy group mode.
+ */
+enum dev_vfio_mode {
+	DEV_VFIO_MODE_NONE = 0, /**< VFIO not enabled */
+	DEV_VFIO_MODE_GROUP,    /**< Group mode */
 };
 
 /**
@@ -79,7 +92,13 @@ enum dev_vfio_iova_mode {
  *   <0 on failure, rte_errno is set.
  *
  * Possible rte_errno values include:
+ * - ENODEV  - Device not managed by VFIO.
+ * - ENOSPC  - No space in VFIO container to track the device.
  * - EINVAL  - Invalid parameters.
+ * - EIO     - Error during underlying VFIO operations.
+ * - ENXIO   - VFIO support not initialized.
+ * - ENOTSUP - Unsupported VFIO mode.
+ * - ENOMEM  - Memory allocation failed for device tracking.
  */
 __rte_internal
 int dev_vfio_setup_device(const char *sysfs_base, const char *dev_addr, int *vfio_dev_fd);
@@ -87,6 +106,10 @@ int dev_vfio_setup_device(const char *sysfs_base, const char *dev_addr, int *vfi
 /**
  * @internal
  * Release a device managed by VFIO driver.
+ *
+ * @note As a result of this function, all internal resources used by the device will be released,
+ *       so if the device was using a non-default container, it will need to be reassigned to the
+ *       container before it can be used again.
  *
  * @param sysfs_base
  *   Sysfs path prefix.
@@ -100,7 +123,11 @@ int dev_vfio_setup_device(const char *sysfs_base, const char *dev_addr, int *vfi
  *   <0 on failure, rte_errno is set.
  *
  * Possible rte_errno values include:
+ * - ENOENT  - Device not found in any container.
  * - EINVAL  - Invalid parameters.
+ * - EIO     - Error during underlying VFIO operations.
+ * - ENXIO   - VFIO support not initialized.
+ * - ENOTSUP - Unsupported VFIO mode.
  */
 __rte_internal
 int dev_vfio_release_device(const char *sysfs_base, const char *dev_addr, int fd);
@@ -109,9 +136,16 @@ int dev_vfio_release_device(const char *sysfs_base, const char *dev_addr, int fd
  * @internal
  * Initialize VFIO.
  *
+ * In case of success, `dev_vfio_get_mode()` can be used to retrieve the VFIO mode in use.
+ *
  * @return
  *   0 on success.
- *   <0 on failure.
+ *   <0 on failure, rte_errno is set.
+ *
+ * Possible rte_errno values include:
+ * - EINVAL  - Invalid parameters.
+ * - ENXIO   - VFIO support not initialized.
+ * - ENOTSUP - Operation not supported.
  */
 __rte_internal
 int dev_vfio_enable(void);
@@ -150,6 +184,16 @@ int dev_vfio_is_enabled(void);
 
 /**
  * @internal
+ * Get current VFIO mode.
+ *
+ *   VFIO mode currently in use.
+ */
+__rte_internal
+enum dev_vfio_mode
+dev_vfio_get_mode(void);
+
+/**
+ * @internal
  * Get current VFIO IOVA mode.
  *
  * @return
@@ -175,7 +219,10 @@ dev_vfio_get_iova_mode(void);
  *   <0 on failure, rte_errno is set.
  *
  * Possible rte_errno values include:
+ * - ENODEV  - Device not managed by VFIO.
  * - EINVAL  - Invalid parameters.
+ * - ENXIO   - VFIO support not initialized.
+ * - ENOTSUP - Unsupported VFIO mode.
  */
 __rte_internal
 int
@@ -200,6 +247,8 @@ dev_vfio_get_group_num(const char *sysfs_base, const char *dev_addr, int *iommu_
  *
  * Possible rte_errno values include:
  * - EINVAL  - Invalid parameters.
+ * - ENXIO   - VFIO support not initialized.
+ * - ENOTSUP - Unsupported VFIO mode.
  */
 __rte_internal
 int
@@ -207,11 +256,15 @@ dev_vfio_get_device_info(int vfio_dev_fd, struct vfio_device_info *device_info);
 
 /**
  * @internal
- * Get the default VFIO container fd
+ * Get the default VFIO container file descriptor.
  *
  * @return
- *  > 0 default container fd
- *  < 0 if VFIO is not enabled or not supported
+ *   Non-negative container file descriptor on success.
+ *   <0 on failure, rte_errno is set.
+ *
+ * Possible rte_errno values include:
+ * - ENXIO   - VFIO support not initialized.
+ * - ENOTSUP - Unsupported VFIO mode.
  */
 __rte_internal
 int
@@ -219,7 +272,7 @@ dev_vfio_get_container_fd(void);
 
 /**
  * @internal
- * Create a new container for device binding.
+ * Create a new VFIO container for device assignment and DMA mapping.
  *
  * @note Any newly allocated DPDK memory will not be mapped into these
  *       containers by default, user needs to manage DMA mappings for
@@ -230,8 +283,14 @@ dev_vfio_get_container_fd(void);
  *       devices between multiple processes is not supported.
  *
  * @return
- *   the container fd if successful
- *   <0 if failed
+ *   Non-negative container file descriptor on success.
+ *   <0 on failure, rte_errno is set.
+ *
+ * Possible rte_errno values include:
+ * - ENOSPC  - Maximum number of containers reached.
+ * - EIO     - Underlying VFIO operation failed.
+ * - ENXIO   - VFIO support not initialized.
+ * - ENOTSUP - Unsupported VFIO mode.
  */
 __rte_internal
 int
@@ -239,14 +298,20 @@ dev_vfio_container_create(void);
 
 /**
  * @internal
- * Destroy the container, unbind all vfio groups within it.
+ * Destroy a VFIO container and unmap all devices assigned to it.
  *
  * @param container_fd
- *   the container fd to destroy
+ *   File descriptor of container to destroy.
  *
  * @return
- *    0 if successful
- *   <0 if failed
+ *   0 on success.
+ *   <0 on failure, rte_errno is set.
+ *
+ * Possible rte_errno values include:
+ * - ENODEV  - Container not managed by VFIO.
+ * - EINVAL  - Invalid container file descriptor.
+ * - ENXIO   - VFIO support not initialized.
+ * - ENOTSUP - Unsupported VFIO mode.
  */
 __rte_internal
 int
@@ -272,7 +337,14 @@ dev_vfio_container_destroy(int container_fd);
  *   <0 on failure, rte_errno is set.
  *
  * Possible rte_errno values include:
+ * - ENODEV  - Device not managed by VFIO.
+ * - EEXIST  - Device already assigned to the container.
+ * - ENOSPC  - No space in VFIO container to assign device.
  * - EINVAL  - Invalid container file descriptor.
+ * - EIO     - Error during underlying VFIO operations.
+ * - ENXIO   - VFIO support not initialized.
+ * - ENOTSUP - Unsupported VFIO mode.
+ * - ENOMEM  - Memory allocation failed for device tracking.
  */
 __rte_internal
 int
@@ -297,7 +369,10 @@ dev_vfio_container_assign_device(int vfio_container_fd, const char *sysfs_base,
  *   <0 on failure, rte_errno is set.
  *
  * Possible rte_errno values include:
+ * - EIO     - DMA mapping operation failed.
  * - EINVAL  - Invalid parameters.
+ * - ENXIO   - VFIO support not initialized.
+ * - ENOTSUP - Unsupported VFIO mode.
  */
 __rte_internal
 int
@@ -321,7 +396,10 @@ dev_vfio_container_dma_map(int container_fd, uint64_t vaddr, uint64_t iova, uint
  *   <0 on failure, rte_errno is set.
  *
  * Possible rte_errno values include:
+ * - EIO     - DMA unmapping operation failed.
  * - EINVAL  - Invalid parameters.
+ * - ENXIO   - VFIO support not initialized.
+ * - ENOTSUP - Unsupported VFIO mode.
  */
 __rte_internal
 int

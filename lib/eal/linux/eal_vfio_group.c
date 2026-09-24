@@ -1,25 +1,31 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright(c) 2010-2018 Intel Corporation
+ * Copyright(c) 2010-2025 Intel Corporation
  */
 
 #include <uapi/linux/vfio.h>
 
-#include <errno.h>
+#include <dirent.h>
+#include <fcntl.h>
 #include <inttypes.h>
 #include <stdbool.h>
-#include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
-#include <string.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
 
-#include <rte_common.h>
-#include <rte_errno.h>
 #include <rte_log.h>
+#include <rte_errno.h>
+#include <rte_eal_memconfig.h>
 #include <rte_memory.h>
+#include <rte_string_fns.h>
+#include <dev_vfio.h>
 
 #include "eal_vfio.h"
 #include "eal_private.h"
+#include "eal_internal_cfg.h"
+
+#define DEV_VFIO_DIR "/dev/vfio"
+#define DEV_VFIO_NOIOMMU_GROUP_FMT "/dev/vfio/noiommu-%u"
 
 static int vfio_type1_dma_map(struct vfio_container *);
 static int vfio_type1_dma_mem_map(struct vfio_container *, uint64_t, uint64_t, uint64_t, int);
@@ -29,7 +35,7 @@ static int vfio_noiommu_dma_map(struct vfio_container *);
 static int vfio_noiommu_dma_mem_map(struct vfio_container *, uint64_t, uint64_t, uint64_t, int);
 
 /* IOMMU types we support */
-const struct vfio_iommu_ops iommu_types[] = {
+static const struct vfio_iommu_ops iommu_types[] = {
 	/* x86 IOMMU, otherwise known as type 1 */
 	{
 		.type_id = VFIO_TYPE1_IOMMU,
@@ -56,8 +62,8 @@ const struct vfio_iommu_ops iommu_types[] = {
 	},
 };
 
-const struct vfio_iommu_ops *
-vfio_set_iommu_type(int vfio_container_fd)
+static const struct vfio_iommu_ops *
+vfio_group_set_iommu_type(int vfio_container_fd)
 {
 	for (unsigned int idx = 0; idx < RTE_DIM(iommu_types); idx++) {
 		const struct vfio_iommu_ops *t = &iommu_types[idx];
@@ -134,7 +140,6 @@ vfio_type1_dma_mem_map(struct vfio_container *cfg, uint64_t vaddr, uint64_t iova
 			EAL_LOG(ERR, "Unexpected size %"PRIu64
 				" of DMA remapping cleared instead of %"PRIu64,
 				(uint64_t)dma_unmap.size, len);
-			rte_errno = EIO;
 			return -1;
 		}
 	}
@@ -491,7 +496,175 @@ vfio_noiommu_dma_mem_map(struct vfio_container *cfg __rte_unused, uint64_t vaddr
 	return 0;
 }
 
+struct vfio_group *
+vfio_group_create(struct vfio_container *cfg, int iommu_group)
+{
+	struct vfio_group *grp;
+
+	if (cfg->group_cfg.n_groups >= RTE_DIM(cfg->group_cfg.groups)) {
+		EAL_LOG(ERR, "Cannot add more VFIO groups to container");
+		return NULL;
+	}
+	VFIO_GROUP_FOREACH(cfg, grp) {
+		if (grp->active)
+			continue;
+		cfg->group_cfg.n_groups++;
+		grp->active = true;
+		grp->group_num = iommu_group;
+		grp->fd = -1;
+		return grp;
+	}
+	/* should not happen */
+	return NULL;
+}
+
+void
+vfio_group_erase(struct vfio_container *cfg, struct vfio_group *grp)
+{
+	struct vfio_group_config *group_cfg = &cfg->group_cfg;
+
+	if (grp->fd >= 0 && close(grp->fd) < 0)
+		EAL_LOG(ERR, "Error when closing group fd %d", grp->fd);
+
+	*grp = (struct vfio_group){0};
+	group_cfg->n_groups--;
+
+	/* if this was the last group in config, erase IOMMU setup and unregister callback */
+	if (group_cfg->n_groups == 0) {
+		cfg->dma_setup_done = false;
+		group_cfg->iommu_type_set = false;
+	}
+}
+
+struct vfio_group *
+vfio_group_get_by_num(struct vfio_container *cfg, int iommu_group)
+{
+	struct vfio_group *grp;
+
+	VFIO_GROUP_FOREACH_ACTIVE(cfg, grp) {
+		if (grp->group_num == iommu_group)
+			return grp;
+	}
+	return NULL;
+}
+
+static int
+vfio_open_group_sysfs(int iommu_group_num)
+{
+	char filename[PATH_MAX];
+	int fd;
+
+	if (vfio_global_cfg.iova_mode == DEV_VFIO_IOVA_MODE_VA)
+		snprintf(filename, sizeof(filename), DEV_VFIO_GROUP_FMT, iommu_group_num);
+	else if (vfio_global_cfg.iova_mode == DEV_VFIO_IOVA_MODE_PA)
+		snprintf(filename, sizeof(filename), DEV_VFIO_NOIOMMU_GROUP_FMT, iommu_group_num);
+
+	/* reset errno before open to differentiate errors */
+	errno = 0;
+	fd = open(filename, O_RDWR);
+
+	/* we have to differentiate between failed open and non-existence */
+	if (errno == ENOENT)
+		return -ENOENT;
+	return fd;
+}
+
+static int
+vfio_group_request_fd(int iommu_group_num)
+{
+	struct rte_mp_msg mp_req, *mp_rep;
+	struct rte_mp_reply mp_reply = {0};
+	struct timespec ts = {.tv_sec = 5, .tv_nsec = 0};
+	struct vfio_mp_param *p = (struct vfio_mp_param *)mp_req.param;
+	int vfio_group_fd = -1;
+
+	p->req = VFIO_SOCKET_REQ_GROUP;
+	p->group_num = iommu_group_num;
+	rte_strscpy(mp_req.name, EAL_VFIO_MP, sizeof(mp_req.name));
+	mp_req.len_param = sizeof(*p);
+	mp_req.num_fds = 0;
+
+	if (rte_mp_request_sync(&mp_req, &mp_reply, &ts) == 0 && mp_reply.nb_received == 1) {
+		mp_rep = &mp_reply.msgs[0];
+		p = (struct vfio_mp_param *)mp_rep->param;
+		if (p->result == VFIO_SOCKET_OK && mp_rep->num_fds == 1) {
+			vfio_group_fd = mp_rep->fds[0];
+		} else if (p->result == VFIO_SOCKET_NO_FD) {
+			EAL_LOG(ERR, "Bad VFIO group fd");
+			vfio_group_fd = -ENOENT;
+		}
+	}
+
+	free(mp_reply.msgs);
+	return vfio_group_fd;
+}
+
 int
+vfio_group_open_fd(struct vfio_container *cfg, struct vfio_group *grp)
+{
+	int vfio_group_fd;
+
+	/* we make multiprocess request only in secondary processes for default config */
+	if ((rte_eal_process_type() != RTE_PROC_PRIMARY) && (vfio_container_is_default(cfg)))
+		vfio_group_fd = vfio_group_request_fd(grp->group_num);
+	else
+		vfio_group_fd = vfio_open_group_sysfs(grp->group_num);
+
+	/* pass the non-existence up the chain */
+	if (vfio_group_fd == -ENOENT)
+		return vfio_group_fd;
+	else if (vfio_group_fd < 0) {
+		EAL_LOG(ERR, "Failed to open VFIO group %d", grp->group_num);
+		return vfio_group_fd;
+	}
+	grp->fd = vfio_group_fd;
+	return 0;
+}
+
+static const struct vfio_iommu_ops *
+vfio_group_sync_iommu_ops(void)
+{
+	struct rte_mp_msg mp_req, *mp_rep;
+	struct rte_mp_reply mp_reply = {0};
+	struct timespec ts = {.tv_sec = 5, .tv_nsec = 0};
+	struct vfio_mp_param *p = (struct vfio_mp_param *)mp_req.param;
+	int iommu_type_id;
+	unsigned int i;
+
+	/* find default container's IOMMU type */
+	p->req = VFIO_SOCKET_REQ_IOMMU_TYPE;
+	rte_strscpy(mp_req.name, EAL_VFIO_MP, sizeof(mp_req.name));
+	mp_req.len_param = sizeof(*p);
+	mp_req.num_fds = 0;
+
+	iommu_type_id = -1;
+	if (rte_mp_request_sync(&mp_req, &mp_reply, &ts) == 0 && mp_reply.nb_received == 1) {
+		mp_rep = &mp_reply.msgs[0];
+		p = (struct vfio_mp_param *)mp_rep->param;
+		if (p->result == VFIO_SOCKET_OK)
+			iommu_type_id = p->iommu_type_id;
+	}
+	free(mp_reply.msgs);
+	if (iommu_type_id < 0) {
+		EAL_LOG(ERR, "Could not get IOMMU type from primary process");
+		return NULL;
+	}
+
+	/* we now have an fd for default container, as well as its IOMMU type.
+	 * now, set up default VFIO container config to match.
+	 */
+	for (i = 0; i < RTE_DIM(iommu_types); i++) {
+		const struct vfio_iommu_ops *t = &iommu_types[i];
+		if (t->type_id != iommu_type_id)
+			continue;
+
+		return t;
+	}
+	EAL_LOG(ERR, "Could not find IOMMU type id (%i)", iommu_type_id);
+	return NULL;
+}
+
+static int
 vfio_has_supported_extensions(int vfio_container_fd)
 {
 	unsigned int n_extensions = 0;
@@ -518,4 +691,233 @@ vfio_has_supported_extensions(int vfio_container_fd)
 		return -1;
 
 	return 0;
+}
+
+int
+vfio_group_open_container_fd(void)
+{
+	int ret, vfio_container_fd;
+
+	vfio_container_fd = open(DEV_VFIO_CONTAINER_PATH, O_RDWR);
+	if (vfio_container_fd < 0) {
+		EAL_LOG(DEBUG, "Cannot open VFIO container %s, error %i (%s)",
+			DEV_VFIO_CONTAINER_PATH, errno, strerror(errno));
+		return -1;
+	}
+
+	/* check VFIO API version */
+	ret = ioctl(vfio_container_fd, VFIO_GET_API_VERSION);
+	if (ret != VFIO_API_VERSION) {
+		if (ret < 0)
+			EAL_LOG(DEBUG, "Could not get VFIO API version, error %i (%s)", errno,
+				strerror(errno));
+		else
+			EAL_LOG(DEBUG, "Unsupported VFIO API version!");
+		close(vfio_container_fd);
+		return -1;
+	}
+
+	ret = vfio_has_supported_extensions(vfio_container_fd);
+	if (ret) {
+		EAL_LOG(DEBUG, "No supported IOMMU extensions found!");
+		close(vfio_container_fd);
+		return -1;
+	}
+
+	return vfio_container_fd;
+}
+
+int
+vfio_group_enable(struct vfio_container *cfg)
+{
+	int container_fd;
+	DIR *dir;
+
+	/* VFIO directory might not exist (e.g., unprivileged containers) */
+	dir = opendir(DEV_VFIO_DIR);
+	if (dir == NULL) {
+		EAL_LOG(DEBUG, "VFIO directory does not exist, skipping VFIO group support...");
+		return 1;
+	}
+	closedir(dir);
+
+	/* open a default container */
+	container_fd = vfio_group_open_container_fd();
+	if (container_fd < 0)
+		return -1;
+
+	cfg->container_fd = container_fd;
+	return 0;
+}
+
+int
+vfio_group_prepare(struct vfio_container *cfg, struct vfio_group *grp)
+{
+	struct vfio_group_status group_status = {
+		.argsz = sizeof(group_status)};
+	int ret;
+
+	/*
+	 * We need to assign group to a container and check if it is viable, but there are cases
+	 * where we don't need to do that.
+	 *
+	 * For default container, we need to set up the group only in primary process, as secondary
+	 * process would have requested group fd over IPC, which implies it would have already been
+	 * set up by the primary.
+	 *
+	 * For custom containers, every process sets up its own groups.
+	 */
+	if (vfio_container_is_default(cfg) && rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		EAL_LOG(DEBUG, "Skipping setup for VFIO group %d", grp->group_num);
+		return 0;
+	}
+
+	/* check if the group is viable */
+	ret = ioctl(grp->fd, VFIO_GROUP_GET_STATUS, &group_status);
+	if (ret) {
+		EAL_LOG(ERR, "Cannot get VFIO group status for group %d, error %i (%s)",
+			grp->group_num, errno, strerror(errno));
+		return -1;
+	}
+
+	if ((group_status.flags & VFIO_GROUP_FLAGS_VIABLE) == 0) {
+		EAL_LOG(ERR, "VFIO group %d is not viable! "
+			"Not all devices in IOMMU group bound to VFIO or unbound",
+			grp->group_num);
+		return -1;
+	}
+
+	/* set container for group if necessary */
+	if ((group_status.flags & VFIO_GROUP_FLAGS_CONTAINER_SET) == 0) {
+		/* add group to a container */
+		ret = ioctl(grp->fd, VFIO_GROUP_SET_CONTAINER, &cfg->container_fd);
+		if (ret) {
+			EAL_LOG(ERR, "Cannot add VFIO group %d to container, error %i (%s)",
+				grp->group_num, errno, strerror(errno));
+			return -1;
+		}
+	} else {
+		/* group is already added to a container - this should not happen */
+		EAL_LOG(ERR, "VFIO group %d is already assigned to a container", grp->group_num);
+		return -1;
+	}
+	return 0;
+}
+
+int
+vfio_group_setup_iommu(struct vfio_container *cfg)
+{
+	const struct vfio_iommu_ops *ops;
+
+	/*
+	 * Setting IOMMU type is a per-container operation (via ioctl on container fd), but the ops
+	 * structure is global and shared across all containers.
+	 *
+	 * For secondary processes with default container, we sync ops from primary. For all other
+	 * cases (primary, or secondary with custom containers), we set IOMMU type on the container
+	 * which also discovers the ops.
+	 */
+	if (vfio_container_is_default(cfg) && rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		/* Secondary process: sync ops from primary for default container */
+		ops = vfio_group_sync_iommu_ops();
+		if (ops == NULL)
+			return -1;
+	} else {
+		/* Primary process OR custom container: set IOMMU type on container */
+		ops = vfio_group_set_iommu_type(cfg->container_fd);
+		if (ops == NULL)
+			return -1;
+	}
+
+	/* Set or verify global ops */
+	if (vfio_global_cfg.ops == NULL) {
+		vfio_global_cfg.ops = ops;
+		EAL_LOG(INFO, "IOMMU type set to %d (%s)", ops->type_id, ops->name);
+	} else if (vfio_global_cfg.ops != ops) {
+		/* This shouldn't happen on the same machine, but log it */
+		EAL_LOG(WARNING, "Container has different IOMMU type (%d - %s) "
+			"than previously set (%d - %s)",
+			ops->type_id, ops->name, vfio_global_cfg.ops->type_id,
+			vfio_global_cfg.ops->name);
+	}
+
+	return 0;
+}
+
+int
+vfio_group_setup_device_fd(const char *dev_addr, struct vfio_group *grp, struct vfio_device *dev)
+{
+	rte_uuid_t vf_token;
+	int fd;
+
+	rte_eal_vfio_get_vf_token(vf_token);
+
+	if (!rte_uuid_is_null(vf_token)) {
+		char vf_token_str[RTE_UUID_STRLEN];
+		char devaddr[PATH_MAX];
+
+		rte_uuid_unparse(vf_token, vf_token_str, sizeof(vf_token_str));
+		snprintf(devaddr, sizeof(devaddr), "%s vf_token=%s", dev_addr, vf_token_str);
+
+		fd = ioctl(grp->fd, VFIO_GROUP_GET_DEVICE_FD, devaddr);
+		if (fd >= 0)
+			goto out;
+	}
+	/* get a file descriptor for the device */
+	fd = ioctl(grp->fd, VFIO_GROUP_GET_DEVICE_FD, dev_addr);
+	if (fd < 0) {
+		/*
+		 * if we cannot get a device fd, this implies a problem with the VFIO group or the
+		 * container not having IOMMU configured.
+		 */
+		EAL_LOG(WARNING, "Getting a vfio_dev_fd for %s failed", dev_addr);
+		return -1;
+	}
+out:
+	dev->fd = fd;
+	/* store backreference to group */
+	dev->group = grp->group_num;
+	/* increment number of devices in group */
+	grp->n_devices++;
+	return 0;
+}
+
+int
+vfio_group_get_num(const char *sysfs_base, const char *dev_addr, int *iommu_group_num)
+{
+	char linkname[PATH_MAX];
+	char filename[PATH_MAX];
+	char *tok[16], *group_tok, *end;
+	int ret, group_num;
+
+	memset(linkname, 0, sizeof(linkname));
+	memset(filename, 0, sizeof(filename));
+
+	/* try to find out IOMMU group for this device */
+	snprintf(linkname, sizeof(linkname), "%s/%s/iommu_group", sysfs_base, dev_addr);
+
+	ret = readlink(linkname, filename, sizeof(filename));
+
+	/* if the link doesn't exist, no VFIO for us */
+	if (ret < 0)
+		return 0;
+
+	ret = rte_strsplit(filename, sizeof(filename), tok, RTE_DIM(tok), '/');
+	if (ret <= 0) {
+		EAL_LOG(ERR, "%s cannot get IOMMU group", dev_addr);
+		return -1;
+	}
+
+	/* IOMMU group is always the last token */
+	errno = 0;
+	group_tok = tok[ret - 1];
+	end = group_tok;
+	group_num = strtol(group_tok, &end, 10);
+	if (end == group_tok || *end != '\0' || errno != 0) {
+		EAL_LOG(ERR, "%s error parsing IOMMU number!", dev_addr);
+		return -1;
+	}
+	*iommu_group_num = group_num;
+
+	return 1;
 }

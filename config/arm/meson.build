@@ -146,6 +146,7 @@ implementer_cavium = {
     'description': 'Cavium',
     'flags': [
         ['RTE_MAX_VFIO_GROUPS', 128],
+        ['RTE_MAX_VFIO_DEVICES', 256],
         ['RTE_MAX_LCORE', 96],
         ['RTE_MAX_NUMA_NODES', 2]
     ],
