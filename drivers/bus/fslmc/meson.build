@@ -30,4 +30,3 @@ sources = files(
 )
 
 includes += include_directories('mc', 'qbman/include', 'portal')
-includes += include_directories('../../../lib/eal/linux')
