@@ -3529,10 +3529,17 @@ mlx5_os_mac_addr_flush(struct rte_eth_dev *dev)
 {
 	struct mlx5_priv *priv = dev->data->dev_private;
 	const int vf = priv->sh->dev_cap.vf;
+	int i;
 
-	mlx5_nl_mac_addr_flush(priv->nl_socket_route, mlx5_ifindex(dev),
-			       dev->data->mac_addrs,
-			       MLX5_MAX_MAC_ADDRESSES, priv->mac_own, vf);
+	for (i = MLX5_MAX_MAC_ADDRESSES - 1; i >= 0; --i) {
+		if (BITFIELD_ISSET(priv->mac_own, i)) {
+			if (vf)
+				mlx5_nl_mac_addr_remove(priv->nl_socket_route,
+							mlx5_ifindex(dev),
+							&dev->data->mac_addrs[i], i);
+			BITFIELD_RESET(priv->mac_own, i);
+		}
+	}
 }
 
 static bool
