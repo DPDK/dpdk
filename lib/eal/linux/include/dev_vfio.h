@@ -48,43 +48,46 @@ enum dev_vfio_module {
 
 /**
  * @internal
- * Setup vfio_cfg for the device identified by its address.
- * It discovers the configured I/O MMU groups or sets a new one for the device.
- * If a new groups is assigned, the DMA mapping is performed.
+ * Set up a device managed by VFIO driver.
+ *
+ * If the device was not previously assigned to a container using
+ * `dev_vfio_container_assign_device()`, default container will be used.
  *
  * @param sysfs_base
- *   sysfs path prefix.
- *
+ *   Sysfs path prefix.
  * @param dev_addr
- *   device location.
- *
+ *   Device identifier.
  * @param vfio_dev_fd
- *   Pointer to VFIO fd, will be set to the opened device fd on success.
+ *   Pointer to where VFIO device file descriptor will be stored.
  *
  * @return
  *   0 on success.
- *   <0 on failure.
  *   >1 if the device cannot be managed this way.
+ *   <0 on failure, rte_errno is set.
+ *
+ * Possible rte_errno values include:
+ * - EINVAL  - Invalid parameters.
  */
 __rte_internal
 int dev_vfio_setup_device(const char *sysfs_base, const char *dev_addr, int *vfio_dev_fd);
 
 /**
  * @internal
- * Release a device mapped to a VFIO-managed I/O MMU group.
+ * Release a device managed by VFIO driver.
  *
  * @param sysfs_base
- *   sysfs path prefix.
- *
+ *   Sysfs path prefix.
  * @param dev_addr
- *   device location.
- *
+ *   Device identifier.
  * @param fd
- *   VFIO fd.
+ *   A previously set up VFIO file descriptor.
  *
  * @return
  *   0 on success.
- *   <0 on failure.
+ *   <0 on failure, rte_errno is set.
+ *
+ * Possible rte_errno values include:
+ * - EINVAL  - Invalid parameters.
  */
 __rte_internal
 int dev_vfio_release_device(const char *sysfs_base, const char *dev_addr, int fd);
@@ -149,18 +152,19 @@ int dev_vfio_noiommu_is_enabled(void);
  * Parse IOMMU group number for a device.
  *
  * @param sysfs_base
- *   sysfs path prefix.
- *
+ *   Sysfs path prefix.
  * @param dev_addr
- *   device location.
- *
+ *   Device identifier.
  * @param iommu_group_num
- *   iommu group number
+ *   Pointer to where IOMMU group number will be stored.
  *
  * @return
  *  >0 on success
  *   0 for non-existent group or VFIO
- *  <0 for errors
+ *   <0 on failure, rte_errno is set.
+ *
+ * Possible rte_errno values include:
+ * - EINVAL  - Invalid parameters.
  */
 __rte_internal
 int
@@ -181,7 +185,10 @@ dev_vfio_get_group_num(const char *sysfs_base, const char *dev_addr, int *iommu_
  *
  * @return
  *   0 on success.
- *   <0 on failure.
+ *   <0 on failure, rte_errno is set.
+ *
+ * Possible rte_errno values include:
+ * - EINVAL  - Invalid parameters.
  */
 __rte_internal
 int
@@ -251,7 +258,10 @@ dev_vfio_container_destroy(int container_fd);
  *
  * @return
  *   0 on success.
- *   <0 on failure.
+ *   <0 on failure, rte_errno is set.
+ *
+ * Possible rte_errno values include:
+ * - EINVAL  - Invalid container file descriptor.
  */
 __rte_internal
 int
@@ -263,21 +273,20 @@ dev_vfio_container_assign_device(int vfio_container_fd, const char *sysfs_base,
  * Perform DMA mapping for devices in a container.
  *
  * @param container_fd
- *   the specified container fd. Use DEV_VFIO_DEFAULT_CONTAINER_FD to
- *   use the default container.
- *
+ *   Container file descriptor. Use DEV_VFIO_DEFAULT_CONTAINER_FD to use the default container.
  * @param vaddr
  *   Starting virtual address of memory to be mapped.
- *
  * @param iova
  *   Starting IOVA address of memory to be mapped.
- *
  * @param len
  *   Length of memory segment being mapped.
  *
  * @return
- *    0 if successful
- *   <0 if failed
+ *   0 on success.
+ *   <0 on failure, rte_errno is set.
+ *
+ * Possible rte_errno values include:
+ * - EINVAL  - Invalid parameters.
  */
 __rte_internal
 int
@@ -288,21 +297,20 @@ dev_vfio_container_dma_map(int container_fd, uint64_t vaddr, uint64_t iova, uint
  * Perform DMA unmapping for devices in a container.
  *
  * @param container_fd
- *   the specified container fd. Use DEV_VFIO_DEFAULT_CONTAINER_FD to
- *   use the default container.
- *
+ *   Container file descriptor. Use DEV_VFIO_DEFAULT_CONTAINER_FD to use the default container.
  * @param vaddr
  *   Starting virtual address of memory to be unmapped.
- *
  * @param iova
  *   Starting IOVA address of memory to be unmapped.
- *
  * @param len
  *   Length of memory segment being unmapped.
  *
  * @return
- *    0 if successful
- *   <0 if failed
+ *   0 on success.
+ *   <0 on failure, rte_errno is set.
+ *
+ * Possible rte_errno values include:
+ * - EINVAL  - Invalid parameters.
  */
 __rte_internal
 int

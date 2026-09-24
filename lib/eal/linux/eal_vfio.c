@@ -29,6 +29,12 @@
 
 #define VFIO_MEM_EVENT_CLB_NAME "vfio_mem_event_clb"
 
+/*
+ * rte_errno convention:
+ *
+ * - EINVAL: invalid parameters
+ */
+
 /* per-process VFIO config */
 static struct vfio_container vfio_containers[RTE_MAX_VFIO_CONTAINERS];
 
@@ -755,6 +761,11 @@ dev_vfio_setup_device(const char *sysfs_base, const char *dev_addr, int *vfio_de
 	const struct internal_config *internal_conf =
 		eal_get_internal_configuration();
 
+	if (sysfs_base == NULL || dev_addr == NULL || vfio_dev_fd == NULL) {
+		rte_errno = EINVAL;
+		return -1;
+	}
+
 	if (!vfio_enabled)
 		return -1;
 
@@ -986,6 +997,11 @@ dev_vfio_release_device(const char *sysfs_base, const char *dev_addr,
 	int iommu_group_num;
 	int ret;
 
+	if (sysfs_base == NULL || dev_addr == NULL) {
+		rte_errno = EINVAL;
+		return -1;
+	}
+
 	if (!vfio_enabled)
 		return -1;
 
@@ -1177,10 +1193,15 @@ dev_vfio_get_device_info(int vfio_dev_fd, struct vfio_device_info *device_info)
 {
 	int ret;
 
+	if (device_info == NULL) {
+		rte_errno = EINVAL;
+		return -1;
+	}
+
 	if (!vfio_enabled)
 		return -1;
 
-	if (device_info == NULL || vfio_dev_fd < 0)
+	if (vfio_dev_fd < 0)
 		return -1;
 
 	ret = ioctl(vfio_dev_fd, VFIO_DEVICE_GET_INFO, device_info);
@@ -1290,6 +1311,11 @@ dev_vfio_get_group_num(const char *sysfs_base,
 	char filename[PATH_MAX];
 	char *tok[16], *group_tok, *end;
 	int ret;
+
+	if (sysfs_base == NULL || dev_addr == NULL || iommu_group_num == NULL) {
+		rte_errno = EINVAL;
+		return -1;
+	}
 
 	if (!vfio_enabled)
 		return -1;
@@ -1609,6 +1635,11 @@ dev_vfio_container_assign_device(int vfio_container_fd, const char *sysfs_base,
 {
 	int iommu_group_num;
 	int ret;
+
+	if (sysfs_base == NULL || dev_addr == NULL) {
+		rte_errno = EINVAL;
+		return -1;
+	}
 
 	ret = dev_vfio_get_group_num(sysfs_base, dev_addr, &iommu_group_num);
 	if (ret < 0) {
