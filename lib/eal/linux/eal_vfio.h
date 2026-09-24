@@ -9,6 +9,8 @@
 
 #include <stdint.h>
 
+#include <dev_vfio.h>
+
 /* hot plug/unplug of VFIO groups may cause all DMA maps to be dropped. we can
  * recreate the mappings for DPDK segments, but we cannot do so for memory that
  * was registered by the user themselves, so we need to store the user mappings
@@ -78,6 +80,7 @@ int vfio_open_container_fd(bool mp_request);
 /* global configuration */
 struct vfio_config {
 	struct vfio_container *default_cfg;
+	enum dev_vfio_iova_mode iova_mode;
 	const struct vfio_iommu_ops *ops;
 };
 
@@ -105,6 +108,7 @@ void vfio_mp_sync_cleanup(void);
 #define VFIO_SOCKET_REQ_CONTAINER 0x100
 #define VFIO_SOCKET_REQ_GROUP 0x200
 #define VFIO_SOCKET_REQ_IOMMU_TYPE 0x400
+#define VFIO_SOCKET_REQ_IOVA_MODE 0x800
 #define VFIO_SOCKET_OK 0x0
 #define VFIO_SOCKET_NO_FD 0x1
 #define VFIO_SOCKET_ERR 0xFF
@@ -115,6 +119,7 @@ struct vfio_mp_param {
 	union {
 		int group_num;
 		int iommu_type_id;
+		enum dev_vfio_iova_mode iova_mode;
 	};
 };
 

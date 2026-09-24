@@ -74,6 +74,11 @@ vfio_mp_primary(const struct rte_mp_msg *msg, const void *peer)
 		}
 		break;
 	}
+	case VFIO_SOCKET_REQ_IOVA_MODE:
+		r->req = VFIO_SOCKET_REQ_IOVA_MODE;
+		r->iova_mode = vfio_global_cfg.iova_mode;
+		r->result = VFIO_SOCKET_OK;
+		break;
 	default:
 		EAL_LOG(ERR, "vfio received invalid message!");
 		return -1;

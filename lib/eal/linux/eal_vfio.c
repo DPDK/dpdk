@@ -40,6 +40,7 @@
 static struct vfio_container vfio_containers[RTE_MAX_VFIO_CONTAINERS];
 
 struct vfio_config vfio_global_cfg = {
+	.iova_mode = DEV_VFIO_IOVA_MODE_UNKNOWN,
 	.default_cfg = &vfio_containers[0]
 };
 
@@ -339,6 +340,36 @@ compact_user_maps(struct vfio_user_mem_maps *user_mem_maps)
 	 */
 	qsort(user_mem_maps->maps, RTE_DIM(user_mem_maps->maps), sizeof(user_mem_maps->maps[0]),
 		user_mem_map_cmp);
+}
+
+#define VFIO_NOIOMMU_MODE_PATH "/sys/module/vfio/parameters/enable_unsafe_noiommu_mode"
+
+static int
+vfio_noiommu_is_enabled(void)
+{
+	int fd;
+	ssize_t cnt;
+	char c;
+
+	fd = open(VFIO_NOIOMMU_MODE_PATH, O_RDONLY);
+	if (fd < 0) {
+		if (errno != ENOENT) {
+			EAL_LOG(ERR, "Cannot open VFIO noiommu file %i (%s)", errno,
+				strerror(errno));
+			return -1;
+		}
+		return 0;
+	}
+
+	cnt = read(fd, &c, 1);
+	close(fd);
+	if (cnt != 1) {
+		EAL_LOG(ERR, "Unable to read from VFIO noiommu file %i (%s)", errno,
+			strerror(errno));
+		return -1;
+	}
+
+	return c == 'Y';
 }
 
 static int
@@ -1072,6 +1103,46 @@ out:
 	return ret;
 }
 
+static int
+vfio_sync_iova_mode(enum dev_vfio_iova_mode *iova_mode)
+{
+	struct vfio_mp_param *p;
+	struct rte_mp_msg mp_req = {0};
+	struct rte_mp_reply mp_reply = {0};
+	struct timespec ts = {5, 0};
+
+	rte_strscpy(mp_req.name, EAL_VFIO_MP, sizeof(mp_req.name));
+	mp_req.len_param = sizeof(*p);
+	mp_req.num_fds = 0;
+	p = (struct vfio_mp_param *)mp_req.param;
+	p->req = VFIO_SOCKET_REQ_IOVA_MODE;
+
+	if (rte_mp_request_sync(&mp_req, &mp_reply, &ts) == 0 && mp_reply.nb_received == 1) {
+		struct rte_mp_msg *mp_rep = &mp_reply.msgs[0];
+
+		p = (struct vfio_mp_param *)mp_rep->param;
+		if (p->result == VFIO_SOCKET_OK) {
+			*iova_mode = p->iova_mode;
+			free(mp_reply.msgs);
+			return 0;
+		}
+	}
+
+	free(mp_reply.msgs);
+	EAL_LOG(ERR, "Cannot request VFIO IOMMU mode");
+	return -1;
+}
+
+static const char *
+vfio_iova_mode_to_str(enum dev_vfio_iova_mode iova_mode)
+{
+	switch (iova_mode) {
+	case DEV_VFIO_IOVA_MODE_VA: return "VA";
+	case DEV_VFIO_IOVA_MODE_PA: return "PA";
+	default: return "unknown";
+	}
+}
+
 RTE_EXPORT_INTERNAL_SYMBOL(dev_vfio_enable)
 int
 dev_vfio_enable(void)
@@ -1141,8 +1212,25 @@ dev_vfio_enable(void)
 
 	/* check if we have VFIO driver enabled */
 	if (vfio_global_cfg.default_cfg->container_fd != -1) {
-		EAL_LOG(INFO, "VFIO support initialized");
 		vfio_enabled = true;
+
+		if (internal_conf->process_type == RTE_PROC_PRIMARY) {
+			int ret = vfio_noiommu_is_enabled();
+			if (ret < 0) {
+				EAL_LOG(ERR, "Cannot determine IOVA mode");
+				vfio_global_cfg.iova_mode = DEV_VFIO_IOVA_MODE_UNKNOWN;
+			} else if (ret == 1) {
+				vfio_global_cfg.iova_mode = DEV_VFIO_IOVA_MODE_PA;
+			} else {
+				vfio_global_cfg.iova_mode = DEV_VFIO_IOVA_MODE_VA;
+			}
+		} else {
+			if (vfio_sync_iova_mode(&vfio_global_cfg.iova_mode) < 0)
+				vfio_global_cfg.iova_mode = DEV_VFIO_IOVA_MODE_UNKNOWN;
+		}
+
+		EAL_LOG(NOTICE, "VFIO support initialized: IOVA as %s",
+			vfio_iova_mode_to_str(vfio_global_cfg.iova_mode));
 	} else {
 		EAL_LOG(NOTICE, "VFIO support could not be initialized");
 	}
@@ -1522,39 +1610,6 @@ out:
 	return ret;
 }
 
-RTE_EXPORT_INTERNAL_SYMBOL(dev_vfio_noiommu_is_enabled)
-int
-dev_vfio_noiommu_is_enabled(void)
-{
-	int fd;
-	ssize_t cnt;
-	char c;
-
-	fd = open(DEV_VFIO_NOIOMMU_MODE, O_RDONLY);
-	if (fd < 0) {
-		if (errno != ENOENT) {
-			EAL_LOG(ERR, "Cannot open VFIO noiommu file "
-					"%i (%s)", errno, strerror(errno));
-			return -1;
-		}
-		/*
-		 * else the file does not exists
-		 * i.e. noiommu is not enabled
-		 */
-		return 0;
-	}
-
-	cnt = read(fd, &c, 1);
-	close(fd);
-	if (cnt != 1) {
-		EAL_LOG(ERR, "Unable to read from VFIO noiommu file "
-				"%i (%s)", errno, strerror(errno));
-		return -1;
-	}
-
-	return c == 'Y';
-}
-
 RTE_EXPORT_INTERNAL_SYMBOL(dev_vfio_container_create)
 int
 dev_vfio_container_create(void)
@@ -1800,6 +1855,13 @@ vfio_cleanup_config(struct vfio_container *cfg)
 	memset(cfg->mem_maps.maps, 0, sizeof(cfg->mem_maps.maps));
 
 	return 0;
+}
+
+RTE_EXPORT_INTERNAL_SYMBOL(dev_vfio_get_iova_mode)
+enum dev_vfio_iova_mode
+dev_vfio_get_iova_mode(void)
+{
+	return vfio_global_cfg.iova_mode;
 }
 
 RTE_EXPORT_INTERNAL_SYMBOL(dev_vfio_cleanup)

@@ -500,7 +500,8 @@ rte_dpaa2_get_iommu_class(void)
 		return RTE_IOVA_DC;
 
 	/* check if all devices on the bus support Virtual addressing or not */
-	if (fslmc_all_device_support_iova() != 0 && dev_vfio_noiommu_is_enabled() == 0)
+	if (fslmc_all_device_support_iova() != 0 &&
+			dev_vfio_get_iova_mode() == DEV_VFIO_IOVA_MODE_VA)
 		return RTE_IOVA_VA;
 
 	return RTE_IOVA_PA;

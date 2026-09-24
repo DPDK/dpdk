@@ -27,8 +27,6 @@ extern "C" {
 #define DEV_VFIO_CONTAINER_PATH "/dev/vfio/vfio"
 #define DEV_VFIO_GROUP_FMT "/dev/vfio/%u"
 #define DEV_VFIO_NOIOMMU_GROUP_FMT "/dev/vfio/noiommu-%u"
-#define DEV_VFIO_NOIOMMU_MODE      \
-	"/sys/module/vfio/parameters/enable_unsafe_noiommu_mode"
 
 /* we don't need an actual definition, only pointer is used */
 struct vfio_device_info;
@@ -44,6 +42,22 @@ struct vfio_device_info;
 enum dev_vfio_module {
 	DEV_VFIO_MODULE_VFIO,     /**< Core VFIO module. */
 	DEV_VFIO_MODULE_VFIO_PCI, /**< VFIO PCI module. */
+};
+
+/**
+ * @enum dev_vfio_iova_mode
+ * IOVA modes.
+ *
+ * These modes describe IOVA remapping capability.
+ *
+ * - DEV_VFIO_IOVA_MODE_UNKNOWN: IOVA mode is unknown.
+ * - DEV_VFIO_IOVA_MODE_VA: IOVA addresses can be remapped.
+ * - DEV_VFIO_IOVA_MODE_PA: IOVA addresses cannot be remapped.
+ */
+enum dev_vfio_iova_mode {
+	DEV_VFIO_IOVA_MODE_UNKNOWN = 0, /**< IOVA mode not determined */
+	DEV_VFIO_IOVA_MODE_VA,          /**< IOVA addresses can be remapped */
+	DEV_VFIO_IOVA_MODE_PA,          /**< IOVA addresses cannot be remapped */
 };
 
 /**
@@ -136,15 +150,14 @@ int dev_vfio_is_enabled(void);
 
 /**
  * @internal
- * Whether VFIO NOIOMMU mode is enabled.
+ * Get current VFIO IOVA mode.
  *
  * @return
- *   1 if true.
- *   0 if false.
- *   <0 for errors.
+ *   VFIO IOVA mode currently in use.
  */
 __rte_internal
-int dev_vfio_noiommu_is_enabled(void);
+enum dev_vfio_iova_mode
+dev_vfio_get_iova_mode(void);
 
 /**
  * @internal
