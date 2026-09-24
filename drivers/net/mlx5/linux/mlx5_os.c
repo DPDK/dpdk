@@ -325,6 +325,16 @@ mlx5_os_capabilities_prepare(struct mlx5_dev_ctx_shared *sh)
 	DRV_LOG(WARNING,
 		"Tunnel offloading disabled due to old OFED/rdma-core version");
 #endif
+	if (hca_attr->log_max_current_uc_list > 0)
+		sh->dev_cap.max_uc_mac_addrs = RTE_BIT32(hca_attr->log_max_current_uc_list);
+	else
+		sh->dev_cap.max_uc_mac_addrs = MLX5_MAX_UC_MAC_ADDRESSES;
+	if (hca_attr->log_max_current_mc_list > 0)
+		sh->dev_cap.max_mc_mac_addrs = RTE_BIT32(hca_attr->log_max_current_mc_list);
+	else
+		sh->dev_cap.max_mc_mac_addrs = MLX5_MAX_MC_MAC_ADDRESSES;
+	sh->dev_cap.max_mac_addrs =
+		sh->dev_cap.max_uc_mac_addrs + sh->dev_cap.max_mc_mac_addrs;
 	if (!sh->cdev->config.devx)
 		return 0;
 	/* Check capabilities for Packet Pacing. */
@@ -1464,6 +1474,22 @@ err_secondary:
 	priv->sh = sh;
 	priv->dev_port = spawn->phys_port;
 	priv->pci_dev = spawn->pci_dev;
+	priv->mac = mlx5_malloc(MLX5_MEM_ZERO | MLX5_MEM_RTE,
+				sizeof(*priv->mac) * sh->dev_cap.max_mac_addrs,
+				RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+	if (priv->mac == NULL) {
+		DRV_LOG(ERR, "Failed to allocate MAC address array.");
+		err = ENOMEM;
+		goto error;
+	}
+	priv->mac_own = mlx5_malloc(MLX5_MEM_ZERO | MLX5_MEM_RTE,
+				    RTE_BITSET_SIZE(sh->dev_cap.max_mac_addrs),
+				    RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+	if (priv->mac_own == NULL) {
+		DRV_LOG(ERR, "Failed to allocate MAC ownership bitmap.");
+		err = ENOMEM;
+		goto error;
+	}
 	/* Some internal functions rely on Netlink sockets, open them now. */
 	priv->nl_socket_rdma = nl_rdma;
 	priv->nl_socket_route =	mlx5_nl_init(NETLINK_ROUTE, 0);
@@ -1762,8 +1788,8 @@ err_secondary:
 		mlx5_nl_mac_addr_sync(priv->nl_socket_route,
 				      mlx5_ifindex(eth_dev),
 				      eth_dev->data->mac_addrs,
-				      MLX5_MAX_UC_MAC_ADDRESSES,
-				      MLX5_MAX_MAC_ADDRESSES);
+				      sh->dev_cap.max_uc_mac_addrs,
+				      sh->dev_cap.max_mac_addrs);
 	priv->ctrl_flows = 0;
 	rte_spinlock_init(&priv->flow_list_lock);
 	TAILQ_INIT(&priv->flow_meters);
@@ -1963,17 +1989,16 @@ error:
 			mlx5_flex_item_port_cleanup(eth_dev);
 		mlx5_free(priv->ext_rxqs);
 		mlx5_free(priv->ext_txqs);
+		mlx5_free(priv->mac);
+		mlx5_free(priv->mac_own);
 		mlx5_free(priv);
-		if (eth_dev != NULL)
+		if (eth_dev != NULL) {
+			eth_dev->data->mac_addrs = NULL;
 			eth_dev->data->dev_private = NULL;
+		}
 	}
-	if (eth_dev != NULL) {
-		/* mac_addrs must not be freed alone because part of
-		 * dev_private
-		 **/
-		eth_dev->data->mac_addrs = NULL;
+	if (eth_dev != NULL)
 		rte_eth_dev_release_port(eth_dev);
-	}
 	if (sh)
 		mlx5_free_shared_dev_ctx(sh);
 	if (nl_rdma >= 0)
@@ -2979,8 +3004,6 @@ mlx5_os_pci_probe_pf(struct mlx5_common_device *cdev,
 			if (!list[i].eth_dev)
 				continue;
 			mlx5_dev_close(list[i].eth_dev);
-			/* mac_addrs must not be freed because in dev_private */
-			list[i].eth_dev->data->mac_addrs = NULL;
 			claim_zero(rte_eth_dev_release_port(list[i].eth_dev));
 		}
 		/* Restore original error. */
@@ -3531,7 +3554,7 @@ mlx5_os_mac_addr_flush(struct rte_eth_dev *dev)
 	const int vf = priv->sh->dev_cap.vf;
 	int i;
 
-	for (i = MLX5_MAX_MAC_ADDRESSES - 1; i >= 0; --i) {
+	for (i = priv->sh->dev_cap.max_mac_addrs - 1; i >= 0; --i) {
 		if (rte_bitset_test(priv->mac_own, i)) {
 			if (vf)
 				mlx5_nl_mac_addr_remove(priv->nl_socket_route,

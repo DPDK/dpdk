@@ -87,9 +87,6 @@
 #define MLX5_MAX_UC_MAC_ADDRESSES 128
 /* Maximum number of simultaneous Multicast MAC addresses. */
 #define MLX5_MAX_MC_MAC_ADDRESSES 128
-/* Maximum number of simultaneous MAC addresses. */
-#define MLX5_MAX_MAC_ADDRESSES \
-	(MLX5_MAX_UC_MAC_ADDRESSES + MLX5_MAX_MC_MAC_ADDRESSES)
 
 enum mlx5_ipool_index {
 #if defined(HAVE_IBV_FLOW_DV_SUPPORT) || !defined(HAVE_INFINIBAND_VERBS_H)
@@ -217,6 +214,9 @@ struct mlx5_dev_cap {
 	} mprq; /* Capability for Multi-Packet RQ. */
 	char fw_ver[64]; /* Firmware version of this device. */
 	struct flow_hw_port_info esw_info; /* E-switch manager reg_c0. */
+	uint32_t max_uc_mac_addrs; /* Maximum unicast MAC addresses. */
+	uint32_t max_mc_mac_addrs; /* Maximum multicast MAC addresses. */
+	uint32_t max_mac_addrs; /* Total maximum MAC addresses. */
 };
 
 #define MLX5_MPESW_PORT_INVALID (-1)
@@ -2018,9 +2018,8 @@ struct mlx5_priv {
 	struct mlx5_dev_ctx_shared *sh; /* Shared device context. */
 	uint32_t dev_port; /* Device port number. */
 	struct rte_pci_device *pci_dev; /* Backend PCI device. */
-	struct rte_ether_addr mac[MLX5_MAX_MAC_ADDRESSES]; /* MAC addresses. */
-	RTE_BITSET_DECLARE(mac_own, MLX5_MAX_MAC_ADDRESSES);
-	/* Bit-field of MAC addresses owned by the PMD. */
+	struct rte_ether_addr *mac; /* MAC addresses. */
+	uint64_t *mac_own; /* Bit-field of MAC addresses owned by the PMD. */
 	uint16_t vlan_filter[MLX5_MAX_VLAN_IDS]; /* VLAN filters table. */
 	unsigned int vlan_filter_n; /* Number of configured VLAN filters. */
 	/* Device properties. */
