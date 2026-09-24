@@ -206,6 +206,11 @@ New Features
   when using ``RTE_UNCORE_PM_ENV_AUTO_DETECT``,
   instead of defaulting only to the Intel uncore driver.
 
+* **Updated NVIDIA mlx5 ethernet driver.**
+
+  * Increased the maximum number of secondary unicast MAC addresses from 128 to up to 4096
+    (depending on devlink configuration on the associated kernel netdevice).
+
 
 Removed Items
 -------------
