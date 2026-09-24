@@ -171,9 +171,10 @@
 
 /* Add/remove MAC address through Netlink */
 struct mlx5_nl_mac_addr {
-	struct rte_ether_addr (*mac)[];
+	struct rte_ether_addr **mac;
 	/**< MAC address handled by the device. */
 	int mac_n; /**< Number of addresses in the array. */
+	int max_macs; /**< Size of the array. */
 };
 
 static RTE_ATOMIC(uint32_t) atomic_sn;
@@ -475,7 +476,7 @@ mlx5_nl_mac_addr_cb(struct nlmsghdr *nh, void *arg)
 	     RTA_OK(attribute, len);
 	     attribute = RTA_NEXT(attribute, len)) {
 		if (attribute->rta_type == NDA_LLADDR) {
-			if (data->mac_n == MLX5_MAX_MAC_ADDRESSES) {
+			if (data->mac_n == data->max_macs) {
 				DRV_LOG(WARNING,
 					"not enough room to finalize the"
 					" request");
@@ -505,16 +506,16 @@ mlx5_nl_mac_addr_cb(struct nlmsghdr *nh, void *arg)
  *   Net device interface index.
  * @param mac[out]
  *   Pointer to the array table of MAC addresses to fill.
- *   Its size should be of MLX5_MAX_MAC_ADDRESSES.
- * @param mac_n[out]
- *   Number of entries filled in MAC array.
+ * @param mac_n[in,out]
+ *   Size of the MAC array on input.
+ *   Number of entries filled in MAC array on output.
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
 mlx5_nl_mac_addr_list(int nlsk_fd, unsigned int iface_idx,
-		      struct rte_ether_addr (*mac)[], int *mac_n)
+		      struct rte_ether_addr **mac, int *mac_n)
 {
 	struct {
 		struct nlmsghdr	hdr;
@@ -533,6 +534,7 @@ mlx5_nl_mac_addr_list(int nlsk_fd, unsigned int iface_idx,
 	struct mlx5_nl_mac_addr data = {
 		.mac = mac,
 		.mac_n = 0,
+		.max_macs = *mac_n,
 	};
 	uint32_t sn = MLX5_NL_SN_GENERATE;
 	int ret;
@@ -766,23 +768,28 @@ mlx5_nl_mac_addr_remove(int nlsk_fd, unsigned int iface_idx,
  *   Net device interface index.
  * @param mac_addrs
  *   Mac addresses array to sync.
+ * @param uc_n
+ *   Number of UC entries in @p mac_addrs.
  * @param n
  *   @p mac_addrs array size.
  */
 RTE_EXPORT_INTERNAL_SYMBOL(mlx5_nl_mac_addr_sync)
 void
 mlx5_nl_mac_addr_sync(int nlsk_fd, unsigned int iface_idx,
-		      struct rte_ether_addr *mac_addrs, int n)
+		      struct rte_ether_addr *mac_addrs, int uc_n, int n)
 {
-	struct rte_ether_addr macs[n];
-	int macs_n = 0;
+	struct rte_ether_addr *macs = NULL;
+	int macs_n = n;
 	int i;
 	int ret;
 
-	memset(macs, 0, n * sizeof(macs[0]));
+	macs = calloc(n, sizeof(macs[0]));
+	if (macs == NULL)
+		goto out;
+
 	ret = mlx5_nl_mac_addr_list(nlsk_fd, iface_idx, &macs, &macs_n);
 	if (ret)
-		return;
+		goto out;
 	for (i = 0; i != macs_n; ++i) {
 		int j;
 
@@ -794,7 +801,7 @@ mlx5_nl_mac_addr_sync(int nlsk_fd, unsigned int iface_idx,
 			continue;
 		if (rte_is_multicast_ether_addr(&macs[i])) {
 			/* Find the first entry available. */
-			for (j = MLX5_MAX_UC_MAC_ADDRESSES; j != n; ++j) {
+			for (j = uc_n; j != n; ++j) {
 				if (rte_is_zero_ether_addr(&mac_addrs[j])) {
 					mac_addrs[j] = macs[i];
 					break;
@@ -802,7 +809,7 @@ mlx5_nl_mac_addr_sync(int nlsk_fd, unsigned int iface_idx,
 			}
 		} else {
 			/* Find the first entry available. */
-			for (j = 0; j != MLX5_MAX_UC_MAC_ADDRESSES; ++j) {
+			for (j = 0; j != uc_n; ++j) {
 				if (rte_is_zero_ether_addr(&mac_addrs[j])) {
 					mac_addrs[j] = macs[i];
 					break;
@@ -810,6 +817,9 @@ mlx5_nl_mac_addr_sync(int nlsk_fd, unsigned int iface_idx,
 			}
 		}
 	}
+
+out:
+	free(macs);
 }
 
 /**

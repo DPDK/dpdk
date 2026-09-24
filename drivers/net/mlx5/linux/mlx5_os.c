@@ -1762,6 +1762,7 @@ err_secondary:
 		mlx5_nl_mac_addr_sync(priv->nl_socket_route,
 				      mlx5_ifindex(eth_dev),
 				      eth_dev->data->mac_addrs,
+				      MLX5_MAX_UC_MAC_ADDRESSES,
 				      MLX5_MAX_MAC_ADDRESSES);
 	priv->ctrl_flows = 0;
 	rte_spinlock_init(&priv->flow_list_lock);
