@@ -365,6 +365,9 @@ API Changes
   ``rte_reorder_seqn``, ``rte_reorder_drain_up_to_seqn``,
   ``rte_reorder_min_seqn_set`` and ``rte_reorder_memory_footprint_get``.
 
+* vhost: Removed ``get_vfio_group_fd`` from ``struct rte_vdpa_dev_ops``.
+  vDPA drivers should now use the VFIO container device assignment API.
+
 * telemetry: Promoted the following API from experimental to stable:
 
   * ``rte_tel_data_add_array_uint_hex``
