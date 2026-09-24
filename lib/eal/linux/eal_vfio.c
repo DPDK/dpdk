@@ -49,7 +49,6 @@ struct user_mem_maps {
 };
 
 struct vfio_config {
-	int vfio_enabled;
 	int vfio_container_fd;
 	int vfio_active_groups;
 	const struct vfio_iommu_type *vfio_iommu_type;
@@ -60,6 +59,9 @@ struct vfio_config {
 /* per-process VFIO config */
 static struct vfio_config vfio_cfgs[RTE_MAX_VFIO_CONTAINERS];
 static struct vfio_config *default_vfio_cfg = &vfio_cfgs[0];
+
+/* whether VFIO is enabled (usable) in this process */
+static bool vfio_enabled;
 
 static int
 vfio_check_module(enum dev_vfio_module module)
@@ -583,6 +585,9 @@ dev_vfio_get_group_fd(int iommu_group_num)
 {
 	struct vfio_config *vfio_cfg;
 
+	if (!vfio_enabled)
+		return -1;
+
 	/* get the vfio_config it belongs to */
 	vfio_cfg = get_vfio_cfg_by_group_num(iommu_group_num);
 	vfio_cfg = vfio_cfg ? vfio_cfg : default_vfio_cfg;
@@ -731,7 +736,7 @@ vfio_sync_default_container(void)
 		return -1;
 
 	/* default container fd should have been opened in dev_vfio_enable() */
-	if (!default_vfio_cfg->vfio_enabled ||
+	if (!vfio_enabled ||
 			default_vfio_cfg->vfio_container_fd < 0) {
 		EAL_LOG(ERR, "VFIO support is not initialized");
 		return -1;
@@ -783,6 +788,9 @@ dev_vfio_clear_group(int vfio_group_fd)
 	int i;
 	struct vfio_config *vfio_cfg;
 
+	if (!vfio_enabled)
+		return -1;
+
 	vfio_cfg = get_vfio_cfg_by_group_fd(vfio_group_fd);
 	if (vfio_cfg == NULL) {
 		EAL_LOG(ERR, "Invalid VFIO group fd!");
@@ -817,6 +825,9 @@ dev_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 	int i, ret;
 	const struct internal_config *internal_conf =
 		eal_get_internal_configuration();
+
+	if (!vfio_enabled)
+		return -1;
 
 	/* get group number */
 	ret = dev_vfio_get_group_num(sysfs_base, dev_addr, &iommu_group_num);
@@ -1064,6 +1075,9 @@ dev_vfio_release_device(const char *sysfs_base, const char *dev_addr,
 	int iommu_group_num;
 	int ret;
 
+	if (!vfio_enabled)
+		return -1;
+
 	/* we don't want any DMA mapping messages to come while we're detaching
 	 * VFIO device, because this might be the last device and we might need
 	 * to unregister the callback.
@@ -1156,6 +1170,9 @@ dev_vfio_enable(void)
 
 	rte_spinlock_recursive_t lock = RTE_SPINLOCK_RECURSIVE_INITIALIZER;
 
+	if (vfio_enabled)
+		return 0;
+
 	for (i = 0; i < RTE_DIM(vfio_cfgs); i++) {
 		vfio_cfgs[i].vfio_container_fd = -1;
 		vfio_cfgs[i].vfio_active_groups = 0;
@@ -1212,7 +1229,7 @@ dev_vfio_enable(void)
 	/* check if we have VFIO driver enabled */
 	if (default_vfio_cfg->vfio_container_fd != -1) {
 		EAL_LOG(INFO, "VFIO support initialized");
-		default_vfio_cfg->vfio_enabled = 1;
+		vfio_enabled = true;
 	} else {
 		EAL_LOG(NOTICE, "VFIO support could not be initialized");
 	}
@@ -1231,12 +1248,15 @@ RTE_EXPORT_INTERNAL_SYMBOL(dev_vfio_is_enabled)
 int
 dev_vfio_is_enabled(void)
 {
-	return default_vfio_cfg->vfio_enabled;
+	return vfio_enabled;
 }
 
 int
 vfio_get_iommu_type(void)
 {
+	if (!vfio_enabled)
+		return -1;
+
 	if (default_vfio_cfg->vfio_iommu_type == NULL)
 		return -1;
 
@@ -1272,6 +1292,9 @@ dev_vfio_get_device_info(const char *sysfs_base, const char *dev_addr,
 		int *vfio_dev_fd, struct vfio_device_info *device_info)
 {
 	int ret;
+
+	if (!vfio_enabled)
+		return -1;
 
 	if (device_info == NULL || *vfio_dev_fd < 0)
 		return -1;
@@ -1408,7 +1431,7 @@ dev_vfio_get_container_fd(void)
 	 * The default container is set up during dev_vfio_enable().
 	 * This function does not create a new container.
 	 */
-	if (!default_vfio_cfg->vfio_enabled)
+	if (!vfio_enabled)
 		return -1;
 
 	return default_vfio_cfg->vfio_container_fd;
@@ -1423,6 +1446,9 @@ dev_vfio_get_group_num(const char *sysfs_base,
 	char filename[PATH_MAX];
 	char *tok[16], *group_tok, *end;
 	int ret;
+
+	if (!vfio_enabled)
+		return -1;
 
 	memset(linkname, 0, sizeof(linkname));
 	memset(filename, 0, sizeof(filename));
@@ -2124,6 +2150,9 @@ dev_vfio_container_create(void)
 {
 	unsigned int i;
 
+	if (!vfio_enabled)
+		return -1;
+
 	/* Find an empty slot to store new vfio config */
 	for (i = 1; i < RTE_DIM(vfio_cfgs); i++) {
 		if (vfio_cfgs[i].vfio_container_fd == -1)
@@ -2152,6 +2181,14 @@ dev_vfio_container_destroy(int container_fd)
 	struct vfio_config *vfio_cfg;
 	unsigned int i;
 
+	if (!vfio_enabled)
+		return -1;
+
+	if (container_fd == DEV_VFIO_DEFAULT_CONTAINER_FD) {
+		EAL_LOG(ERR, "Cannot destroy default VFIO container");
+		return -1;
+	}
+
 	vfio_cfg = get_vfio_cfg_by_container_fd(container_fd);
 	if (vfio_cfg == NULL) {
 		EAL_LOG(ERR, "Invalid VFIO container fd");
@@ -2177,6 +2214,9 @@ dev_vfio_container_group_bind(int container_fd, int iommu_group_num)
 {
 	struct vfio_config *vfio_cfg;
 
+	if (!vfio_enabled)
+		return -1;
+
 	vfio_cfg = get_vfio_cfg_by_container_fd(container_fd);
 	if (vfio_cfg == NULL) {
 		EAL_LOG(ERR, "Invalid VFIO container fd");
@@ -2193,6 +2233,9 @@ dev_vfio_container_group_unbind(int container_fd, int iommu_group_num)
 	struct vfio_group *cur_grp = NULL;
 	struct vfio_config *vfio_cfg;
 	unsigned int i;
+
+	if (!vfio_enabled)
+		return -1;
 
 	vfio_cfg = get_vfio_cfg_by_container_fd(container_fd);
 	if (vfio_cfg == NULL) {
@@ -2234,6 +2277,9 @@ dev_vfio_container_dma_map(int container_fd, uint64_t vaddr, uint64_t iova,
 {
 	struct vfio_config *vfio_cfg;
 
+	if (!vfio_enabled)
+		return -1;
+
 	if (len == 0) {
 		rte_errno = EINVAL;
 		return -1;
@@ -2255,6 +2301,9 @@ dev_vfio_container_dma_unmap(int container_fd, uint64_t vaddr, uint64_t iova,
 {
 	struct vfio_config *vfio_cfg;
 
+	if (!vfio_enabled)
+		return -1;
+
 	if (len == 0) {
 		rte_errno = EINVAL;
 		return -1;
@@ -2267,4 +2316,81 @@ dev_vfio_container_dma_unmap(int container_fd, uint64_t vaddr, uint64_t iova,
 	}
 
 	return container_dma_unmap(vfio_cfg, vaddr, iova, len);
+}
+
+static int
+vfio_cleanup_config(struct vfio_config *vfio_cfg)
+{
+	unsigned int i;
+
+	for (i = 0; i < RTE_DIM(vfio_cfg->vfio_groups); i++) {
+		struct vfio_group *group = &vfio_cfg->vfio_groups[i];
+
+		if (group->group_num == -1)
+			continue;
+		if (group->devices != 0) {
+			EAL_LOG(ERR, "Cannot cleanup VFIO group %d with %d devices",
+				group->group_num, group->devices);
+			continue;
+		}
+		if (group->fd >= 0 && close(group->fd) < 0) {
+			EAL_LOG(ERR, "Cannot close VFIO group %d: %s",
+				group->group_num, strerror(errno));
+			continue;
+		}
+
+		group->group_num = -1;
+		group->fd = -1;
+		group->devices = 0;
+		vfio_cfg->vfio_active_groups--;
+	}
+
+	/* if there are still active groups, we cannot cleanup the container */
+	if (vfio_cfg->vfio_active_groups != 0) {
+		EAL_LOG(ERR, "Cannot cleanup VFIO container with %d active groups",
+			vfio_cfg->vfio_active_groups);
+		return -1;
+	}
+
+	if (vfio_cfg->vfio_container_fd >= 0 && close(vfio_cfg->vfio_container_fd) < 0) {
+		EAL_LOG(ERR, "Cannot close VFIO container: %s", strerror(errno));
+		return -1;
+	}
+
+	vfio_cfg->vfio_container_fd = -1;
+	vfio_cfg->vfio_iommu_type = NULL;
+
+	vfio_cfg->mem_maps.n_maps = 0;
+	memset(vfio_cfg->mem_maps.maps, 0, sizeof(vfio_cfg->mem_maps.maps));
+
+	return 0;
+}
+
+RTE_EXPORT_INTERNAL_SYMBOL(dev_vfio_cleanup)
+void
+dev_vfio_cleanup(void)
+{
+	unsigned int i;
+	bool stuck = false;
+
+	if (!vfio_enabled)
+		return;
+
+	vfio_mp_sync_cleanup();
+
+	/* mem events can only be unregistered from the primary process */
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+		rte_mem_event_callback_unregister(VFIO_MEM_EVENT_CLB_NAME, NULL);
+
+	/* cleanup all initialized configs */
+	for (i = 0; i < RTE_DIM(vfio_cfgs); i++) {
+		if (vfio_cfgs[i].vfio_container_fd != -1)
+			stuck |= vfio_cleanup_config(&vfio_cfgs[i]) != 0;
+	}
+
+	/* failed to deinitialize some configs, so don't set VFIO as disabled */
+	if (stuck)
+		return;
+
+	vfio_enabled = false;
 }

@@ -106,6 +106,13 @@ int dev_vfio_enable(void);
 
 /**
  * @internal
+ * Cleanup VFIO resources.
+ */
+__rte_internal
+void dev_vfio_cleanup(void);
+
+/**
+ * @internal
  * Check whether a VFIO module is loaded.
  *
  * @param module
