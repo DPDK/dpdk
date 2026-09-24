@@ -36,7 +36,7 @@ mlx5_internal_mac_addr_remove(struct rte_eth_dev *dev,
 			      uint32_t index,
 			      struct rte_ether_addr *addr)
 {
-	MLX5_ASSERT(index < MLX5_MAX_MAC_ADDRESSES);
+	MLX5_ASSERT(index < MLX5_SH(dev)->dev_cap.max_mac_addrs);
 	if (rte_is_zero_ether_addr(&dev->data->mac_addrs[index]))
 		return false;
 	mlx5_os_mac_addr_remove(dev, index);
@@ -63,16 +63,17 @@ static int
 mlx5_internal_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
 			   uint32_t index)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
 	unsigned int i;
 	int ret;
 
-	MLX5_ASSERT(index < MLX5_MAX_MAC_ADDRESSES);
+	MLX5_ASSERT(index < priv->sh->dev_cap.max_mac_addrs);
 	if (rte_is_zero_ether_addr(mac)) {
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}
 	/* First, make sure this address isn't already configured. */
-	for (i = 0; (i != MLX5_MAX_MAC_ADDRESSES); ++i) {
+	for (i = 0; i != priv->sh->dev_cap.max_mac_addrs; ++i) {
 		/* Skip this index, it's going to be reconfigured. */
 		if (i == index)
 			continue;
@@ -101,10 +102,11 @@ mlx5_internal_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
 void
 mlx5_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
 	struct rte_ether_addr addr = { 0 };
 	int ret;
 
-	if (index >= MLX5_MAX_UC_MAC_ADDRESSES)
+	if (index >= priv->sh->dev_cap.max_uc_mac_addrs)
 		return;
 	if (mlx5_internal_mac_addr_remove(dev, index, &addr)) {
 		ret = mlx5_traffic_mac_remove(dev, &addr);
@@ -133,9 +135,10 @@ int
 mlx5_mac_addr_add(struct rte_eth_dev *dev, struct rte_ether_addr *mac,
 		  uint32_t index, uint32_t vmdq __rte_unused)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
 	int ret;
 
-	if (index >= MLX5_MAX_UC_MAC_ADDRESSES) {
+	if (index >= priv->sh->dev_cap.max_uc_mac_addrs) {
 		rte_errno = EINVAL;
 		return -rte_errno;
 	}
@@ -217,16 +220,17 @@ int
 mlx5_set_mc_addr_list(struct rte_eth_dev *dev,
 		      struct rte_ether_addr *mc_addr_set, uint32_t nb_mc_addr)
 {
+	struct mlx5_priv *priv = dev->data->dev_private;
 	uint32_t i;
 	int ret;
 
-	if (nb_mc_addr >= MLX5_MAX_MC_MAC_ADDRESSES) {
+	if (nb_mc_addr >= priv->sh->dev_cap.max_mc_mac_addrs) {
 		rte_errno = ENOSPC;
 		return -rte_errno;
 	}
-	for (i = MLX5_MAX_UC_MAC_ADDRESSES; i != MLX5_MAX_MAC_ADDRESSES; ++i)
+	for (i = priv->sh->dev_cap.max_uc_mac_addrs; i != priv->sh->dev_cap.max_mac_addrs; ++i)
 		mlx5_internal_mac_addr_remove(dev, i, NULL);
-	i = MLX5_MAX_UC_MAC_ADDRESSES;
+	i = priv->sh->dev_cap.max_uc_mac_addrs;
 	while (nb_mc_addr--) {
 		ret = mlx5_internal_mac_addr_add(dev, mc_addr_set++, i++);
 		if (ret)

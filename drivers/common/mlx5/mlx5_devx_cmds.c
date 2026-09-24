@@ -1110,6 +1110,10 @@ mlx5_devx_cmd_query_hca_attr(void *ctx,
 	attr->log_max_pd = MLX5_GET(cmd_hca_cap, hcattr, log_max_pd);
 	attr->log_max_srq = MLX5_GET(cmd_hca_cap, hcattr, log_max_srq);
 	attr->log_max_srq_sz = MLX5_GET(cmd_hca_cap, hcattr, log_max_srq_sz);
+	attr->log_max_current_uc_list = MLX5_GET(cmd_hca_cap, hcattr,
+						 log_max_current_uc_list);
+	attr->log_max_current_mc_list = MLX5_GET(cmd_hca_cap, hcattr,
+						 log_max_current_mc_list);
 	attr->reg_c_preserve =
 		MLX5_GET(cmd_hca_cap, hcattr, reg_c_preserve);
 	attr->mmo_regex_qp_en = MLX5_GET(cmd_hca_cap, hcattr, regexp_mmo_qp);

@@ -392,7 +392,7 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	max = RTE_MIN(max, (unsigned int)UINT16_MAX);
 	info->max_rx_queues = max;
 	info->max_tx_queues = max;
-	info->max_mac_addrs = MLX5_MAX_UC_MAC_ADDRESSES;
+	info->max_mac_addrs = priv->sh->dev_cap.max_uc_mac_addrs;
 	info->rx_queue_offload_capa = mlx5_get_rx_queue_offloads(dev);
 	info->rx_seg_capa.max_nseg = MLX5_MAX_RXQ_NSEG;
 	info->rx_seg_capa.multi_pools = !priv->config.mprq.enabled;
