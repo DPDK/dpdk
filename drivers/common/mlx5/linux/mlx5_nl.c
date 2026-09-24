@@ -826,46 +826,6 @@ mlx5_nl_mac_addr_sync(int nlsk_fd, unsigned int iface_idx,
 }
 
 /**
- * Flush all added MAC addresses.
- *
- * @param[in] nlsk_fd
- *   Netlink socket file descriptor.
- * @param[in] iface_idx
- *   Net device interface index.
- * @param[in] mac_addrs
- *   Mac addresses array to flush.
- * @param n
- *   @p mac_addrs array size.
- * @param mac_own
- *   BITFIELD_DECLARE array to store the mac.
- * @param vf
- *   Flag for a VF device.
- */
-RTE_EXPORT_INTERNAL_SYMBOL(mlx5_nl_mac_addr_flush)
-void
-mlx5_nl_mac_addr_flush(int nlsk_fd, unsigned int iface_idx,
-		       struct rte_ether_addr *mac_addrs, int n,
-		       uint64_t *mac_own, bool vf)
-{
-	int i;
-
-	if (n <= 0 || n > MLX5_MAX_MAC_ADDRESSES)
-		return;
-
-	for (i = n - 1; i >= 0; --i) {
-		struct rte_ether_addr *m = &mac_addrs[i];
-
-		if (BITFIELD_ISSET(mac_own, i)) {
-			if (vf)
-				mlx5_nl_mac_addr_remove(nlsk_fd,
-							iface_idx,
-							m, i);
-			BITFIELD_RESET(mac_own, i);
-		}
-	}
-}
-
-/**
  * Enable promiscuous / all multicast mode through Netlink.
  *
  * @param[in] nlsk_fd
