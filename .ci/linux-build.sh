@@ -111,13 +111,12 @@ OPTS="$OPTS -Dplatform=generic"
 OPTS="$OPTS -Ddefault_library=$DEF_LIB"
 if [ "$STDATOMIC" = "true" ]; then
     OPTS="$OPTS -Denable_stdatomic=true"
+fi
+OPTS="$OPTS -Dcheck_includes=true"
+if [ "${CC%%clang}" != "$CC" ]; then
+    export CXX=clang++
 else
-    OPTS="$OPTS -Dcheck_includes=true"
-    if [ "${CC%%clang}" != "$CC" ]; then
-        export CXX=clang++
-    else
-        export CXX=g++
-    fi
+    export CXX=g++
 fi
 if [ "$MINI" = "true" ]; then
     OPTS="$OPTS -Denable_drivers=net/null"
