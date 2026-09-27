@@ -2,6 +2,7 @@
  * Copyright (c) 2021 Microsoft Corporation
  */
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -466,6 +467,47 @@ valid_pcapng_file(const char *file_name, uint64_t started, unsigned int expected
 	return ret;
 }
 
+/* Record the timestamp of the first packet in the file. */
+static void
+first_timestamp_cb(u_char *user, const struct pcap_pkthdr *h,
+		   const u_char *bytes __rte_unused)
+{
+	uint64_t *ts_ns = (uint64_t *)user;
+
+	/* File has nanosecond precision, so tv_usec holds ns. */
+	if (*ts_ns == 0)
+		*ts_ns = (uint64_t)h->ts.tv_sec * NS_PER_S + h->ts.tv_usec;
+}
+
+static int
+read_one_timestamp(const char *file_name, uint64_t *ts_ns)
+{
+	char errbuf[PCAP_ERRBUF_SIZE];
+	pcap_t *pcap;
+	int ret;
+
+	*ts_ns = 0;
+	pcap = pcap_open_offline_with_tstamp_precision(file_name,
+						       PCAP_TSTAMP_PRECISION_NANO,
+						       errbuf);
+	if (pcap == NULL) {
+		printf("pcap_open_offline('%s') failed: %s\n",
+			file_name, errbuf);
+		return -1;
+	}
+
+	ret = pcap_loop(pcap, 0, first_timestamp_cb, (u_char *)ts_ns);
+	if (ret != 0)
+		printf("pcap_loop: failed: %s\n", pcap_geterr(pcap));
+	pcap_close(pcap);
+
+	if (ret == 0 && *ts_ns == 0) {
+		printf("no packet found in %s\n", file_name);
+		return -1;
+	}
+	return ret;
+}
+
 static int
 test_add_interface(void)
 {
@@ -607,7 +649,7 @@ test_write_before_open(void)
 	mbuf1_resize(&mbfs, rte_rand_max(MAX_DATA_SIZE));
 
 	/* Copy packets BEFORE opening the pcapng file.
-	 * This exercises the negative TSC delta path in tsc_to_ns_epoch().
+	 * This exercises the negative TSC delta path.
 	 */
 	for (i = 0; i < (int)count; i++) {
 		clones[i] = rte_pcapng_copy(port_id, 0, &mbfs.mb[0], mp,
@@ -679,6 +721,101 @@ test_cleanup(void)
 	rte_vdev_uninit(null_dev);
 }
 
+/*
+ * Converting a cycle count to nanoseconds overflows past
+ * UINT64_MAX / NS_PER_S cycles, which is only a few seconds of real
+ * capture.  Forge the timestamp in the block header to reach large
+ * deltas without waiting.
+ */
+static int
+test_long_timestamp(void)
+{
+	/* seconds into the future */
+	static const unsigned int offsets[] = { 1, 8, 3600, 10 * 86400 };
+	struct pcapng_test_hdr {
+		uint32_t block_type;
+		uint32_t block_length;
+		uint32_t interface_id;
+		uint32_t timestamp_hi;
+		uint32_t timestamp_lo;
+	} *epb;
+	struct dummy_mbuf mbfs;
+	uint64_t hz = rte_get_tsc_hz();
+	unsigned int i;
+
+	TEST_ASSERT(hz != 0, "TSC frequency is zero");
+
+	mbuf1_prepare(&mbfs);
+	mbuf1_resize(&mbfs, 512);
+
+	for (i = 0; i < RTE_DIM(offsets); i++) {
+		char file_name[PATH_MAX] = "/tmp/pcapng_test_XXXXXX.pcapng";
+		uint64_t cycles, base_ns, want_ns, got_ns, diff;
+		struct rte_mbuf *mc;
+		rte_pcapng_t *pcapng;
+		int ret, tmp_fd;
+		ssize_t len;
+
+		mc = rte_pcapng_copy(port_id, 0, &mbfs.mb[0], mp,
+				     rte_pktmbuf_pkt_len(&mbfs.mb[0]),
+				     RTE_PCAPNG_DIRECTION_IN, NULL);
+		TEST_ASSERT(mc != NULL, "rte_pcapng_copy failed");
+
+		tmp_fd = mkstemps(file_name, strlen(".pcapng"));
+		if (tmp_fd == -1) {
+			rte_pktmbuf_free(mc);
+			TEST_ASSERT(false, "mkstemps() failed");
+		}
+
+		base_ns = current_timestamp();
+		pcapng = rte_pcapng_fdopen(tmp_fd, NULL, NULL, "longts", NULL);
+		if (pcapng == NULL) {
+			close(tmp_fd);
+			rte_pktmbuf_free(mc);
+			TEST_ASSERT(false, "rte_pcapng_fdopen failed");
+		}
+
+		ret = rte_pcapng_add_interface(pcapng, port_id, DLT_EN10MB,
+					       NULL, NULL, NULL);
+		if (ret < 0) {
+			rte_pcapng_close(pcapng);
+			rte_pktmbuf_free(mc);
+			TEST_ASSERT(false, "can not add port %u", port_id);
+		}
+
+		/* Conversion happens on write, so move the capture time. */
+		epb = rte_pktmbuf_mtod(mc, struct pcapng_test_hdr *);
+		cycles = (uint64_t)epb->timestamp_hi << 32;
+		cycles += epb->timestamp_lo;
+		cycles += (uint64_t)offsets[i] * hz;
+		epb->timestamp_hi = cycles >> 32;
+		epb->timestamp_lo = (uint32_t)cycles;
+
+		len = rte_pcapng_write_packets(pcapng, &mc, 1);
+		rte_pktmbuf_free(mc);
+		rte_pcapng_close(pcapng);
+		TEST_ASSERT(len > 0, "write failed at +%u s", offsets[i]);
+
+		ret = read_one_timestamp(file_name, &got_ns);
+		TEST_ASSERT(ret == 0, "can not read back +%u s", offsets[i]);
+
+		/* An overflow wraps and misses by the whole offset. */
+		want_ns = base_ns + (uint64_t)offsets[i] * NS_PER_S;
+		diff = (got_ns > want_ns) ? got_ns - want_ns : want_ns - got_ns;
+		if (diff > 2 * NS_PER_S)
+			printf("at +%u s: got %"PRIu64" want %"PRIu64"\n",
+			       offsets[i], got_ns, want_ns);
+		else
+			remove(file_name);
+
+		TEST_ASSERT(diff <= 2 * NS_PER_S,
+			    "timestamp off by %"PRIu64" ns at +%u s",
+			    diff, offsets[i]);
+	}
+
+	return 0;
+}
+
 static struct
 unit_test_suite test_pcapng_suite  = {
 	.setup = test_setup,
@@ -688,6 +825,7 @@ unit_test_suite test_pcapng_suite  = {
 		TEST_CASE(test_add_interface),
 		TEST_CASE(test_write_packets),
 		TEST_CASE(test_write_before_open),
+		TEST_CASE(test_long_timestamp),
 		TEST_CASES_END()
 	}
 };
