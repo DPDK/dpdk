@@ -3835,8 +3835,6 @@ ixgbe_rss_configure(struct rte_eth_dev *dev)
 }
 
 #define NUM_VFTA_REGISTERS 128
-#define NIC_RX_BUFFER_SIZE 0x200
-#define X550_RX_BUFFER_SIZE 0x180
 
 static void
 ixgbe_vmdq_dcb_configure(struct rte_eth_dev *dev)
@@ -3863,18 +3861,10 @@ ixgbe_vmdq_dcb_configure(struct rte_eth_dev *dev)
 
 	/*
 	 * RXPBSIZE
-	 * split rx buffer up into sections, each for 1 traffic class
+	 * Split the MAC Rx packet buffer equally across traffic classes.
+	 * hw->mac.rx_pb_size is the total size in KB.
 	 */
-	switch (hw->mac.type) {
-	case ixgbe_mac_X550:
-	case ixgbe_mac_X550EM_x:
-	case ixgbe_mac_X550EM_a:
-		pbsize = (uint16_t)(X550_RX_BUFFER_SIZE / nb_tcs);
-		break;
-	default:
-		pbsize = (uint16_t)(NIC_RX_BUFFER_SIZE / nb_tcs);
-		break;
-	}
+	pbsize = (uint16_t)(hw->mac.rx_pb_size / nb_tcs);
 	for (i = 0; i < nb_tcs; i++) {
 		uint32_t rxpbsize = IXGBE_READ_REG(hw, IXGBE_RXPBSIZE(i));
 
@@ -4394,16 +4384,7 @@ ixgbe_dcb_hw_configure(struct rte_eth_dev *dev,
 		}
 	}
 
-	switch (hw->mac.type) {
-	case ixgbe_mac_X550:
-	case ixgbe_mac_X550EM_x:
-	case ixgbe_mac_X550EM_a:
-		rx_buffer_size = X550_RX_BUFFER_SIZE;
-		break;
-	default:
-		rx_buffer_size = NIC_RX_BUFFER_SIZE;
-		break;
-	}
+	rx_buffer_size = (uint16_t)hw->mac.rx_pb_size;
 
 	if (config_dcb_rx) {
 		/* Set RX buffer size */
