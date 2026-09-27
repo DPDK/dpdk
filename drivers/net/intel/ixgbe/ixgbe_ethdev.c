@@ -1471,6 +1471,9 @@ ixgbevf_negotiate_api(struct ixgbe_hw *hw)
 
 	/* start with highest supported, proceed down */
 	static const enum ixgbe_pfvf_api_rev sup_ver[] = {
+		ixgbe_mbox_api_16,
+		ixgbe_mbox_api_15,
+		ixgbe_mbox_api_14,
 		ixgbe_mbox_api_13,
 		ixgbe_mbox_api_12,
 		ixgbe_mbox_api_11,
@@ -4133,6 +4136,18 @@ ixgbevf_check_link(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
 
 	if (!mac->get_link_status)
 		goto out;
+
+	/* E610 VF reads link state from the PF over the mailbox */
+	if (hw->mac.type == ixgbe_mac_E610_vf) {
+		ret_val = ixgbevf_get_pf_link_state(hw, speed, link_up);
+		if (ret_val) {
+			*speed = IXGBE_LINK_SPEED_UNKNOWN;
+			mac->get_link_status = true;
+		} else {
+			mac->get_link_status = !(*link_up);
+		}
+		goto out;
+	}
 
 	/* if link status is down no point in checking to see if pf is up */
 	links_reg = IXGBE_READ_REG(hw, IXGBE_VFLINKS);
