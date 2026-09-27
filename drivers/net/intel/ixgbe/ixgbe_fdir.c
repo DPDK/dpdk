@@ -101,7 +101,6 @@ static int fdir_write_perfect_filter_82599(struct ixgbe_hw *hw,
 static int fdir_add_signature_filter_82599(struct ixgbe_hw *hw,
 		union ixgbe_atr_input *input, u8 queue, uint32_t fdircmd,
 		uint32_t fdirhash);
-static int ixgbe_fdir_flush(struct rte_eth_dev *dev);
 
 /**
  * This function is based on ixgbe_fdir_enable_82599() in base/ixgbe_82599.c.
@@ -554,6 +553,19 @@ ixgbe_set_fdir_flex_conf(struct ixgbe_adapter *adapter,
 	return 0;
 }
 
+void
+ixgbe_fdir_disable(struct ixgbe_hw *hw)
+{
+	int i;
+
+	IXGBE_WRITE_REG(hw, IXGBE_FDIRCTRL, 0);
+	IXGBE_WRITE_REG(hw, IXGBE_RXPBSIZE(0),
+			hw->mac.rx_pb_size << IXGBE_RXPBSIZE_SHIFT);
+	for (i = 1; i < 8; i++)
+		IXGBE_WRITE_REG(hw, IXGBE_RXPBSIZE(i), 0);
+	IXGBE_WRITE_FLUSH(hw);
+}
+
 int
 ixgbe_fdir_configure(struct rte_eth_dev *dev,
 		const struct rte_eth_fdir_conf *fdir_conf,
@@ -601,12 +613,12 @@ ixgbe_fdir_configure(struct rte_eth_dev *dev,
 
 	/*
 	 * Before enabling Flow Director, the Rx Packet Buffer size
-	 * must be reduced.  The new value is the current size minus
+	 * must be reduced.  The new value is the default size minus
 	 * flow director memory usage size.
 	 */
 	pbsize = (1 << (PBALLOC_SIZE_SHIFT + (fdirctrl & FDIRCTRL_PBALLOC_MASK)));
 	IXGBE_WRITE_REG(hw, IXGBE_RXPBSIZE(0),
-	    (IXGBE_READ_REG(hw, IXGBE_RXPBSIZE(0)) - pbsize));
+	    (hw->mac.rx_pb_size << IXGBE_RXPBSIZE_SHIFT) - pbsize);
 
 	/*
 	 * The defaults in the HW for RX PB 1-7 are not zero and so should be
@@ -620,21 +632,25 @@ ixgbe_fdir_configure(struct rte_eth_dev *dev,
 	err = ixgbe_fdir_set_input_mask(adapter, fdir_mask, mode);
 	if (err < 0) {
 		PMD_INIT_LOG(ERR, " Error on setting FD mask");
-		return err;
+		goto error;
 	}
 	err = ixgbe_set_fdir_flex_conf(adapter, &fdir_conf->flex_conf,
 				       &fdirctrl);
 	if (err < 0) {
 		PMD_INIT_LOG(ERR, " Error on setting FD flexible arguments.");
-		return err;
+		goto error;
 	}
 
 	err = fdir_enable_82599(hw, fdirctrl);
 	if (err < 0) {
 		PMD_INIT_LOG(ERR, " Error on enabling FD.");
-		return err;
+		goto error;
 	}
 	return 0;
+
+error:
+	ixgbe_fdir_disable(hw);
+	return err;
 }
 
 /*
@@ -1191,28 +1207,6 @@ ixgbe_fdir_filter_program(struct ixgbe_adapter *adapter,
 	return err;
 }
 
-static int
-ixgbe_fdir_flush(struct rte_eth_dev *dev)
-{
-	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct ixgbe_hw_fdir_info *info =
-			IXGBE_DEV_PRIVATE_TO_FDIR_INFO(dev->data->dev_private);
-	int ret;
-
-	ret = ixgbe_reinit_fdir_tables_82599(hw);
-	if (ret < 0) {
-		PMD_INIT_LOG(ERR, "Failed to re-initialize FD table.");
-		return ret;
-	}
-
-	info->f_add = 0;
-	info->f_remove = 0;
-	info->add = 0;
-	info->remove = 0;
-
-	return ret;
-}
-
 #define FDIRENTRIES_NUM_SHIFT 10
 void
 ixgbe_fdir_info_get(struct rte_eth_dev *dev, struct rte_eth_fdir_info *fdir_info)
@@ -1371,13 +1365,22 @@ int
 ixgbe_clear_all_fdir_filter(struct rte_eth_dev *dev)
 {
 	struct rte_eth_fdir_conf *fdir_conf = IXGBE_DEV_FDIR_CONF(dev);
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ixgbe_hw_fdir_info *fdir_info =
 		IXGBE_DEV_PRIVATE_TO_FDIR_INFO(dev->data->dev_private);
 	struct ixgbe_fdir_filter *fdir_filter;
-	bool had_flows;
-	int ret = 0;
 
-	had_flows = (fdir_info->n_flows != 0);
+	if (fdir_conf->mode != RTE_FDIR_MODE_NONE) {
+		if (ixgbe_reinit_fdir_tables_82599(hw) < 0)
+			PMD_DRV_LOG(WARNING, "Failed to re-initialize FD table");
+
+		fdir_info->f_add = 0;
+		fdir_info->f_remove = 0;
+		fdir_info->add = 0;
+		fdir_info->remove = 0;
+
+		ixgbe_fdir_disable(hw);
+	}
 
 	/* flush flow director */
 	rte_hash_reset(fdir_info->hash_handle);
@@ -1397,8 +1400,5 @@ ixgbe_clear_all_fdir_filter(struct rte_eth_dev *dev)
 	fdir_info->mask_added = FALSE;
 	fdir_conf->mode = RTE_FDIR_MODE_NONE;
 
-	if (had_flows)
-		ret = ixgbe_fdir_flush(dev);
-
-	return ret;
+	return 0;
 }

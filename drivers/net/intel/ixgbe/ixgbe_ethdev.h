@@ -700,6 +700,7 @@ void ixgbe_filterlist_flush(struct rte_eth_dev *dev);
 int ixgbe_fdir_configure(struct rte_eth_dev *dev,
 			 const struct rte_eth_fdir_conf *fdir_conf,
 			 const struct ixgbe_hw_fdir_mask *fdir_mask);
+void ixgbe_fdir_disable(struct ixgbe_hw *hw);
 int ixgbe_fdir_set_input_mask(struct ixgbe_adapter *adapter,
 			      const struct ixgbe_hw_fdir_mask *mask,
 			      enum rte_fdir_mode mode);

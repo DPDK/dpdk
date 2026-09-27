@@ -2625,6 +2625,7 @@ ixgbe_fdir_flow_program(struct rte_eth_dev *dev,
 	struct rte_eth_fdir_conf local_fdir_conf = *fdir_conf;
 	struct ixgbe_hw_fdir_info *fdir_info =
 			IXGBE_DEV_PRIVATE_TO_FDIR_INFO(adapter);
+	bool fdir_enabled = false;
 	int ret;
 
 	if (fdir_rule->queue >= dev->data->nb_rx_queues) {
@@ -2647,6 +2648,7 @@ ixgbe_fdir_flow_program(struct rte_eth_dev *dev,
 				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				NULL, "Failed to configure fdir mode");
 		}
+		fdir_enabled = true;
 	} else if (fdir_conf->mode != fdir_rule->mode) {
 		return rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
@@ -2657,17 +2659,25 @@ ixgbe_fdir_flow_program(struct rte_eth_dev *dev,
 	ret = ixgbe_fdir_process_rule(adapter, fdir_info, fdir_rule,
 		first_mask, error);
 	if (ret)
-		return ret;
+		goto error;
 
 	/* Program the filter */
 	ret = ixgbe_fdir_filter_program(adapter, &local_fdir_conf,
 			fdir_rule, FALSE, FALSE);
-	if (ret)
-		return rte_flow_error_set(error, EINVAL,
+	if (ret) {
+		ret = rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 			NULL, "Failed to add fdir filter");
+		goto error;
+	}
 
 	return 0;
+
+error:
+	/* FDIR mode is only recorded on success, so undo the enable */
+	if (fdir_enabled)
+		ixgbe_fdir_disable(IXGBE_DEV_PRIVATE_TO_HW(adapter));
+	return ret;
 }
 
 /* Flow actions check specific to RSS filter */
@@ -3159,16 +3169,16 @@ ixgbe_flow_destroy(struct rte_eth_dev *dev,
 	case RTE_ETH_FILTER_FDIR:
 		fdir_rule_ptr = (struct ixgbe_fdir_rule_ele *)pmd_flow->rule;
 		fdir_rule = fdir_rule_ptr->filter_info;
-		ret = ixgbe_fdir_filter_program(adapter, fdir_conf, &fdir_rule, TRUE, FALSE);
-		if (!ret) {
-			rte_free(fdir_rule_ptr);
-			if (fdir_info->n_flows > 0 && --(fdir_info->n_flows) == 0) {
-				fdir_info->mask_added = false;
-				fdir_info->mask = (struct ixgbe_hw_fdir_mask){0};
-				fdir_info->flex_bytes_offset = 0;
-				fdir_conf->mode = RTE_FDIR_MODE_NONE;
-			}
+		if (fdir_info->n_flows == 1) {
+			ret = ixgbe_clear_all_fdir_filter(dev);
+		} else {
+			ret = ixgbe_fdir_filter_program(adapter, fdir_conf,
+					&fdir_rule, TRUE, FALSE);
+			if (!ret && fdir_info->n_flows > 0)
+				fdir_info->n_flows--;
 		}
+		if (!ret)
+			rte_free(fdir_rule_ptr);
 		break;
 	case RTE_ETH_FILTER_L2_TUNNEL:
 		l2_tn_filter_ptr = (struct ixgbe_eth_l2_tunnel_conf_ele *)
