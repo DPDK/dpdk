@@ -24,6 +24,15 @@ DPDK Release 26.11
 New Features
 ------------
 
+* **Added RSA-specific capability parameters in cryptodev.**
+
+  Added ``rte_crypto_rsa_capa`` to report RSA modulus length, supported
+  padding schemes, and MGF1 hash algorithms. Also added
+  ``pss_explicit_salt`` so a PMD can advertise support for an
+  application-supplied RSA-PSS salt, along with the corresponding
+  ``pss_salt`` field in ``rte_crypto_rsa_op_param`` to carry it per
+  sign operation.
+
 .. This section should contain new features added in this release.
    Sample format:
 
@@ -312,6 +321,13 @@ API Changes
 
 ABI Changes
 -----------
+
+* cryptodev: The struct ``rte_cryptodev_asymmetric_xform_capability`` is
+  updated to include ``rsa_capa``, a new ``rte_crypto_rsa_capa`` field for
+  reporting RSA modulus length, padding schemes, and MGF1 hash algorithms.
+
+* cryptodev: The struct ``rte_crypto_rsa_op_param`` is updated to include
+  ``pss_salt``, allowing an application to supply an explicit RSA-PSS salt.
 
 .. This section should contain ABI changes. Sample format:
 
