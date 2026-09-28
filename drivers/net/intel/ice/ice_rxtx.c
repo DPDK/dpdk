@@ -2698,7 +2698,7 @@ ice_fdir_setup_rx_resources(struct ice_pf *pf)
 	}
 
 	/* Allocate RX hardware ring descriptors. */
-	ring_size = sizeof(union ice_32byte_rx_desc) * ICE_FDIR_NUM_RX_DESC;
+	ring_size = sizeof(union ci_rx_flex_desc) * ICE_FDIR_NUM_RX_DESC;
 	ring_size = RTE_ALIGN(ring_size, ICE_DMA_MEM_ALIGN);
 
 	rz = rte_eth_dma_zone_reserve(dev, "fdir_rx_ring",
@@ -2718,7 +2718,7 @@ ice_fdir_setup_rx_resources(struct ice_pf *pf)
 
 	rxq->rx_ring_phys_addr = rz->iova;
 	memset(rz->addr, 0, ICE_FDIR_NUM_RX_DESC *
-	       sizeof(union ice_32byte_rx_desc));
+	       sizeof(union ci_rx_flex_desc));
 	rxq->rx_flex_ring = (union ci_rx_flex_desc *)rz->addr;
 
 	/*
@@ -4464,15 +4464,15 @@ ice_set_default_ptype_table(struct rte_eth_dev *dev)
 static inline int
 ice_check_fdir_programming_status(struct ci_rx_queue *rxq)
 {
-	volatile union ice_32byte_rx_desc *rxdp;
-	uint64_t qword1;
-	uint32_t rx_status;
-	uint32_t error;
-	uint32_t id;
+	volatile union ci_rx_flex_desc *rxdp;
+	uint16_t qword1;
+	uint16_t rx_status;
+	uint16_t error;
+	uint16_t id;
 	int ret = -EAGAIN;
 
-	rxdp = (volatile union ice_32byte_rx_desc *)&rxq->rx_flex_ring[rxq->rx_tail];
-	qword1 = rte_le_to_cpu_64(rxdp->wb.qword1.status_error_len);
+	rxdp = &rxq->rx_flex_ring[rxq->rx_tail];
+	qword1 = rte_le_to_cpu_16(rxdp->wb.status_error0);
 	rx_status = (qword1 & ICE_RXD_QW1_STATUS_M)
 			>> ICE_RXD_QW1_STATUS_S;
 
@@ -4497,7 +4497,7 @@ ice_check_fdir_programming_status(struct ci_rx_queue *rxq)
 			ret = -EINVAL;
 		}
 err:
-		rxdp->wb.qword1.status_error_len = 0;
+		rxdp->wb.status_error0 = 0;
 		rxq->rx_tail++;
 		if (unlikely(rxq->rx_tail == rxq->nb_rx_desc))
 			rxq->rx_tail = 0;
