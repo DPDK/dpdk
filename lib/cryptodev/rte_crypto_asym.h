@@ -494,6 +494,24 @@ struct rte_crypto_rsa_op_param {
 	 * This could be validated and overwritten by the PMD
 	 * with the signature length.
 	 */
+
+	rte_crypto_param pss_salt;
+	/**<
+	 * Explicit RSA-PSS salt bytes, used only for
+	 * RTE_CRYPTO_ASYM_OP_SIGN with RTE_CRYPTO_RSA_PADDING_PSS.
+	 * Only valid if the PMD advertises
+	 * rte_crypto_rsa_capa::pss_explicit_salt == true.
+	 *
+	 * - pss_salt.data == NULL (default): PMD generates the salt
+	 *   internally.
+	 * - pss_salt.data != NULL: PMD uses these exact bytes as the
+	 *   salt. pss_salt.length must equal the session's
+	 *   pss_saltlen, otherwise the op completes with status
+	 *   RTE_CRYPTO_OP_STATUS_INVALID_ARGS.
+	 *
+	 * Ignored for RTE_CRYPTO_ASYM_OP_VERIFY (salt is recovered from
+	 * the signature itself) and for non-PSS padding.
+	 */
 };
 
 /**

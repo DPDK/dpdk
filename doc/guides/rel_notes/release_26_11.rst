@@ -151,6 +151,15 @@ New Features
     with per-descriptor mbuf free (``rte_pktmbuf_free_seg``) and prefetch hints.
   * Changed the set of per-queue xstats counters.
 
+* **Added RSA capability parameters in cryptodev.**
+
+  Added ``rte_crypto_rsa_capa`` to report RSA modulus length,
+  supported padding schemes, and MGF1 hash algorithms.
+  Also added ``pss_explicit_salt`` so a PMD can advertise support
+  for an application-supplied RSA-PSS salt,
+  along with the corresponding ``pss_salt`` field in ``rte_crypto_rsa_op_param``
+  to carry it per sign operation.
+
 * **Added AMD AE4DMA DMA PMD.**
 
   Added a new dmadev driver for the AMD AE4DMA hardware DMA engine.
@@ -428,6 +437,12 @@ ABI Changes
    This section is a comment. Do not overwrite or remove it.
    Also, make sure to start the actual text at the margin.
    =======================================================
+
+* cryptodev: The struct ``rte_cryptodev_asymmetric_xform_capability``
+  was updated to include ``rsa_capa``, a new ``rte_crypto_rsa_capa`` field.
+
+* cryptodev: The struct ``rte_crypto_rsa_op_param``
+  was updated to include ``pss_salt``.
 
 
 Known Issues
