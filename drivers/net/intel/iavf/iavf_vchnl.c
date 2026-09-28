@@ -260,7 +260,8 @@ iavf_handle_link_change_event(struct rte_eth_dev *dev,
 	 * (link is down or a VF reset is in progress); the watchdog drives
 	 * auto-reset recovery, so it must remain armed in those cases.
 	 */
-	if (vf->link_up && !vf->vf_reset && !vf->in_reset_recovery)
+	if (vf->link_up && !vf->vf_reset &&
+	    !rte_atomic_load_explicit(&vf->in_reset_recovery, rte_memory_order_relaxed))
 		iavf_dev_watchdog_disable(adapter);
 	else
 		iavf_dev_watchdog_enable(adapter);
