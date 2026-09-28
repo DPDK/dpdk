@@ -5,6 +5,8 @@
 #ifndef _OPENSSL_PMD_PRIVATE_H_
 #define _OPENSSL_PMD_PRIVATE_H_
 
+#include <rte_common.h>
+
 #include <openssl/evp.h>
 #include <openssl/cmac.h>
 #include <openssl/hmac.h>
@@ -185,6 +187,10 @@ struct __rte_cache_aligned openssl_asym_session {
 			const EVP_MD *mgf1_md;
 			uint8_t *label;
 			uint32_t label_len;
+
+			const EVP_MD *pss_md;
+			const EVP_MD *pss_mgf1_md;
+			int pss_saltlen;
 		} r;
 		struct exp {
 			BIGNUM *exp;
