@@ -740,9 +740,11 @@ static const struct rte_cryptodev_capabilities openssl_pmd_capabilities[] = {
 				.max = 0,
 				.increment = 1
 				},
+				/* pss_explicit_salt not supported, defaults to false */
 				.pad_types = ((1 << RTE_CRYPTO_RSA_PADDING_NONE) |
 					(1 << RTE_CRYPTO_RSA_PADDING_PKCS1_5) |
-					(1 << RTE_CRYPTO_RSA_PADDING_OAEP)),
+					(1 << RTE_CRYPTO_RSA_PADDING_OAEP) |
+					(1 << RTE_CRYPTO_RSA_PADDING_PSS)),
 				.mgf1_hash_algos = (RTE_BIT64(RTE_CRYPTO_AUTH_SHA1) |
 					RTE_BIT64(RTE_CRYPTO_AUTH_SHA224) |
 					RTE_BIT64(RTE_CRYPTO_AUTH_SHA256) |
@@ -1318,6 +1320,28 @@ static int openssl_set_asym_session_parameters(
 				asym_session->u.r.label_len = 0;
 				asym_session->u.r.label = NULL;
 			}
+		} else if (xform->rsa.padding.type == RTE_CRYPTO_RSA_PADDING_PSS) {
+			asym_session->u.r.pss_md = openssl_get_md(xform->rsa.padding.hash);
+
+			if (asym_session->u.r.pss_md == NULL) {
+				OPENSSL_LOG(ERR,
+					"Unsupported PSS hash algorithm %u",
+					xform->rsa.padding.hash);
+				goto err_rsa;
+			}
+
+			mgf1 = xform->rsa.padding.mgf1hash;
+			if (mgf1 == 0)
+				mgf1 = xform->rsa.padding.hash;
+
+			asym_session->u.r.pss_mgf1_md = openssl_get_md(mgf1);
+			if (asym_session->u.r.pss_mgf1_md == NULL) {
+				OPENSSL_LOG(ERR,
+					"Unsupported PSS MGF1 hash algorithm %u", mgf1);
+				goto err_rsa;
+			}
+
+			asym_session->u.r.pss_saltlen = xform->rsa.padding.pss_saltlen;
 		}
 
 		OSSL_PARAM_BLD * param_bld = OSSL_PARAM_BLD_new();
