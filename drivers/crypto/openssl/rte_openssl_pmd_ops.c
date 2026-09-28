@@ -731,14 +731,36 @@ static const struct rte_cryptodev_capabilities openssl_pmd_capabilities[] = {
 					(1 << RTE_CRYPTO_ASYM_OP_VERIFY) |
 					(1 << RTE_CRYPTO_ASYM_OP_ENCRYPT) |
 					(1 << RTE_CRYPTO_ASYM_OP_DECRYPT)),
-				{
+				.rsa_capa = {
 				.modlen = {
 				/* min length is based on openssl rsa keygen */
 				.min = 30,
 				/* value 0 symbolizes no limit on max length */
 				.max = 0,
 				.increment = 1
-				}, }
+				},
+				.pad_types = ((1 << RTE_CRYPTO_RSA_PADDING_NONE) |
+					(1 << RTE_CRYPTO_RSA_PADDING_PKCS1_5) |
+					(1 << RTE_CRYPTO_RSA_PADDING_OAEP)),
+				.mgf1_hash_algos = (RTE_BIT64(RTE_CRYPTO_AUTH_SHA1) |
+					RTE_BIT64(RTE_CRYPTO_AUTH_SHA224) |
+					RTE_BIT64(RTE_CRYPTO_AUTH_SHA256) |
+					RTE_BIT64(RTE_CRYPTO_AUTH_SHA384) |
+					RTE_BIT64(RTE_CRYPTO_AUTH_SHA512) |
+					RTE_BIT64(RTE_CRYPTO_AUTH_SHA3_224) |
+					RTE_BIT64(RTE_CRYPTO_AUTH_SHA3_256) |
+					RTE_BIT64(RTE_CRYPTO_AUTH_SHA3_384) |
+					RTE_BIT64(RTE_CRYPTO_AUTH_SHA3_512)),
+				},
+				.hash_algos = (RTE_BIT64(RTE_CRYPTO_AUTH_SHA1) |
+					RTE_BIT64(RTE_CRYPTO_AUTH_SHA224) |
+					RTE_BIT64(RTE_CRYPTO_AUTH_SHA256) |
+					RTE_BIT64(RTE_CRYPTO_AUTH_SHA384) |
+					RTE_BIT64(RTE_CRYPTO_AUTH_SHA512) |
+					RTE_BIT64(RTE_CRYPTO_AUTH_SHA3_224) |
+					RTE_BIT64(RTE_CRYPTO_AUTH_SHA3_256) |
+					RTE_BIT64(RTE_CRYPTO_AUTH_SHA3_384) |
+					RTE_BIT64(RTE_CRYPTO_AUTH_SHA3_512)),
 			}
 		},
 		}
