@@ -236,6 +236,12 @@ rsa_test_data_2 rsa_vector_128_20_3_none = {
 	.padding = RTE_CRYPTO_RSA_PADDING_NONE,
 };
 
+uint8_t rsa_oaep_label[] = {
+	0x0a, 0x1b, 0x2c, 0x3d, 0x4e, 0x5f, 0x60, 0x71,
+	0x82, 0x93, 0xa4, 0xb5, 0xc6, 0xd7, 0xe8, 0xf9,
+	0x01, 0x12, 0x23, 0x34
+};
+
 struct rsa_test_data rsaplaintext = {
 	.data = {
 		0xf8, 0xba, 0x1a, 0x55, 0xd0, 0x2f, 0x85, 0xae,
@@ -346,6 +352,154 @@ struct rte_crypto_asym_xform rsa_xform = {
 	.xform_type = RTE_CRYPTO_ASYM_XFORM_RSA,
 	.rsa = {
 		.padding.type = RTE_CRYPTO_RSA_PADDING_PKCS1_5,
+		.n = {
+			.data = rsa_n,
+			.length = sizeof(rsa_n)
+		},
+		.e = {
+			.data = rsa_e,
+			.length = sizeof(rsa_e)
+		},
+		.qt = {
+			.p = {
+				.data = rsa_p,
+				.length = sizeof(rsa_p)
+			},
+			.q = {
+				.data = rsa_q,
+				.length = sizeof(rsa_q)
+			},
+			.dP = {
+				.data = rsa_dP,
+				.length = sizeof(rsa_dP)
+			},
+			.dQ = {
+				.data = rsa_dQ,
+				.length = sizeof(rsa_dQ)
+			},
+			.qInv = {
+				.data = rsa_qInv,
+				.length = sizeof(rsa_qInv)
+			},
+		},
+		.d = {
+			.data = rsa_d,
+			.length = sizeof(rsa_d)
+		},
+		.key_type = RTE_RSA_KEY_TYPE_QT
+	}
+};
+
+/** rsa OAEP xform (SHA-256, QT private key type by default) */
+struct rte_crypto_asym_xform rsa_oaep_xform = {
+	.next = NULL,
+	.xform_type = RTE_CRYPTO_ASYM_XFORM_RSA,
+	.rsa = {
+		.padding.type = RTE_CRYPTO_RSA_PADDING_OAEP,
+		.padding.hash = RTE_CRYPTO_AUTH_SHA256,
+		.n = {
+			.data = rsa_n,
+			.length = sizeof(rsa_n)
+		},
+		.e = {
+			.data = rsa_e,
+			.length = sizeof(rsa_e)
+		},
+		.qt = {
+			.p = {
+				.data = rsa_p,
+				.length = sizeof(rsa_p)
+			},
+			.q = {
+				.data = rsa_q,
+				.length = sizeof(rsa_q)
+			},
+			.dP = {
+				.data = rsa_dP,
+				.length = sizeof(rsa_dP)
+			},
+			.dQ = {
+				.data = rsa_dQ,
+				.length = sizeof(rsa_dQ)
+			},
+			.qInv = {
+				.data = rsa_qInv,
+				.length = sizeof(rsa_qInv)
+			},
+		},
+		.d = {
+			.data = rsa_d,
+			.length = sizeof(rsa_d)
+		},
+		.key_type = RTE_RSA_KEY_TYPE_QT
+	}
+};
+
+/** rsa OAEP xform with MGF1-SHA1 and label */
+struct rte_crypto_asym_xform rsa_oaep_labeled_xform = {
+	.next = NULL,
+	.xform_type = RTE_CRYPTO_ASYM_XFORM_RSA,
+	.rsa = {
+		.padding.type = RTE_CRYPTO_RSA_PADDING_OAEP,
+		.padding.hash = RTE_CRYPTO_AUTH_SHA256,
+		.padding.mgf1hash = RTE_CRYPTO_AUTH_SHA1,
+		.padding.oaep_label = {
+			.data = rsa_oaep_label,
+			.length = sizeof(rsa_oaep_label)
+		},
+		.n = {
+			.data = rsa_n,
+			.length = sizeof(rsa_n)
+		},
+		.e = {
+			.data = rsa_e,
+			.length = sizeof(rsa_e)
+		},
+		.qt = {
+			.p = {
+				.data = rsa_p,
+				.length = sizeof(rsa_p)
+			},
+			.q = {
+				.data = rsa_q,
+				.length = sizeof(rsa_q)
+			},
+			.dP = {
+				.data = rsa_dP,
+				.length = sizeof(rsa_dP)
+			},
+			.dQ = {
+				.data = rsa_dQ,
+				.length = sizeof(rsa_dQ)
+			},
+			.qInv = {
+				.data = rsa_qInv,
+				.length = sizeof(rsa_qInv)
+			},
+		},
+		.d = {
+			.data = rsa_d,
+			.length = sizeof(rsa_d)
+		},
+		.key_type = RTE_RSA_KEY_TYPE_QT
+	}
+};
+
+/**
+ * rsa OAEP xform with label but no explicit MGF1 hash.
+ * mgf1hash is left unset (0) so the PMD falls back to using the
+ * primary hash (SHA-256) for MGF1
+ */
+struct rte_crypto_asym_xform rsa_oaep_labeled_default_mgf1_xform = {
+	.next = NULL,
+	.xform_type = RTE_CRYPTO_ASYM_XFORM_RSA,
+	.rsa = {
+		.padding.type = RTE_CRYPTO_RSA_PADDING_OAEP,
+		.padding.hash = RTE_CRYPTO_AUTH_SHA256,
+		.padding.oaep_label = {
+			.data = rsa_oaep_label,
+			.length = sizeof(rsa_oaep_label)
+		},
 		.n = {
 			.data = rsa_n,
 			.length = sizeof(rsa_n)
