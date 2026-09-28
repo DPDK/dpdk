@@ -1106,7 +1106,7 @@ iavf_stop_queues(struct rte_eth_dev *dev)
 	int ret;
 
 	/* adminq will be disabled when vf is resetting. */
-	if (vf->in_reset_recovery) {
+	if (rte_atomic_load_explicit(&vf->in_reset_recovery, rte_memory_order_relaxed)) {
 		iavf_reset_queues(dev);
 		return;
 	}
