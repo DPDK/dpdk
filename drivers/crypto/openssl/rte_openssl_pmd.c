@@ -2292,6 +2292,41 @@ process_openssl_modexp_op(struct rte_crypto_op *cop,
 	return 0;
 }
 
+/**
+ * Configure RSA-OAEP parameters on an initialized EVP_PKEY_CTX.
+ * Must be called after EVP_PKEY_encrypt_init() or EVP_PKEY_decrypt_init().
+ *
+ * @return 0 on success, -1 on failure.
+ */
+static int
+openssl_rsa_set_oaep_params(EVP_PKEY_CTX *ctx,
+		const struct openssl_asym_session *sess)
+{
+	if (sess->u.r.pad != RTE_CRYPTO_RSA_PADDING_OAEP)
+		return 0;
+
+	if (EVP_PKEY_CTX_set_rsa_oaep_md(ctx, sess->u.r.oaep_md) <= 0)
+		return -1;
+
+	if (EVP_PKEY_CTX_set_rsa_mgf1_md(ctx, sess->u.r.mgf1_md) <= 0)
+		return -1;
+
+	if (sess->u.r.label_len > 0) {
+		void *label = OPENSSL_memdup(sess->u.r.label, sess->u.r.label_len);
+
+		if (label == NULL)
+			return -1;
+
+		if (EVP_PKEY_CTX_set0_rsa_oaep_label(ctx, label, sess->u.r.label_len) <= 0) {
+			OPENSSL_free(label);
+			return -1;
+		}
+	}
+	/* Empty label is default; set0_rsa_oaep_label(NULL,0) fails on OpenSSL 3. */
+
+	return 0;
+}
+
 /* process rsa operations */
 static int
 process_openssl_rsa_op_evp(struct rte_crypto_op *cop,
@@ -2308,12 +2343,24 @@ process_openssl_rsa_op_evp(struct rte_crypto_op *cop,
 	if (!rsa_ctx)
 		return ret;
 
+	/* OAEP is only valid for encrypt/decrypt */
+	if (sess->u.r.pad == RTE_CRYPTO_RSA_PADDING_OAEP &&
+			op->rsa.op_type != RTE_CRYPTO_ASYM_OP_ENCRYPT &&
+			op->rsa.op_type != RTE_CRYPTO_ASYM_OP_DECRYPT) {
+		OPENSSL_LOG(ERR, "OAEP supports encrypt/decrypt only");
+		cop->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+		return ret;
+	}
+
 	switch (pad) {
 	case RTE_CRYPTO_RSA_PADDING_PKCS1_5:
 		pad = RSA_PKCS1_PADDING;
 		break;
 	case RTE_CRYPTO_RSA_PADDING_NONE:
 		pad = RSA_NO_PADDING;
+		break;
+	case RTE_CRYPTO_RSA_PADDING_OAEP:
+		pad = RSA_PKCS1_OAEP_PADDING;
 		break;
 	default:
 		cop->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
@@ -2328,6 +2375,9 @@ process_openssl_rsa_op_evp(struct rte_crypto_op *cop,
 			goto err_rsa;
 
 		if (EVP_PKEY_CTX_set_rsa_padding(rsa_ctx, pad) <= 0)
+			goto err_rsa;
+
+		if (openssl_rsa_set_oaep_params(rsa_ctx, sess) < 0)
 			goto err_rsa;
 
 		if (EVP_PKEY_encrypt(rsa_ctx, NULL, &outlen,
@@ -2353,6 +2403,9 @@ process_openssl_rsa_op_evp(struct rte_crypto_op *cop,
 			goto err_rsa;
 
 		if (EVP_PKEY_CTX_set_rsa_padding(rsa_ctx, pad) <= 0)
+			goto err_rsa;
+
+		if (openssl_rsa_set_oaep_params(rsa_ctx, sess) < 0)
 			goto err_rsa;
 
 		if (EVP_PKEY_decrypt(rsa_ctx, NULL, &outlen,
