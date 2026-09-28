@@ -767,7 +767,8 @@ iavf_dev_configure(struct rte_eth_dev *dev)
 	 * recovery, in which case the reset handler restores them once at the
 	 * end (avoiding a double restore).
 	 */
-	if (reset_done && !vf->in_reset_recovery) {
+	if (reset_done && !rte_atomic_load_explicit(&vf->in_reset_recovery,
+			rte_memory_order_relaxed)) {
 		ret = iavf_post_reset_reconfig(dev);
 		if (ret)
 			return ret;
@@ -3083,7 +3084,8 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 	adapter->tpid = RTE_ETHER_TYPE_VLAN; /* VLAN TPID set to 0x8100 by default */
 	rte_spinlock_init(&adapter->phc_sync_lock);
 
-	if (!vf->in_reset_recovery && iavf_dev_event_handler_init())
+	if (!rte_atomic_load_explicit(&vf->in_reset_recovery, rte_memory_order_relaxed) &&
+	    iavf_dev_event_handler_init())
 		goto init_vf_err;
 
 	if (iavf_init_vf(eth_dev) != 0) {
@@ -3330,7 +3332,7 @@ iavf_dev_uninit(struct rte_eth_dev *dev)
 
 	iavf_dev_close(dev);
 
-	if (!vf->in_reset_recovery)
+	if (!rte_atomic_load_explicit(&vf->in_reset_recovery, rte_memory_order_relaxed))
 		iavf_dev_event_handler_fini();
 
 	return 0;
@@ -3451,11 +3453,12 @@ iavf_post_reset_reconfig(struct rte_eth_dev *dev)
 /*
  * Handle hardware reset
  */
-void
+int
 iavf_handle_hw_reset(struct rte_eth_dev *dev, bool vf_initiated_reset)
 {
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct iavf_adapter *adapter = dev->data->dev_private;
+	bool expected = false;
 	int ret;
 	bool restart_device = false;
 
@@ -3463,13 +3466,21 @@ iavf_handle_hw_reset(struct rte_eth_dev *dev, bool vf_initiated_reset)
 		restart_device = dev->data->dev_started;
 	} else {
 		if (!dev->data->dev_started)
-			return;
+			return 0;
 
 		if (!iavf_is_reset_detected(adapter))
 			PMD_DRV_LOG(WARNING, "VFR not observed; recovering anyway");
 	}
 
-	vf->in_reset_recovery = true;
+	/* serialize against a concurrent reset from another thread */
+	if (!rte_atomic_compare_exchange_strong_explicit(&vf->in_reset_recovery,
+			&expected, true, rte_memory_order_acquire,
+			rte_memory_order_acquire)) {
+		PMD_DRV_LOG(INFO, "Reset already in progress on port %u, skipping",
+				dev->data->port_id);
+		return -EBUSY;
+	}
+
 	vf->pf_reset_in_progress = !vf_initiated_reset;
 	vf->start_pending = false;
 	iavf_set_no_poll(adapter, false);
@@ -3520,11 +3531,11 @@ exit:
 	if (vf->post_reset_cb != NULL)
 		vf->post_reset_cb(dev->data->port_id, ret, vf->post_reset_cb_arg);
 
-	vf->in_reset_recovery = false;
 	vf->pf_reset_in_progress = false;
+	rte_atomic_store_explicit(&vf->in_reset_recovery, false, rte_memory_order_release);
 	iavf_set_no_poll(adapter, false);
 
-	return;
+	return ret;
 }
 
 RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_iavf_reinit, 25.11)
@@ -3555,9 +3566,7 @@ rte_pmd_iavf_reinit(uint16_t port)
 		return -EINVAL;
 	}
 
-	iavf_handle_hw_reset(dev, true);
-
-	return 0;
+	return iavf_handle_hw_reset(dev, true);
 }
 
 static int
@@ -3580,7 +3589,7 @@ iavf_validate_reset_cb(uint16_t port, void *cb, void *cb_arg)
 	}
 
 	vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
-	if (vf->in_reset_recovery) {
+	if (rte_atomic_load_explicit(&vf->in_reset_recovery, rte_memory_order_relaxed)) {
 		PMD_DRV_LOG(ERR, "Cannot modify reset cb on port %u, VF is resetting.", port);
 		return -EBUSY;
 	}
@@ -3639,7 +3648,8 @@ iavf_set_no_poll(struct iavf_adapter *adapter, bool link_change)
 	bool no_poll;
 
 	no_poll = (link_change & !vf->link_up) ||
-		vf->vf_reset || vf->in_reset_recovery;
+		vf->vf_reset ||
+		rte_atomic_load_explicit(&vf->in_reset_recovery, rte_memory_order_relaxed);
 
 	rte_atomic_store_explicit(&adapter->no_poll, no_poll,
 				  rte_memory_order_release);
@@ -3721,7 +3731,8 @@ iavf_resume_pending_start(struct rte_eth_dev *dev)
 	if (!vf->start_pending)
 		return;
 
-	if (vf->vf_reset || vf->in_reset_recovery)
+	if (vf->vf_reset || rte_atomic_load_explicit(&vf->in_reset_recovery,
+			rte_memory_order_acquire))
 		return;
 
 	/*
