@@ -2327,6 +2327,216 @@ openssl_rsa_set_oaep_params(EVP_PKEY_CTX *ctx,
 	return 0;
 }
 
+/**
+ * Configure RSA-PSS padding parameters, including the signature digest,
+ * on an initialized EVP_PKEY_CTX. Must be called after
+ * EVP_PKEY_CTX_set_rsa_padding().
+ *
+ * @return 0 on success, -1 on failure.
+ */
+static int
+openssl_rsa_set_pss_params(EVP_PKEY_CTX *ctx,
+		const struct openssl_asym_session *sess)
+{
+	/*
+	 * Tells OpenSSL which hash algorithm was used to create the
+	 * input message digest (rte_crypto_rsa_padding::hash), so it
+	 * knows the expected digest length and can embed the correct
+	 * algorithm identifier while PSS-encoding it. This does not
+	 * cause the digest to be (re-)computed here: EVP_PKEY_sign()/
+	 * EVP_PKEY_verify() operate on the digest bytes as-is.
+	 */
+	if (EVP_PKEY_CTX_set_signature_md(ctx, sess->u.r.pss_md) <= 0)
+		return -1;
+
+	if (EVP_PKEY_CTX_set_rsa_mgf1_md(ctx, sess->u.r.pss_mgf1_md) <= 0)
+		return -1;
+
+	/* pss_saltlen is a literal byte count (0 is valid: no salt) */
+	if (EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx, sess->u.r.pss_saltlen) <= 0)
+		return -1;
+
+	return 0;
+}
+
+/**
+ * Sign a message using RSA-PSS. Per rte_crypto_rsa_op_param::message and
+ * rte_crypto_rsa_padding::hash, the input is a digest already hashed by
+ * the caller with the configured algorithm, not the raw message, so
+ * EVP_PKEY_sign() is used directly on it (no internal re-hashing). This
+ * matches the pattern used for PKCS#1 v1.5/unpadded RSA signing in
+ * process_openssl_rsa_op_evp().
+ *
+ * The OpenSSL PMD does not advertise rte_crypto_rsa_capa::pss_explicit_salt,
+ * so an application-supplied rte_crypto_rsa_op_param::pss_salt is rejected
+ * by the caller before this function is invoked; the salt is always
+ * generated internally by OpenSSL's RNG via EVP_PKEY_sign().
+ *
+ * @return 0 on success, -1 on failure.
+ */
+static int
+openssl_rsa_pss_sign(uint32_t pad, const struct openssl_asym_session *sess,
+		struct rte_crypto_asym_op *op)
+{
+	EVP_PKEY_CTX *ctx = sess->u.r.ctx;
+	size_t outlen = 0;
+
+	if (EVP_PKEY_sign_init(ctx) <= 0)
+		return -1;
+
+	if (EVP_PKEY_CTX_set_rsa_padding(ctx, pad) <= 0)
+		return -1;
+
+	if (openssl_rsa_set_pss_params(ctx, sess) < 0)
+		return -1;
+
+	if (EVP_PKEY_sign(ctx, NULL, &outlen,
+			op->rsa.message.data, op->rsa.message.length) <= 0)
+		return -1;
+
+	if (outlen == 0 || outlen > op->rsa.sign.length)
+		return -1;
+
+	outlen = op->rsa.sign.length;
+	if (EVP_PKEY_sign(ctx, op->rsa.sign.data, &outlen,
+			op->rsa.message.data, op->rsa.message.length) <= 0)
+		return -1;
+
+	op->rsa.sign.length = outlen;
+	return 0;
+}
+
+/**
+ * Verify an RSA-PSS signature against a pre-computed message digest.
+ * Per rte_crypto_rsa_op_param::message and rte_crypto_rsa_padding::hash,
+ * the input is already a digest, so EVP_PKEY_verify() is used directly
+ * on it (no internal re-hashing). PSS does not support verify-recover,
+ * so this also gives a direct pass/fail result.
+ *
+ * A signature mismatch (including one caused by OpenSSL rejecting a
+ * malformed signature outright, e.g. wrong size) is a normal outcome,
+ * not a processing error, so it must not fail the enqueue operation.
+ *
+ * @return 0 if the signature is valid, 1 if invalid/mismatched,
+ *         -1 on a setup/processing failure unrelated to the signature.
+ */
+static int
+openssl_rsa_pss_verify(uint32_t pad, const struct openssl_asym_session *sess,
+		struct rte_crypto_asym_op *op)
+{
+	EVP_PKEY_CTX *ctx = sess->u.r.ctx;
+	int ret;
+
+	if (EVP_PKEY_verify_init(ctx) <= 0)
+		return -1;
+
+	if (EVP_PKEY_CTX_set_rsa_padding(ctx, pad) <= 0)
+		return -1;
+
+	if (openssl_rsa_set_pss_params(ctx, sess) < 0)
+		return -1;
+
+	/*
+	 * EVP_PKEY_verify() returns 1 for a valid signature, 0 for an
+	 * invalid one, and a negative value only for setup/library errors
+	 * (see EVP_PKEY_verify(3)); a malformed signature is reported via
+	 * a 0 return here too, not a negative one.
+	 */
+	ret = EVP_PKEY_verify(ctx,
+			op->rsa.sign.data, op->rsa.sign.length,
+			op->rsa.message.data, op->rsa.message.length);
+	if (ret < 0)
+		return -1;
+
+	if (ret == 0) {
+		OPENSSL_LOG(DEBUG, "RSA-PSS signature verification failed");
+		return 1;
+	}
+
+	return 0;
+}
+
+/**
+ * Verify an RSA signature using verify-recover, for deterministic
+ * padding schemes (PKCS#1 v1.5, no padding). Not applicable to PSS,
+ * since OpenSSL does not support recover-mode verification for PSS
+ * (RSA-PSS is a probabilistic scheme and cannot be undone to recover
+ * the original digest).
+ *
+ * A signature mismatch is a normal outcome, not a processing error, so
+ * it must not fail the enqueue operation. Note that EVP_PKEY_verify_recover()
+ * itself can return <= 0 for a mismatch too, e.g. when the signature does not
+ * decode to a validly padded value (OpenSSL then reports it as a hard
+ * "data too large for modulus"/padding error rather than a soft 0 return),
+ * so that case is treated the same as a successful-but-mismatching recover.
+ *
+ * @return 0 if the signature is valid, 1 if invalid/mismatched,
+ *         -1 on a setup/processing failure unrelated to the signature.
+ */
+static int
+openssl_rsa_verify_recover(EVP_PKEY_CTX *ctx, uint32_t pad,
+		struct rte_crypto_asym_op *op)
+{
+	uint8_t *tmp;
+	size_t outlen = 0;
+	int ret;
+
+	if (EVP_PKEY_verify_recover_init(ctx) <= 0)
+		return -1;
+
+	if (EVP_PKEY_CTX_set_rsa_padding(ctx, pad) <= 0)
+		return -1;
+
+	if (EVP_PKEY_verify_recover(ctx, NULL, &outlen,
+			op->rsa.sign.data,
+			op->rsa.sign.length) <= 0) {
+		OPENSSL_LOG(ERR, "RSA sign Verification failed");
+		return 1;
+	}
+
+	if ((outlen <= 0) || (outlen != op->rsa.sign.length)) {
+		OPENSSL_LOG(ERR, "RSA sign Verification failed");
+		return 1;
+	}
+
+	tmp = OPENSSL_malloc(outlen);
+	if (tmp == NULL) {
+		OPENSSL_LOG(ERR, "Memory allocation failed");
+		return -1;
+	}
+
+	ret = EVP_PKEY_verify_recover(ctx, tmp, &outlen,
+			op->rsa.sign.data,
+			op->rsa.sign.length);
+	if (ret <= 0) {
+		/*
+		 * A malformed/corrupted signature can make the underlying
+		 * RSA op itself fail (e.g. invalid padding), rather than
+		 * just returning a recovered value that fails to compare.
+		 * Both cases mean verification failed, not that processing
+		 * broke, so still let the op complete successfully.
+		 */
+		OPENSSL_free(tmp);
+		OPENSSL_LOG(ERR, "RSA sign Verification failed");
+		return 1;
+	}
+
+	OPENSSL_LOG(DEBUG,
+			"Length of public_decrypt %zu "
+			"length of message %zd",
+			outlen, op->rsa.message.length);
+	if (outlen != op->rsa.message.length ||
+			CRYPTO_memcmp(tmp, op->rsa.message.data,
+				op->rsa.message.length) != 0) {
+		OPENSSL_free(tmp);
+		OPENSSL_LOG(ERR, "RSA sign Verification failed");
+		return 1;
+	}
+	OPENSSL_free(tmp);
+
+	return 0;
+}
+
 /* process rsa operations */
 static int
 process_openssl_rsa_op_evp(struct rte_crypto_op *cop,
@@ -2334,7 +2544,6 @@ process_openssl_rsa_op_evp(struct rte_crypto_op *cop,
 {
 	struct rte_crypto_asym_op *op = cop->asym;
 	uint32_t pad = sess->u.r.pad;
-	uint8_t *tmp;
 	size_t outlen = 0;
 	int ret = -1;
 
@@ -2352,6 +2561,15 @@ process_openssl_rsa_op_evp(struct rte_crypto_op *cop,
 		return ret;
 	}
 
+	/* PSS is only valid for sign/verify */
+	if (sess->u.r.pad == RTE_CRYPTO_RSA_PADDING_PSS &&
+		op->rsa.op_type != RTE_CRYPTO_ASYM_OP_SIGN &&
+		op->rsa.op_type != RTE_CRYPTO_ASYM_OP_VERIFY) {
+		OPENSSL_LOG(ERR, "PSS supports sign/verify only");
+		cop->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+		return ret;
+	}
+
 	switch (pad) {
 	case RTE_CRYPTO_RSA_PADDING_PKCS1_5:
 		pad = RSA_PKCS1_PADDING;
@@ -2361,6 +2579,9 @@ process_openssl_rsa_op_evp(struct rte_crypto_op *cop,
 		break;
 	case RTE_CRYPTO_RSA_PADDING_OAEP:
 		pad = RSA_PKCS1_OAEP_PADDING;
+		break;
+	case RTE_CRYPTO_RSA_PADDING_PSS:
+		pad = RSA_PKCS1_PSS_PADDING;
 		break;
 	default:
 		cop->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
@@ -2426,70 +2647,55 @@ process_openssl_rsa_op_evp(struct rte_crypto_op *cop,
 		break;
 
 	case RTE_CRYPTO_ASYM_OP_SIGN:
-		if (EVP_PKEY_sign_init(rsa_ctx) <= 0)
-			goto err_rsa;
+		if (sess->u.r.pad == RTE_CRYPTO_RSA_PADDING_PSS) {
+			if (op->rsa.pss_salt.data != NULL) {
+				OPENSSL_LOG(ERR, "Explicit RSA-PSS salt is not supported");
+				cop->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+				return ret;
+			}
+			if (openssl_rsa_pss_sign(pad, sess, op) < 0)
+				goto err_rsa;
+		} else {
+			if (EVP_PKEY_sign_init(rsa_ctx) <= 0)
+				goto err_rsa;
 
-		if (EVP_PKEY_CTX_set_rsa_padding(rsa_ctx, pad) <= 0)
-			goto err_rsa;
+			if (EVP_PKEY_CTX_set_rsa_padding(rsa_ctx, pad) <= 0)
+				goto err_rsa;
 
-		if (EVP_PKEY_sign(rsa_ctx, NULL, &outlen,
-				op->rsa.message.data,
-				op->rsa.message.length) <= 0)
-			goto err_rsa;
+			if (EVP_PKEY_sign(rsa_ctx, NULL, &outlen,
+					op->rsa.message.data,
+					op->rsa.message.length) <= 0)
+				goto err_rsa;
 
-		if (outlen <= 0)
-			goto err_rsa;
+			if (outlen <= 0)
+				goto err_rsa;
 
-		if (EVP_PKEY_sign(rsa_ctx, op->rsa.sign.data, &outlen,
-				op->rsa.message.data,
-				op->rsa.message.length) <= 0)
-			goto err_rsa;
-		op->rsa.sign.length = outlen;
+			if (EVP_PKEY_sign(rsa_ctx, op->rsa.sign.data, &outlen,
+					op->rsa.message.data,
+					op->rsa.message.length) <= 0)
+				goto err_rsa;
+			op->rsa.sign.length = outlen;
+		}
 		break;
 
 	case RTE_CRYPTO_ASYM_OP_VERIFY:
-		if (EVP_PKEY_verify_recover_init(rsa_ctx) <= 0)
+		if (sess->u.r.pad == RTE_CRYPTO_RSA_PADDING_PSS)
+			ret = openssl_rsa_pss_verify(pad, sess, op);
+		else
+			ret = openssl_rsa_verify_recover(rsa_ctx, pad, op);
+
+		if (ret < 0)
 			goto err_rsa;
 
-		if (EVP_PKEY_CTX_set_rsa_padding(rsa_ctx, pad) <= 0)
-			goto err_rsa;
-
-		if (EVP_PKEY_verify_recover(rsa_ctx, NULL, &outlen,
-				op->rsa.sign.data,
-				op->rsa.sign.length) <= 0)
-			goto err_rsa;
-
-		if ((outlen <= 0) || (outlen != op->rsa.sign.length))
-			goto err_rsa;
-
-		tmp = OPENSSL_malloc(outlen);
-		if (tmp == NULL) {
-			OPENSSL_LOG(ERR, "Memory allocation failed");
-			goto err_rsa;
+		/*
+		 * ret == 1 means the signature did not verify; that is a
+		 * normal outcome, so the op still completes (with an error
+		 * status) instead of failing the enqueue itself.
+		 */
+		if (ret > 0) {
+			cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+			return 0;
 		}
-
-		ret = EVP_PKEY_verify_recover(rsa_ctx, tmp, &outlen,
-				op->rsa.sign.data,
-				op->rsa.sign.length);
-		if (ret <= 0) {
-			/* OpenSSL RSA verification returns one on
-			 * successful verification, otherwise 0. Hence,
-			 * this enqueue operation should succeed even if
-			 * invalid signature has been requested in verify.
-			 */
-			OPENSSL_free(tmp);
-			goto err_rsa;
-		}
-
-		OPENSSL_LOG(DEBUG,
-				"Length of public_decrypt %zu "
-				"length of message %zd",
-				outlen, op->rsa.message.length);
-		if (CRYPTO_memcmp(tmp, op->rsa.message.data,
-				op->rsa.message.length)) {
-			OPENSSL_LOG(ERR, "RSA sign Verification failed");
-		}
-		OPENSSL_free(tmp);
 		break;
 
 	default:
