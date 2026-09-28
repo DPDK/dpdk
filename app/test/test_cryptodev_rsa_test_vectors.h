@@ -251,6 +251,23 @@ struct rsa_test_data rsaplaintext = {
 	.len = 20
 };
 
+/*
+ * SHA-256 digest of rsaplaintext.data. RTE_CRYPTO_RSA_PADDING_PSS
+ * expects rte_crypto_rsa_op_param::message to already be a digest
+ * hashed with the algorithm configured in rte_crypto_rsa_padding::hash
+ * (SHA-256 for the PSS xforms below), not the raw message, so PSS
+ * sign/verify tests use this instead of rsaplaintext directly.
+ */
+struct rsa_test_data rsa_pss_digest_sha256 = {
+	.data = {
+		0x45, 0x24, 0x54, 0x32, 0x9d, 0x91, 0xda, 0x1b,
+		0xb8, 0x76, 0x0d, 0x9b, 0xdd, 0xea, 0xe5, 0x21,
+		0x30, 0x91, 0x72, 0xb0, 0x9c, 0x23, 0x12, 0x3f,
+		0xb3, 0x43, 0x09, 0x5d, 0xa3, 0x10, 0x78, 0x7c
+	},
+	.len = 32
+};
+
 uint8_t rsa_n[] = {
 	0xb3, 0xa1, 0xaf, 0xb7, 0x13, 0x08, 0x00,
 	0x0a, 0x35, 0xdc, 0x2b, 0x20, 0x8d, 0xa1, 0xb5,
@@ -500,6 +517,152 @@ struct rte_crypto_asym_xform rsa_oaep_labeled_default_mgf1_xform = {
 			.data = rsa_oaep_label,
 			.length = sizeof(rsa_oaep_label)
 		},
+		.n = {
+			.data = rsa_n,
+			.length = sizeof(rsa_n)
+		},
+		.e = {
+			.data = rsa_e,
+			.length = sizeof(rsa_e)
+		},
+		.qt = {
+			.p = {
+				.data = rsa_p,
+				.length = sizeof(rsa_p)
+			},
+			.q = {
+				.data = rsa_q,
+				.length = sizeof(rsa_q)
+			},
+			.dP = {
+				.data = rsa_dP,
+				.length = sizeof(rsa_dP)
+			},
+			.dQ = {
+				.data = rsa_dQ,
+				.length = sizeof(rsa_dQ)
+			},
+			.qInv = {
+				.data = rsa_qInv,
+				.length = sizeof(rsa_qInv)
+			},
+		},
+		.d = {
+			.data = rsa_d,
+			.length = sizeof(rsa_d)
+		},
+		.key_type = RTE_RSA_KEY_TYPE_QT
+	}
+};
+
+/*
+ * RSA-PSS xforms below all use the same 1024-bit test key (rsa_n, 128
+ * bytes) and SHA-256 (hLen = 32 bytes). For this key/hash combination:
+ *   emBits = modBits - 1 = 1023, emLen = ceil(emBits / 8) = 128
+ *   maxSaltLen = emLen - hLen - 2 = 128 - 32 - 2 = 94
+ * (see RFC 8017 EMSA-PSS-ENCODE, section 9.1.1)
+ */
+
+/** rsa PSS xform (SHA-256, salt length = digest length, QT private key type by default) */
+struct rte_crypto_asym_xform rsa_pss_xform = {
+	.next = NULL,
+	.xform_type = RTE_CRYPTO_ASYM_XFORM_RSA,
+	.rsa = {
+		.padding.type = RTE_CRYPTO_RSA_PADDING_PSS,
+		.padding.hash = RTE_CRYPTO_AUTH_SHA256,
+		.padding.pss_saltlen = 32,
+		.n = {
+			.data = rsa_n,
+			.length = sizeof(rsa_n)
+		},
+		.e = {
+			.data = rsa_e,
+			.length = sizeof(rsa_e)
+		},
+		.qt = {
+			.p = {
+				.data = rsa_p,
+				.length = sizeof(rsa_p)
+			},
+			.q = {
+				.data = rsa_q,
+				.length = sizeof(rsa_q)
+			},
+			.dP = {
+				.data = rsa_dP,
+				.length = sizeof(rsa_dP)
+			},
+			.dQ = {
+				.data = rsa_dQ,
+				.length = sizeof(rsa_dQ)
+			},
+			.qInv = {
+				.data = rsa_qInv,
+				.length = sizeof(rsa_qInv)
+			},
+		},
+		.d = {
+			.data = rsa_d,
+			.length = sizeof(rsa_d)
+		},
+		.key_type = RTE_RSA_KEY_TYPE_QT
+	}
+};
+
+/** rsa PSS xform with the maximum permissible salt length (94 bytes) */
+struct rte_crypto_asym_xform rsa_pss_max_salt_xform = {
+	.next = NULL,
+	.xform_type = RTE_CRYPTO_ASYM_XFORM_RSA,
+	.rsa = {
+		.padding.type = RTE_CRYPTO_RSA_PADDING_PSS,
+		.padding.hash = RTE_CRYPTO_AUTH_SHA256,
+		.padding.pss_saltlen = 94,
+		.n = {
+			.data = rsa_n,
+			.length = sizeof(rsa_n)
+		},
+		.e = {
+			.data = rsa_e,
+			.length = sizeof(rsa_e)
+		},
+		.qt = {
+			.p = {
+				.data = rsa_p,
+				.length = sizeof(rsa_p)
+			},
+			.q = {
+				.data = rsa_q,
+				.length = sizeof(rsa_q)
+			},
+			.dP = {
+				.data = rsa_dP,
+				.length = sizeof(rsa_dP)
+			},
+			.dQ = {
+				.data = rsa_dQ,
+				.length = sizeof(rsa_dQ)
+			},
+			.qInv = {
+				.data = rsa_qInv,
+				.length = sizeof(rsa_qInv)
+			},
+		},
+		.d = {
+			.data = rsa_d,
+			.length = sizeof(rsa_d)
+		},
+		.key_type = RTE_RSA_KEY_TYPE_QT
+	}
+};
+
+/** rsa PSS xform with zero-length salt (deterministic PSS, no randomization) */
+struct rte_crypto_asym_xform rsa_pss_zero_salt_xform = {
+	.next = NULL,
+	.xform_type = RTE_CRYPTO_ASYM_XFORM_RSA,
+	.rsa = {
+		.padding.type = RTE_CRYPTO_RSA_PADDING_PSS,
+		.padding.hash = RTE_CRYPTO_AUTH_SHA256,
+		.padding.pss_saltlen = 0, /* no salt bytes */
 		.n = {
 			.data = rsa_n,
 			.length = sizeof(rsa_n)

@@ -606,6 +606,307 @@ error_exit:
 	return status;
 }
 
+/*
+ * Check that the device supports RSA-PSS padding, the hash used for
+ * the signature digest, and, if explicitly set, the MGF1 hash (this
+ * PMD defaults MGF1 to the same hash as the digest when unset).
+ */
+static bool
+is_rsa_pss_supported(uint8_t dev_id, const struct rte_crypto_rsa_padding *padding)
+{
+	struct rte_cryptodev_asym_capability_idx idx = {
+		.type = RTE_CRYPTO_ASYM_XFORM_RSA,
+	};
+	const struct rte_cryptodev_asymmetric_xform_capability *capa;
+
+	capa = rte_cryptodev_asym_capability_get(dev_id, &idx);
+	if (capa == NULL) {
+		RTE_LOG(INFO, USER1, "RSA capability not reported by device\n");
+		return false;
+	}
+
+	if (capa->rsa_capa.pad_types != 0 &&
+			(capa->rsa_capa.pad_types & (1 << RTE_CRYPTO_RSA_PADDING_PSS)) == 0) {
+		RTE_LOG(INFO, USER1,
+			"RSA PSS padding not supported by device. Supported pad_types=%#x\n",
+			capa->rsa_capa.pad_types);
+		return false;
+	}
+
+	if (!rte_cryptodev_asym_xform_capability_check_hash(capa, padding->hash)) {
+		RTE_LOG(INFO, USER1,
+			"RSA PSS hash %u not supported by device capabilities "
+			"(supported hash_algos=%#"PRIx64")\n",
+			padding->hash, capa->hash_algos);
+		return false;
+	}
+
+	if (padding->mgf1hash != 0 &&
+			(capa->rsa_capa.mgf1_hash_algos & RTE_BIT64(padding->mgf1hash)) == 0) {
+		RTE_LOG(INFO, USER1,
+			"RSA PSS MGF1 hash %u not supported by device capabilities "
+			"(supported mgf1_hash_algos=%#"PRIx64")\n",
+			padding->mgf1hash, capa->rsa_capa.mgf1_hash_algos);
+		return false;
+	}
+
+	return true;
+}
+
+/*
+ * Sign then verify the freshly-generated signature. Unlike
+ * queue_ops_rsa_sign_verify(), this does not include a
+ * corrupted-signature negative test: RSA-PSS verification does not
+ * support verify-recover, and mismatches are reported via op->status.
+ */
+static int
+queue_ops_rsa_pss_sign_verify(void *sess)
+{
+	struct crypto_testsuite_params_asym *ts_params = &testsuite_params;
+	struct rte_mempool *op_mpool = ts_params->op_mpool;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_crypto_op *op, *result_op;
+	struct rte_crypto_asym_op *asym_op;
+	uint8_t output_buf[TEST_DATA_SIZE];
+	int status;
+
+	/* Set up crypto op data structure */
+	op = rte_crypto_op_alloc(op_mpool, RTE_CRYPTO_OP_TYPE_ASYMMETRIC);
+	if (!op) {
+		RTE_LOG(ERR, USER1, "Failed to allocate asymmetric crypto "
+			"operation struct\n");
+		return TEST_FAILED;
+	}
+
+	asym_op = op->asym;
+
+	/* Compute sign on the test vector */
+	asym_op->rsa.op_type = RTE_CRYPTO_ASYM_OP_SIGN;
+
+	/*
+	 * RTE_CRYPTO_RSA_PADDING_PSS expects message to already be a
+	 * digest hashed with the algorithm configured in the session's
+	 * padding.hash (SHA-256 here), not the raw plaintext.
+	 */
+	asym_op->rsa.message.data = rsa_pss_digest_sha256.data;
+	asym_op->rsa.message.length = rsa_pss_digest_sha256.len;
+	asym_op->rsa.sign.length = RTE_DIM(rsa_n);
+	asym_op->rsa.sign.data = output_buf;
+
+	debug_hexdump(stdout, "digest", asym_op->rsa.message.data,
+		      asym_op->rsa.message.length);
+
+	/* Attach asymmetric crypto session to crypto operations */
+	rte_crypto_op_attach_asym_session(op, sess);
+
+	RTE_LOG(DEBUG, USER1, "Process ASYM operation\n");
+
+	/* Process crypto operation */
+	if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
+		RTE_LOG(ERR, USER1, "Error sending packet for sign\n");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	while (rte_cryptodev_dequeue_burst(dev_id, 0, &result_op, 1) == 0)
+		rte_pause();
+
+	if (result_op == NULL) {
+		RTE_LOG(ERR, USER1, "Failed to process sign op\n");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	if (result_op->status != RTE_CRYPTO_OP_STATUS_SUCCESS) {
+		RTE_LOG(ERR, USER1, "Failed to process PSS sign op\n");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	debug_hexdump(stdout, "signed message", asym_op->rsa.sign.data,
+		      asym_op->rsa.sign.length);
+	asym_op = result_op->asym;
+
+	/* Verify sign */
+	asym_op->rsa.op_type = RTE_CRYPTO_ASYM_OP_VERIFY;
+
+	/* Process crypto operation */
+	if (rte_cryptodev_enqueue_burst(dev_id, 0, &op, 1) != 1) {
+		RTE_LOG(ERR, USER1, "Error sending packet for verify\n");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	while (rte_cryptodev_dequeue_burst(dev_id, 0, &result_op, 1) == 0)
+		rte_pause();
+
+	if (result_op == NULL) {
+		RTE_LOG(ERR, USER1, "Failed to process verify op\n");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	if (result_op->status != RTE_CRYPTO_OP_STATUS_SUCCESS) {
+		RTE_LOG(ERR, USER1, "Failed to process PSS sign-verify op\n");
+		status = TEST_FAILED;
+		goto error_exit;
+	}
+
+	status = TEST_SUCCESS;
+error_exit:
+
+	rte_crypto_op_free(op);
+
+	return status;
+}
+
+static int
+test_rsa_pss_sign_verify_digest_saltlen(void)
+{
+	struct crypto_testsuite_params_asym *ts_params = &testsuite_params;
+	struct rte_mempool *sess_mpool = ts_params->session_mpool;
+	struct rte_cryptodev_asym_capability_idx idx;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_crypto_asym_xform xform;
+	void *sess = NULL;
+	struct rte_cryptodev_info dev_info;
+	int ret, status = TEST_SUCCESS;
+
+	idx.type = RTE_CRYPTO_ASYM_XFORM_RSA;
+	if (rte_cryptodev_asym_capability_get(dev_id, &idx) == NULL)
+		return -ENOTSUP;
+
+	if (!is_rsa_pss_supported(dev_id, &rsa_pss_xform.rsa.padding)) {
+		RTE_LOG(INFO, USER1, "RSA PSS not supported. Test skipped\n");
+		return TEST_SKIPPED;
+	}
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+	if (!(dev_info.feature_flags &
+				RTE_CRYPTODEV_FF_RSA_PRIV_OP_KEY_EXP)) {
+		RTE_LOG(INFO, USER1, "Device doesn't support sign op with "
+			"exponent key type. Test skipped\n");
+		return TEST_SKIPPED;
+	}
+
+	memcpy(&xform, &rsa_pss_xform, sizeof(rsa_pss_xform));
+	xform.rsa.key_type = RTE_RSA_KEY_TYPE_EXP;
+
+	ret = rte_cryptodev_asym_session_create(dev_id, &xform, sess_mpool, &sess);
+	if (ret < 0) {
+		RTE_LOG(ERR, USER1, "Session creation failed for "
+			"PSS sign_verify (saltlen = digest length)\n");
+		status = (ret == -ENOTSUP) ? TEST_SKIPPED : TEST_FAILED;
+		goto error_exit;
+	}
+
+	status = queue_ops_rsa_pss_sign_verify(sess);
+
+error_exit:
+	rte_cryptodev_asym_session_free(dev_id, sess);
+	TEST_ASSERT_EQUAL(status, 0, "Test failed");
+
+	return status;
+}
+
+static int
+test_rsa_pss_sign_verify_max_saltlen(void)
+{
+	struct crypto_testsuite_params_asym *ts_params = &testsuite_params;
+	struct rte_mempool *sess_mpool = ts_params->session_mpool;
+	struct rte_cryptodev_asym_capability_idx idx;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_crypto_asym_xform xform;
+	void *sess = NULL;
+	struct rte_cryptodev_info dev_info;
+	int ret, status = TEST_SUCCESS;
+
+	idx.type = RTE_CRYPTO_ASYM_XFORM_RSA;
+	if (rte_cryptodev_asym_capability_get(dev_id, &idx) == NULL)
+		return -ENOTSUP;
+
+	if (!is_rsa_pss_supported(dev_id, &rsa_pss_max_salt_xform.rsa.padding)) {
+		RTE_LOG(INFO, USER1, "RSA PSS not supported. Test skipped\n");
+		return TEST_SKIPPED;
+	}
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+	if (!(dev_info.feature_flags &
+				RTE_CRYPTODEV_FF_RSA_PRIV_OP_KEY_EXP)) {
+		RTE_LOG(INFO, USER1, "Device doesn't support sign op with "
+			"exponent key type. Test skipped\n");
+		return TEST_SKIPPED;
+	}
+
+	memcpy(&xform, &rsa_pss_max_salt_xform, sizeof(rsa_pss_max_salt_xform));
+	xform.rsa.key_type = RTE_RSA_KEY_TYPE_EXP;
+
+	ret = rte_cryptodev_asym_session_create(dev_id, &xform, sess_mpool, &sess);
+	if (ret < 0) {
+		RTE_LOG(ERR, USER1, "Session creation failed for "
+			"PSS sign_verify (max saltlen)\n");
+		status = (ret == -ENOTSUP) ? TEST_SKIPPED : TEST_FAILED;
+		goto error_exit;
+	}
+
+	status = queue_ops_rsa_pss_sign_verify(sess);
+
+error_exit:
+	rte_cryptodev_asym_session_free(dev_id, sess);
+	TEST_ASSERT_EQUAL(status, 0, "Test failed");
+
+	return status;
+}
+
+static int
+test_rsa_pss_sign_verify_zero_saltlen(void)
+{
+	struct crypto_testsuite_params_asym *ts_params = &testsuite_params;
+	struct rte_mempool *sess_mpool = ts_params->session_mpool;
+	struct rte_cryptodev_asym_capability_idx idx;
+	uint8_t dev_id = ts_params->valid_devs[0];
+	struct rte_crypto_asym_xform xform;
+	void *sess = NULL;
+	struct rte_cryptodev_info dev_info;
+	int ret, status = TEST_SUCCESS;
+
+	idx.type = RTE_CRYPTO_ASYM_XFORM_RSA;
+	if (rte_cryptodev_asym_capability_get(dev_id, &idx) == NULL)
+		return -ENOTSUP;
+
+	if (!is_rsa_pss_supported(dev_id, &rsa_pss_zero_salt_xform.rsa.padding)) {
+		RTE_LOG(INFO, USER1, "RSA PSS not supported. Test skipped\n");
+		return TEST_SKIPPED;
+	}
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+	if (!(dev_info.feature_flags &
+				RTE_CRYPTODEV_FF_RSA_PRIV_OP_KEY_EXP)) {
+		RTE_LOG(INFO, USER1, "Device doesn't support sign op with "
+			"exponent key type. Test skipped\n");
+		return TEST_SKIPPED;
+	}
+
+	memcpy(&xform, &rsa_pss_zero_salt_xform, sizeof(rsa_pss_zero_salt_xform));
+	xform.rsa.key_type = RTE_RSA_KEY_TYPE_EXP;
+
+	ret = rte_cryptodev_asym_session_create(dev_id, &xform, sess_mpool, &sess);
+	if (ret < 0) {
+		RTE_LOG(ERR, USER1, "Session creation failed for "
+			"PSS sign_verify (zero saltlen)\n");
+		status = (ret == -ENOTSUP) ? TEST_SKIPPED : TEST_FAILED;
+		goto error_exit;
+	}
+
+	status = queue_ops_rsa_pss_sign_verify(sess);
+
+error_exit:
+	rte_cryptodev_asym_session_free(dev_id, sess);
+	TEST_ASSERT_EQUAL(status, 0, "Test failed");
+
+	return status;
+}
+
 static int
 test_rsa_sign_verify(void)
 {
@@ -5705,6 +6006,12 @@ static struct unit_test_suite cryptodev_asym_rsa_testsuite = {
 				test_rsa_oaep_labeled_default_mgf1_enc_dec),
 		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym,
 				test_rsa_oaep_labeled_default_mgf1_enc_dec_crt),
+		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym,
+				test_rsa_pss_sign_verify_digest_saltlen),
+		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym,
+				test_rsa_pss_sign_verify_max_saltlen),
+		TEST_CASE_ST(ut_setup_asym, ut_teardown_asym,
+				test_rsa_pss_sign_verify_zero_saltlen),
 		/* RSA EXP */
 		TEST_CASE_NAMED_WITH_DATA(
 			"RSA Encryption (n=128, pt=20, e=3) EXP, Padding: NONE",
