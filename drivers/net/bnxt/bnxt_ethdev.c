@@ -646,12 +646,12 @@ static int bnxt_init_fc_ctx_mem(struct bnxt *bp)
 {
 	struct rte_pci_device *pdev = bp->pdev;
 	char type[RTE_MEMZONE_NAMESIZE];
-	uint16_t max_fc;
 	int rc = 0;
+	uint16_t max_fc;
 
 	max_fc = bp->flow_stat->max_fc;
 
-	sprintf(type, "bnxt_rx_fc_in_" PCI_PRI_FMT, pdev->addr.domain,
+	snprintf(type, sizeof(type), "bnxt_rx_fc_in_" PCI_PRI_FMT, pdev->addr.domain,
 		pdev->addr.bus, pdev->addr.devid, pdev->addr.function);
 	/* 4 bytes for each counter-id */
 	rc = bnxt_alloc_ctx_mem_buf(bp, type,
@@ -660,7 +660,7 @@ static int bnxt_init_fc_ctx_mem(struct bnxt *bp)
 	if (rc)
 		return rc;
 
-	sprintf(type, "bnxt_rx_fc_out_" PCI_PRI_FMT, pdev->addr.domain,
+	snprintf(type, sizeof(type), "bnxt_rx_fc_out_" PCI_PRI_FMT, pdev->addr.domain,
 		pdev->addr.bus, pdev->addr.devid, pdev->addr.function);
 	/* 16 bytes for each counter - 8 bytes pkt_count, 8 bytes byte_count */
 	rc = bnxt_alloc_ctx_mem_buf(bp, type,
@@ -669,7 +669,7 @@ static int bnxt_init_fc_ctx_mem(struct bnxt *bp)
 	if (rc)
 		return rc;
 
-	sprintf(type, "bnxt_tx_fc_in_" PCI_PRI_FMT, pdev->addr.domain,
+	snprintf(type, sizeof(type), "bnxt_tx_fc_in_" PCI_PRI_FMT, pdev->addr.domain,
 		pdev->addr.bus, pdev->addr.devid, pdev->addr.function);
 	/* 4 bytes for each counter-id */
 	rc = bnxt_alloc_ctx_mem_buf(bp, type,
@@ -678,7 +678,7 @@ static int bnxt_init_fc_ctx_mem(struct bnxt *bp)
 	if (rc)
 		return rc;
 
-	sprintf(type, "bnxt_tx_fc_out_" PCI_PRI_FMT, pdev->addr.domain,
+	snprintf(type, sizeof(type), "bnxt_tx_fc_out_" PCI_PRI_FMT, pdev->addr.domain,
 		pdev->addr.bus, pdev->addr.devid, pdev->addr.function);
 	/* 16 bytes for each counter - 8 bytes pkt_count, 8 bytes byte_count */
 	rc = bnxt_alloc_ctx_mem_buf(bp, type,
@@ -5158,8 +5158,8 @@ int bnxt_alloc_ctx_pg_tbls(struct bnxt *bp)
 {
 	struct bnxt_ctx_mem_info *ctx = bp->ctx;
 	struct bnxt_ctx_mem *ctx2;
-	uint16_t type;
 	int rc = 0;
+	uint16_t type;
 
 	ctx2 = &ctx->ctx_arr[0];
 	for (type = 0; type < ctx->types && rc == 0; type++) {
@@ -5180,7 +5180,7 @@ int bnxt_alloc_ctx_pg_tbls(struct bnxt *bp)
 		for (i = 0; i < w && rc == 0; i++) {
 			char name[RTE_MEMZONE_NAMESIZE] = {0};
 
-			sprintf(name, "_%d_%d", i, type);
+			snprintf(name, sizeof(name), "_%d_%d", i, type);
 
 			if (ctxm->entry_multiple)
 				entries = bnxt_roundup(ctxm->max_entries,
