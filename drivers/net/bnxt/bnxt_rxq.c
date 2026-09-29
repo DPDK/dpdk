@@ -76,50 +76,25 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 {
 	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
 	struct rte_eth_rss_conf *rss = &bp->rss_conf;
-	const struct rte_eth_vmdq_rx_conf *conf =
-		    &dev_conf->rx_adv_conf.vmdq_rx_conf;
 	unsigned int i, j, nb_q_per_grp = 1, ring_idx = 0;
 	int start_grp_id, end_grp_id = 1, rc = 0;
 	struct bnxt_vnic_info *vnic;
 	struct bnxt_filter_info *filter;
-	enum rte_eth_nb_pools pools = 1, max_pools = 0;
+	enum rte_eth_nb_pools pools = 1;
 	struct bnxt_rx_queue *rxq;
 
 	bp->nr_vnics = 0;
 
 	/* Multi-queue mode */
-	if (dev_conf->rxmode.mq_mode & RTE_ETH_MQ_RX_VMDQ_DCB_RSS) {
-		/* VMDq ONLY, VMDq+RSS, VMDq+DCB, VMDq+DCB+RSS */
-
-		switch (dev_conf->rxmode.mq_mode) {
-		case RTE_ETH_MQ_RX_VMDQ_RSS:
-		case RTE_ETH_MQ_RX_VMDQ_ONLY:
-		case RTE_ETH_MQ_RX_VMDQ_DCB_RSS:
-			/* FALLTHROUGH */
-			/* ETH_8/64_POOLs */
-			pools = conf->nb_queue_pools;
-			/* For each pool, allocate MACVLAN CFA rule & VNIC */
-			max_pools = RTE_MIN(bp->max_vnics,
-					    RTE_MIN(bp->max_l2_ctx,
-					    RTE_MIN(bp->max_rsscos_ctx,
-						    RTE_ETH_64_POOLS)));
-			PMD_DRV_LOG_LINE(DEBUG,
-				    "pools = %u max_pools = %u",
-				    pools, max_pools);
-			if (pools > max_pools)
-				pools = max_pools;
-			break;
-		case RTE_ETH_MQ_RX_RSS:
-			pools = bp->rx_cosq_cnt ? bp->rx_cosq_cnt : 1;
-			break;
-		default:
-			PMD_DRV_LOG_LINE(ERR, "Unsupported mq_mod %d",
-				dev_conf->rxmode.mq_mode);
-			rc = -EINVAL;
-			goto err_out;
-		}
-	} else if (!dev_conf->rxmode.mq_mode) {
+	switch (dev_conf->rxmode.mq_mode) {
+	case RTE_ETH_MQ_RX_NONE:
+	case RTE_ETH_MQ_RX_RSS:
 		pools = bp->rx_cosq_cnt ? bp->rx_cosq_cnt : pools;
+		break;
+	default:
+		PMD_DRV_LOG_LINE(ERR, "Unsupported mq_mode %d",
+				 dev_conf->rxmode.mq_mode);
+		return -EINVAL;
 	}
 
 	pools = RTE_MIN(pools, bp->rx_cp_nr_rings);
@@ -141,19 +116,13 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 				    "rxq[%d] = %p vnic[%d] = %p",
 				    ring_idx, rxq, i, vnic);
 		}
-		if (i == 0) {
-			if (dev_conf->rxmode.mq_mode & RTE_ETH_MQ_RX_VMDQ_DCB) {
-				bp->eth_dev->data->promiscuous = 1;
-				vnic->flags |= BNXT_VNIC_INFO_PROMISC;
-			}
+		if (i == 0)
 			vnic->func_default = true;
-		}
 		vnic->start_grp_id = start_grp_id;
 		vnic->end_grp_id = end_grp_id;
 
 		if (i) {
-			if (dev_conf->rxmode.mq_mode & RTE_ETH_MQ_RX_VMDQ_DCB ||
-			    !(dev_conf->rxmode.mq_mode & RTE_ETH_MQ_RX_RSS))
+			if (!(dev_conf->rxmode.mq_mode & RTE_ETH_MQ_RX_RSS))
 				vnic->rss_dflt_cr = true;
 			goto skip_filter_allocation;
 		}
@@ -165,10 +134,7 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 		}
 		filter->mac_index = 0;
 		filter->flags |= HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_OUTERMOST;
-		/*
-		 * TODO: Configure & associate CFA rule for
-		 * each VNIC for each VMDq with MACVLAN, MACVLAN+TC
-		 */
+
 		STAILQ_INSERT_TAIL(&vnic->filter, filter, next);
 
 skip_filter_allocation:
