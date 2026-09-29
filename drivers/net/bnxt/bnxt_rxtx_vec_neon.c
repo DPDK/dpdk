@@ -164,8 +164,8 @@ recv_burst_vec_neon(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	struct bnxt_rx_queue *rxq = rx_queue;
 	struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
 	struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
-	uint16_t cp_ring_size = cpr->cp_ring_struct->ring_size;
-	uint16_t rx_ring_size = rxr->rx_ring_struct->ring_size;
+	uint32_t cp_ring_size = cpr->cp_ring_struct->ring_size;
+	uint32_t rx_ring_size = rxr->rx_ring_struct->ring_size;
 	struct cmpl_base *cp_desc_ring = cpr->cp_desc_ring;
 	uint64_t valid, desc_valid_mask = ~0UL;
 	const uint32x4_t info3_v_mask = vdupq_n_u32(CMPL_BASE_V);

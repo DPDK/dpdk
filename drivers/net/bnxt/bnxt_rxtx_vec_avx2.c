@@ -27,8 +27,8 @@ recv_burst_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		_mm256_set_epi64x(0, 0, 0, rxq->mbuf_initializer);
 	struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
 	struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
-	uint16_t cp_ring_size = cpr->cp_ring_struct->ring_size;
-	uint16_t rx_ring_size = rxr->rx_ring_struct->ring_size;
+	uint32_t cp_ring_size = cpr->cp_ring_struct->ring_size;
+	uint32_t rx_ring_size = rxr->rx_ring_struct->ring_size;
 	struct cmpl_base *cp_desc_ring = cpr->cp_desc_ring;
 	uint64_t valid, desc_valid_mask = ~0ULL;
 	const __m256i info3_v_mask = _mm256_set1_epi32(CMPL_BASE_V);
@@ -393,8 +393,8 @@ crx_burst_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		_mm256_set_epi64x(0, 0, 0, rxq->mbuf_initializer);
 	struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
 	struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
-	uint16_t cp_ring_size = cpr->cp_ring_struct->ring_size;
-	uint16_t rx_ring_size = rxr->rx_ring_struct->ring_size;
+	uint32_t cp_ring_size = cpr->cp_ring_struct->ring_size;
+	uint32_t rx_ring_size = rxr->rx_ring_struct->ring_size;
 	struct cmpl_base *cp_desc_ring = cpr->cp_desc_ring;
 	uint64_t valid, desc_valid_mask = ~0ULL;
 	const __m256i info3_v_mask = _mm256_set1_epi32(CMPL_BASE_V);
@@ -899,7 +899,7 @@ bnxt_xmit_pkts_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
 	int nb_sent = 0;
 	struct bnxt_tx_queue *txq = tx_queue;
 	struct bnxt_tx_ring_info *txr = txq->tx_ring;
-	uint16_t ring_size = txr->tx_ring_struct->ring_size;
+	uint32_t ring_size = txr->tx_ring_struct->ring_size;
 
 	/* Tx queue was stopped; wait for it to be restarted */
 	if (unlikely(!txq->tx_started)) {
@@ -950,8 +950,8 @@ recv_burst_vec_avx2_v3(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pk
 		_mm256_set_epi64x(0, 0, 0, rxq->mbuf_initializer);
 	struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
 	struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
-	uint16_t cp_ring_size = cpr->cp_ring_struct->ring_size;
-	uint16_t rx_ring_size = rxr->rx_ring_struct->ring_size;
+	uint32_t cp_ring_size = cpr->cp_ring_struct->ring_size;
+	uint32_t rx_ring_size = rxr->rx_ring_struct->ring_size;
 	struct cmpl_base *cp_desc_ring = cpr->cp_desc_ring;
 	uint64_t valid, desc_valid_mask = ~0ULL;
 	uint32_t raw_cons = cpr->cp_raw_cons;
