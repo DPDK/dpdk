@@ -6278,8 +6278,10 @@ int bnxt_hwrm_func_vf_vnic_query_and_config(struct bnxt *bp, uint16_t vf,
 
 	num_vnic_ids = bnxt_hwrm_func_vf_vnic_query(bp, vf, vnic_ids);
 
-	if (num_vnic_ids < 0)
+	if (num_vnic_ids < 0) {
+		rte_free(vnic_ids);
 		return num_vnic_ids;
+	}
 
 	/* Retrieve VNIC, update bd_stall then update */
 
