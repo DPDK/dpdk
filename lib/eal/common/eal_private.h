@@ -367,7 +367,7 @@ int eal_cpu_detected(unsigned lcore_id);
  *
  * This function is private to the EAL.
  */
-void set_tsc_freq(void);
+int init_tsc_freq(void);
 
 /**
  * Get precise TSC frequency from system

@@ -34,7 +34,7 @@ extern enum timer_source eal_timer_source;
  * Get the measured frequency of the RDTSC counter
  *
  * @return
- *   The TSC frequency for this lcore
+ *   The TSC frequency for all lcores, always non-zero
  */
 uint64_t
 rte_get_tsc_hz(void);
