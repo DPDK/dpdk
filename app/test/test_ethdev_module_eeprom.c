@@ -269,6 +269,42 @@ test_module_eeprom_sfp_8472_ext_cal_unaligned(void)
 	return TEST_SUCCESS;
 }
 
+static void
+put_be_float(uint8_t *data, unsigned int offset, uint32_t bits)
+{
+	data[offset] = bits >> 24;
+	data[offset + 1] = (bits >> 16) & 0xff;
+	data[offset + 2] = (bits >> 8) & 0xff;
+	data[offset + 3] = bits & 0xff;
+}
+
+static int
+test_module_eeprom_sfp_8472_rx_power_polynomial(void)
+{
+	uint8_t data[RTE_ETH_MODULE_SFF_8472_LEN];
+	uint8_t *a2 = data + RTE_ETH_MODULE_SFF_8079_LEN;
+
+	fill_sfp(data);
+	/* diagnostics implemented, externally calibrated, average RX power */
+	data[92] = 0x58;
+	a2[76] = 1;	/* TX bias slope */
+	a2[80] = 1;	/* TX power slope */
+	a2[84] = 1;	/* temperature slope */
+	a2[88] = 1;	/* voltage slope */
+	put_u16(a2, 104, 10);	/* raw RX power x = 10 */
+	/* 0.125 x^4 + 0.25 x^3 + 0.5 x^2 + x = 1250 + 250 + 50 + 10 = 1560 */
+	put_be_float(a2, 56, 0x3e000000);	/* RX_PWR(4) = 0.125 */
+	put_be_float(a2, 60, 0x3e800000);	/* RX_PWR(3) = 0.25 */
+	put_be_float(a2, 64, 0x3f000000);	/* RX_PWR(2) = 0.5 */
+	put_be_float(a2, 68, 0x3f800000);	/* RX_PWR(1) = 1.0 */
+	put_be_float(a2, 72, 0);		/* RX_PWR(0) = 0 */
+
+	TEST_ASSERT_SUCCESS(parse(RTE_ETH_MODULE_SFF_8472, data, sizeof(data)),
+		"Failed to parse externally calibrated SFF-8472 data");
+	CHECK_FIELD("Receiver signal average optical power", "0.1560 mW / -8.07 dBm");
+	return TEST_SUCCESS;
+}
+
 static int
 test_module_eeprom_invalid(void)
 {
@@ -318,6 +354,7 @@ static struct unit_test_suite module_eeprom_testsuite = {
 		TEST_CASE(test_module_eeprom_sfp_8472),
 		TEST_CASE(test_module_eeprom_sfp_8472_short),
 		TEST_CASE(test_module_eeprom_sfp_8472_ext_cal_unaligned),
+		TEST_CASE(test_module_eeprom_sfp_8472_rx_power_polynomial),
 		TEST_CASE(test_module_eeprom_qsfp_8636),
 		TEST_CASE(test_module_eeprom_qsfp_8636_thresholds),
 		TEST_CASE(test_module_eeprom_invalid),

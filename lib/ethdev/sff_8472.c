@@ -189,7 +189,8 @@ static float befloattoh(const uint8_t *source)
 static void sff_8472_calibration(const uint8_t *data, struct sff_diags *sd)
 {
 	unsigned long i;
-	uint16_t rx_reading;
+	double rx_reading;
+	double rx_power;
 
 	/* Calibration should occur for all values (threshold and current) */
 	for (i = 0; i < RTE_DIM(sd->bias_cur); ++i) {
@@ -207,16 +208,24 @@ static void sff_8472_calibration(const uint8_t *data, struct sff_diags *sd)
 		sd->sfp_temp[i]    += A2_OFFSET_TO_OFF(SFF_A2_CAL_T_OFF);
 
 		/*
-		 * Apply calibration formula 2 (Rx Power only)
+		 * Apply calibration formula 2 (Rx Power only):
+		 * RX_PWR(4) * x^4 + RX_PWR(3) * x^3 + RX_PWR(2) * x^2 +
+		 * RX_PWR(1) * x + RX_PWR(0)
 		 */
 		rx_reading = sd->rx_power[i];
-		sd->rx_power[i]    = A2_OFFSET_TO_RXPWRx(SFF_A2_CAL_RXPWR0);
-		sd->rx_power[i]    += rx_reading *
-			A2_OFFSET_TO_RXPWRx(SFF_A2_CAL_RXPWR1);
-		sd->rx_power[i]    += rx_reading *
-			A2_OFFSET_TO_RXPWRx(SFF_A2_CAL_RXPWR2);
-		sd->rx_power[i]    += rx_reading *
-			A2_OFFSET_TO_RXPWRx(SFF_A2_CAL_RXPWR3);
+		rx_power = A2_OFFSET_TO_RXPWRx(SFF_A2_CAL_RXPWR4);
+		rx_power = rx_power * rx_reading + A2_OFFSET_TO_RXPWRx(SFF_A2_CAL_RXPWR3);
+		rx_power = rx_power * rx_reading + A2_OFFSET_TO_RXPWRx(SFF_A2_CAL_RXPWR2);
+		rx_power = rx_power * rx_reading + A2_OFFSET_TO_RXPWRx(SFF_A2_CAL_RXPWR1);
+		rx_power = rx_power * rx_reading + A2_OFFSET_TO_RXPWRx(SFF_A2_CAL_RXPWR0);
+
+		/* the result is stored in 0.1 uW units, out of range is not representable */
+		if (!(rx_power > 0))
+			sd->rx_power[i] = 0;
+		else if (rx_power >= UINT16_MAX)
+			sd->rx_power[i] = UINT16_MAX;
+		else
+			sd->rx_power[i] = rx_power;
 	}
 }
 
