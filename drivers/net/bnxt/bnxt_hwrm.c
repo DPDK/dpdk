@@ -1079,6 +1079,7 @@ static int bnxt_alloc_vf_info(struct bnxt *bp, uint16_t max_vfs)
 	}
 
 	bp->pf->max_vfs = max_vfs;
+	bp->pf->vf_info = vf_info;
 	for (i = 0; i < max_vfs; i++) {
 		vf_info[i].fid = bp->pf->first_vf_id + i;
 		vf_info[i].vlan_table = rte_zmalloc("VF VLAN table",
@@ -1099,8 +1100,6 @@ static int bnxt_alloc_vf_info(struct bnxt *bp, uint16_t max_vfs)
 
 		STAILQ_INIT(&vf_info[i].filter);
 	}
-
-	bp->pf->vf_info = vf_info;
 
 	return 0;
 err:
