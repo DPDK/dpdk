@@ -4,6 +4,9 @@
  */
 
 #include <stdio.h>
+#include <string.h>
+
+#include <rte_byteorder.h>
 
 #include "sff_common.h"
 
@@ -126,7 +129,7 @@ static struct sff_8472_aw_flags {
 
 /* RXPWR(x) are IEEE-754 floating point numbers in big-endian format */
 #define A2_OFFSET_TO_RXPWRx(offset) \
-	(befloattoh((const uint32_t *)(data + SFF_A2_BASE + (offset))))
+	(befloattoh(data + SFF_A2_BASE + (offset)))
 
 /*
  * 2-byte internal temperature conversions:
@@ -169,14 +172,17 @@ static void sff_8472_dom_parse(const uint8_t *data, struct sff_diags *sd)
 }
 
 /* Converts to a float from a big-endian 4-byte source buffer. */
-static float befloattoh(const uint32_t *source)
+static float befloattoh(const uint8_t *source)
 {
 	union {
 		uint32_t src;
 		float dst;
 	} converter;
+	rte_be32_t be;
 
-	converter.src = ntohl(*source);
+	/* the source may be unaligned */
+	memcpy(&be, source, sizeof(be));
+	converter.src = rte_be_to_cpu_32(be);
 	return converter.dst;
 }
 
