@@ -3590,9 +3590,10 @@ bnxt_clear_hwrm_vnic_filters(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	struct bnxt_filter_info *filter;
 	int rc = 0;
 
-	STAILQ_FOREACH(filter, &vnic->filter, next) {
+	while (!STAILQ_EMPTY(&vnic->filter)) {
+		filter = STAILQ_FIRST(&vnic->filter);
 		rc = bnxt_clear_one_vnic_filter(bp, filter);
-		STAILQ_REMOVE(&vnic->filter, filter, bnxt_filter_info, next);
+		STAILQ_REMOVE_HEAD(&vnic->filter, next);
 		bnxt_free_filter(bp, filter);
 	}
 	return rc;
