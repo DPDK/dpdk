@@ -1583,12 +1583,12 @@ int bnxt_hwrm_func_resc_qcaps(struct bnxt *bp)
 
 int bnxt_hwrm_ver_get(struct bnxt *bp, uint32_t timeout)
 {
-	int rc = 0;
 	struct hwrm_ver_get_input req = {.req_type = 0 };
 	struct hwrm_ver_get_output *resp = bp->hwrm_cmd_resp_addr;
 	uint32_t fw_version;
 	uint16_t max_resp_len;
 	char type[RTE_MEMZONE_NAMESIZE];
+	int rc = 0;
 	uint32_t dev_caps_cfg;
 
 	bp->max_req_len = HWRM_MAX_REQ_LEN;
@@ -1669,10 +1669,9 @@ int bnxt_hwrm_ver_get(struct bnxt *bp, uint32_t timeout)
 	     (dev_caps_cfg &
 	      HWRM_VER_GET_OUTPUT_DEV_CAPS_CFG_SHORT_CMD_REQUIRED)) ||
 	    bp->hwrm_max_ext_req_len > HWRM_MAX_REQ_LEN) {
-		sprintf(type, "bnxt_hwrm_short_" PCI_PRI_FMT,
+		snprintf(type, sizeof(type), "bnxt_hwrm_short_" PCI_PRI_FMT,
 			bp->pdev->addr.domain, bp->pdev->addr.bus,
 			bp->pdev->addr.devid, bp->pdev->addr.function);
-
 		rte_free(bp->hwrm_short_cmd_req_addr);
 
 		bp->hwrm_short_cmd_req_addr =
@@ -3542,7 +3541,7 @@ int bnxt_alloc_hwrm_resources(struct bnxt *bp)
 	struct rte_pci_device *pdev = bp->pdev;
 	char type[RTE_MEMZONE_NAMESIZE];
 
-	sprintf(type, "bnxt_hwrm_" PCI_PRI_FMT, pdev->addr.domain,
+	snprintf(type, sizeof(type), "bnxt_hwrm_" PCI_PRI_FMT, pdev->addr.domain,
 		pdev->addr.bus, pdev->addr.devid, pdev->addr.function);
 	bp->max_resp_len = BNXT_PAGE_SIZE;
 	bp->hwrm_cmd_resp_addr = rte_malloc(type, bp->max_resp_len, 0);
@@ -6792,7 +6791,7 @@ static int bnxt_alloc_all_ctx_pg_info(struct bnxt *bp)
 		if (ctxm->instance_bmap)
 			n = hweight32(ctxm->instance_bmap);
 
-		sprintf(name, "bnxt_ctx_pgmem_%d_%d",
+		snprintf(name, sizeof(name), "bnxt_ctx_pgmem_%d_%d",
 			bp->eth_dev->data->port_id, type);
 		ctxm->pg_info = rte_malloc(name, sizeof(*ctxm->pg_info) * n,
 					   RTE_CACHE_LINE_SIZE);
@@ -7836,6 +7835,7 @@ int bnxt_hwrm_cfa_pair_free(struct bnxt *bp, struct bnxt_representor *rep_bp)
 	HWRM_PREP(&req, HWRM_CFA_PAIR_FREE, BNXT_USE_CHIMP_MB);
 	snprintf(req.pair_name, sizeof(req.pair_name), "%svfr%d",
 		 bp->eth_dev->data->name, rep_bp->vf_id);
+
 	req.pf_b_id = rep_bp->parent_pf_idx;
 	req.pair_mode = HWRM_CFA_PAIR_FREE_INPUT_PAIR_MODE_REP2FN_TRUFLOW;
 	req.vf_id = BNXT_REP_PF(rep_bp) ? rte_cpu_to_le_16(((uint16_t)-1)) :
