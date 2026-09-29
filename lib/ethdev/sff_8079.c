@@ -7,12 +7,12 @@
 
 #include "sff_common.h"
 
-static void sff_8079_show_identifier(const uint8_t *data, struct rte_tel_data *d)
+static void sff_8079_show_identifier(const uint8_t *data, struct sff_output *d)
 {
 	sff_8024_show_identifier(data, 0, d);
 }
 
-static void sff_8079_show_ext_identifier(const uint8_t *data, struct rte_tel_data *d)
+static void sff_8079_show_ext_identifier(const uint8_t *data, struct sff_output *d)
 {
 	char val_string[SFF_ITEM_VAL_COMPOSE_SIZE];
 
@@ -29,15 +29,15 @@ static void sff_8079_show_ext_identifier(const uint8_t *data, struct rte_tel_dat
 		strlcat(val_string, tmp, sizeof(val_string));
 	} else
 		strlcat(val_string, " (unknown)", sizeof(val_string));
-	ssf_add_dict_string(d, "Extended identifier", val_string);
+	sff_output_field(d, "Extended identifier", val_string);
 }
 
-static void sff_8079_show_connector(const uint8_t *data, struct rte_tel_data *d)
+static void sff_8079_show_connector(const uint8_t *data, struct sff_output *d)
 {
 	sff_8024_show_connector(data, 2, d);
 }
 
-static void sff_8079_show_transceiver(const uint8_t *data, struct rte_tel_data *d)
+static void sff_8079_show_transceiver(const uint8_t *data, struct sff_output *d)
 {
 	static const char *name = "Transceiver type";
 	char val_string[SFF_ITEM_VAL_COMPOSE_SIZE];
@@ -45,194 +45,194 @@ static void sff_8079_show_transceiver(const uint8_t *data, struct rte_tel_data *
 	snprintf(val_string, sizeof(val_string),
 		"0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x 0x%02x",
 		data[3], data[4], data[5], data[6], data[7], data[8], data[9], data[10], data[36]);
-	ssf_add_dict_string(d, "Transceiver codes", val_string);
+	sff_output_field(d, "Transceiver codes", val_string);
 
 	/* 10G Ethernet Compliance Codes */
 	if (data[3] & (1 << 7))
-		ssf_add_dict_string(d, "10G Ethernet transceiver type",
+		sff_output_field(d, "10G Ethernet transceiver type",
 		"10G Ethernet: 10G Base-ER [SFF-8472 rev10.4 onwards]");
 	if (data[3] & (1 << 6))
-		ssf_add_dict_string(d, name, "10G Ethernet: 10G Base-LRM");
+		sff_output_field(d, name, "10G Ethernet: 10G Base-LRM");
 	if (data[3] & (1 << 5))
-		ssf_add_dict_string(d, name, "10G Ethernet: 10G Base-LR");
+		sff_output_field(d, name, "10G Ethernet: 10G Base-LR");
 	if (data[3] & (1 << 4))
-		ssf_add_dict_string(d, name, "10G Ethernet: 10G Base-SR");
+		sff_output_field(d, name, "10G Ethernet: 10G Base-SR");
 
 	/* Infiniband Compliance Codes */
 	if (data[3] & (1 << 3))
-		ssf_add_dict_string(d, name, "Infiniband: 1X SX");
+		sff_output_field(d, name, "Infiniband: 1X SX");
 	if (data[3] & (1 << 2))
-		ssf_add_dict_string(d, name, "Infiniband: 1X LX");
+		sff_output_field(d, name, "Infiniband: 1X LX");
 	if (data[3] & (1 << 1))
-		ssf_add_dict_string(d, name, "Infiniband: 1X Copper Active");
+		sff_output_field(d, name, "Infiniband: 1X Copper Active");
 	if (data[3] & (1 << 0))
-		ssf_add_dict_string(d, name, "Infiniband: 1X Copper Passive");
+		sff_output_field(d, name, "Infiniband: 1X Copper Passive");
 
 	/* ESCON Compliance Codes */
 	if (data[4] & (1 << 7))
-		ssf_add_dict_string(d, name, "ESCON: ESCON MMF, 1310nm LED");
+		sff_output_field(d, name, "ESCON: ESCON MMF, 1310nm LED");
 	if (data[4] & (1 << 6))
-		ssf_add_dict_string(d, name, "ESCON: ESCON SMF, 1310nm Laser");
+		sff_output_field(d, name, "ESCON: ESCON SMF, 1310nm Laser");
 
 	/* SONET Compliance Codes */
 	if (data[4] & (1 << 5))
-		ssf_add_dict_string(d, name, "SONET: OC-192, short reach");
+		sff_output_field(d, name, "SONET: OC-192, short reach");
 	if (data[4] & (1 << 4))
-		ssf_add_dict_string(d, name, "SONET: SONET reach specifier bit 1");
+		sff_output_field(d, name, "SONET: SONET reach specifier bit 1");
 	if (data[4] & (1 << 3))
-		ssf_add_dict_string(d, name, "SONET: SONET reach specifier bit 2");
+		sff_output_field(d, name, "SONET: SONET reach specifier bit 2");
 	if (data[4] & (1 << 2))
-		ssf_add_dict_string(d, name, "SONET: OC-48, long reach");
+		sff_output_field(d, name, "SONET: OC-48, long reach");
 	if (data[4] & (1 << 1))
-		ssf_add_dict_string(d, name, "SONET: OC-48, intermediate reach");
+		sff_output_field(d, name, "SONET: OC-48, intermediate reach");
 	if (data[4] & (1 << 0))
-		ssf_add_dict_string(d, name, "SONET: OC-48, short reach");
+		sff_output_field(d, name, "SONET: OC-48, short reach");
 	if (data[5] & (1 << 6))
-		ssf_add_dict_string(d, name, "SONET: OC-12, single mode, long reach");
+		sff_output_field(d, name, "SONET: OC-12, single mode, long reach");
 	if (data[5] & (1 << 5))
-		ssf_add_dict_string(d, name, "SONET: OC-12, single mode, inter. reach");
+		sff_output_field(d, name, "SONET: OC-12, single mode, inter. reach");
 	if (data[5] & (1 << 4))
-		ssf_add_dict_string(d, name, "SONET: OC-12, short reach");
+		sff_output_field(d, name, "SONET: OC-12, short reach");
 	if (data[5] & (1 << 2))
-		ssf_add_dict_string(d, name, "SONET: OC-3, single mode, long reach");
+		sff_output_field(d, name, "SONET: OC-3, single mode, long reach");
 	if (data[5] & (1 << 1))
-		ssf_add_dict_string(d, name, "SONET: OC-3, single mode, inter. reach");
+		sff_output_field(d, name, "SONET: OC-3, single mode, inter. reach");
 	if (data[5] & (1 << 0))
-		ssf_add_dict_string(d, name, "SONET: OC-3, short reach");
+		sff_output_field(d, name, "SONET: OC-3, short reach");
 
 	/* Ethernet Compliance Codes */
 	if (data[6] & (1 << 7))
-		ssf_add_dict_string(d, name, "Ethernet: BASE-PX");
+		sff_output_field(d, name, "Ethernet: BASE-PX");
 	if (data[6] & (1 << 6))
-		ssf_add_dict_string(d, name, "Ethernet: BASE-BX10");
+		sff_output_field(d, name, "Ethernet: BASE-BX10");
 	if (data[6] & (1 << 5))
-		ssf_add_dict_string(d, name, "Ethernet: 100BASE-FX");
+		sff_output_field(d, name, "Ethernet: 100BASE-FX");
 	if (data[6] & (1 << 4))
-		ssf_add_dict_string(d, name, "Ethernet: 100BASE-LX/LX10");
+		sff_output_field(d, name, "Ethernet: 100BASE-LX/LX10");
 	if (data[6] & (1 << 3))
-		ssf_add_dict_string(d, name, "Ethernet: 1000BASE-T");
+		sff_output_field(d, name, "Ethernet: 1000BASE-T");
 	if (data[6] & (1 << 2))
-		ssf_add_dict_string(d, name, "Ethernet: 1000BASE-CX");
+		sff_output_field(d, name, "Ethernet: 1000BASE-CX");
 	if (data[6] & (1 << 1))
-		ssf_add_dict_string(d, name, "Ethernet: 1000BASE-LX");
+		sff_output_field(d, name, "Ethernet: 1000BASE-LX");
 	if (data[6] & (1 << 0))
-		ssf_add_dict_string(d, name, "Ethernet: 1000BASE-SX");
+		sff_output_field(d, name, "Ethernet: 1000BASE-SX");
 
 	/* Fibre Channel link length */
 	if (data[7] & (1 << 7))
-		ssf_add_dict_string(d, name, "FC: very long distance (V)");
+		sff_output_field(d, name, "FC: very long distance (V)");
 	if (data[7] & (1 << 6))
-		ssf_add_dict_string(d, name, "FC: short distance (S)");
+		sff_output_field(d, name, "FC: short distance (S)");
 	if (data[7] & (1 << 5))
-		ssf_add_dict_string(d, name, "FC: intermediate distance (I)");
+		sff_output_field(d, name, "FC: intermediate distance (I)");
 	if (data[7] & (1 << 4))
-		ssf_add_dict_string(d, name, "FC: long distance (L)");
+		sff_output_field(d, name, "FC: long distance (L)");
 	if (data[7] & (1 << 3))
-		ssf_add_dict_string(d, name, "FC: medium distance (M)");
+		sff_output_field(d, name, "FC: medium distance (M)");
 
 	/* Fibre Channel transmitter technology */
 	if (data[7] & (1 << 2))
-		ssf_add_dict_string(d, name, "FC: Shortwave laser, linear Rx (SA)");
+		sff_output_field(d, name, "FC: Shortwave laser, linear Rx (SA)");
 	if (data[7] & (1 << 1))
-		ssf_add_dict_string(d, name, "FC: Longwave laser (LC)");
+		sff_output_field(d, name, "FC: Longwave laser (LC)");
 	if (data[7] & (1 << 0))
-		ssf_add_dict_string(d, name, "FC: Electrical inter-enclosure (EL)");
+		sff_output_field(d, name, "FC: Electrical inter-enclosure (EL)");
 	if (data[8] & (1 << 7))
-		ssf_add_dict_string(d, name, "FC: Electrical intra-enclosure (EL)");
+		sff_output_field(d, name, "FC: Electrical intra-enclosure (EL)");
 	if (data[8] & (1 << 6))
-		ssf_add_dict_string(d, name, "FC: Shortwave laser w/o OFC (SN)");
+		sff_output_field(d, name, "FC: Shortwave laser w/o OFC (SN)");
 	if (data[8] & (1 << 5))
-		ssf_add_dict_string(d, name, "FC: Shortwave laser with OFC (SL)");
+		sff_output_field(d, name, "FC: Shortwave laser with OFC (SL)");
 	if (data[8] & (1 << 4))
-		ssf_add_dict_string(d, name, "FC: Longwave laser (LL)");
+		sff_output_field(d, name, "FC: Longwave laser (LL)");
 	if (data[8] & (1 << 3))
-		ssf_add_dict_string(d, name, "Active Cable");
+		sff_output_field(d, name, "Active Cable");
 	if (data[8] & (1 << 2))
-		ssf_add_dict_string(d, name, "Passive Cable");
+		sff_output_field(d, name, "Passive Cable");
 	if (data[8] & (1 << 1))
-		ssf_add_dict_string(d, name, "FC: Copper FC-BaseT");
+		sff_output_field(d, name, "FC: Copper FC-BaseT");
 
 	/* Fibre Channel transmission media */
 	if (data[9] & (1 << 7))
-		ssf_add_dict_string(d, name, "FC: Twin Axial Pair (TW)");
+		sff_output_field(d, name, "FC: Twin Axial Pair (TW)");
 	if (data[9] & (1 << 6))
-		ssf_add_dict_string(d, name, "FC: Twisted Pair (TP)");
+		sff_output_field(d, name, "FC: Twisted Pair (TP)");
 	if (data[9] & (1 << 5))
-		ssf_add_dict_string(d, name, "FC: Miniature Coax (MI)");
+		sff_output_field(d, name, "FC: Miniature Coax (MI)");
 	if (data[9] & (1 << 4))
-		ssf_add_dict_string(d, name, "FC: Video Coax (TV)");
+		sff_output_field(d, name, "FC: Video Coax (TV)");
 	if (data[9] & (1 << 3))
-		ssf_add_dict_string(d, name, "FC: Multimode, 62.5um (M6)");
+		sff_output_field(d, name, "FC: Multimode, 62.5um (M6)");
 	if (data[9] & (1 << 2))
-		ssf_add_dict_string(d, name, "FC: Multimode, 50um (M5)");
+		sff_output_field(d, name, "FC: Multimode, 50um (M5)");
 	if (data[9] & (1 << 0))
-		ssf_add_dict_string(d, name, "FC: Single Mode (SM)");
+		sff_output_field(d, name, "FC: Single Mode (SM)");
 
 	/* Fibre Channel speed */
 	if (data[10] & (1 << 7))
-		ssf_add_dict_string(d, name, "FC: 1200 MBytes/sec");
+		sff_output_field(d, name, "FC: 1200 MBytes/sec");
 	if (data[10] & (1 << 6))
-		ssf_add_dict_string(d, name, "FC: 800 MBytes/sec");
+		sff_output_field(d, name, "FC: 800 MBytes/sec");
 	if (data[10] & (1 << 4))
-		ssf_add_dict_string(d, name, "FC: 400 MBytes/sec");
+		sff_output_field(d, name, "FC: 400 MBytes/sec");
 	if (data[10] & (1 << 2))
-		ssf_add_dict_string(d, name, "FC: 200 MBytes/sec");
+		sff_output_field(d, name, "FC: 200 MBytes/sec");
 	if (data[10] & (1 << 0))
-		ssf_add_dict_string(d, name, "FC: 100 MBytes/sec");
+		sff_output_field(d, name, "FC: 100 MBytes/sec");
 
 	/* Extended Specification Compliance Codes from SFF-8024 */
 	switch (data[36]) {
 	case 0x1:
-		ssf_add_dict_string(d, name,
+		sff_output_field(d, name,
 			"Extended: 100G AOC or 25GAUI C2M AOC with worst BER of 5x10^(-5)");
 		break;
 	case 0x2:
-		ssf_add_dict_string(d, name, "Extended: 100G Base-SR4 or 25GBase-SR");
+		sff_output_field(d, name, "Extended: 100G Base-SR4 or 25GBase-SR");
 		break;
 	case 0x3:
-		ssf_add_dict_string(d, name, "Extended: 100G Base-LR4 or 25GBase-LR");
+		sff_output_field(d, name, "Extended: 100G Base-LR4 or 25GBase-LR");
 		break;
 	case 0x4:
-		ssf_add_dict_string(d, name, "Extended: 100G Base-ER4 or 25GBase-ER");
+		sff_output_field(d, name, "Extended: 100G Base-ER4 or 25GBase-ER");
 		break;
 	case 0x8:
-		ssf_add_dict_string(d, name,
+		sff_output_field(d, name,
 			"Extended: 100G ACC or 25GAUI C2M ACC with worst BER of 5x10^(-5)");
 		break;
 	case 0xb:
-		ssf_add_dict_string(d, name, "Extended: 100G Base-CR4 or 25G Base-CR CA-L");
+		sff_output_field(d, name, "Extended: 100G Base-CR4 or 25G Base-CR CA-L");
 		break;
 	case 0xc:
-		ssf_add_dict_string(d, name, "Extended: 25G Base-CR CA-S");
+		sff_output_field(d, name, "Extended: 25G Base-CR CA-S");
 		break;
 	case 0xd:
-		ssf_add_dict_string(d, name, "Extended: 25G Base-CR CA-N");
+		sff_output_field(d, name, "Extended: 25G Base-CR CA-N");
 		break;
 	case 0x16:
-		ssf_add_dict_string(d, name, "Extended: 10Gbase-T with SFI electrical interface");
+		sff_output_field(d, name, "Extended: 10Gbase-T with SFI electrical interface");
 		break;
 	case 0x18:
-		ssf_add_dict_string(d, name,
+		sff_output_field(d, name,
 			"Extended: 100G AOC or 25GAUI C2M AOC with worst BER of 10^(-12)");
 		break;
 	case 0x19:
-		ssf_add_dict_string(d, name,
+		sff_output_field(d, name,
 			"Extended: 100G ACC or 25GAUI C2M ACC with worst BER of 10^(-12)");
 		break;
 	case 0x1c:
-		ssf_add_dict_string(d, name, "Extended: 10Gbase-T Short Reach");
+		sff_output_field(d, name, "Extended: 10Gbase-T Short Reach");
 		break;
 	default:
 		break;
 	}
 }
 
-static void sff_8079_show_encoding(const uint8_t *data, struct rte_tel_data *d)
+static void sff_8079_show_encoding(const uint8_t *data, struct sff_output *d)
 {
 	sff_8024_show_encoding(data, 11, RTE_ETH_MODULE_SFF_8472, d);
 }
 
-static void sff_8079_show_rate_identifier(const uint8_t *data, struct rte_tel_data *d)
+static void sff_8079_show_rate_identifier(const uint8_t *data, struct sff_output *d)
 {
 	char val_string[SFF_ITEM_VAL_COMPOSE_SIZE];
 
@@ -259,17 +259,17 @@ static void sff_8079_show_rate_identifier(const uint8_t *data, struct rte_tel_da
 		strlcat(val_string, " (reserved or unknown)", sizeof(val_string));
 		break;
 	}
-	ssf_add_dict_string(d, "Rate identifier", val_string);
+	sff_output_field(d, "Rate identifier", val_string);
 }
 
-static void sff_8079_show_oui(const uint8_t *data, struct rte_tel_data *d)
+static void sff_8079_show_oui(const uint8_t *data, struct sff_output *d)
 {
 	sff_8024_show_oui(data, 37, d);
 }
 
 static void
 sff_8079_show_wavelength_or_copper_compliance(const uint8_t *data,
-					      struct rte_tel_data *d)
+					      struct sff_output *d)
 {
 	char val_string[SFF_ITEM_VAL_COMPOSE_SIZE];
 
@@ -287,7 +287,7 @@ sff_8079_show_wavelength_or_copper_compliance(const uint8_t *data,
 			break;
 		}
 		strlcat(val_string, " [SFF-8472 rev10.4 only]", sizeof(val_string));
-		ssf_add_dict_string(d, "Passive Cu cmplnce.", val_string);
+		sff_output_field(d, "Passive Cu cmplnce.", val_string);
 	} else if (data[8] & (1 << 3)) {
 		snprintf(val_string, sizeof(val_string), "0x%02x", data[60]);
 		switch (data[60]) {
@@ -305,50 +305,50 @@ sff_8079_show_wavelength_or_copper_compliance(const uint8_t *data,
 			break;
 		}
 		strlcat(val_string, " [SFF-8472 rev10.4 only]", sizeof(val_string));
-		ssf_add_dict_string(d, "Active Cu cmplnce.", val_string);
+		sff_output_field(d, "Active Cu cmplnce.", val_string);
 	} else {
 		snprintf(val_string, sizeof(val_string), "%unm", (data[60] << 8) | data[61]);
-		ssf_add_dict_string(d, "Laser wavelength", val_string);
+		sff_output_field(d, "Laser wavelength", val_string);
 	}
 }
 
-static void sff_8079_show_options(const uint8_t *data, struct rte_tel_data *d)
+static void sff_8079_show_options(const uint8_t *data, struct sff_output *d)
 {
 	static const char *name = "Option";
 	char val_string[SFF_ITEM_VAL_COMPOSE_SIZE];
 
 	snprintf(val_string, sizeof(val_string), "0x%02x 0x%02x", data[64], data[65]);
-	ssf_add_dict_string(d, "Option values", val_string);
+	sff_output_field(d, "Option values", val_string);
 
 	if (data[65] & (1 << 1))
-		ssf_add_dict_string(d, name, "RX_LOS implemented");
+		sff_output_field(d, name, "RX_LOS implemented");
 	if (data[65] & (1 << 2))
-		ssf_add_dict_string(d, name, "RX_LOS implemented, inverted");
+		sff_output_field(d, name, "RX_LOS implemented, inverted");
 	if (data[65] & (1 << 3))
-		ssf_add_dict_string(d, name, "TX_FAULT implemented");
+		sff_output_field(d, name, "TX_FAULT implemented");
 	if (data[65] & (1 << 4))
-		ssf_add_dict_string(d, name, "TX_DISABLE implemented");
+		sff_output_field(d, name, "TX_DISABLE implemented");
 	if (data[65] & (1 << 5))
-		ssf_add_dict_string(d, name, "RATE_SELECT implemented");
+		sff_output_field(d, name, "RATE_SELECT implemented");
 	if (data[65] & (1 << 6))
-		ssf_add_dict_string(d, name, "Tunable transmitter technology");
+		sff_output_field(d, name, "Tunable transmitter technology");
 	if (data[65] & (1 << 7))
-		ssf_add_dict_string(d, name, "Receiver decision threshold implemented");
+		sff_output_field(d, name, "Receiver decision threshold implemented");
 	if (data[64] & (1 << 0))
-		ssf_add_dict_string(d, name, "Linear receiver output implemented");
+		sff_output_field(d, name, "Linear receiver output implemented");
 	if (data[64] & (1 << 1))
-		ssf_add_dict_string(d, name, "Power level 2 requirement");
+		sff_output_field(d, name, "Power level 2 requirement");
 	if (data[64] & (1 << 2))
-		ssf_add_dict_string(d, name, "Cooled transceiver implemented");
+		sff_output_field(d, name, "Cooled transceiver implemented");
 	if (data[64] & (1 << 3))
-		ssf_add_dict_string(d, name, "Retimer or CDR implemented");
+		sff_output_field(d, name, "Retimer or CDR implemented");
 	if (data[64] & (1 << 4))
-		ssf_add_dict_string(d, name, "Paging implemented");
+		sff_output_field(d, name, "Paging implemented");
 	if (data[64] & (1 << 5))
-		ssf_add_dict_string(d, name, "Power level 3 requirement");
+		sff_output_field(d, name, "Power level 3 requirement");
 }
 
-void sff_8079_show_all(const uint8_t *data, struct rte_tel_data *d)
+void sff_8079_show_all(const uint8_t *data, struct sff_output *d)
 {
 	sff_8079_show_identifier(data, d);
 	if (((data[0] == 0x02) || (data[0] == 0x03)) && (data[1] == 0x04)) {
@@ -372,7 +372,7 @@ void sff_8079_show_all(const uint8_t *data, struct rte_tel_data *d)
 		sff_8079_show_encoding(data, d);
 
 		snprintf(val_string, sizeof(val_string), "%uMBd", br_nom);
-		ssf_add_dict_string(d, "BR, Nominal", val_string);
+		sff_output_field(d, "BR, Nominal", val_string);
 
 		sff_8079_show_rate_identifier(data, d);
 		sff_show_value_with_unit(data, 14,
@@ -391,9 +391,9 @@ void sff_8079_show_all(const uint8_t *data, struct rte_tel_data *d)
 		sff_8079_show_options(data, d);
 
 		snprintf(val_string, sizeof(val_string), "%u%%", br_max);
-		ssf_add_dict_string(d, "BR margin, max", val_string);
+		sff_output_field(d, "BR margin, max", val_string);
 		snprintf(val_string, sizeof(val_string), "%u%%", br_min);
-		ssf_add_dict_string(d, "BR margin, min", val_string);
+		sff_output_field(d, "BR margin, min", val_string);
 
 		sff_show_ascii(data, 68, 83, "Vendor SN", d);
 		sff_show_ascii(data, 84, 91, "Date code", d);

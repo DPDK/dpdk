@@ -231,7 +231,7 @@ static void sff_8472_parse_eeprom(const uint8_t *data, struct sff_diags *sd)
 		sff_8472_calibration(data, sd);
 }
 
-void sff_8472_show_all(const uint8_t *data, struct rte_tel_data *d)
+void sff_8472_show_all(const uint8_t *data, struct sff_output *d)
 {
 	struct sff_diags sd = {0};
 	const char *rx_power_string = NULL;
@@ -241,16 +241,16 @@ void sff_8472_show_all(const uint8_t *data, struct rte_tel_data *d)
 	sff_8472_parse_eeprom(data, &sd);
 
 	if (!sd.supports_dom) {
-		ssf_add_dict_string(d, "Optical diagnostics support", "No");
+		sff_output_field(d, "Optical diagnostics support", "No");
 		return;
 	}
-	ssf_add_dict_string(d, "Optical diagnostics support", "Yes");
+	sff_output_field(d, "Optical diagnostics support", "Yes");
 
 	SFF_SPRINT_BIAS(val_string, sd.bias_cur[SFF_MCURR]);
-	ssf_add_dict_string(d, "Laser bias current", val_string);
+	sff_output_field(d, "Laser bias current", val_string);
 
 	SFF_SPRINT_xX_PWR(val_string, sd.tx_power[SFF_MCURR]);
-	ssf_add_dict_string(d, "Laser output power", val_string);
+	sff_output_field(d, "Laser output power", val_string);
 
 	if (!sd.rx_power_type)
 		rx_power_string = "Receiver signal OMA";
@@ -258,20 +258,20 @@ void sff_8472_show_all(const uint8_t *data, struct rte_tel_data *d)
 		rx_power_string = "Receiver signal average optical power";
 
 	SFF_SPRINT_xX_PWR(val_string, sd.rx_power[SFF_MCURR]);
-	ssf_add_dict_string(d, rx_power_string, val_string);
+	sff_output_field(d, rx_power_string, val_string);
 
 	SFF_SPRINT_TEMP(val_string, sd.sfp_temp[SFF_MCURR]);
-	ssf_add_dict_string(d, "Module temperature", val_string);
+	sff_output_field(d, "Module temperature", val_string);
 
 	SFF_SPRINT_VCC(val_string, sd.sfp_voltage[SFF_MCURR]);
-	ssf_add_dict_string(d, "Module voltage", val_string);
+	sff_output_field(d, "Module voltage", val_string);
 
-	ssf_add_dict_string(d, "Alarm/warning flags implemented",
+	sff_output_field(d, "Alarm/warning flags implemented",
 			(sd.supports_alarms ? "Yes" : "No"));
 
 	if (sd.supports_alarms) {
 		for (i = 0; sff_8472_aw_flags[i].str; ++i) {
-			ssf_add_dict_string(d, sff_8472_aw_flags[i].str,
+			sff_output_field(d, sff_8472_aw_flags[i].str,
 					data[SFF_A2_BASE + sff_8472_aw_flags[i].offset]
 					& sff_8472_aw_flags[i].value ? "On" : "Off");
 		}

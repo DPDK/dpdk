@@ -8,6 +8,12 @@
 
 #include "sff_common.h"
 
+void sff_output_field(struct sff_output *d, const char *name_str,
+		      const char *value_str)
+{
+	d->field_cb(name_str, value_str, d->arg);
+}
+
 double sff_convert_mw_to_dbm(double mw)
 {
 	return (10. * log10(mw / 1000.)) + 30.;
@@ -15,17 +21,17 @@ double sff_convert_mw_to_dbm(double mw)
 
 void sff_show_value_with_unit(const uint8_t *data, unsigned int reg,
 			      const char *name, unsigned int mult,
-			      const char *unit, struct rte_tel_data *d)
+			      const char *unit, struct sff_output *d)
 {
 	unsigned int val = data[reg];
 	char val_string[SFF_ITEM_VAL_COMPOSE_SIZE];
 
 	snprintf(val_string, sizeof(val_string), "%u%s", val * mult, unit);
-	ssf_add_dict_string(d, name, val_string);
+	sff_output_field(d, name, val_string);
 }
 
 void sff_show_ascii(const uint8_t *data, unsigned int first_reg,
-		    unsigned int last_reg, const char *name, struct rte_tel_data *d)
+		    unsigned int last_reg, const char *name, struct sff_output *d)
 {
 	unsigned int reg, val;
 	char tmp[3];
@@ -44,19 +50,19 @@ void sff_show_ascii(const uint8_t *data, unsigned int first_reg,
 			strlcat(val_string, "_", sizeof(val_string));
 		}
 	}
-	ssf_add_dict_string(d, name, val_string);
+	sff_output_field(d, name, val_string);
 }
 
-void sff_8024_show_oui(const uint8_t *data, int id_offset, struct rte_tel_data *d)
+void sff_8024_show_oui(const uint8_t *data, int id_offset, struct sff_output *d)
 {
 	char val_string[SFF_ITEM_VAL_COMPOSE_SIZE];
 
 	snprintf(val_string, sizeof(val_string), "%02x:%02x:%02x",
 		data[id_offset], data[(id_offset) + 1], data[(id_offset) + 2]);
-	ssf_add_dict_string(d, "Vendor OUI", val_string);
+	sff_output_field(d, "Vendor OUI", val_string);
 }
 
-void sff_8024_show_identifier(const uint8_t *data, int id_offset, struct rte_tel_data *d)
+void sff_8024_show_identifier(const uint8_t *data, int id_offset, struct sff_output *d)
 {
 	char val_string[SFF_ITEM_VAL_COMPOSE_SIZE];
 
@@ -142,10 +148,10 @@ void sff_8024_show_identifier(const uint8_t *data, int id_offset, struct rte_tel
 		strlcat(val_string, " (reserved or unknown)", sizeof(val_string));
 		break;
 	}
-	ssf_add_dict_string(d, "Identifier", val_string);
+	sff_output_field(d, "Identifier", val_string);
 }
 
-void sff_8024_show_connector(const uint8_t *data, int ctor_offset, struct rte_tel_data *d)
+void sff_8024_show_connector(const uint8_t *data, int ctor_offset, struct sff_output *d)
 {
 	char val_string[SFF_ITEM_VAL_COMPOSE_SIZE];
 
@@ -213,11 +219,11 @@ void sff_8024_show_connector(const uint8_t *data, int ctor_offset, struct rte_te
 		strlcat(val_string, " (reserved or unknown)", sizeof(val_string));
 		break;
 	}
-	ssf_add_dict_string(d, "Connector", val_string);
+	sff_output_field(d, "Connector", val_string);
 }
 
 void sff_8024_show_encoding(const uint8_t *data, int encoding_offset,
-			    int sff_type, struct rte_tel_data *d)
+			    int sff_type, struct sff_output *d)
 {
 	char val_string[SFF_ITEM_VAL_COMPOSE_SIZE];
 
@@ -265,55 +271,55 @@ void sff_8024_show_encoding(const uint8_t *data, int encoding_offset,
 		strlcat(val_string, " (reserved or unknown)", sizeof(val_string));
 		break;
 	}
-	ssf_add_dict_string(d, "Encoding", val_string);
+	sff_output_field(d, "Encoding", val_string);
 }
 
-void sff_show_thresholds(struct sff_diags sd, struct rte_tel_data *d)
+void sff_show_thresholds(struct sff_diags sd, struct sff_output *d)
 {
 	char val_string[SFF_ITEM_VAL_COMPOSE_SIZE];
 
 	SFF_SPRINT_BIAS(val_string, sd.bias_cur[SFF_HALRM]);
-	ssf_add_dict_string(d, "Laser bias current high alarm threshold", val_string);
+	sff_output_field(d, "Laser bias current high alarm threshold", val_string);
 	SFF_SPRINT_BIAS(val_string, sd.bias_cur[SFF_LALRM]);
-	ssf_add_dict_string(d, "Laser bias current low alarm threshold", val_string);
+	sff_output_field(d, "Laser bias current low alarm threshold", val_string);
 	SFF_SPRINT_BIAS(val_string, sd.bias_cur[SFF_HWARN]);
-	ssf_add_dict_string(d, "Laser bias current high warning threshold", val_string);
+	sff_output_field(d, "Laser bias current high warning threshold", val_string);
 	SFF_SPRINT_BIAS(val_string, sd.bias_cur[SFF_LWARN]);
-	ssf_add_dict_string(d, "Laser bias current low warning threshold", val_string);
+	sff_output_field(d, "Laser bias current low warning threshold", val_string);
 
 	SFF_SPRINT_xX_PWR(val_string, sd.tx_power[SFF_HALRM]);
-	ssf_add_dict_string(d, "Laser output power high alarm threshold", val_string);
+	sff_output_field(d, "Laser output power high alarm threshold", val_string);
 	SFF_SPRINT_xX_PWR(val_string, sd.tx_power[SFF_LALRM]);
-	ssf_add_dict_string(d, "Laser output power low alarm threshold", val_string);
+	sff_output_field(d, "Laser output power low alarm threshold", val_string);
 	SFF_SPRINT_xX_PWR(val_string, sd.tx_power[SFF_HWARN]);
-	ssf_add_dict_string(d, "Laser output power high warning threshold", val_string);
+	sff_output_field(d, "Laser output power high warning threshold", val_string);
 	SFF_SPRINT_xX_PWR(val_string, sd.tx_power[SFF_LWARN]);
-	ssf_add_dict_string(d, "Laser output power low warning threshold", val_string);
+	sff_output_field(d, "Laser output power low warning threshold", val_string);
 
 	SFF_SPRINT_TEMP(val_string, sd.sfp_temp[SFF_HALRM]);
-	ssf_add_dict_string(d, "Module temperature high alarm threshold", val_string);
+	sff_output_field(d, "Module temperature high alarm threshold", val_string);
 	SFF_SPRINT_TEMP(val_string, sd.sfp_temp[SFF_LALRM]);
-	ssf_add_dict_string(d, "Module temperature low alarm threshold", val_string);
+	sff_output_field(d, "Module temperature low alarm threshold", val_string);
 	SFF_SPRINT_TEMP(val_string, sd.sfp_temp[SFF_HWARN]);
-	ssf_add_dict_string(d, "Module temperature high warning threshold", val_string);
+	sff_output_field(d, "Module temperature high warning threshold", val_string);
 	SFF_SPRINT_TEMP(val_string, sd.sfp_temp[SFF_LWARN]);
-	ssf_add_dict_string(d, "Module temperature low warning threshold", val_string);
+	sff_output_field(d, "Module temperature low warning threshold", val_string);
 
 	SFF_SPRINT_VCC(val_string, sd.sfp_voltage[SFF_HALRM]);
-	ssf_add_dict_string(d, "Module voltage high alarm threshold", val_string);
+	sff_output_field(d, "Module voltage high alarm threshold", val_string);
 	SFF_SPRINT_VCC(val_string, sd.sfp_voltage[SFF_LALRM]);
-	ssf_add_dict_string(d, "Module voltage low alarm threshold", val_string);
+	sff_output_field(d, "Module voltage low alarm threshold", val_string);
 	SFF_SPRINT_VCC(val_string, sd.sfp_voltage[SFF_HWARN]);
-	ssf_add_dict_string(d, "Module voltage high warning threshold", val_string);
+	sff_output_field(d, "Module voltage high warning threshold", val_string);
 	SFF_SPRINT_VCC(val_string, sd.sfp_voltage[SFF_LWARN]);
-	ssf_add_dict_string(d, "Module voltage low alarm threshold", val_string);
+	sff_output_field(d, "Module voltage low alarm threshold", val_string);
 
 	SFF_SPRINT_xX_PWR(val_string, sd.rx_power[SFF_HALRM]);
-	ssf_add_dict_string(d, "Laser rx power high alarm threshold", val_string);
+	sff_output_field(d, "Laser rx power high alarm threshold", val_string);
 	SFF_SPRINT_xX_PWR(val_string, sd.rx_power[SFF_LALRM]);
-	ssf_add_dict_string(d, "Laser rx power low alarm threshold", val_string);
+	sff_output_field(d, "Laser rx power low alarm threshold", val_string);
 	SFF_SPRINT_xX_PWR(val_string, sd.rx_power[SFF_HWARN]);
-	ssf_add_dict_string(d, "Laser rx power high warning threshold", val_string);
+	sff_output_field(d, "Laser rx power high warning threshold", val_string);
 	SFF_SPRINT_xX_PWR(val_string, sd.rx_power[SFF_LWARN]);
-	ssf_add_dict_string(d, "Laser rx power low warning threshold", val_string);
+	sff_output_field(d, "Laser rx power low warning threshold", val_string);
 }
