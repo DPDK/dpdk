@@ -62,9 +62,6 @@ struct bman_pool {
 	/* Used for hash-table admin when using depletion notifications. */
 	struct bman_portal *portal;
 	struct bman_pool *next;
-#ifdef RTE_LIBRTE_DPAA_HWDEBUG
-	atomic_t in_use;
-#endif
 };
 
 static inline
@@ -224,9 +221,7 @@ struct bman_pool *bman_new_pool(const struct bman_pool_params *params)
 	if (!pool)
 		goto err;
 	pool->params = *params;
-#ifdef RTE_LIBRTE_DPAA_HWDEBUG
-	atomic_set(&pool->in_use, 1);
-#endif
+
 	if (params->flags & BMAN_POOL_FLAG_DYNAMIC_BPID)
 		pool->params.bpid = bpid;
 
