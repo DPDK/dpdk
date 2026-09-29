@@ -8,12 +8,42 @@
 
 #include "rte_ethdev.h"
 #include <rte_common.h>
+#include "sff_common.h"
 #include "sff_telemetry.h"
 #include <telemetry_data.h>
 
 static void
+sff_tel_add_field(const char *name_str, const char *value_str, void *arg)
+{
+	struct rte_tel_data *d = arg;
+	struct tel_dict_entry *e = &d->data.dict[d->data_len];
+
+	if (d->type != TEL_DICT)
+		return;
+	if (d->data_len >= RTE_TEL_MAX_DICT_ENTRIES) {
+		RTE_ETHDEV_LOG_LINE(ERR, "data_len has exceeded the maximum number of inserts");
+		return;
+	}
+
+	e->type = RTE_TEL_STRING_VAL;
+	/* append different values for same keys */
+	if (d->data_len > 0) {
+		struct tel_dict_entry *previous = &d->data.dict[d->data_len - 1];
+		if (strcmp(previous->name, name_str) == 0) {
+			strlcat(previous->value.sval, "; ", RTE_TEL_MAX_STRING_LEN);
+			strlcat(previous->value.sval, value_str, RTE_TEL_MAX_STRING_LEN);
+			return;
+		}
+	}
+	strlcpy(e->value.sval, value_str, RTE_TEL_MAX_STRING_LEN);
+	strlcpy(e->name, name_str, RTE_TEL_MAX_STRING_LEN);
+	d->data_len++;
+}
+
+static void
 sff_port_module_eeprom_parse(uint16_t port_id, struct rte_tel_data *d)
 {
+	struct sff_output out = { .field_cb = sff_tel_add_field, .arg = d };
 	struct rte_eth_dev_module_info minfo;
 	struct rte_dev_eeprom_info einfo;
 	int ret;
@@ -73,15 +103,15 @@ sff_port_module_eeprom_parse(uint16_t port_id, struct rte_tel_data *d)
 	switch (minfo.type) {
 	/* parsing module EEPROM data base on different module type */
 	case RTE_ETH_MODULE_SFF_8079:
-		sff_8079_show_all(einfo.data, d);
+		sff_8079_show_all(einfo.data, &out);
 		break;
 	case RTE_ETH_MODULE_SFF_8472:
-		sff_8079_show_all(einfo.data, d);
-		sff_8472_show_all(einfo.data, d);
+		sff_8079_show_all(einfo.data, &out);
+		sff_8472_show_all(einfo.data, &out);
 		break;
 	case RTE_ETH_MODULE_SFF_8436:
 	case RTE_ETH_MODULE_SFF_8636:
-		sff_8636_show_all(einfo.data, einfo.length, d);
+		sff_8636_show_all(einfo.data, einfo.length, &out);
 		break;
 	default:
 		RTE_ETHDEV_LOG_LINE(NOTICE, "Unsupported module type: %u", minfo.type);
@@ -89,36 +119,6 @@ sff_port_module_eeprom_parse(uint16_t port_id, struct rte_tel_data *d)
 	}
 
 	free(einfo.data);
-}
-
-void
-ssf_add_dict_string(struct rte_tel_data *d, const char *name_str, const char *value_str)
-{
-	struct tel_dict_entry *e = &d->data.dict[d->data_len];
-
-	if (d->type != TEL_DICT)
-		return;
-	if (d->data_len >= RTE_TEL_MAX_DICT_ENTRIES) {
-		RTE_ETHDEV_LOG_LINE(ERR, "data_len has exceeded the maximum number of inserts");
-		return;
-	}
-
-	e->type = RTE_TEL_STRING_VAL;
-	/* append different values for same keys */
-	if (d->data_len > 0) {
-		struct tel_dict_entry *previous = &d->data.dict[d->data_len - 1];
-		if (strcmp(previous->name, name_str) == 0) {
-			strlcat(previous->value.sval, "; ", RTE_TEL_MAX_STRING_LEN);
-			strlcat(previous->value.sval, value_str, RTE_TEL_MAX_STRING_LEN);
-			goto end;
-		}
-	}
-	strlcpy(e->value.sval, value_str, RTE_TEL_MAX_STRING_LEN);
-	strlcpy(e->name, name_str, RTE_TEL_MAX_STRING_LEN);
-	d->data_len++;
-
-end:
-	return;
 }
 
 int
