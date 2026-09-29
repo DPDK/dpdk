@@ -355,6 +355,14 @@ bnxt_handle_tx_cp_vec(struct bnxt_tx_queue *txq)
 		if (!bnxt_cpr_cmp_valid(txcmp, raw_cons, ring_mask + 1))
 			break;
 
+		uint16_t errors_v = rte_le_to_cpu_16(txcmp->errors_v);
+
+		if (unlikely(errors_v & TX_CMPL_ERRORS_DMA_ERROR))
+			rte_atomic_store_explicit(&txq->tx_dma_err,
+				rte_atomic_load_explicit(&txq->tx_dma_err,
+							 rte_memory_order_relaxed) + 1,
+				rte_memory_order_relaxed);
+
 		if (likely(CMP_TYPE(txcmp) == TX_CMPL_TYPE_TX_L2))
 			nb_tx_pkts += txcmp->opaque;
 		else
