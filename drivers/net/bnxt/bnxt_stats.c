@@ -1079,12 +1079,8 @@ int bnxt_flow_stats_cnt(struct bnxt *bp)
 {
 	if (bp->fw_cap & BNXT_FW_CAP_ADV_FLOW_COUNTERS &&
 	    bp->fw_cap & BNXT_FW_CAP_ADV_FLOW_MGMT &&
-	    BNXT_FLOW_XSTATS_EN(bp)) {
-		struct bnxt_xstats_name_off flow_bytes[bp->max_l2_ctx];
-		struct bnxt_xstats_name_off flow_pkts[bp->max_l2_ctx];
-
-		return RTE_DIM(flow_bytes) + RTE_DIM(flow_pkts);
-	}
+	    BNXT_FLOW_XSTATS_EN(bp))
+		return 2 * bp->max_l2_ctx;
 
 	return 0;
 }
