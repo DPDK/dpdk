@@ -897,7 +897,7 @@ struct txgbe_hw {
 	rte_spinlock_t phy_lock;
 	/*amlite: new SW-FW mbox */
 	u8 swfw_index;
-	rte_atomic32_t swfw_busy;
+	RTE_ATOMIC(bool) swfw_busy;
 	bool link_valid;
 	bool reconfig_rx;
 	RTE_ATOMIC(bool) pf_running;
