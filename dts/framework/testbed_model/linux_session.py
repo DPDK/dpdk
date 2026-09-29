@@ -272,11 +272,16 @@ class LinuxSession(PosixSession, LinuxSessionBase):
         """
         ports_pci_addrs = " ".join(port.pci for port in ports)
 
-        self.send_command(
-            f"{self.devbind_script_path} -b {driver_name} --force {ports_pci_addrs}",
-            privileged=True,
-            verify=True,
-        )
+        if not driver_name:
+            self.send_command(
+                f"{self.devbind_script_path} -u {ports_pci_addrs}", privileged=True, verify=True
+            )
+        else:
+            self.send_command(
+                f"{self.devbind_script_path} -b {driver_name} --force {ports_pci_addrs}",
+                privileged=True,
+                verify=True,
+            )
 
         if self._lshw_net_info:
             del self._lshw_net_info
