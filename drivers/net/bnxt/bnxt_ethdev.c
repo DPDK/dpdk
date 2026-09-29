@@ -1913,7 +1913,8 @@ int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 					RTE_MIN(rte_align32pow2(txq->nb_tx_desc) / 4,
 						RTE_BNXT_MAX_TX_BURST);
 		} else {
-			txq->offloads |= RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
+			if (txq->fast_free_requested)
+				txq->offloads |= RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
 			txq->tx_free_thresh =
 				RTE_MIN(rte_align32pow2(txq->nb_tx_desc) / 4,
 					RTE_BNXT_MAX_TX_BURST);
