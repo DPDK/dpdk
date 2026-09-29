@@ -3624,7 +3624,8 @@ bnxt_rx_descriptor_status_op(void *rx_queue, uint16_t offset)
 		case CMPL_BASE_TYPE_RX_L2:
 		case CMPL_BASE_TYPE_RX_L2_V2:
 			if (desc == offset) {
-				cons = rxcmp->opaque;
+				cons = RING_IDX(rxr->rx_ring_struct,
+						 rxcmp->opaque);
 				if (rxr->rx_buf_ring[cons])
 					return RTE_ETH_RX_DESC_DONE;
 				else
