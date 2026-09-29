@@ -1169,7 +1169,6 @@ static int bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 {
 	struct rte_pci_device *pdev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pdev);
 	struct bnxt *bp = eth_dev->data->dev_private;
-	uint16_t max_vnics, i, j, vpool, vrxq;
 	unsigned int max_rx_rings;
 	int rc;
 
@@ -1191,7 +1190,6 @@ static int bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 	dev_info->max_tx_queues = max_rx_rings;
 	dev_info->reta_size = bnxt_rss_hash_tbl_size(bp);
 	dev_info->hash_key_size = HW_HASH_KEY_SIZE;
-	max_vnics = bp->max_vnics;
 
 	/* MTU specifics */
 	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
@@ -1254,29 +1252,8 @@ static int bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 	 * TODO: default_rxconf, default_txconf, rx_desc_lim, and tx_desc_lim
 	 *       need further investigation.
 	 */
-
-	/* VMDq resources */
-	vpool = 64; /* RTE_ETH_64_POOLS */
-	vrxq = 128; /* RTE_ETH_VMDQ_DCB_NUM_QUEUES */
-	for (i = 0; i < 4; vpool >>= 1, i++) {
-		if (max_vnics > vpool) {
-			for (j = 0; j < 5; vrxq >>= 1, j++) {
-				if (dev_info->max_rx_queues > vrxq) {
-					if (vpool > vrxq)
-						vpool = vrxq;
-					goto found;
-				}
-			}
-			/* Not enough resources to support VMDq */
-			break;
-		}
-	}
-	/* Not enough resources to support VMDq */
-	vpool = 0;
-	vrxq = 0;
-found:
-	dev_info->max_vmdq_pools = vpool;
-	dev_info->vmdq_queue_num = vrxq;
+	dev_info->max_vmdq_pools = 0;
+	dev_info->vmdq_queue_num = 0;
 
 	dev_info->vmdq_pool_base = 0;
 	dev_info->vmdq_queue_base = 0;

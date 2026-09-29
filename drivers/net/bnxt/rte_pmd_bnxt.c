@@ -435,7 +435,6 @@ int rte_pmd_bnxt_set_vf_rxmode(uint16_t port, uint16_t vf,
 		return -ENOTSUP;
 	}
 
-	/* Is this really the correct mapping?  VFd seems to think it is. */
 	if (rx_mask & RTE_ETH_VMDQ_ACCEPT_HASH_UC)
 		flag |= BNXT_VNIC_INFO_PROMISC;
 

@@ -159,6 +159,10 @@ Removed Items
    Also, make sure to start the actual text at the margin.
    =======================================================
 
+* net/bnxt: Removed VMDq support. Applications configuring VMDq pools
+  on bnxt now get zero pools reported, matching no VMDq hardware
+  support.
+
 * Removed deprecated symbols:
 
   * eal: ``__rte_packed``
