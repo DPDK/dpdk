@@ -99,6 +99,5 @@ rte_eal_timer_init(void)
 
 	eal_timer_source = EAL_TIMER_TSC;
 
-	set_tsc_freq();
-	return 0;
+	return init_tsc_freq();
 }

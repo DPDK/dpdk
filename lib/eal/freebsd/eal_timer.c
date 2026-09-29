@@ -65,6 +65,5 @@ get_tsc_freq(uint64_t arch_hz)
 int
 rte_eal_timer_init(void)
 {
-	set_tsc_freq();
-	return 0;
+	return init_tsc_freq();
 }
