@@ -130,6 +130,8 @@ New Features
     that the device flagged with a DMA error.
     This is a port-level counter,
     and is also folded into the standard ``oerrors`` counter.
+  * Raised the maximum Tx and Rx ring descriptor counts
+    from 4096/8192 to 16384 each.
 
 * **Updated Intel iavf driver.**
 

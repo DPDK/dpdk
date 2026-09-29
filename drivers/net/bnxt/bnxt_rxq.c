@@ -205,7 +205,7 @@ void bnxt_rx_queue_release_mbufs(struct bnxt_rx_queue *rxq)
 {
 	struct rte_mbuf **sw_ring;
 	struct bnxt_tpa_info *tpa_info;
-	uint16_t i;
+	uint32_t i;
 
 	if (!rxq || !rxq->rx_ring)
 		return;
@@ -254,7 +254,7 @@ void bnxt_rx_queue_release_mbufs(struct bnxt_rx_queue *rxq)
 	/* Free up mbufs in TPA */
 	tpa_info = rxq->rx_ring->tpa_info;
 	if (tpa_info) {
-		int max_aggs = BNXT_TPA_MAX_AGGS(rxq->bp);
+		uint32_t max_aggs = BNXT_TPA_MAX_AGGS(rxq->bp);
 
 		for (i = 0; i < max_aggs; i++) {
 			if (tpa_info[i].mbuf) {
