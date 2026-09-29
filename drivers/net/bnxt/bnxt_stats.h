@@ -8,6 +8,9 @@
 
 #include <ethdev_driver.h>
 
+/* Number of software (non-HWRM) xstats appended after the FW-reported ones. */
+#define BNXT_NUM_SW_XSTATS		1
+
 void bnxt_free_stats(struct bnxt *bp);
 int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 			   struct rte_eth_stats *bnxt_stats, struct eth_queue_stats *qstats);

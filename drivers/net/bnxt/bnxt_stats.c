@@ -685,6 +685,8 @@ static int bnxt_stats_get_ext(struct rte_eth_dev *eth_dev,
 
 		bnxt_stats->oerrors += rte_atomic_load_explicit(&txq->tx_mbuf_drop,
 							     rte_memory_order_relaxed);
+		bnxt_stats->oerrors += rte_atomic_load_explicit(&txq->tx_dma_err,
+							     rte_memory_order_relaxed);
 
 		if (!txq->tx_started)
 			continue;
@@ -758,6 +760,9 @@ int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 		bnxt_stats->oerrors +=
 				rte_atomic_load_explicit(&txq->tx_mbuf_drop,
 							 rte_memory_order_relaxed);
+		bnxt_stats->oerrors +=
+				rte_atomic_load_explicit(&txq->tx_dma_err,
+							 rte_memory_order_relaxed);
 	}
 
 	return rc;
@@ -808,6 +813,8 @@ int bnxt_stats_reset_op(struct rte_eth_dev *eth_dev)
 		struct bnxt_tx_queue *txq = bp->tx_queues[i];
 
 		txq->tx_mbuf_drop = 0;
+		rte_atomic_store_explicit(&txq->tx_dma_err, 0,
+					  rte_memory_order_relaxed);
 	}
 
 	bnxt_clear_prev_stat(bp);
@@ -911,6 +918,7 @@ int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
 		RTE_DIM(bnxt_tx_stats_strings) + sz +
 		RTE_DIM(bnxt_rx_ext_stats_strings) +
 		RTE_DIM(bnxt_tx_ext_stats_strings) +
+		BNXT_NUM_SW_XSTATS +
 		bnxt_flow_stats_cnt(bp);
 
 	if (n < stat_count || xstats == NULL)
@@ -1033,6 +1041,14 @@ skip_func_stats:
 		count++;
 	}
 
+	xstats[count].id = count;
+	xstats[count].value = 0;
+	for (i = 0; i < bp->tx_cp_nr_rings; i++)
+		xstats[count].value +=
+			rte_atomic_load_explicit(&bp->tx_queues[i]->tx_dma_err,
+						 rte_memory_order_relaxed);
+	count++;
+
 	if (bp->fw_cap & BNXT_FW_CAP_ADV_FLOW_COUNTERS &&
 	    bp->fw_cap & BNXT_FW_CAP_ADV_FLOW_MGMT &&
 	    BNXT_FLOW_XSTATS_EN(bp)) {
@@ -1108,6 +1124,7 @@ int bnxt_dev_xstats_get_names_op(struct rte_eth_dev *eth_dev,
 				sz +
 				RTE_DIM(bnxt_rx_ext_stats_strings) +
 				RTE_DIM(bnxt_tx_ext_stats_strings) +
+				BNXT_NUM_SW_XSTATS +
 				bnxt_flow_stats_cnt(bp);
 
 	if (xstats_names == NULL || size < stat_cnt)
@@ -1161,6 +1178,10 @@ skip_func_stats:
 		count++;
 	}
 
+	strlcpy(xstats_names[count].name, "tx_dma_err_cmpl",
+		sizeof(xstats_names[count].name));
+	count++;
+
 	if (bp->fw_cap & BNXT_FW_CAP_ADV_FLOW_COUNTERS &&
 	    bp->fw_cap & BNXT_FW_CAP_ADV_FLOW_MGMT &&
 	    BNXT_FLOW_XSTATS_EN(bp)) {
@@ -1183,6 +1204,7 @@ skip_func_stats:
 int bnxt_dev_xstats_reset_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
+	unsigned int i;
 	int ret;
 
 	ret = is_bnxt_in_error(bp);
@@ -1194,6 +1216,10 @@ int bnxt_dev_xstats_reset_op(struct rte_eth_dev *eth_dev)
 		PMD_DRV_LOG_LINE(ERR, "Operation not supported");
 		return -ENOTSUP;
 	}
+
+	for (i = 0; i < bp->tx_cp_nr_rings; i++)
+		rte_atomic_store_explicit(&bp->tx_queues[i]->tx_dma_err, 0,
+					  rte_memory_order_relaxed);
 
 	ret = bnxt_hwrm_port_clr_stats(bp);
 	if (ret != 0)

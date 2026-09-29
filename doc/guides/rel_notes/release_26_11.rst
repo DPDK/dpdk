@@ -74,6 +74,12 @@ New Features
     ``xdp_meta_rx_ts_valid_mask``.
   * Added ``read_clock`` operation to query the PTP hardware clock.
 
+* **Updated bnxt driver.**
+
+  * Added a ``tx_dma_err_cmpl`` xstat to report Tx completions that the
+    device flagged with a DMA error. This is a port-level counter, and
+    is also folded into the standard ``oerrors`` counter.
+
 * **Updated Intel iavf driver.**
 
   * Runtime Rx/Tx queue setup is now automatically disabled
