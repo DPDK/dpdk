@@ -227,12 +227,19 @@ static void bnxt_tpa_start(struct bnxt_rx_queue *rxq,
 			   struct rx_tpa_start_cmpl_hi *tpa_start1)
 {
 	struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
-	uint16_t agg_id;
-	uint16_t data_cons;
 	struct bnxt_tpa_info *tpa_info;
+	uint32_t data_cons, agg_id;
+	struct bnxt *bp = rxq->bp;
 	struct rte_mbuf *mbuf;
 
-	agg_id = bnxt_tpa_start_agg_id(rxq->bp, tpa_start);
+	agg_id = bnxt_tpa_start_agg_id(bp, tpa_start);
+	if (unlikely(agg_id >= BNXT_TPA_MAX_AGGS(bp))) {
+		PMD_DRV_LOG_LINE(ERR,
+				 "TPA start: invalid agg_id %u (max %u)",
+				 agg_id, BNXT_TPA_MAX_AGGS(bp));
+		bnxt_sched_ring_reset(rxq);
+		return;
+	}
 
 	data_cons = tpa_start->opaque;
 	tpa_info = &rxr->tpa_info[agg_id];
@@ -259,7 +266,7 @@ static void bnxt_tpa_start(struct bnxt_rx_queue *rxq,
 	mbuf->port = rxq->port_id;
 	mbuf->ol_flags = RTE_MBUF_F_RX_LRO;
 
-	bnxt_tpa_get_metadata(rxq->bp, tpa_info, tpa_start, tpa_start1);
+	bnxt_tpa_get_metadata(bp, tpa_info, tpa_start, tpa_start1);
 
 	if (likely(tpa_info->hash_valid)) {
 		mbuf->hash.rss = tpa_info->rss_hash;
@@ -269,7 +276,7 @@ static void bnxt_tpa_start(struct bnxt_rx_queue *rxq,
 		mbuf->ol_flags |= RTE_MBUF_F_RX_FDIR | RTE_MBUF_F_RX_FDIR_ID;
 	}
 
-	if (tpa_info->vlan_valid && BNXT_RX_VLAN_STRIP_EN(rxq->bp)) {
+	if (tpa_info->vlan_valid && BNXT_RX_VLAN_STRIP_EN(bp)) {
 		mbuf->vlan_tci = tpa_info->vlan;
 		mbuf->ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
 	}
@@ -412,20 +419,21 @@ static inline struct rte_mbuf *bnxt_tpa_end(
 {
 	struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
 	struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
-	uint16_t agg_id;
+	struct bnxt_tpa_info *tpa_info;
+	struct bnxt *bp = rxq->bp;
+	uint8_t payload_offset;
 	struct rte_mbuf *mbuf;
 	uint8_t agg_bufs;
-	uint8_t payload_offset;
-	struct bnxt_tpa_info *tpa_info;
+	uint32_t agg_id;
 
 	if (unlikely(rxq->in_reset)) {
 		PMD_DRV_LOG_LINE(ERR, "rxq->in_reset: raw_cp_cons:%d",
 			    *raw_cp_cons);
-		bnxt_discard_rx(rxq->bp, cpr, raw_cp_cons, tpa_end);
+		bnxt_discard_rx(bp, cpr, raw_cp_cons, tpa_end);
 		return NULL;
 	}
 
-	if (BNXT_CHIP_P5_P7(rxq->bp)) {
+	if (BNXT_CHIP_P5_P7(bp)) {
 		struct rx_tpa_v2_end_cmpl *th_tpa_end;
 		struct rx_tpa_v2_end_cmpl_hi *th_tpa_end1;
 
@@ -440,6 +448,15 @@ static inline struct rte_mbuf *bnxt_tpa_end(
 		if (!bnxt_agg_bufs_valid(cpr, agg_bufs, *raw_cp_cons))
 			return NULL;
 		payload_offset = tpa_end->payload_offset;
+	}
+
+	if (unlikely(agg_id >= BNXT_TPA_MAX_AGGS(bp))) {
+		PMD_DRV_LOG_LINE(ERR,
+				 "TPA end: invalid agg_id %u (max %u)",
+				 agg_id, BNXT_TPA_MAX_AGGS(bp));
+		bnxt_discard_rx(bp, cpr, raw_cp_cons, tpa_end);
+		bnxt_sched_ring_reset(rxq);
+		return NULL;
 	}
 
 	tpa_info = &rxr->tpa_info[agg_id];
@@ -1126,8 +1143,17 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 
 	if (cmp_type == RX_TPA_V2_ABUF_CMPL_TYPE_RX_TPA_AGG) {
 		struct rx_tpa_v2_abuf_cmpl *rx_agg = (void *)rxcmp;
-		uint16_t agg_id = rte_cpu_to_le_16(rx_agg->agg_id);
+		uint32_t agg_id = rte_le_to_cpu_16(rx_agg->agg_id);
 		struct bnxt_tpa_info *tpa_info;
+
+		if (unlikely(agg_id >= BNXT_TPA_MAX_AGGS(bp))) {
+			PMD_DRV_LOG_LINE(ERR,
+					 "TPA abuf: invalid agg_id %u (max %u)",
+					 agg_id, BNXT_TPA_MAX_AGGS(bp));
+			bnxt_sched_ring_reset(rxq);
+			rc = -EINVAL;
+			goto next_rx;
+		}
 
 		tpa_info = &rxr->tpa_info[agg_id];
 		RTE_ASSERT(tpa_info->agg_count < 16);
