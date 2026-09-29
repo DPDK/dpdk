@@ -17,7 +17,6 @@ dpdk_arch_headers += files(
         'rte_vect.h',
 )
 dpdk_arch_indirect_headers += files(
-        'rte_atomic_32.h',
         'rte_atomic_64.h',
         'rte_byteorder_32.h',
         'rte_byteorder_64.h',

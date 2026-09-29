@@ -162,6 +162,13 @@ Removed Items
     ``rte_rib6_is_equal``
   * table: ``RTE_LPM_IPV6_ADDR_SIZE``
 
+* Removed the ``rte_atomicNN_t`` types and the ``rte_atomicNN_*`` functions
+  (16, 32 and 64 bit variants of ``init``, ``read``, ``set``, ``add``,
+  ``sub``, ``inc``, ``dec``, ``add_return``, ``sub_return``,
+  ``inc_and_test``, ``dec_and_test``, ``test_and_set``, ``clear``,
+  ``cmpset`` and ``exchange``). Use the C11 ``rte_atomic_*_explicit``
+  operations instead.
+
 * ethdev: Removed support for ethdev queue stats mapping.
 
   ``rte_eth_dev_set_tx_queue_stats_mapping`` and ``rte_eth_dev_set_rx_queue_stats_mapping``

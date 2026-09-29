@@ -39,13 +39,6 @@ Deprecation Notices
   as part of its internal API. All drivers will be adjusted
   to use the new unified VFIO container device assignment API.
 
-* rte_atomicNN_xxx: These APIs do not take memory order parameter. This does
-  not allow for writing optimized code for all the CPU architectures supported
-  in DPDK. DPDK has adopted the atomic operations from
-  https://gcc.gnu.org/onlinedocs/gcc/_005f_005fatomic-Builtins.html. These
-  operations must be used for patches that need to be merged in 20.08 onwards.
-  This change will not introduce any performance degradation.
-
 * rte_smp_*mb: These APIs provide full barrier functionality. However, many
   use cases do not require full barriers. To support such use cases, DPDK has
   adopted atomic operations from

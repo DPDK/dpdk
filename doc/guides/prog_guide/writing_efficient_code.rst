@@ -186,15 +186,8 @@ For instance, the Read-Copy-Update (RCU) algorithm can frequently replace simple
 Atomic Operations: Use C11 Atomic Builtins
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-DPDK generic rte_atomic operations are implemented by __sync builtins. These
-__sync builtins result in full barriers on aarch64, which are unnecessary
-in many use cases. They can be replaced by __atomic builtins that conform to
-the C11 memory model and provide finer memory order control.
+DPDK has been converted to C11 memory model atomics.
 
-So replacing the rte_atomic operations with __atomic builtins might improve
-performance for aarch64 machines.
-
-Some typical optimization cases are listed below:
 
 Atomicity
 ^^^^^^^^^
