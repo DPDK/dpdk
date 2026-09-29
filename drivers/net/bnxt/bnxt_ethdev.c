@@ -2105,7 +2105,7 @@ static int bnxt_mac_addr_add_op(struct rte_eth_dev *eth_dev,
 				uint32_t index, uint32_t pool)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
-	struct bnxt_vnic_info *vnic = &bp->vnic_info[pool];
+	struct bnxt_vnic_info *vnic;
 	int rc = 0;
 
 	rc = is_bnxt_in_error(bp);
@@ -2117,14 +2117,19 @@ static int bnxt_mac_addr_add_op(struct rte_eth_dev *eth_dev,
 		return -ENOTSUP;
 	}
 
-	if (!vnic) {
-		PMD_DRV_LOG_LINE(ERR, "VNIC not found for pool %d!", pool);
+	if (pool >= bp->max_vnics) {
+		PMD_DRV_LOG_LINE(ERR, "Pool %u exceeds VNIC count %u!", pool, bp->max_vnics);
 		return -EINVAL;
 	}
 
 	/* Filter settings will get applied when port is started */
 	if (!eth_dev->data->dev_started)
 		return 0;
+
+	if (bp->vnic_info == NULL)
+		return 0;
+
+	vnic = &bp->vnic_info[pool];
 
 	rc = bnxt_add_mac_filter(bp, vnic, mac_addr, index, pool);
 
