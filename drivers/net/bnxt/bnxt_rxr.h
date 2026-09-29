@@ -114,11 +114,11 @@ struct bnxt_tpa_info {
 };
 
 struct bnxt_rx_ring_info {
-	uint16_t		rx_raw_prod;
-	uint16_t		ag_raw_prod;
-	uint16_t		ag_cons; /* Needed with compressed CQE */
-	uint16_t                rx_cons; /* Needed for representor */
-	uint16_t                rx_next_cons;
+	uint32_t		rx_raw_prod;
+	uint32_t		ag_raw_prod;
+	uint32_t		ag_cons; /* Needed with compressed CQE */
+	uint32_t                rx_cons; /* Needed for representor */
+	uint32_t                rx_next_cons;
 	struct bnxt_db_info     rx_db;
 	struct bnxt_db_info     ag_db;
 
