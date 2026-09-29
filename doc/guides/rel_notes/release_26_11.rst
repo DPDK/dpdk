@@ -165,6 +165,14 @@ New Features
   Added ``rte_bbdev_queue_stats_get()`` function to retrieve statistics
   for a specific queue, complementing the existing device-level statistics API.
 
+* **Added module EEPROM decoding API to ethdev.**
+
+  Added the experimental ``rte_eth_module_eeprom_parse()`` function
+  to decode pluggable module EEPROM data according to the SFF specifications.
+  It can decode data read with ``rte_eth_dev_get_module_eeprom()``
+  or obtained from any other source with the same layout,
+  such as the Linux ethtool ``ETHTOOL_GMODULEEEPROM`` ioctl.
+
 
 Removed Items
 -------------
