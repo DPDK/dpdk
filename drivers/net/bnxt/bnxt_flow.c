@@ -2043,6 +2043,16 @@ bnxt_flow_create(struct rte_eth_dev *dev,
 	if (ret != 0)
 		goto free_filter;
 
+	if (filter->filter_type != HWRM_CFA_TUNNEL_REDIRECT_FILTER &&
+	    find_matching_vnic(bp, filter) == NULL) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Missing destination action for flow.");
+		bnxt_hwrm_clear_l2_filter(bp, filter);
+		ret = -EINVAL;
+		goto free_filter;
+	}
+
 	ret = bnxt_match_filter(bp, filter);
 	if (ret == -EEXIST) {
 		PMD_DRV_LOG_LINE(DEBUG, "Flow already exists.");
