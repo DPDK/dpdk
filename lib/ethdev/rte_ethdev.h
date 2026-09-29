@@ -5234,6 +5234,63 @@ rte_eth_dev_get_module_eeprom(uint16_t port_id, struct rte_dev_eeprom_info *info
 	__rte_warn_unused_result;
 
 /**
+ * Callback invoked by rte_eth_module_eeprom_parse() for each decoded field.
+ *
+ * @param name
+ *   Field name, for example "Vendor name" or "Laser bias current".
+ *   The same name may be reported more than once,
+ *   for example when a module complies with several transceiver types.
+ * @param value
+ *   Field value as a human readable string, including the unit if any.
+ * @param arg
+ *   The opaque argument passed to rte_eth_module_eeprom_parse().
+ *
+ * @note The field names and the value formats are intended for display.
+ *   They follow the ethtool output and may change in future releases,
+ *   so they should not be parsed or matched by applications.
+ */
+typedef void (*rte_eth_module_eeprom_field_cb)(const char *name,
+		const char *value, void *arg);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice.
+ *
+ * Decode pluggable module EEPROM data according to the SFF specifications.
+ *
+ * The data may come from rte_eth_dev_get_module_eeprom()
+ * or from any other source using the same layout,
+ * for example the Linux ethtool ioctls ETHTOOL_GMODULEINFO
+ * and ETHTOOL_GMODULEEEPROM.
+ * The function does not access any device
+ * and can be called without EAL initialization.
+ *
+ * @param type
+ *   Module type, one of RTE_ETH_MODULE_SFF_*,
+ *   as reported by rte_eth_dev_get_module_info().
+ * @param data
+ *   Module EEPROM data starting at offset 0.
+ * @param length
+ *   Length of the data in bytes.
+ *   SFF-8472 diagnostics are decoded only if at least
+ *   RTE_ETH_MODULE_SFF_8472_LEN bytes are provided.
+ *   SFF-8436 and SFF-8636 thresholds and alarm flags are decoded
+ *   only if at least RTE_ETH_MODULE_SFF_8636_MAX_LEN bytes are provided.
+ * @param cb
+ *   Callback invoked for each decoded field.
+ * @param arg
+ *   Opaque argument passed to the callback.
+ * @return
+ *   - (0) if successful.
+ *   - (-EINVAL) if bad parameter or data is too short for the module type.
+ *   - (-ENOTSUP) if the module type is not supported.
+ */
+__rte_experimental
+int
+rte_eth_module_eeprom_parse(uint32_t type, const uint8_t *data, uint32_t length,
+		rte_eth_module_eeprom_field_cb cb, void *arg);
+
+/**
  * Set the list of multicast addresses to filter on an Ethernet device.
  *
  * @param port_id

@@ -802,3 +802,53 @@ three events are available:
    The application should close the port.
 
 Query the error handling mode supported by the PMD using ``rte_eth_dev_info_get()``.
+
+
+Pluggable Module EEPROM
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Pluggable transceiver modules (SFP, QSFP) store their identification
+and diagnostic data in an EEPROM with a layout defined by the SFF specifications.
+Use ``rte_eth_dev_get_module_info()`` to get the module type and the EEPROM size,
+then ``rte_eth_dev_get_module_eeprom()`` to read the raw EEPROM data.
+
+The raw data can be decoded with ``rte_eth_module_eeprom_parse()``.
+It supports the SFF-8079, SFF-8472, SFF-8436 and SFF-8636 layouts,
+and reports each decoded field, such as the vendor name, the serial number
+or the measured optical power, through an application callback
+as a pair of human readable strings.
+The field names and value formats are intended for display
+and may change in future releases:
+
+.. code-block:: c
+
+   static void
+   print_field(const char *name, const char *value, void *arg)
+   {
+       RTE_SET_USED(arg);
+       printf("%s: %s\n", name, value);
+   }
+
+   struct rte_eth_dev_module_info info;
+   struct rte_dev_eeprom_info eeprom = {0};
+
+   if (rte_eth_dev_get_module_info(port_id, &info) == 0) {
+       eeprom.data = malloc(info.eeprom_len);
+       eeprom.length = info.eeprom_len;
+       if (eeprom.data != NULL &&
+               rte_eth_dev_get_module_eeprom(port_id, &eeprom) == 0)
+           rte_eth_module_eeprom_parse(info.type, eeprom.data, eeprom.length,
+                   print_field, NULL);
+       free(eeprom.data);
+   }
+
+The decoding function does not access the device,
+so it can also decode EEPROM data obtained from other sources.
+For ports managed by the Linux kernel, the ethtool ioctls
+``ETHTOOL_GMODULEINFO`` and ``ETHTOOL_GMODULEEEPROM``
+return the same module types and data layout.
+The ethtool netlink request ``ETHTOOL_MSG_MODULE_EEPROM_GET``
+is page addressed and does not report the module type,
+so its data has to be assembled into this layout first.
+The same decoding is available through the telemetry command
+``/ethdev/module_eeprom``.
