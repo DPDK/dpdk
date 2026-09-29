@@ -11,7 +11,28 @@
 #include <stdio.h>
 
 #include "rte_ethdev.h"
-#include "sff_telemetry.h"
+
+#define SFF_ITEM_VAL_COMPOSE_SIZE 64
+
+/* Consumer of decoded module EEPROM fields */
+struct sff_output {
+	/* Called once per decoded field, name may repeat */
+	void (*field_cb)(const char *name, const char *value, void *arg);
+	void *arg;
+};
+
+/* Report one decoded field */
+void sff_output_field(struct sff_output *d, const char *name_str,
+		      const char *value_str);
+
+/* SFF-8079 Optics diagnostics */
+void sff_8079_show_all(const uint8_t *data, struct sff_output *d);
+
+/* SFF-8472 Optics diagnostics */
+void sff_8472_show_all(const uint8_t *data, struct sff_output *d);
+
+/* SFF-8636 Optics diagnostics */
+void sff_8636_show_all(const uint8_t *data, uint32_t eeprom_len, struct sff_output *d);
 
 #define SFF_8024_ID_OFFSET			0x00
 #define SFF_8024_ID_UNKNOWN			0x00
@@ -158,15 +179,15 @@ struct sff_diags {
 double sff_convert_mw_to_dbm(double mw);
 void sff_show_value_with_unit(const uint8_t *data, unsigned int reg,
 			      const char *name, unsigned int mult,
-			      const char *unit, struct rte_tel_data *d);
+			      const char *unit, struct sff_output *d);
 void sff_show_ascii(const uint8_t *data, unsigned int first_reg,
-		    unsigned int last_reg, const char *name, struct rte_tel_data *d);
-void sff_show_thresholds(struct sff_diags sd, struct rte_tel_data *d);
+		    unsigned int last_reg, const char *name, struct sff_output *d);
+void sff_show_thresholds(struct sff_diags sd, struct sff_output *d);
 
-void sff_8024_show_oui(const uint8_t *data, int id_offset, struct rte_tel_data *d);
-void sff_8024_show_identifier(const uint8_t *data, int id_offset, struct rte_tel_data *d);
-void sff_8024_show_connector(const uint8_t *data, int ctor_offset, struct rte_tel_data *d);
+void sff_8024_show_oui(const uint8_t *data, int id_offset, struct sff_output *d);
+void sff_8024_show_identifier(const uint8_t *data, int id_offset, struct sff_output *d);
+void sff_8024_show_connector(const uint8_t *data, int ctor_offset, struct sff_output *d);
 void sff_8024_show_encoding(const uint8_t *data, int encoding_offset,
-			    int sff_type, struct rte_tel_data *d);
+			    int sff_type, struct sff_output *d);
 
 #endif /* _SFF_COMMON_H_ */
