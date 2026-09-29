@@ -1165,17 +1165,14 @@ skip_func_stats:
 	    bp->fw_cap & BNXT_FW_CAP_ADV_FLOW_MGMT &&
 	    BNXT_FLOW_XSTATS_EN(bp)) {
 		for (i = 0; i < bp->max_l2_ctx; i++) {
-			char buf[RTE_ETH_XSTATS_NAME_SIZE];
-
-			sprintf(buf, "flow_%d_bytes", i);
-			strlcpy(xstats_names[count].name, buf,
-				sizeof(xstats_names[count].name));
+			snprintf(xstats_names[count].name,
+				sizeof(xstats_names[count].name),
+				"flow_%d_bytes", i);
 			count++;
 
-			sprintf(buf, "flow_%d_packets", i);
-			strlcpy(xstats_names[count].name, buf,
-				sizeof(xstats_names[count].name));
-
+			snprintf(xstats_names[count].name,
+				sizeof(xstats_names[count].name),
+				"flow_%d_packets", i);
 			count++;
 		}
 	}
