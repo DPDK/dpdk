@@ -32,9 +32,8 @@
 #define AGG_RING_MULTIPLIER	2
 
 /* These assume 4k pages */
-#define MAX_RX_DESC_CNT (8 * 1024)
-#define MAX_TX_DESC_CNT (4 * 1024)
-#define MAX_CP_DESC_CNT (16 * 1024)
+#define MAX_RX_DESC_CNT (16 * 1024)
+#define MAX_TX_DESC_CNT (16 * 1024)
 
 #define INVALID_HW_RING_ID      ((uint16_t)-1)
 #define INVALID_STATS_CTX_ID	((uint16_t)-1)
