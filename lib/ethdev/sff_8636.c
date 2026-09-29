@@ -656,7 +656,7 @@ static void sff_8636_show_dom(const uint8_t *data, uint32_t eeprom_len, struct s
 	 * If pagging support exists, then supports_alarms is marked as 1
 	 */
 
-	if (eeprom_len == RTE_ETH_MODULE_SFF_8636_MAX_LEN) {
+	if (eeprom_len >= RTE_ETH_MODULE_SFF_8636_MAX_LEN) {
 		if (!(data[SFF_8636_STATUS_2_OFFSET] &
 					SFF_8636_STATUS_PAGE_3_PRESENT)) {
 			sd.supports_alarms = 1;

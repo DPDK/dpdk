@@ -34,6 +34,14 @@ void sff_8472_show_all(const uint8_t *data, struct sff_output *d);
 /* SFF-8636 Optics diagnostics */
 void sff_8636_show_all(const uint8_t *data, uint32_t eeprom_len, struct sff_output *d);
 
+/*
+ * Decode module EEPROM of the given type (RTE_ETH_MODULE_SFF_*).
+ * Returns 0 on success, -EINVAL if the data is too short for the type,
+ * -ENOTSUP if the type is unknown.
+ */
+int sff_decode_module_eeprom(uint32_t type, const uint8_t *data, uint32_t length,
+			     struct sff_output *d);
+
 #define SFF_8024_ID_OFFSET			0x00
 #define SFF_8024_ID_UNKNOWN			0x00
 #define SFF_8024_ID_GBIC			0x01

@@ -4,6 +4,7 @@
  * common utilities for SFF-8436/8636 and SFF-8472/8079
  */
 
+#include <errno.h>
 #include <math.h>
 
 #include "sff_common.h"
@@ -12,6 +13,36 @@ void sff_output_field(struct sff_output *d, const char *name_str,
 		      const char *value_str)
 {
 	d->field_cb(name_str, value_str, d->arg);
+}
+
+int sff_decode_module_eeprom(uint32_t type, const uint8_t *data, uint32_t length,
+			     struct sff_output *d)
+{
+	switch (type) {
+	case RTE_ETH_MODULE_SFF_8079:
+		if (length < RTE_ETH_MODULE_SFF_8079_LEN)
+			return -EINVAL;
+		sff_8079_show_all(data, d);
+		break;
+	case RTE_ETH_MODULE_SFF_8472:
+		if (length < RTE_ETH_MODULE_SFF_8079_LEN)
+			return -EINVAL;
+		sff_8079_show_all(data, d);
+		/* diagnostics are in the second page (A2h) */
+		if (length >= RTE_ETH_MODULE_SFF_8472_LEN)
+			sff_8472_show_all(data, d);
+		break;
+	case RTE_ETH_MODULE_SFF_8436:
+	case RTE_ETH_MODULE_SFF_8636:
+		if (length < RTE_ETH_MODULE_SFF_8636_LEN)
+			return -EINVAL;
+		sff_8636_show_all(data, length, d);
+		break;
+	default:
+		return -ENOTSUP;
+	}
+
+	return 0;
 }
 
 double sff_convert_mw_to_dbm(double mw)
