@@ -1156,7 +1156,15 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 		}
 
 		tpa_info = &rxr->tpa_info[agg_id];
-		RTE_ASSERT(tpa_info->agg_count < 16);
+		if (unlikely(tpa_info->agg_count >= TPA_MAX_NUM_SEGS)) {
+			PMD_DRV_LOG_LINE(ERR,
+					 "TPA abuf: agg_count %u exceeds max %u",
+					 tpa_info->agg_count, TPA_MAX_NUM_SEGS);
+			tpa_info->agg_count = 0;
+			bnxt_sched_ring_reset(rxq);
+			rc = -EINVAL;
+			goto next_rx;
+		}
 		tpa_info->agg_arr[tpa_info->agg_count++] = *rx_agg;
 		rc = -EINVAL; /* Continue w/o new mbuf */
 		goto next_rx;

@@ -6234,7 +6234,8 @@ static int bnxt_hwrm_func_vf_vnic_query(struct bnxt *bp, uint16_t vf,
 	}
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
 	HWRM_CHECK_RESULT();
-	rc = rte_le_to_cpu_32(resp->vnic_id_cnt);
+	rc = RTE_MIN(rte_le_to_cpu_32(resp->vnic_id_cnt),
+		     (uint32_t)bp->pf->total_vnics);
 
 	HWRM_UNLOCK();
 
