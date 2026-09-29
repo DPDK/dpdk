@@ -22,6 +22,7 @@ struct bnxt_tx_queue {
 	uint8_t			wthresh; /* Write-back threshold reg */
 	uint8_t			tx_deferred_start; /* not in global dev start */
 	uint8_t			tx_started; /* TX queue is started */
+	bool			fast_free_requested;
 
 	struct bnxt		*bp;
 	int			index;
