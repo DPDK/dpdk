@@ -11,7 +11,7 @@
 #endif
 
 #include <rte_debug.h>
-#include <rte_atomic.h>
+#include <rte_stdatomic.h>
 #include <ethdev_driver.h>
 #include <rte_malloc.h>
 #include <rte_flow.h>
@@ -438,16 +438,14 @@ fs_rx_queue_setup(struct rte_eth_dev *dev,
 		fs_rx_queue_release(dev, rx_queue_id);
 		dev->data->rx_queues[rx_queue_id] = NULL;
 	}
-	rxq = rte_zmalloc(NULL,
-			  sizeof(*rxq) +
-			  sizeof(rte_atomic64_t) * PRIV(dev)->subs_tail,
+	rxq = rte_zmalloc("ethdev RX queue",
+			  sizeof(*rxq) + sizeof(*rxq->refcnt) * PRIV(dev)->subs_tail,
 			  RTE_CACHE_LINE_SIZE);
 	if (rxq == NULL) {
 		fs_unlock(dev, 0);
 		return -ENOMEM;
 	}
-	FOREACH_SUBDEV(sdev, i, dev)
-		rte_atomic64_init(&rxq->refcnt[i]);
+
 	rxq->qid = rx_queue_id;
 	rxq->socket_id = socket_id;
 	rxq->info.mp = mb_pool;
@@ -616,15 +614,13 @@ fs_tx_queue_setup(struct rte_eth_dev *dev,
 		dev->data->tx_queues[tx_queue_id] = NULL;
 	}
 	txq = rte_zmalloc("ethdev TX queue",
-			  sizeof(*txq) +
-			  sizeof(rte_atomic64_t) * PRIV(dev)->subs_tail,
+			  sizeof(*txq) + sizeof(*txq->refcnt) * PRIV(dev)->subs_tail,
 			  RTE_CACHE_LINE_SIZE);
 	if (txq == NULL) {
 		fs_unlock(dev, 0);
 		return -ENOMEM;
 	}
-	FOREACH_SUBDEV(sdev, i, dev)
-		rte_atomic64_init(&txq->refcnt[i]);
+
 	txq->qid = tx_queue_id;
 	txq->socket_id = socket_id;
 	txq->info.conf = *tx_conf;
