@@ -194,6 +194,12 @@ Removed Items
   ``cmpset`` and ``exchange``). Use the C11 ``rte_atomic_*_explicit``
   operations instead.
 
+* net: Removed ``version``, ``ds``, ``ecn`` and ``flow_label``
+  bitfields from ``struct rte_ipv6_hdr``.
+  They accessed the wrong bits on little endian.
+  Use ``vtc_flow`` with the ``RTE_IPV6_HDR_*_MASK``
+  and ``RTE_IPV6_HDR_*_SHIFT`` macros.
+
 * ethdev: Removed support for ethdev queue stats mapping.
 
   ``rte_eth_dev_set_tx_queue_stats_mapping`` and ``rte_eth_dev_set_rx_queue_stats_mapping``
