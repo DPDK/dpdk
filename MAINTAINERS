@@ -1223,7 +1223,6 @@ F: doc/guides/cryptodevs/features/qat.ini
 
 IPsec MB
 M: Kai Ji <kai.ji@intel.com>
-M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 F: drivers/crypto/ipsec_mb/
 F: doc/guides/cryptodevs/aesni_gcm.rst
 F: doc/guides/cryptodevs/aesni_mb.rst
@@ -1334,7 +1333,6 @@ F: drivers/compress/qat/
 F: drivers/common/qat/
 
 ISA-L
-M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 F: drivers/compress/isal/
 F: doc/guides/compressdevs/isal.rst
 F: doc/guides/compressdevs/features/isal.ini
