@@ -321,6 +321,10 @@ Removed Items
   The only remaining method for detecting LLDP packets is by using
   the mbuf packet type in conjunction with the ``enable_lldp`` devarg.
 
+* net/bnxt: Removed VMDq support.
+  Applications configuring VMDq pools on bnxt now get zero pools reported,
+  matching no VMDq hardware support.
+
 
 API Changes
 -----------

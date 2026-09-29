@@ -892,24 +892,7 @@ int bnxt_hwrm_set_l2_filter(struct bnxt *bp,
 	int rc = 0;
 	struct hwrm_cfa_l2_filter_alloc_input req = {.req_type = 0 };
 	struct hwrm_cfa_l2_filter_alloc_output *resp = bp->hwrm_cmd_resp_addr;
-	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
-	const struct rte_eth_vmdq_rx_conf *conf =
-		    &dev_conf->rx_adv_conf.vmdq_rx_conf;
 	uint32_t enables = 0;
-	uint16_t j = dst_id - 1;
-
-	//TODO: Is there a better way to add VLANs to each VNIC in case of VMDQ
-	if ((dev_conf->rxmode.mq_mode & RTE_ETH_MQ_RX_VMDQ_FLAG) &&
-	    conf->pool_map[j].pools & (1UL << j)) {
-		PMD_DRV_LOG_LINE(DEBUG,
-			"Add vlan %u to vmdq pool %u",
-			conf->pool_map[j].vlan_id, j);
-
-		filter->l2_ivlan = conf->pool_map[j].vlan_id;
-		filter->enables |=
-			HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_IVLAN |
-			HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_IVLAN_MASK;
-	}
 
 	if (filter->fw_l2_filter_id != UINT64_MAX)
 		bnxt_hwrm_clear_l2_filter(bp, filter);
