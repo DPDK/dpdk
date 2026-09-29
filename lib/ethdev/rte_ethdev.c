@@ -26,7 +26,6 @@
 #include <rte_string_fns.h>
 #include <rte_class.h>
 #include <rte_ether.h>
-#include <rte_telemetry.h>
 
 #include "rte_ethdev.h"
 #include "rte_ethdev_trace_fp.h"
@@ -36,7 +35,6 @@
 #include "ethdev_private.h"
 #include "ethdev_trace.h"
 #include "sff_common.h"
-#include "sff_telemetry.h"
 
 #define ETH_XSTATS_ITER_NUM	0x100
 
