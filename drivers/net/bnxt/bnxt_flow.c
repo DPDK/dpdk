@@ -259,9 +259,7 @@ bnxt_validate_and_parse_flow_type(const struct rte_flow_attr *attr,
 				}
 				rte_memcpy(filter->src_macaddr,
 					   &eth_spec->hdr.src_addr, RTE_ETHER_ADDR_LEN);
-				en |= use_ntuple ?
-					NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_MACADDR :
-					EM_FLOW_ALLOC_INPUT_EN_SRC_MACADDR;
+				en |= NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_MACADDR;
 				valid_flags |= inner ?
 					BNXT_FLOW_L2_INNER_SRC_VALID_FLAG :
 					BNXT_FLOW_L2_SRC_VALID_FLAG;
@@ -379,9 +377,8 @@ bnxt_validate_and_parse_flow_type(const struct rte_flow_attr *attr,
 				     NTUPLE_FLTR_ALLOC_INPUT_EN_DST_IPADDR_MASK;
 			}
 
-			filter->ip_addr_type = use_ntuple ?
-			 HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_IP_ADDR_TYPE_IPV4 :
-			 HWRM_CFA_EM_FLOW_ALLOC_INPUT_IP_ADDR_TYPE_IPV4;
+			filter->ip_addr_type =
+				HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_IP_ADDR_TYPE_IPV4;
 
 			if (ipv4_spec->hdr.next_proto_id) {
 				filter->ip_protocol =
@@ -444,9 +441,8 @@ bnxt_validate_and_parse_flow_type(const struct rte_flow_attr *attr,
 				     NTUPLE_FLTR_ALLOC_INPUT_EN_DST_IPADDR_MASK;
 			}
 
-			filter->ip_addr_type = use_ntuple ?
-				NTUPLE_FLTR_ALLOC_INPUT_IP_ADDR_TYPE_IPV6 :
-				EM_FLOW_ALLOC_INPUT_IP_ADDR_TYPE_IPV6;
+			filter->ip_addr_type =
+				NTUPLE_FLTR_ALLOC_INPUT_IP_ADDR_TYPE_IPV6;
 			break;
 		case RTE_FLOW_ITEM_TYPE_TCP:
 			tcp_spec = item->spec;
