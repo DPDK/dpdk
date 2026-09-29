@@ -1125,6 +1125,8 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	HWRM_CHECK_RESULT();
 
 	bp->max_ring_grps = rte_le_to_cpu_32(resp->max_hw_ring_grps);
+	if (bp->max_ring_grps > BNXT_MAX_RING_GRPS)
+		bp->max_ring_grps = BNXT_MAX_RING_GRPS;
 	flags = rte_le_to_cpu_32(resp->flags);
 	flags_ext2 = rte_le_to_cpu_32(resp->flags_ext2);
 	flags_ext3 = rte_le_to_cpu_32(resp->flags_ext3);
@@ -1155,8 +1157,10 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	bp->first_vf_id = rte_le_to_cpu_16(resp->first_vf_id);
 	bp->max_rx_em_flows = rte_le_to_cpu_16(resp->max_rx_em_flows);
 	bp->max_l2_ctx = rte_le_to_cpu_16(resp->max_l2_ctxs);
-	if (!BNXT_CHIP_P5_P7(bp) && !bp->pdev->max_vfs)
-		bp->max_l2_ctx += bp->max_rx_em_flows;
+	if (!BNXT_CHIP_P5_P7(bp) && !bp->pdev->max_vfs) {
+		uint32_t l2_ctx = bp->max_l2_ctx + bp->max_rx_em_flows;
+		bp->max_l2_ctx = (uint16_t)RTE_MIN(l2_ctx, (uint32_t)BNXT_MAX_L2_CTX);
+	}
 	if (bp->vnic_cap_flags & BNXT_VNIC_CAP_COS_CLASSIFY)
 		bp->max_vnics = rte_le_to_cpu_16(BNXT_MAX_VNICS_COS_CLASSIFY);
 	else
@@ -1555,13 +1559,15 @@ int bnxt_hwrm_func_resc_qcaps(struct bnxt *bp)
 	bp->max_cp_rings = rte_le_to_cpu_16(resp->max_cmpl_rings);
 	bp->max_tx_rings = rte_le_to_cpu_16(resp->max_tx_rings);
 	bp->max_rx_rings = rte_le_to_cpu_16(resp->max_rx_rings);
-	bp->max_ring_grps = rte_le_to_cpu_32(resp->max_hw_ring_grps);
+	bp->max_ring_grps = rte_le_to_cpu_16(resp->max_hw_ring_grps);
 	/* func_resource_qcaps does not return max_rx_em_flows.
 	 * So use the value provided by func_qcaps.
 	 */
 	bp->max_l2_ctx = rte_le_to_cpu_16(resp->max_l2_ctxs);
-	if (!BNXT_CHIP_P5_P7(bp) && !bp->pdev->max_vfs)
-		bp->max_l2_ctx += bp->max_rx_em_flows;
+	if (!BNXT_CHIP_P5_P7(bp) && !bp->pdev->max_vfs) {
+		uint32_t l2_ctx = bp->max_l2_ctx + bp->max_rx_em_flows;
+		bp->max_l2_ctx = (uint16_t)RTE_MIN(l2_ctx, (uint32_t)BNXT_MAX_L2_CTX);
+	}
 	if (bp->vnic_cap_flags & BNXT_VNIC_CAP_COS_CLASSIFY)
 		bp->max_vnics = rte_le_to_cpu_16(BNXT_MAX_VNICS_COS_CLASSIFY);
 	else
