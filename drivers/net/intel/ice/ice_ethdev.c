@@ -6447,7 +6447,7 @@ static int ice_vsi_dis_outer_insertion(struct ice_vsi *vsi, struct ice_vsi_vlan_
 		 ICE_AQ_VSI_OUTER_VLAN_TX_MODE_M);
 
 	status = ice_update_vsi(hw, vsi->idx, &ctxt, NULL);
-	if (!status) {
+	if (status != ICE_SUCCESS) {
 		PMD_DRV_LOG(ERR,
 			    "update VSI for disabling outer VLAN insertion failed, err %d",
 			    status);
