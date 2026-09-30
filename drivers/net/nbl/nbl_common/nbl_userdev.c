@@ -2,8 +2,9 @@
  * Copyright 2025 Nebulamatrix Technology Co., Ltd.
  */
 
-#include "nbl_userdev.h"
 #include <uapi/linux/vfio.h>
+
+#include "nbl_userdev.h"
 #include <rte_vfio.h>
 
 #define NBL_USERDEV_EVENT_CLB_NAME	"nbl_userspace_mem_event_clb"

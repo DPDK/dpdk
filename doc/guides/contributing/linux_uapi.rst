@@ -27,6 +27,8 @@ Importing or updating an uAPI header file
 To ensure that imported uAPI headers are unmodified
 and sourced from an official Linux kernel release,
 a helper script is provided and must be used.
+This script requires the ``unifdef`` tool.
+
 Below is an example to import ``linux/vduse.h`` file from Linux ``v6.10``:
 
 .. code-block:: console

@@ -13,6 +13,8 @@ file=""
 check_headers=false
 quiet=false
 
+unifdef -h >/dev/null 2>&1 || { echo "This script requires unifdef." >&2; exit 1; }
+
 print_usage()
 {
 	echo "Usage: $(basename $0) [-h] [-i FILE] [-u VERSION] [-c] [-q]"
@@ -84,6 +86,9 @@ fixup_includes()
 	sed -i 's|#\(ifndef\)[[:space:]]*_UAPI|#\1 |' $path
 	sed -i 's|#\(define\)[[:space:]]*_UAPI|#\1 |' $path
 	sed -i 's|#\(endif[[:space:]]*/[*]\)[[:space:]]*_UAPI|#\1 |' $path
+
+	unifdef -U__KERNEL__ -D__EXPORTED_HEADERS__ -o ${path}.tmp $path || [ $? -lt 2 ]
+	mv -f ${path}.tmp $path
 
 	# Prepend include path with "uapi/" if the header is imported
 	for include in $(sed -ne 's/^#include <\(.*\)>$/\1/p' $path); do
