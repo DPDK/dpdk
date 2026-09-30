@@ -5253,13 +5253,13 @@ ice_phy_conf_link(struct ice_hw *hw,
 	u64 phy_type_low = 0;
 	u64 phy_type_high = 0;
 
+	if (!pi)
+		return -EIO;
+
 	phy_caps = (struct ice_aqc_get_phy_caps_data *)
 		ice_malloc(hw, sizeof(*phy_caps));
 	if (!phy_caps)
 		return ICE_ERR_NO_MEMORY;
-
-	if (!pi)
-		return -EIO;
 
 
 	if (ice_fw_supports_report_dflt_cfg(pi->hw))
