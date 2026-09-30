@@ -13,7 +13,6 @@
  */
 
 #include <rte_bitops.h>
-#include <rte_compat.h>
 #include <rte_vect.h>
 
 #ifdef __cplusplus
@@ -29,7 +28,6 @@ extern "C" {
 #define RTE_THASH_PERM_MSK_2		0xf0f0f0f0f0f0f0f0
 #define RTE_THASH_REWIND_MSK		0x0000000000113377
 
-__rte_internal
 static inline void
 __rte_thash_xor_reduce(__m512i xor_acc, uint32_t *val_1, uint32_t *val_2)
 {
@@ -64,7 +62,6 @@ __rte_thash_xor_reduce(__m512i xor_acc, uint32_t *val_1, uint32_t *val_2)
 #endif
 }
 
-__rte_internal
 static inline __m512i
 __rte_thash_gfni(const uint64_t *mtrx, const uint8_t *tuple,
 	const uint8_t *secondary_tuple, int len)
