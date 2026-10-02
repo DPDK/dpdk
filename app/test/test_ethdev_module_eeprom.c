@@ -379,6 +379,26 @@ test_module_eeprom_sfp_8472_cal_saturate_min(void)
 }
 
 static int
+test_module_eeprom_sfp_8472_cal_round(void)
+{
+	uint8_t data[RTE_ETH_MODULE_SFF_8472_LEN];
+	uint8_t *a2 = data + RTE_ETH_MODULE_SFF_8079_LEN;
+
+	fill_sfp_ext_cal(data);
+	/* calibrated values must be rounded to the nearest, not truncated */
+	put_u16(a2, 100, 3);		/* raw TX bias */
+	put_u16(a2, 76, 0x0180);	/* TX bias slope = 1.5 */
+	put_u16(a2, 104, 1000);		/* raw RX power */
+	put_be_float(a2, 68, 0x3f333333);	/* RX_PWR(1) = 0.7, stored as 0.69999999 */
+
+	TEST_ASSERT_SUCCESS(parse(RTE_ETH_MODULE_SFF_8472, data, sizeof(data)),
+		"Failed to parse externally calibrated SFF-8472 data");
+	CHECK_FIELD("Laser bias current", "0.010 mA");
+	CHECK_FIELD("Receiver signal average optical power", "0.0700 mW / -11.55 dBm");
+	return TEST_SUCCESS;
+}
+
+static int
 test_module_eeprom_invalid(void)
 {
 	uint8_t data[RTE_ETH_MODULE_SFF_8636_MAX_LEN] = {0};
@@ -430,6 +450,7 @@ static struct unit_test_suite module_eeprom_testsuite = {
 		TEST_CASE(test_module_eeprom_sfp_8472_rx_power_polynomial),
 		TEST_CASE(test_module_eeprom_sfp_8472_cal_saturate_max),
 		TEST_CASE(test_module_eeprom_sfp_8472_cal_saturate_min),
+		TEST_CASE(test_module_eeprom_sfp_8472_cal_round),
 		TEST_CASE(test_module_eeprom_qsfp_8636),
 		TEST_CASE(test_module_eeprom_qsfp_8636_thresholds),
 		TEST_CASE(test_module_eeprom_invalid),

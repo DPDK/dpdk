@@ -3,6 +3,7 @@
  * Implements SFF-8472 optics diagnostics.
  */
 
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -186,14 +187,17 @@ static float befloattoh(const uint8_t *source)
 	return converter.dst;
 }
 
-/* Calibrated values are stored in 16-bit fields, saturate the out of range ones */
+/*
+ * Calibrated values are stored in 16-bit fields:
+ * round to the nearest integer and saturate the out of range ones.
+ */
 static uint16_t sff_8472_cal_to_u16(double value)
 {
 	if (!(value > 0))
 		return 0;
 	if (value >= UINT16_MAX)
 		return UINT16_MAX;
-	return value;
+	return lround(value);
 }
 
 static int16_t sff_8472_cal_to_s16(double value)
@@ -202,7 +206,7 @@ static int16_t sff_8472_cal_to_s16(double value)
 		return INT16_MIN;
 	if (value >= INT16_MAX)
 		return INT16_MAX;
-	return value;
+	return lround(value);
 }
 
 static void sff_8472_calibration(const uint8_t *data, struct sff_diags *sd)
