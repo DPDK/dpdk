@@ -305,6 +305,99 @@ test_module_eeprom_sfp_8472_rx_power_polynomial(void)
 	return TEST_SUCCESS;
 }
 
+/* SFF-8472 module externally calibrated with unit slopes and zero offsets */
+static void
+fill_sfp_ext_cal(uint8_t *data)
+{
+	uint8_t *a2 = data + RTE_ETH_MODULE_SFF_8079_LEN;
+
+	fill_sfp(data);
+	/* diagnostics implemented, externally calibrated, average RX power */
+	data[92] = 0x58;
+	a2[76] = 1;	/* TX bias slope */
+	a2[80] = 1;	/* TX power slope */
+	a2[84] = 1;	/* temperature slope */
+	a2[88] = 1;	/* voltage slope */
+	put_be_float(a2, 68, 0x3f800000);	/* RX_PWR(1) = 1.0 */
+}
+
+static int
+test_module_eeprom_sfp_8472_cal_saturate_max(void)
+{
+	uint8_t data[RTE_ETH_MODULE_SFF_8472_LEN];
+	uint8_t *a2 = data + RTE_ETH_MODULE_SFF_8079_LEN;
+
+	fill_sfp_ext_cal(data);
+	/* results above the 16-bit range must saturate */
+	put_u16(a2, 100, 65535);	/* raw TX bias */
+	put_u16(a2, 76, 0xffff);	/* TX bias slope = 255.996 */
+	put_u16(a2, 102, 60000);	/* raw TX power */
+	put_u16(a2, 82, 10000);		/* TX power offset */
+	put_u16(a2, 96, 0x7f00);	/* raw temperature: 127 C */
+	put_u16(a2, 84, 0x0200);	/* temperature slope = 2.0 */
+	put_u16(a2, 98, 60000);		/* raw voltage */
+	put_u16(a2, 90, 10000);		/* voltage offset */
+	put_u16(a2, 104, 65535);	/* raw RX power */
+	put_be_float(a2, 56, 0x3f800000);	/* RX_PWR(4) = 1.0 */
+
+	TEST_ASSERT_SUCCESS(parse(RTE_ETH_MODULE_SFF_8472, data, sizeof(data)),
+		"Failed to parse externally calibrated SFF-8472 data");
+	CHECK_FIELD("Laser bias current", "131.070 mA");
+	CHECK_FIELD("Laser output power", "6.5535 mW / 8.16 dBm");
+	CHECK_FIELD("Module temperature", "128.00 degrees C / 262.39 degrees F");
+	CHECK_FIELD("Module voltage", "6.5535 V");
+	CHECK_FIELD("Receiver signal average optical power", "6.5535 mW / 8.16 dBm");
+	return TEST_SUCCESS;
+}
+
+static int
+test_module_eeprom_sfp_8472_cal_saturate_min(void)
+{
+	uint8_t data[RTE_ETH_MODULE_SFF_8472_LEN];
+	uint8_t *a2 = data + RTE_ETH_MODULE_SFF_8079_LEN;
+
+	fill_sfp_ext_cal(data);
+	/* results below the 16-bit range must saturate */
+	put_u16(a2, 100, 100);		/* raw TX bias */
+	put_u16(a2, 78, -1000);		/* TX bias offset */
+	put_u16(a2, 102, 100);		/* raw TX power */
+	put_u16(a2, 82, -1000);		/* TX power offset */
+	put_u16(a2, 96, 0x8100);	/* raw temperature: -127 C */
+	put_u16(a2, 84, 0x0200);	/* temperature slope = 2.0 */
+	put_u16(a2, 98, 100);		/* raw voltage */
+	put_u16(a2, 90, -1000);		/* voltage offset */
+	put_be_float(a2, 68, 0xbf800000);	/* RX_PWR(1) = -1.0 */
+
+	TEST_ASSERT_SUCCESS(parse(RTE_ETH_MODULE_SFF_8472, data, sizeof(data)),
+		"Failed to parse externally calibrated SFF-8472 data");
+	CHECK_FIELD("Laser bias current", "0.000 mA");
+	CHECK_FIELD("Laser output power", "0.0000 mW / -inf dBm");
+	CHECK_FIELD("Module temperature", "-128.00 degrees C / -198.40 degrees F");
+	CHECK_FIELD("Module voltage", "0.0000 V");
+	CHECK_FIELD("Receiver signal average optical power", "0.0000 mW / -inf dBm");
+	return TEST_SUCCESS;
+}
+
+static int
+test_module_eeprom_sfp_8472_cal_round(void)
+{
+	uint8_t data[RTE_ETH_MODULE_SFF_8472_LEN];
+	uint8_t *a2 = data + RTE_ETH_MODULE_SFF_8079_LEN;
+
+	fill_sfp_ext_cal(data);
+	/* calibrated values must be rounded to the nearest, not truncated */
+	put_u16(a2, 100, 3);		/* raw TX bias */
+	put_u16(a2, 76, 0x0180);	/* TX bias slope = 1.5 */
+	put_u16(a2, 104, 1000);		/* raw RX power */
+	put_be_float(a2, 68, 0x3f333333);	/* RX_PWR(1) = 0.7, stored as 0.69999999 */
+
+	TEST_ASSERT_SUCCESS(parse(RTE_ETH_MODULE_SFF_8472, data, sizeof(data)),
+		"Failed to parse externally calibrated SFF-8472 data");
+	CHECK_FIELD("Laser bias current", "0.010 mA");
+	CHECK_FIELD("Receiver signal average optical power", "0.0700 mW / -11.55 dBm");
+	return TEST_SUCCESS;
+}
+
 static int
 test_module_eeprom_invalid(void)
 {
@@ -355,6 +448,9 @@ static struct unit_test_suite module_eeprom_testsuite = {
 		TEST_CASE(test_module_eeprom_sfp_8472_short),
 		TEST_CASE(test_module_eeprom_sfp_8472_ext_cal_unaligned),
 		TEST_CASE(test_module_eeprom_sfp_8472_rx_power_polynomial),
+		TEST_CASE(test_module_eeprom_sfp_8472_cal_saturate_max),
+		TEST_CASE(test_module_eeprom_sfp_8472_cal_saturate_min),
+		TEST_CASE(test_module_eeprom_sfp_8472_cal_round),
 		TEST_CASE(test_module_eeprom_qsfp_8636),
 		TEST_CASE(test_module_eeprom_qsfp_8636_thresholds),
 		TEST_CASE(test_module_eeprom_invalid),
