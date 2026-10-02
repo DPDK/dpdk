@@ -320,8 +320,7 @@ test_l4_cksum_mbuf_chain(struct rte_mempool *pktmbuf_pool, const char *pktdata, 
 	return 0;
 
 fail:
-	if (m_hdr)
-		rte_pktmbuf_free(m_hdr);
+	rte_pktmbuf_free(m_hdr);
 
 	return -1;
 }
