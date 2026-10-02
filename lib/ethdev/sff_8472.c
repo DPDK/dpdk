@@ -186,6 +186,25 @@ static float befloattoh(const uint8_t *source)
 	return converter.dst;
 }
 
+/* Calibrated values are stored in 16-bit fields, saturate the out of range ones */
+static uint16_t sff_8472_cal_to_u16(double value)
+{
+	if (!(value > 0))
+		return 0;
+	if (value >= UINT16_MAX)
+		return UINT16_MAX;
+	return value;
+}
+
+static int16_t sff_8472_cal_to_s16(double value)
+{
+	if (value <= INT16_MIN)
+		return INT16_MIN;
+	if (value >= INT16_MAX)
+		return INT16_MAX;
+	return value;
+}
+
 static void sff_8472_calibration(const uint8_t *data, struct sff_diags *sd)
 {
 	unsigned long i;
@@ -195,17 +214,21 @@ static void sff_8472_calibration(const uint8_t *data, struct sff_diags *sd)
 	/* Calibration should occur for all values (threshold and current) */
 	for (i = 0; i < RTE_DIM(sd->bias_cur); ++i) {
 		/*
-		 * Apply calibration formula 1 (Temp., Voltage, Bias, Tx Power)
+		 * Apply calibration formula 1 (Temp., Voltage, Bias, Tx Power):
+		 * slope * x + offset
 		 */
-		sd->bias_cur[i]    *= A2_OFFSET_TO_SLP(SFF_A2_CAL_TXI_SLP);
-		sd->tx_power[i]    *= A2_OFFSET_TO_SLP(SFF_A2_CAL_TXPWR_SLP);
-		sd->sfp_voltage[i] *= A2_OFFSET_TO_SLP(SFF_A2_CAL_V_SLP);
-		sd->sfp_temp[i]    *= A2_OFFSET_TO_SLP(SFF_A2_CAL_T_SLP);
-
-		sd->bias_cur[i]    += A2_OFFSET_TO_OFF(SFF_A2_CAL_TXI_OFF);
-		sd->tx_power[i]    += A2_OFFSET_TO_OFF(SFF_A2_CAL_TXPWR_OFF);
-		sd->sfp_voltage[i] += A2_OFFSET_TO_OFF(SFF_A2_CAL_V_OFF);
-		sd->sfp_temp[i]    += A2_OFFSET_TO_OFF(SFF_A2_CAL_T_OFF);
+		sd->bias_cur[i] = sff_8472_cal_to_u16(sd->bias_cur[i] *
+			A2_OFFSET_TO_SLP(SFF_A2_CAL_TXI_SLP) +
+			A2_OFFSET_TO_OFF(SFF_A2_CAL_TXI_OFF));
+		sd->tx_power[i] = sff_8472_cal_to_u16(sd->tx_power[i] *
+			A2_OFFSET_TO_SLP(SFF_A2_CAL_TXPWR_SLP) +
+			A2_OFFSET_TO_OFF(SFF_A2_CAL_TXPWR_OFF));
+		sd->sfp_voltage[i] = sff_8472_cal_to_u16(sd->sfp_voltage[i] *
+			A2_OFFSET_TO_SLP(SFF_A2_CAL_V_SLP) +
+			A2_OFFSET_TO_OFF(SFF_A2_CAL_V_OFF));
+		sd->sfp_temp[i] = sff_8472_cal_to_s16(sd->sfp_temp[i] *
+			A2_OFFSET_TO_SLP(SFF_A2_CAL_T_SLP) +
+			A2_OFFSET_TO_OFF(SFF_A2_CAL_T_OFF));
 
 		/*
 		 * Apply calibration formula 2 (Rx Power only):
@@ -219,13 +242,7 @@ static void sff_8472_calibration(const uint8_t *data, struct sff_diags *sd)
 		rx_power = rx_power * rx_reading + A2_OFFSET_TO_RXPWRx(SFF_A2_CAL_RXPWR1);
 		rx_power = rx_power * rx_reading + A2_OFFSET_TO_RXPWRx(SFF_A2_CAL_RXPWR0);
 
-		/* the result is stored in 0.1 uW units, out of range is not representable */
-		if (!(rx_power > 0))
-			sd->rx_power[i] = 0;
-		else if (rx_power >= UINT16_MAX)
-			sd->rx_power[i] = UINT16_MAX;
-		else
-			sd->rx_power[i] = rx_power;
+		sd->rx_power[i] = sff_8472_cal_to_u16(rx_power);
 	}
 }
 
