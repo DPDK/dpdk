@@ -55,7 +55,6 @@ headers += files(
         'rte_trace_point_register.h',
         'rte_uuid.h',
         'rte_version.h',
-        'rte_vfio.h',
 )
 
 driver_sdk_headers = files(

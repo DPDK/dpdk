@@ -19,16 +19,12 @@
 extern "C" {
 #endif
 
-#ifdef RTE_EXEC_ENV_LINUX
-
 #define RTE_VFIO_DIR "/dev/vfio"
 #define RTE_VFIO_CONTAINER_PATH "/dev/vfio/vfio"
 #define RTE_VFIO_GROUP_FMT "/dev/vfio/%u"
 #define RTE_VFIO_NOIOMMU_GROUP_FMT "/dev/vfio/noiommu-%u"
 #define RTE_VFIO_NOIOMMU_MODE      \
 	"/sys/module/vfio/parameters/enable_unsafe_noiommu_mode"
-
-#endif /* RTE_EXEC_ENV_LINUX */
 
 /* we don't need an actual definition, only pointer is used */
 struct vfio_device_info;
@@ -39,9 +35,6 @@ struct vfio_device_info;
  * Setup vfio_cfg for the device identified by its address.
  * It discovers the configured I/O MMU groups or sets a new one for the device.
  * If a new groups is assigned, the DMA mapping is performed.
- *
- * This function is only relevant to linux and will return
- * an error on BSD.
  *
  * @param sysfs_base
  *   sysfs path prefix.
@@ -66,9 +59,6 @@ int rte_vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 /**
  * Release a device mapped to a VFIO-managed I/O MMU group.
  *
- * This function is only relevant to linux and will return
- * an error on BSD.
- *
  * @param sysfs_base
  *   sysfs path prefix.
  *
@@ -87,9 +77,6 @@ int rte_vfio_release_device(const char *sysfs_base, const char *dev_addr, int fd
 /**
  * Enable a VFIO-related kmod.
  *
- * This function is only relevant to linux and will return
- * an error on BSD.
- *
  * @param modname
  *   kernel module name.
  *
@@ -101,8 +88,6 @@ int rte_vfio_enable(const char *modname);
 
 /**
  * Check whether a VFIO-related kmod is enabled.
- *
- * This function is only relevant to Linux.
  *
  * @param modname
  *   kernel module name.
@@ -116,8 +101,6 @@ int rte_vfio_is_enabled(const char *modname);
 /**
  * Whether VFIO NOIOMMU mode is enabled.
  *
- * This function is only relevant to Linux.
- *
  * @return
  *   1 if true.
  *   0 if false.
@@ -127,9 +110,6 @@ int rte_vfio_noiommu_is_enabled(void);
 
 /**
  * Remove group fd from internal VFIO group fd array/
- *
- * This function is only relevant to linux and will return
- * an error on BSD.
  *
  * @param vfio_group_fd
  *   VFIO Group FD.
@@ -143,9 +123,6 @@ rte_vfio_clear_group(int vfio_group_fd);
 
 /**
  * Parse IOMMU group number for a device
- *
- * This function is only relevant to linux and will return
- * an error on BSD.
  *
  * @param sysfs_base
  *   sysfs path prefix.
@@ -167,8 +144,6 @@ rte_vfio_get_group_num(const char *sysfs_base,
 
 /**
  * Get device information
- *
- * This function is only relevant to Linux and will return an error on BSD.
  *
  * @param sysfs_base
  *   sysfs path prefix.
@@ -194,9 +169,6 @@ rte_vfio_get_device_info(const char *sysfs_base, const char *dev_addr,
 /**
  * Get the default VFIO container fd
  *
- * This function is only relevant to linux and will return
- * an error on BSD.
- *
  * @return
  *  > 0 default container fd
  *  < 0 if VFIO is not enabled or not supported
@@ -206,9 +178,6 @@ rte_vfio_get_container_fd(void);
 
 /**
  * Open VFIO group fd or get an existing one
- *
- * This function is only relevant to linux and will return
- * an error on BSD.
  *
  * @param iommu_group_num
  *   iommu group number
