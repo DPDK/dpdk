@@ -309,7 +309,7 @@ ulp_mapper_gen_tbl_entry_data_get(struct ulp_mapper_gen_tbl_entry *entry,
 	if (entry->byte_order == BNXT_ULP_BYTE_ORDER_LE)
 		ulp_bs_pull_lsb(entry->byte_data, data, data_size, offset, len);
 	else
-		ulp_bs_pull_msb(entry->byte_data, data, offset, len);
+		ulp_bs_pull_msb(entry->byte_data, data, data_size, offset, len);
 
 	return 0;
 }

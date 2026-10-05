@@ -701,6 +701,7 @@ ulp_mapper_tbl_ident_scan_ext(struct bnxt_ulp_mapper_parms *parms,
 					idents[i].ident_bit_size);
 		else
 			ulp_bs_pull_msb(byte_data, (uint8_t *)&val64,
+					sizeof(val64),
 					idents[i].ident_bit_pos,
 					idents[i].ident_bit_size);
 
