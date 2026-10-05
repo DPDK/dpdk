@@ -1154,18 +1154,28 @@ tfc_msg_tcam_get(struct tfc *tfcp, uint16_t fid, uint16_t sid,
 	rc = bnxt_hwrm_tf_message_direct(bp, false, HWRM_TFC_TCAM_GET,
 					 &req, sizeof(req), &resp, sizeof(resp));
 
-	if (rc ||
-	    *key_size < rte_le_to_cpu_16(resp.key_size) ||
-	    *remap_size < rte_le_to_cpu_16(resp.result_size)) {
-		PMD_DRV_LOG_LINE(ERR, "Key buffer is too small, rc:%s",
-				 strerror(EINVAL));
+	if (rc)
+		return rc;
+
+	if ((size_t)rte_le_to_cpu_16(resp.key_size) * 2 +
+	    (size_t)rte_le_to_cpu_16(resp.result_size) > sizeof(resp.dev_data)) {
 		rc = -EINVAL;
+		PMD_DRV_LOG_LINE(ERR, "%s: FW sizes exceed TCAM bounds, rc:%d",
+				 __func__, rc);
+		return rc;
 	}
-	*key_size = resp.key_size;
-	*remap_size = resp.result_size;
-	memcpy(key, &resp.dev_data[0], resp.key_size);
-	memcpy(mask, &resp.dev_data[resp.key_size], resp.key_size);
-	memcpy(remap, &resp.dev_data[resp.key_size * 2], resp.result_size);
+	if (*key_size < rte_le_to_cpu_16(resp.key_size) ||
+	    *remap_size < rte_le_to_cpu_16(resp.result_size)) {
+		rc = -EINVAL;
+		PMD_DRV_LOG_LINE(ERR, "%s: Caller buffer too small, rc:%d",
+				 __func__, rc);
+		return rc;
+	}
+	*key_size = rte_le_to_cpu_16(resp.key_size);
+	*remap_size = rte_le_to_cpu_16(resp.result_size);
+	memcpy(key, &resp.dev_data[0], *key_size);
+	memcpy(mask, &resp.dev_data[*key_size], *key_size);
+	memcpy(remap, &resp.dev_data[*key_size * 2], *remap_size);
 
 	return rc;
 }
