@@ -6,6 +6,7 @@
 #include <rte_bitops.h>
 #include <rte_log.h>
 #include <rte_malloc.h>
+#include <rte_random.h>
 #include <rte_hash_crc.h>
 
 #include "bnxt_tf_common.h"
@@ -97,6 +98,12 @@ ulp_gen_hash_tbl_list_init(struct ulp_hash_create_params *cparams,
 		return -ENOMEM;
 	}
 	*hash_table = hash_tbl;
+
+	/* Random per-table seed so the CRC hash cannot be predicted offline
+	 * from attacker-controlled flow match fields.
+	 */
+	hash_tbl->hash_seed = (uint32_t)rte_rand();
+
 	/* allocate the memory for the hash key table */
 	hash_tbl->num_key_entries = cparams->num_key_entries;
 	hash_tbl->key_tbl.data_size = cparams->key_size;
@@ -203,31 +210,32 @@ ulp_gen_hash_tbl_list_key_search(struct ulp_gen_hash_tbl *hash_tbl,
 		return -EINVAL;
 	}
 
-	/* calculate the hash */
+	/* calculate the hash, keyed with the table's random per-instance
+	 * seed so the bucket a key lands in cannot be predicted offline.
+	 */
 	switch (hash_tbl->key_tbl.data_size) {
 	case 1:
 		hash_id = rte_hash_crc_1byte(*entry->key_data,
-					     ~0U);
+					     hash_tbl->hash_seed);
 		break;
 	case 2:
 		hash_id = rte_hash_crc_2byte(*((uint16_t *)entry->key_data),
-					     ~0U);
+					     hash_tbl->hash_seed);
 		break;
 	case 4:
 		hash_id = rte_hash_crc_4byte(*((uint32_t *)entry->key_data),
-					     ~0U);
+					     hash_tbl->hash_seed);
 		break;
 	case 8:
 		hash_id = rte_hash_crc_8byte(*((uint64_t *)entry->key_data),
-					     ~0U);
+					     hash_tbl->hash_seed);
 		break;
 	default:
 		hash_id = rte_hash_crc(entry->key_data,
 				       hash_tbl->key_tbl.data_size,
-				       ~0U);
+				       hash_tbl->hash_seed);
 		break;
 	}
-	hash_id = (uint16_t)(((hash_id >> 16) & 0xffff) ^ (hash_id & 0xffff));
 	hash_id &= hash_tbl->hash_mask;
 	hash_id = hash_id * hash_tbl->hash_bkt_num;
 
