@@ -57,6 +57,12 @@ struct ulp_gen_hash_tbl {
 	uint32_t			hash_bkt_num;
 	struct ulp_hash_bucket_entry	*hash_list;
 	uint32_t			hash_mask;
+	/* Per-table random seed for the CRC hash, set at init time so the
+	 * bucket a given key lands in cannot be predicted/targeted offline
+	 * by an attacker who controls flow match fields (hash-flooding
+	 * mitigation).
+	 */
+	uint32_t			hash_seed;
 
 	/* Bit allocator - to allocate key_res index */
 	struct bit_alloc_list		bit_list;

@@ -60,6 +60,7 @@ ulp_tfc_hot_upgrade_mgr_timer_cb(void *arg)
 	struct tfc *tfcp = NULL;
 	uint16_t fw_fid = 0;
 	int32_t rc = 0;
+	bool ctx_locked = false;
 
 	ulp_ctx = bnxt_ulp_cntxt_entry_acquire(arg);
 	if (ulp_ctx == NULL) {
@@ -67,6 +68,7 @@ ulp_tfc_hot_upgrade_mgr_timer_cb(void *arg)
 				  ulp_tfc_hot_upgrade_mgr_timer_cb, arg);
 		return;
 	}
+	ctx_locked = true;
 
 	tfcp = bnxt_ulp_cntxt_tfcp_get(ulp_ctx);
 	if (unlikely(tfcp == NULL)) {
@@ -120,7 +122,8 @@ ulp_tfc_hot_upgrade_mgr_timer_cb(void *arg)
 	}
 
 cleanup:
-	bnxt_ulp_cntxt_entry_release();
+	if (ctx_locked)
+		bnxt_ulp_cntxt_entry_release();
 	if (restart_timer)
 		rte_eal_alarm_set(US_PER_S * ULP_HOT_UPGRADE_TIMER_SEC,
 				  ulp_tfc_hot_upgrade_mgr_timer_cb, arg);
