@@ -160,14 +160,27 @@ ulp_fc_tfc_mtr_stat_get(struct bnxt_ulp_context *ctxt,
 			int32_t clear,
 			struct rte_mtr_stats *mtr_count)
 {
-	struct rte_flow_query_count count;
+	struct rte_flow_query_count count = { 0 };
+	int32_t rc;
 
 	if (clear)
 		count.reset = 1;
 	else
 		count.reset = 0;
 
-	return ulp_fc_tfc_stat_get(ctxt, direction, session_type, handle, &count, mtr_count);
+	/*
+	 * Acquire fdb_lock to serialize this non-batch MPC read against the
+	 * background stats cache thread, which holds the same lock for the
+	 * duration of its batch send+collect window. Without this, both paths
+	 * race on the shared RE_CFA/TE_CFA MPC completion ring, leading to
+	 * out-of-order completions and firmware ring-state corruption.
+	 */
+	if (bnxt_ulp_cntxt_acquire_fdb_lock(ctxt))
+		return -EIO;
+
+	rc = ulp_fc_tfc_stat_get(ctxt, direction, session_type, handle, &count, mtr_count);
+	bnxt_ulp_cntxt_release_fdb_lock(ctxt);
+	return rc;
 }
 
 const struct bnxt_ulp_fc_core_ops ulp_fc_tfc_core_ops = {
