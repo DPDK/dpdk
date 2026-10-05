@@ -422,9 +422,9 @@ ulp_sc_mgr_thread_start(struct bnxt_ulp_context *ctxt)
 		/* Try to find a free CPU not used by DPDK lcores */
 		target_cpu = ulp_sc_find_free_cpu();
 		/* If no free CPU found, use first CPU from first DPDK lcore */
-		if (target_cpu == -1) {
+		if (target_cpu < 0) {
 			target_cpu = ulp_sc_get_first_dpdk_cpu();
-			if (target_cpu == -1)
+			if (target_cpu < 0)
 				return -ENOENT;
 		}
 
