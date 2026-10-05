@@ -36,6 +36,9 @@ struct tfc_global_object {
 	uint8_t gtsid;
 	struct tfc_tsid_db gtsid_db;
 	void *gts_tim;
+	rte_spinlock_t mem_cfg_lock; /**< serialises mem_cfg take/set across
+				       *  ports sharing this global scope
+				       */
 };
 
 struct tfc_global_object tfc_global;
@@ -58,6 +61,7 @@ struct tfc_object {
 	uint16_t sid; /**< Session ID */
 	bool is_pf; /**< port is a PF */
 	struct cfa_bld_mpcinfo mpc_info; /**< MPC ops handle */
+	rte_spinlock_t mem_cfg_lock; /**< serialises mem_cfg take/set */
 	struct tfc_tsid_db tsid_db[TFC_TBL_SCOPE_MAX]; /**< tsid database */
 	/** TIM instance pointer (PF) - this is where the 4 instances
 	 *  of the TPM (rx/tx_lkup, rx/tx_act) will be stored per shared
@@ -87,6 +91,7 @@ void tfo_open(void **tfo, bool is_pf)
 	tfco->is_pf = is_pf;
 	tfco->sid = INVALID_SID;
 	tfco->ts_tim = NULL;
+	rte_spinlock_init(&tfco->mem_cfg_lock);
 
 	/* Bind to the MPC builder */
 	rc = cfa_bld_mpc_bind(CFA_P70, &tfco->mpc_info);
@@ -406,6 +411,58 @@ int tfo_ts_get_mem_cfg(void *tfo, uint8_t ts_tsid, enum cfa_dir dir,
 		*is_bs_owner = tsid_db->ts_is_bs_owner;
 
 	return rc;
+}
+
+/** Get and atomically clear the table scope memory configuration for this
+ *  direction
+ */
+int tfo_ts_get_and_clear_mem_cfg(void *tfo, uint8_t ts_tsid, enum cfa_dir dir,
+				  enum cfa_region_type region, bool *is_bs_owner,
+				  struct tfc_ts_mem_cfg *mem_cfg)
+{
+	struct tfc_ts_mem_cfg empty = { .num_lvl = 0 };
+	struct tfc_object *tfco = (struct tfc_object *)tfo;
+	struct tfc_global_object *tfgo;
+	struct tfc_tsid_db *tsid_db;
+	rte_spinlock_t *lock;
+	bool bs_owner;
+
+	if (tfo == NULL) {
+		PMD_DRV_LOG_LINE(ERR, "Invalid tfo pointer");
+		return -EINVAL;
+	}
+	if (tfco->signature != TFC_OBJ_SIGNATURE) {
+		PMD_DRV_LOG_LINE(ERR, "Invalid tfo object");
+		return -EINVAL;
+	}
+	if (mem_cfg == NULL) {
+		PMD_DRV_LOG_LINE(ERR, "Invalid mem_cfg pointer");
+		return -EINVAL;
+	}
+	if (ts_tsid >= TFC_TBL_SCOPE_MAX) {
+		PMD_DRV_LOG_LINE(ERR, "Invalid tsid %d", ts_tsid);
+		return -EINVAL;
+	}
+
+	tfgo = tfco->tfgo;
+	if (tfgo && tfgo->gtsid == ts_tsid) {
+		tsid_db = &tfgo->gtsid_db;
+		lock = &tfgo->mem_cfg_lock;
+	} else {
+		tsid_db = &tfco->tsid_db[ts_tsid];
+		lock = &tfco->mem_cfg_lock;
+	}
+
+	rte_spinlock_lock(lock);
+	*mem_cfg = tsid_db->ts_mem[region][dir];
+	tsid_db->ts_mem[region][dir] = empty;
+	bs_owner = tsid_db->ts_is_bs_owner;
+	rte_spinlock_unlock(lock);
+
+	if (is_bs_owner)
+		*is_bs_owner = bs_owner;
+
+	return 0;
 }
 
 /** Get the Pool Manager instance

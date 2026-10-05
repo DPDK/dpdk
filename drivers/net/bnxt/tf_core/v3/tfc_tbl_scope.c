@@ -1437,22 +1437,21 @@ int tfc_tbl_scope_mem_free(struct tfc *tfcp, uint16_t fid, uint8_t tsid,
 
 	for (region = 0; region < CFA_REGION_TYPE_MAX; region++) {
 		for (dir = 0; dir < CFA_DIR_MAX; dir++) {
-			lrc = tfo_ts_get_mem_cfg(tfcp->tfo, tsid, dir, region, &local,
-						 &mem_cfg);
+			lrc = tfo_ts_get_and_clear_mem_cfg(tfcp->tfo, tsid, dir, region,
+							    &local, &mem_cfg);
 			if (lrc) {
 				rc = lrc;
+				continue;
+			}
+			if (!mem_cfg.num_lvl) {
+				PMD_DRV_LOG_LINE(DEBUG,
+						 "tsid(%d) dir(%d) region(%d) already freed",
+						 tsid, dir, region);
 				continue;
 			}
 			/* memory only allocated on PF */
 			if (is_pf)
 				unlink_and_free(&mem_cfg, mem_cfg.pg_tbl[0].pg_size);
-
-			memset(&mem_cfg, 0, sizeof(mem_cfg));
-
-			/* memory freed, set local to false */
-			local = false;
-			(void)tfo_ts_set_mem_cfg(tfcp->tfo, tsid, dir, region, local,
-						 &mem_cfg);
 		}
 	}
 	if (rc) {
