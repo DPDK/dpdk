@@ -94,8 +94,8 @@ get_vector_fn(enum rte_fib_dir24_8_nh_sz nh_sz, bool be_addr)
 		return NULL;
 	}
 #elif defined(RTE_RISCV_FEATURE_V)
-	RTE_SET_USED(be_addr);
-	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_RISCV_ISA_V) <= 0)
+	/* the vector functions take addresses in host order only */
+	if (be_addr || rte_cpu_get_flag_enabled(RTE_CPUFLAG_RISCV_ISA_V) <= 0)
 		return NULL;
 	switch (nh_sz) {
 	case RTE_FIB_DIR24_8_1B:
