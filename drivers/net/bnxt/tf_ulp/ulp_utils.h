@@ -663,6 +663,11 @@ ulp_bs_get_lsb(uint8_t *src, uint16_t bitpos, uint8_t bitlen, uint8_t *dst)
 	uint16_t index  = ULP_BITS_2_BYTE_NR(bitpos);
 	uint8_t mask, partial, shift;
 
+	if (unlikely(!bitlen)) {
+		*dst = 0;
+		return;
+	}
+
 	shift = bitoffs;
 	partial = ULP_BLOB_BYTE - bitoffs;
 	if (bitoffs + bitlen <= ULP_BLOB_BYTE) {
@@ -700,6 +705,16 @@ ulp_bs_pull_lsb(uint8_t *src, uint8_t *dst, uint32_t size,
 	uint32_t idx;
 	uint32_t cnt = ULP_BITS_2_BYTE_NR(len);
 
+	/*
+	 * cnt > size means len >= (size + 1) * 8; caller should have
+	 * rejected this. It does not catch size*8 < len < (size + 1)*8,
+	 * which also can't fit in dst: there cnt == size, so idx == size
+	 * after the loop below, which makes "idx < size" false and
+	 * silently drops the remainder instead of writing past dst.
+	 */
+	if (unlikely(cnt > size))
+		return;
+
 	/* iterate bytewise to get data */
 	for (idx = 0; idx < cnt; idx++) {
 		ulp_bs_get_lsb(src, offset, ULP_BLOB_BYTE,
@@ -708,8 +723,8 @@ ulp_bs_pull_lsb(uint8_t *src, uint8_t *dst, uint32_t size,
 		len -= ULP_BLOB_BYTE;
 	}
 
-	/* Extract the last reminder data that is not 8 byte boundary */
-	if (len)
+	/* Extract the last remainder data that is not 8 byte boundary */
+	if (len && likely(idx < size))
 		ulp_bs_get_lsb(src, offset, len, &dst[size - 1 - idx]);
 }
 
@@ -735,6 +750,11 @@ ulp_bs_get_msb(uint8_t *src, uint16_t bitpos, uint8_t bitlen, uint8_t *dst)
 	uint8_t mask;
 	int32_t shift;
 
+	if (unlikely(!bitlen)) {
+		*dst = 0;
+		return;
+	}
+
 	shift = ULP_BLOB_BYTE - bitoffs - bitlen;
 	if (shift >= 0) {
 		mask = 0xFF >> -bitlen;
@@ -752,6 +772,8 @@ ulp_bs_get_msb(uint8_t *src, uint16_t bitpos, uint8_t bitlen, uint8_t *dst)
  *
  * dst [out] The byte array where data is pulled into
  *
+ * size [in] The size of dst array in bytes
+ *
  * offset [in] The offset where data is pulled
  *
  * len [in] The number of bits to be extracted from the data array
@@ -759,11 +781,21 @@ ulp_bs_get_msb(uint8_t *src, uint16_t bitpos, uint8_t bitlen, uint8_t *dst)
  * returns None.
  */
 static inline void
-ulp_bs_pull_msb(uint8_t *src, uint8_t *dst,
+ulp_bs_pull_msb(uint8_t *src, uint8_t *dst, uint32_t size,
 		uint32_t offset, uint32_t len)
 {
 	uint32_t idx;
 	uint32_t cnt = ULP_BITS_2_BYTE_NR(len);
+
+	/*
+	 * cnt > size means len >= (size + 1) * 8; caller should have
+	 * rejected this. It does not catch size*8 < len < (size + 1)*8,
+	 * which also can't fit in dst: there cnt == size, so idx == size
+	 * after the loop below, which makes "idx < size" false and
+	 * silently drops the remainder instead of writing past dst.
+	 */
+	if (unlikely(cnt > size))
+		return;
 
 	/* iterate bytewise to get data */
 	for (idx = 0; idx < cnt; idx++) {
@@ -772,8 +804,8 @@ ulp_bs_pull_msb(uint8_t *src, uint8_t *dst,
 		len -= ULP_BLOB_BYTE;
 	}
 
-	/* Extract the last reminder data that is not 8 byte boundary */
-	if (len)
+	/* Extract the last remainder data that is not 8 byte boundary */
+	if (len && likely(idx < size))
 		ulp_bs_get_msb(src, offset, len, &dst[idx]);
 }
 
@@ -802,7 +834,7 @@ ulp_blob_pull(struct ulp_blob *blob, uint8_t *data, uint32_t data_size,
 	}
 
 	if (blob->byte_order == BNXT_ULP_BYTE_ORDER_BE)
-		ulp_bs_pull_msb(blob->data, data, offset, len);
+		ulp_bs_pull_msb(blob->data, data, data_size, offset, len);
 	else
 		ulp_bs_pull_lsb(blob->data, data, data_size, offset, len);
 	return 0;
