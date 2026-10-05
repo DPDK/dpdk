@@ -1976,6 +1976,35 @@ ulp_rte_item_any_handler(const struct rte_flow_item *item __rte_unused,
 	return BNXT_TF_RC_SUCCESS;
 }
 
+/* Function to handle the update of proto header based on field values */
+static void
+ulp_rte_icmp_proto_type_update(struct ulp_rte_parser_params *params,
+			       enum bnxt_ulp_hdr_bit hdr_bit, uint8_t l3_proto)
+{
+	switch (hdr_bit) {
+	case BNXT_ULP_HDR_BIT_I_ICMP:
+		ULP_BITMAP_SET(params->hdr_bitmap.bits, hdr_bit);
+		ULP_COMP_FLD_IDX_WR(params,
+				    BNXT_ULP_CF_IDX_I_L3_FB_PROTO_ID,
+				    1);
+		ULP_COMP_FLD_IDX_WR(params,
+				    BNXT_ULP_CF_IDX_I_L3_PROTO_ID,
+				    l3_proto);
+		break;
+	case BNXT_ULP_HDR_BIT_O_ICMP:
+		ULP_BITMAP_SET(params->hdr_bitmap.bits, hdr_bit);
+		ULP_COMP_FLD_IDX_WR(params,
+				    BNXT_ULP_CF_IDX_O_L3_FB_PROTO_ID,
+				    1);
+		ULP_COMP_FLD_IDX_WR(params,
+				    BNXT_ULP_CF_IDX_O_L3_PROTO_ID,
+				    l3_proto);
+		break;
+	default:
+		break;
+	}
+}
+
 /* Function to handle the parsing of RTE Flow item ICMP Header. */
 int32_t
 ulp_rte_icmp_hdr_handler(const struct rte_flow_item *item,
@@ -1983,7 +2012,7 @@ ulp_rte_icmp_hdr_handler(const struct rte_flow_item *item,
 {
 	const struct rte_flow_item_icmp *icmp_spec = item->spec;
 	const struct rte_flow_item_icmp *icmp_mask = item->mask;
-	struct ulp_rte_hdr_bitmap *hdr_bitmap = &params->hdr_bitmap;
+	enum bnxt_ulp_hdr_bit out_l4 = BNXT_ULP_HDR_BIT_O_ICMP;
 	uint32_t idx = 0;
 	uint32_t size;
 
@@ -2026,11 +2055,12 @@ ulp_rte_icmp_hdr_handler(const struct rte_flow_item *item,
 			      ulp_deference_struct(icmp_mask, hdr.icmp_seq_nb),
 			      ULP_PRSR_ACT_DEFAULT);
 
-	/* Update the hdr_bitmap with ICMP */
 	if (ULP_BITMAP_ISSET(params->cf_bitmap, BNXT_ULP_CF_BIT_IS_TUNNEL))
-		ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_I_ICMP);
-	else
-		ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_ICMP);
+		out_l4 = BNXT_ULP_HDR_BIT_I_ICMP;
+
+	/* Update the hdr_bitmap with ICMP */
+	ulp_rte_icmp_proto_type_update(params, out_l4, IPPROTO_ICMP);
+
 	return BNXT_TF_RC_SUCCESS;
 }
 
@@ -2042,6 +2072,7 @@ ulp_rte_icmp6_hdr_handler(const struct rte_flow_item *item,
 	const struct rte_flow_item_icmp6 *icmp_spec = item->spec;
 	const struct rte_flow_item_icmp6 *icmp_mask = item->mask;
 	struct ulp_rte_hdr_bitmap *hdr_bitmap = &params->hdr_bitmap;
+	enum bnxt_ulp_hdr_bit out_l4 = BNXT_ULP_HDR_BIT_O_ICMP;
 	uint32_t idx = 0;
 	uint32_t size;
 
@@ -2077,11 +2108,12 @@ ulp_rte_icmp6_hdr_handler(const struct rte_flow_item *item,
 		return BNXT_TF_RC_ERROR;
 	}
 
-	/* Update the hdr_bitmap with ICMP */
 	if (ULP_BITMAP_ISSET(params->cf_bitmap, BNXT_ULP_CF_BIT_IS_TUNNEL))
-		ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_I_ICMP);
-	else
-		ULP_BITMAP_SET(hdr_bitmap->bits, BNXT_ULP_HDR_BIT_O_ICMP);
+		out_l4 = BNXT_ULP_HDR_BIT_I_ICMP;
+
+	/* Update the hdr_bitmap with ICMP */
+	ulp_rte_icmp_proto_type_update(params, out_l4, IPPROTO_ICMPV6);
+
 	return BNXT_TF_RC_SUCCESS;
 }
 
