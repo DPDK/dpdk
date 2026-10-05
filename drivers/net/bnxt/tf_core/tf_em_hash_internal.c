@@ -153,12 +153,17 @@ tf_em_hash_delete_int_entry(struct tf *tfp,
 	pool = (struct dpool *)tfs->em_pool[parms->dir];
 
 #ifdef TF_FLOW_SCALE_QUERY
-	/* Update usage state buffer for EM */
-	size = DP_FLAGS_SIZE(pool->entry[parms->index - pool->start_index].flags);
-	tf_em_usage_update(tfp,
-			   parms->dir,
-			   size,
-			   TF_RESC_FREE);
+	/* Update usage state buffer for EM.
+	 * parms->index is populated from the (untrusted) HWRM response by
+	 * tf_msg_delete_em_entry(); validate it before indexing the pool.
+	 */
+	if ((parms->index - pool->start_index) < pool->size) {
+		size = DP_FLAGS_SIZE(pool->entry[parms->index - pool->start_index].flags);
+		tf_em_usage_update(tfp,
+				   parms->dir,
+				   size,
+				   TF_RESC_FREE);
+	}
 #endif /* TF_FLOW_SCALE_QUERY */
 
 	dpool_free(pool, parms->index);
