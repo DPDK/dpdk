@@ -269,6 +269,36 @@ int tfo_ts_get_mem_cfg(void *tfo, uint8_t ts_tsid, enum cfa_dir dir,
 		       struct tfc_ts_mem_cfg *mem_cfg);
 
 /**
+ * Get and atomically clear the table scope memory configuration.
+ *
+ * @param[in] tfo
+ *   Pointer to TFC object
+ *
+ * @param[in] ts_tsid
+ *   The table scope ID
+ *
+ * @param[in] dir
+ *   The direction (RX/TX)
+ *
+ * @param[in] region
+ *   The memory region type (lookup/action)
+ *
+ * @param[out] is_bs_owner
+ *   True if the caller is the owner of the backing store
+ *
+ * @param[out] mem_cfg
+ *   Receives the mem_cfg that was cleared from the database.
+ *   If a concurrent caller already claimed the slot,
+ *   mem_cfg->num_lvl will be 0 and the caller must skip the free.
+ *
+ * @return
+ *   0 for SUCCESS, negative error value for FAILURE (errno.h)
+ */
+int tfo_ts_get_and_clear_mem_cfg(void *tfo, uint8_t ts_tsid, enum cfa_dir dir,
+				  enum cfa_region_type region, bool *is_bs_owner,
+				  struct tfc_ts_mem_cfg *mem_cfg);
+
+/**
  * Set the pool memory configuration for this direction.
  *
  * @param[in] tfo
