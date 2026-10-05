@@ -21,16 +21,15 @@ int32_t ulp_bit_alloc_list_alloc(struct bit_alloc_list *blist,
 	uint32_t bsize_64 = blist->bsize / ULP_64B_IN_BYTES;
 
 	/* Iterate all numbers that have all 1's */
-	do {
-		bentry = blist->bdata[idx++];
-	} while (bentry == -1UL && idx <= bsize_64);
-
-	if (idx <= bsize_64) {
-		if (bentry)
+	while (idx < bsize_64) {
+		bentry = blist->bdata[idx];
+		if (bentry != -1UL) {
 			jdx = rte_clz64(~bentry);
-		*index = ((idx - 1) * ULP_INDEX_BITMAP_SIZE) + jdx;
-		ULP_INDEX_BITMAP_SET(blist->bdata[(idx - 1)], jdx);
-		return 0;
+			*index = (idx * ULP_INDEX_BITMAP_SIZE) + jdx;
+			ULP_INDEX_BITMAP_SET(blist->bdata[idx], jdx);
+			return 0;
+		}
+		idx++;
 	}
 	jdx = (uint32_t)(bsize_64 * ULP_INDEX_BITMAP_SIZE);
 	BNXT_DRV_DBG(ERR, "bit allocator is full reached max:%d\n", jdx);
