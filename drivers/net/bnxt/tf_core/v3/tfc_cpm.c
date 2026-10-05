@@ -83,8 +83,8 @@ static int cpm_insert_pool_id(struct tfc_cpm *cpm, uint16_t pool_id)
 		if (cpm->pools[pool_use->pool_id].valid &&
 			cpm->pools[pool_use->pool_id].used_count >
 			pool->used_count) {
-			pool_use = pool_use->next;
 			prev =	pool_use;
+			pool_use = pool_use->next;
 		} else {
 			break;
 		}
@@ -101,16 +101,20 @@ static int cpm_insert_pool_id(struct tfc_cpm *cpm, uint16_t pool_id)
 	new_pool_use->next = NULL;
 	pool->pool_use = new_pool_use;
 
-	if (pool_use == NULL) { /* Empty list */
+	if (pool_use == NULL && prev == NULL) { /* Empty list */
 		cpm->pool_use_list = new_pool_use;
-	} else if (prev == NULL) { /* Start of list */
+	} else if (pool_use == NULL) { /* Insert at tail */
+		prev->next = new_pool_use;
+		new_pool_use->prev = prev;
+	} else if (prev == NULL) { /* Insert at head */
 		cpm->pool_use_list = new_pool_use;
 		new_pool_use->next = pool_use;
 		pool_use->prev = new_pool_use;
-	} else { /* Within list */
+	} else { /* Insert in middle */
 		prev->next = new_pool_use;
 		new_pool_use->next = pool_use;
 		new_pool_use->prev = prev;
+		pool_use->prev = new_pool_use;
 	}
 
 	cpm->available_pool_id = cpm->pool_use_list->pool_id;
