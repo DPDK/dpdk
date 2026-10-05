@@ -345,12 +345,13 @@ int dpool_free(struct dpool *dpool,
 	int start = (index - dpool->start_index);
 	uint32_t size;
 
-	if (start < 0)
+	if (start < 0 || (uint32_t)start >= dpool->size)
 		return -1;
 
 	if (DP_IS_START(dpool->entry[start].flags)) {
 		size = DP_FLAGS_SIZE(dpool->entry[start].flags);
-		if (size > dpool->max_alloc_size || size == 0)
+		if (size > dpool->max_alloc_size || size == 0 ||
+		    (uint32_t)start + size > dpool->size)
 			return -1;
 
 		for (i = start; i < (start + size); i++)
@@ -376,7 +377,7 @@ int dpool_set_entry_data(struct dpool *dpool,
 {
 	int start = (index - dpool->start_index);
 
-	if (start < 0)
+	if (start < 0 || (uint32_t)start >= dpool->size)
 		return -1;
 
 	if (DP_IS_START(dpool->entry[start].flags)) {

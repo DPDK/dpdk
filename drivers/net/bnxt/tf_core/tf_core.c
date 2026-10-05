@@ -109,9 +109,22 @@ tf_attach_session(struct tf *tfp,
 		    &slot,
 		    &device);
 	if (rc != 4) {
-		TFP_DRV_LOG(ERR,
-			    "Failed to scan device ctrl_chan_name\n");
-		return -EINVAL;
+		/* PCI Domain not provided (optional in DPDK), thus we
+		 * force domain to 0 and recheck.
+		 */
+		domain = 0;
+
+		/* Check parsing of bus/slot/device */
+		rc = sscanf(parms->ctrl_chan_name,
+			    "%x:%x.%u",
+			    &bus,
+			    &slot,
+			    &device);
+		if (rc != 3) {
+			TFP_DRV_LOG(ERR,
+				    "Failed to scan device ctrl_chan_name\n");
+			return -EINVAL;
+		}
 	}
 
 	/* Verify 'attach' channel */
@@ -122,9 +135,22 @@ tf_attach_session(struct tf *tfp,
 		    &slot,
 		    &device);
 	if (rc != 4) {
-		TFP_DRV_LOG(ERR,
-			    "Failed to scan device attach_chan_name\n");
-		return -EINVAL;
+		/* PCI Domain not provided (optional in DPDK), thus we
+		 * force domain to 0 and recheck.
+		 */
+		domain = 0;
+
+		/* Check parsing of bus/slot/device */
+		rc = sscanf(parms->attach_chan_name,
+			    "%x:%x.%u",
+			    &bus,
+			    &slot,
+			    &device);
+		if (rc != 3) {
+			TFP_DRV_LOG(ERR,
+				    "Failed to scan device attach_chan_name\n");
+			return -EINVAL;
+		}
 	}
 
 	/* Prepare return value of session_id, using ctrl_chan_name
