@@ -4366,25 +4366,44 @@ check_devargs_handler(const char *key, const char *value,
 static void
 dpaa2_sec_get_devargs(struct rte_cryptodev *cryptodev, const char *key)
 {
+	struct dpaa2_sec_dev_private *internals;
 	struct rte_kvargs *kvlist;
 	struct rte_devargs *devargs;
+	int ret;
+	char *env;
+
+	internals = cryptodev->data->dev_private;
 
 	devargs = cryptodev->device->devargs;
 	if (!devargs)
-		return;
+		goto env_set;
 
 	kvlist = rte_kvargs_parse(devargs->args, NULL);
 	if (!kvlist)
-		return;
+		goto env_set;
 
 	if (!rte_kvargs_count(kvlist, key)) {
 		rte_kvargs_free(kvlist);
-		return;
+		goto env_set;
 	}
 
-	rte_kvargs_process(kvlist, key,
+	ret = rte_kvargs_process(kvlist, key,
 			check_devargs_handler, (void *)cryptodev);
 	rte_kvargs_free(kvlist);
+	if (!ret)
+		return;
+
+env_set:
+	env = getenv(DRIVER_STRICT_ORDER);
+	if (env)
+		internals->en_loose_ordered = !atoi(env);
+
+	env = getenv(DRIVER_DUMP_MODE);
+	if (env) {
+		dpaa2_sec_dp_dump = atoi(env);
+		if (dpaa2_sec_dp_dump > DPAA2_SEC_DP_FULL_DUMP)
+			dpaa2_sec_dp_dump = DPAA2_SEC_DP_FULL_DUMP;
+	}
 }
 
 static int
