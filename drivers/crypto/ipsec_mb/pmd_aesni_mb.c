@@ -1824,7 +1824,8 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 		job->msg_len_to_cipher_in_bytes = op->sym->cipher.data.length;
 	}
 
-	if (cipher_mode == IMB_CIPHER_NULL && oop) {
+	/* NULL cipher OOP SGL case handled by the linear buffer SGL code */
+	if (cipher_mode == IMB_CIPHER_NULL && oop && !sgl) {
 		memcpy(job->dst + job->cipher_start_src_offset_in_bytes,
 			job->src + job->cipher_start_src_offset_in_bytes,
 			job->msg_len_to_cipher_in_bytes);
