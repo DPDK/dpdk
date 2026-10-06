@@ -48,7 +48,6 @@
 
 #define ETHDEV_FWVERS_LEN 32
 #define RTE_RETA_CONF_GROUP_NUM 32
-#define DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
 #define EEPROM_DUMP_CHUNKSIZE 1024
 
 #define STATS_BDR_FMT "========================================"
@@ -1830,7 +1829,7 @@ show_port_rss_reta_info(void)
 			return;
 		}
 
-		num = DIV_ROUND_UP(dev_info.reta_size, RTE_ETH_RETA_GROUP_SIZE);
+		num = RTE_DIV_ROUND_UP(dev_info.reta_size, RTE_ETH_RETA_GROUP_SIZE);
 		memset(reta_conf, 0, sizeof(reta_conf));
 		for (i = 0; i < num; i++)
 			reta_conf[i].mask = ~0ULL;

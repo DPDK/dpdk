@@ -14,11 +14,10 @@
 #include <rte_mbuf.h>
 #include <rte_compressdev.h>
 #include <rte_string_fns.h>
+#include <rte_common.h>
 
 #include "test_compressdev_test_buffer.h"
 #include "test.h"
-
-#define DIV_CEIL(a, b)  ((a) / (b) + ((a) % (b) != 0))
 
 #define DEFAULT_WINDOW_SIZE 15
 #define DEFAULT_MEM_LEVEL 8
@@ -688,7 +687,7 @@ prepare_sgl_bufs(const char *test_buf, struct rte_mbuf *head_buf,
 		uint16_t seg_size)
 {
 	uint32_t remaining_data = total_data_size;
-	uint16_t num_remaining_segs = DIV_CEIL(remaining_data, seg_size);
+	uint16_t num_remaining_segs = RTE_DIV_ROUND_UP(remaining_data, seg_size);
 	struct rte_mempool *pool;
 	struct rte_mbuf *next_seg;
 	uint32_t data_size;

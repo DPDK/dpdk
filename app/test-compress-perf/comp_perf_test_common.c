@@ -6,6 +6,7 @@
 #include <rte_eal.h>
 #include <rte_log.h>
 #include <rte_compressdev.h>
+#include <rte_common.h>
 
 #include "comp_perf.h"
 #include "comp_perf_options.h"
@@ -13,9 +14,6 @@
 #include "comp_perf_test_cyclecount.h"
 #include "comp_perf_test_common.h"
 #include "comp_perf_test_verify.h"
-
-
-#define DIV_CEIL(a, b)  ((a) / (b) + ((a) % (b) != 0))
 
 struct cperf_buffer_info {
 	uint16_t total_segments;
@@ -238,8 +236,8 @@ comp_perf_allocate_memory(struct comp_test_data *test_data,
 		 * Number of segments for input and output
 		 * (compression and decompression)
 		 */
-		test_data->total_segs = DIV_CEIL(test_data->input_data_sz,
-						 test_data->seg_sz);
+		test_data->total_segs = RTE_DIV_ROUND_UP(test_data->input_data_sz,
+							 test_data->seg_sz);
 	} else {
 		/*
 		 * When application does decompression only, input data is
@@ -292,8 +290,8 @@ comp_perf_allocate_memory(struct comp_test_data *test_data,
 		return -1;
 	}
 
-	mem->total_bufs = DIV_CEIL(test_data->total_segs,
-				   test_data->max_sgl_segs);
+	mem->total_bufs = RTE_DIV_ROUND_UP(test_data->total_segs,
+					   test_data->max_sgl_segs);
 
 	snprintf(pool_name, sizeof(pool_name), "op_pool_%u_qp_%u",
 			mem->dev_id, mem->qp_id);
@@ -557,7 +555,7 @@ prepare_bufs(struct comp_test_data *test_data, struct cperf_mem_resources *mem)
 void
 print_test_dynamics(const struct comp_test_data *test_data)
 {
-	uint32_t opt_total_segs = DIV_CEIL(buffer_info.input_data_sz,
+	uint32_t opt_total_segs = RTE_DIV_ROUND_UP(buffer_info.input_data_sz,
 			MAX_SEG_SIZE);
 
 	if (buffer_info.total_buffs > 1) {
