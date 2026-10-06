@@ -4599,6 +4599,24 @@ static const struct blockcipher_test_case aes_chain_test_cases[] = {
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP,
 	},
 	{
+		.test_descr = "NULL-CIPHER-NULL-AUTH encrypt & gen x8byte - OOP SGL",
+		.test_data = &null_test_data_chain_x8_multiple,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENC_AUTH_GEN,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP |
+				BLOCKCIPHER_TEST_FEATURE_SG,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT,
+		.sgl_segs = 3,
+	},
+	{
+		.test_descr = "NULL-AUTH-NULL-CIPHER verify & decrypt x8byte - OOP SGL",
+		.test_data = &null_test_data_chain_x8_multiple,
+		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY_DEC,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP |
+				BLOCKCIPHER_TEST_FEATURE_SG,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT,
+		.sgl_segs = 3,
+	},
+	{
 		.test_descr = "NULL-CIPHER-NULL-AUTH encrypt & gen x4byte",
 		.test_data = &null_test_data_chain_x4_multiple,
 		.op_mask = BLOCKCIPHER_TEST_OP_ENC_AUTH_GEN,
@@ -4621,6 +4639,24 @@ static const struct blockcipher_test_case aes_chain_test_cases[] = {
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP,
 	},
 	{
+		.test_descr = "NULL-CIPHER-NULL-AUTH encrypt & gen x4byte - OOP SGL",
+		.test_data = &null_test_data_chain_x4_multiple,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENC_AUTH_GEN,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP |
+				BLOCKCIPHER_TEST_FEATURE_SG,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT,
+		.sgl_segs = 3,
+	},
+	{
+		.test_descr = "NULL-AUTH-NULL-CIPHER verify & decrypt x4byte - OOP SGL",
+		.test_data = &null_test_data_chain_x4_multiple,
+		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY_DEC,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP |
+				BLOCKCIPHER_TEST_FEATURE_SG,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT,
+		.sgl_segs = 3,
+	},
+	{
 		.test_descr = "NULL-CIPHER-NULL-AUTH encrypt & gen x1byte",
 		.test_data = &null_test_data_chain_x1_multiple,
 		.op_mask = BLOCKCIPHER_TEST_OP_ENC_AUTH_GEN,
@@ -4641,6 +4677,25 @@ static const struct blockcipher_test_case aes_chain_test_cases[] = {
 		.test_data = &null_test_data_chain_x1_multiple,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY_DEC,
 		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP,
+	},
+	{
+		.test_descr = "NULL-CIPHER-NULL-AUTH encrypt & gen x1byte - OOP SGL",
+		.test_data = &null_test_data_chain_x1_multiple,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENC_AUTH_GEN,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP |
+				BLOCKCIPHER_TEST_FEATURE_SG,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT,
+		.sgl_segs = 3,
+	},
+	{
+		.test_descr = "NULL-AUTH-NULL-CIPHER verify & decrypt x1byte - OOP SGL",
+		.test_data = &null_test_data_chain_x1_multiple,
+		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY_DEC,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_OOP |
+				BLOCKCIPHER_TEST_FEATURE_SG,
+		.sgl_flag = RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT,
+		.sgl_segs = 3,
+
 	},
 };
 
