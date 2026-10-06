@@ -55,6 +55,11 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Added division round up macro.**
+
+  Added the ``RTE_DIV_ROUND_UP`` macro in ``rte_common.h``
+  to divide dividend by divisor, rounding up to the nearest integer.
+
 * **Improved pointer arithmetic macros.**
 
   Updated  the macros ``RTE_PTR_ADD``, ``RTE_PTR_SUB``,

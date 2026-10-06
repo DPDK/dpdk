@@ -865,6 +865,25 @@ static void __attribute__((destructor(RTE_PRIO(prio)), used)) func(void)
 	})
 
 /**
+ * Macro to divide dividend @p n by divisor @p d,
+ * rounding up if @p d does not divide @p n.
+ *
+ * @param n
+ *   Dividend. Must be a non-negative integer to round correctly.
+ * @param d
+ *   Divisor. Must be a positive integer. Evaluated twice.
+ * @return
+ *   Result of dividing @p n by @p d, rounded up.
+ *
+ * @note The divisor @p d is evaluated twice. Arguments must not have side effects.
+ * @note Both @p n and @p d must be non-negative to round correctly.
+ * @note The sum @c (n) + (d) - 1 can wrap around if @p n is close to the maximum
+ *       representable value of its type (e.g. RTE_DIV_ROUND_UP(UINT32_MAX, 2)
+ *       on uint32_t wraps to 0).
+ */
+#define RTE_DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
+
+/**
  * Checks if a pointer is aligned to a given power-of-two value
  *
  * @param ptr
