@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2016-2025 NXP
+ *   Copyright 2016-2026 NXP
  *
  */
 
@@ -2483,6 +2483,30 @@ dpaa2_sec_auth_init(struct rte_crypto_sym_xform *xform,
 					   !session->dir,
 					   session->digest_length);
 		break;
+	case RTE_CRYPTO_AUTH_AES_GMAC:
+		/* AES-GMAC is an authentication-only operation using the
+		 * GCM algorithm with a zero-length payload.  The IV is
+		 * passed per-packet via the auth xform iv field, and the
+		 * data to authenticate is in sym_op->auth.data.
+		 */
+		session->iv.offset = xform->auth.iv.offset;
+		session->iv.length = xform->auth.iv.length;
+		session->auth_alg = RTE_CRYPTO_AUTH_AES_GMAC;
+		authdata.algtype = OP_ALG_ALGSEL_AES;
+		authdata.algmode = OP_ALG_AAI_GCM;
+		if (session->dir == DIR_ENC)
+			bufsize = cnstr_shdsc_gcm_encap(
+					priv->flc_desc[DESC_INITFINAL].desc,
+					1, 0, SHR_NEVER, &authdata,
+					session->iv.length,
+					session->digest_length);
+		else
+			bufsize = cnstr_shdsc_gcm_decap(
+					priv->flc_desc[DESC_INITFINAL].desc,
+					1, 0, SHR_NEVER, &authdata,
+					session->iv.length,
+					session->digest_length);
+		break;
 	default:
 		DPAA2_SEC_ERR("Crypto: Unsupported Auth alg %s (%u)",
 			rte_cryptodev_get_auth_algo_string(xform->auth.algo),
@@ -3046,6 +3070,18 @@ dpaa2_sec_ipsec_proto_init(struct rte_crypto_cipher_xform *cipher_xform,
 		authdata->algtype = OP_PCL_IPSEC_HMAC_MD5_96;
 		authdata->algmode = OP_ALG_AAI_HMAC;
 		break;
+	case RTE_CRYPTO_AUTH_AES_GMAC:
+		/* AES-GMAC uses OP_PCL_IPSEC_AES_NULL_WITH_GMAC which is
+		 * treated as a cipher type in the SEC protocol word.
+		 * Place the GMAC key in cipherdata and set authdata to NULL.
+		 */
+		cipherdata->key = (size_t)session->auth_key.data;
+		cipherdata->keylen = session->auth_key.length;
+		cipherdata->key_enc_flags = 0;
+		cipherdata->key_type = RTA_DATA_IMM;
+		cipherdata->algtype = OP_PCL_IPSEC_AES_NULL_WITH_GMAC;
+		authdata->algtype = OP_PCL_IPSEC_HMAC_NULL;
+		return 0;
 	case RTE_CRYPTO_AUTH_SHA224_HMAC:
 		authdata->algmode = OP_ALG_AAI_HMAC;
 		if (session->digest_length == 6)
@@ -3142,6 +3178,9 @@ dpaa2_sec_set_ipsec_session(struct rte_cryptodev *dev,
 
 	PMD_INIT_FUNC_TRACE();
 
+	memset(&authdata, 0, sizeof(authdata));
+	memset(&cipherdata, 0, sizeof(cipherdata));
+
 	RTE_SET_USED(dev);
 
 	/** Make FLC address to align with stashing, low 6 bits are used
@@ -3217,6 +3256,7 @@ dpaa2_sec_set_ipsec_session(struct rte_cryptodev *dev,
 		case OP_PCL_IPSEC_AES_GCM8:
 		case OP_PCL_IPSEC_AES_GCM12:
 		case OP_PCL_IPSEC_AES_GCM16:
+		case OP_PCL_IPSEC_AES_NULL_WITH_GMAC:
 			memcpy(encap_pdb.gcm.salt,
 				(uint8_t *)&(ipsec_xform->salt), 4);
 			break;
@@ -3357,6 +3397,7 @@ dpaa2_sec_set_ipsec_session(struct rte_cryptodev *dev,
 		case OP_PCL_IPSEC_AES_GCM8:
 		case OP_PCL_IPSEC_AES_GCM12:
 		case OP_PCL_IPSEC_AES_GCM16:
+		case OP_PCL_IPSEC_AES_NULL_WITH_GMAC:
 			memcpy(decap_pdb.gcm.salt,
 				(uint8_t *)&(ipsec_xform->salt), 4);
 			break;
