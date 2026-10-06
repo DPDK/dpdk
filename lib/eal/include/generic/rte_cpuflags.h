@@ -63,6 +63,9 @@ rte_cpu_get_flag_name(enum rte_cpu_flag_t feature);
 /**
  * Function for checking a CPU flag availability
  *
+ * A flag is available only if the CPU implements the feature
+ * and the OS enables the feature for use.
+ *
  * @param feature
  *     CPU flag to query CPU for
  * @return
