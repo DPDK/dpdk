@@ -1,5 +1,5 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
-    Copyright 2016 NXP
+    Copyright 2016,2026 NXP
 
 
 
@@ -188,9 +188,19 @@ along with other useful debugging information like session, queue, descriptor
 data.
 e.g. ``fslmc:dpseci.1,drv_dump_mode=1``
 
+Alternatively, set the environment variable ``drv_dump_mode`` to the desired
+mode value. The environment variable is used as a fallback when the devarg is
+not provided, which is useful in production environments where modifying EAL
+command-line arguments is not practical.
+e.g. ``export drv_dump_mode=1``
+
 Enable strict ordering
 ----------------------
 
 Use dev arg option ``drv_strict_order=1`` to enable strict ordering.
 By default, loose ordering is set for ordered schedule type event.
 e.g. ``fslmc:dpseci.1,drv_strict_order=1``
+
+Alternatively, set the environment variable ``drv_strict_order=1`` to enable
+strict ordering without modifying EAL arguments.
+e.g. ``export drv_strict_order=1``
