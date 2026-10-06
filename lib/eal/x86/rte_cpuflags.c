@@ -14,6 +14,23 @@
 #include "rte_cpuid.h"
 #include "rte_atomic.h"
 
+#ifdef RTE_TOOLCHAIN_MSVC
+#include <immintrin.h>
+#endif
+
+/*
+ * XCR0 state components that the OS must enable before
+ * the related instructions can execute without faulting.
+ */
+#define XSTATE_SSE      (UINT64_C(1) << 1)
+#define XSTATE_YMM      (UINT64_C(1) << 2)
+#define XSTATE_OPMASK   (UINT64_C(1) << 5)
+#define XSTATE_ZMM_H256 (UINT64_C(1) << 6)
+#define XSTATE_HI16_ZMM (UINT64_C(1) << 7)
+
+#define XSTATE_AVX    (XSTATE_SSE | XSTATE_YMM)
+#define XSTATE_AVX512 (XSTATE_AVX | XSTATE_OPMASK | XSTATE_ZMM_H256 | XSTATE_HI16_ZMM)
+
 /**
  * Struct to hold a processor feature entry
  */
@@ -26,10 +43,18 @@ struct feature_entry {
 	char name[CPU_FLAG_NAME_MAX_LEN];       /**< String for printing */
 	bool has_value;
 	bool value;
+	uint64_t xstate;			/**< XCR0 bits the OS must enable */
 };
 
 #define FEAT_DEF(name, leaf, subleaf, reg, bit) \
 	[RTE_CPUFLAG_##name] = {leaf, subleaf, reg, bit, #name },
+
+/*
+ * A VEX or EVEX encoded feature also needs OS support for its register state.
+ * Use FEAT_DEF_XSTATE for such a feature, with the XCR0 bits that it needs.
+ */
+#define FEAT_DEF_XSTATE(name, leaf, subleaf, reg, bit, xs) \
+	[RTE_CPUFLAG_##name] = {leaf, subleaf, reg, bit, #name, .xstate = xs },
 
 struct feature_entry rte_cpu_feature_table[] = {
 	FEAT_DEF(SSE3, 0x00000001, 0, RTE_REG_ECX,  0)
@@ -43,7 +68,7 @@ struct feature_entry rte_cpu_feature_table[] = {
 	FEAT_DEF(TM2, 0x00000001, 0, RTE_REG_ECX,  8)
 	FEAT_DEF(SSSE3, 0x00000001, 0, RTE_REG_ECX,  9)
 	FEAT_DEF(CNXT_ID, 0x00000001, 0, RTE_REG_ECX, 10)
-	FEAT_DEF(FMA, 0x00000001, 0, RTE_REG_ECX, 12)
+	FEAT_DEF_XSTATE(FMA, 0x00000001, 0, RTE_REG_ECX, 12, XSTATE_AVX)
 	FEAT_DEF(CMPXCHG16B, 0x00000001, 0, RTE_REG_ECX, 13)
 	FEAT_DEF(XTPR, 0x00000001, 0, RTE_REG_ECX, 14)
 	FEAT_DEF(PDCM, 0x00000001, 0, RTE_REG_ECX, 15)
@@ -58,8 +83,8 @@ struct feature_entry rte_cpu_feature_table[] = {
 	FEAT_DEF(AES, 0x00000001, 0, RTE_REG_ECX, 25)
 	FEAT_DEF(XSAVE, 0x00000001, 0, RTE_REG_ECX, 26)
 	FEAT_DEF(OSXSAVE, 0x00000001, 0, RTE_REG_ECX, 27)
-	FEAT_DEF(AVX, 0x00000001, 0, RTE_REG_ECX, 28)
-	FEAT_DEF(F16C, 0x00000001, 0, RTE_REG_ECX, 29)
+	FEAT_DEF_XSTATE(AVX, 0x00000001, 0, RTE_REG_ECX, 28, XSTATE_AVX)
+	FEAT_DEF_XSTATE(F16C, 0x00000001, 0, RTE_REG_ECX, 29, XSTATE_AVX)
 	FEAT_DEF(RDRAND, 0x00000001, 0, RTE_REG_ECX, 30)
 	FEAT_DEF(HYPERVISOR, 0x00000001, 0, RTE_REG_ECX, 31)
 
@@ -107,34 +132,34 @@ struct feature_entry rte_cpu_feature_table[] = {
 	FEAT_DEF(FSGSBASE, 0x00000007, 0, RTE_REG_EBX,  0)
 	FEAT_DEF(BMI1, 0x00000007, 0, RTE_REG_EBX,  3)
 	FEAT_DEF(HLE, 0x00000007, 0, RTE_REG_EBX,  4)
-	FEAT_DEF(AVX2, 0x00000007, 0, RTE_REG_EBX,  5)
+	FEAT_DEF_XSTATE(AVX2, 0x00000007, 0, RTE_REG_EBX,  5, XSTATE_AVX)
 	FEAT_DEF(SMEP, 0x00000007, 0, RTE_REG_EBX,  7)
 	FEAT_DEF(BMI2, 0x00000007, 0, RTE_REG_EBX,  8)
 	FEAT_DEF(ERMS, 0x00000007, 0, RTE_REG_EBX,  9)
 	FEAT_DEF(INVPCID, 0x00000007, 0, RTE_REG_EBX, 10)
 	FEAT_DEF(RTM, 0x00000007, 0, RTE_REG_EBX, 11)
-	FEAT_DEF(AVX512F, 0x00000007, 0, RTE_REG_EBX, 16)
-	FEAT_DEF(AVX512DQ, 0x00000007, 0, RTE_REG_EBX, 17)
+	FEAT_DEF_XSTATE(AVX512F, 0x00000007, 0, RTE_REG_EBX, 16, XSTATE_AVX512)
+	FEAT_DEF_XSTATE(AVX512DQ, 0x00000007, 0, RTE_REG_EBX, 17, XSTATE_AVX512)
 	FEAT_DEF(RDSEED, 0x00000007, 0, RTE_REG_EBX, 18)
-	FEAT_DEF(AVX512IFMA, 0x00000007, 0, RTE_REG_EBX, 21)
-	FEAT_DEF(AVX512CD, 0x00000007, 0, RTE_REG_EBX, 28)
-	FEAT_DEF(AVX512BW, 0x00000007, 0, RTE_REG_EBX, 30)
-	FEAT_DEF(AVX512VL, 0x00000007, 0, RTE_REG_EBX, 31)
+	FEAT_DEF_XSTATE(AVX512IFMA, 0x00000007, 0, RTE_REG_EBX, 21, XSTATE_AVX512)
+	FEAT_DEF_XSTATE(AVX512CD, 0x00000007, 0, RTE_REG_EBX, 28, XSTATE_AVX512)
+	FEAT_DEF_XSTATE(AVX512BW, 0x00000007, 0, RTE_REG_EBX, 30, XSTATE_AVX512)
+	FEAT_DEF_XSTATE(AVX512VL, 0x00000007, 0, RTE_REG_EBX, 31, XSTATE_AVX512)
 
-	FEAT_DEF(AVX512VBMI, 0x00000007, 0, RTE_REG_ECX,  1)
+	FEAT_DEF_XSTATE(AVX512VBMI, 0x00000007, 0, RTE_REG_ECX,  1, XSTATE_AVX512)
 	FEAT_DEF(WAITPKG, 0x00000007, 0, RTE_REG_ECX,  5)
-	FEAT_DEF(AVX512VBMI2, 0x00000007, 0, RTE_REG_ECX,  6)
+	FEAT_DEF_XSTATE(AVX512VBMI2, 0x00000007, 0, RTE_REG_ECX,  6, XSTATE_AVX512)
 	FEAT_DEF(GFNI, 0x00000007, 0, RTE_REG_ECX,  8)
-	FEAT_DEF(VAES, 0x00000007, 0, RTE_REG_ECX,  9)
-	FEAT_DEF(VPCLMULQDQ, 0x00000007, 0, RTE_REG_ECX, 10)
-	FEAT_DEF(AVX512VNNI, 0x00000007, 0, RTE_REG_ECX, 11)
-	FEAT_DEF(AVX512BITALG, 0x00000007, 0, RTE_REG_ECX, 12)
-	FEAT_DEF(AVX512VPOPCNTDQ, 0x00000007, 0, RTE_REG_ECX, 14)
+	FEAT_DEF_XSTATE(VAES, 0x00000007, 0, RTE_REG_ECX,  9, XSTATE_AVX)
+	FEAT_DEF_XSTATE(VPCLMULQDQ, 0x00000007, 0, RTE_REG_ECX, 10, XSTATE_AVX)
+	FEAT_DEF_XSTATE(AVX512VNNI, 0x00000007, 0, RTE_REG_ECX, 11, XSTATE_AVX512)
+	FEAT_DEF_XSTATE(AVX512BITALG, 0x00000007, 0, RTE_REG_ECX, 12, XSTATE_AVX512)
+	FEAT_DEF_XSTATE(AVX512VPOPCNTDQ, 0x00000007, 0, RTE_REG_ECX, 14, XSTATE_AVX512)
 	FEAT_DEF(CLDEMOTE, 0x00000007, 0, RTE_REG_ECX, 25)
 	FEAT_DEF(MOVDIRI, 0x00000007, 0, RTE_REG_ECX, 27)
 	FEAT_DEF(MOVDIR64B, 0x00000007, 0, RTE_REG_ECX, 28)
 
-	FEAT_DEF(AVX512VP2INTERSECT, 0x00000007, 0, RTE_REG_EDX,  8)
+	FEAT_DEF_XSTATE(AVX512VP2INTERSECT, 0x00000007, 0, RTE_REG_EDX,  8, XSTATE_AVX512)
 
 	FEAT_DEF(LAHF_SAHF, 0x80000001, 0, RTE_REG_ECX,  0)
 	FEAT_DEF(LZCNT, 0x80000001, 0, RTE_REG_ECX,  5)
@@ -149,6 +174,38 @@ struct feature_entry rte_cpu_feature_table[] = {
 	FEAT_DEF(INVTSC, 0x80000007, 0, RTE_REG_EDX,  8)
 };
 
+static uint64_t
+xcr0_read(void)
+{
+#ifdef RTE_TOOLCHAIN_MSVC
+	return _xgetbv(0);
+#else
+	uint32_t eax, edx;
+
+	/* use the raw mnemonic: _xgetbv() would need -mxsave */
+	asm volatile("xgetbv" : "=a" (eax), "=d" (edx) : "c" (0));
+	return ((uint64_t)edx << 32) | eax;
+#endif
+}
+
+/*
+ * CPUID reports what the CPU implements, not what the OS enables.
+ * Check that the OS saves the register state that the feature uses.
+ */
+static bool
+xstate_enabled(uint64_t xstate)
+{
+	/*
+	 * XGETBV faults unless the OS has set CR4.OSXSAVE.
+	 * The OSXSAVE entry must not have an xstate mask,
+	 * else this call recurses without end.
+	 */
+	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_OSXSAVE) != 1)
+		return false;
+
+	return (xcr0_read() & xstate) == xstate;
+}
+
 RTE_EXPORT_SYMBOL(rte_cpu_get_flag_enabled)
 int
 rte_cpu_get_flag_enabled(enum rte_cpu_flag_t feature)
@@ -156,6 +213,7 @@ rte_cpu_get_flag_enabled(enum rte_cpu_flag_t feature)
 	struct feature_entry *feat;
 	cpuid_registers_t regs;
 	unsigned int maxleaf;
+	bool value;
 
 	if ((unsigned int)feature >= RTE_DIM(rte_cpu_feature_table))
 		/* Flag does not match anything in the feature tables */
@@ -185,7 +243,13 @@ rte_cpu_get_flag_enabled(enum rte_cpu_flag_t feature)
 #endif
 
 	/* check if the feature is enabled */
-	feat->value = (regs[feat->reg] >> feat->bit) & 1;
+	value = (regs[feat->reg] >> feat->bit) & 1;
+
+	/* check if the OS enabled the register state for the feature */
+	if (value && feat->xstate != 0)
+		value = xstate_enabled(feat->xstate);
+
+	feat->value = value;
 out:
 	rte_compiler_barrier();
 	feat->has_value = true;
