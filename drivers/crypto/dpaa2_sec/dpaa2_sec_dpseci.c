@@ -569,6 +569,7 @@ build_authenc_gcm_fd(dpaa2_sec_session *sess,
 		DPAA2_SET_FLE_BPID(sge + 1, bpid);
 		DPAA2_SET_FLE_BPID(sge + 2, bpid);
 		DPAA2_SET_FLE_BPID(sge + 3, bpid);
+		DPAA2_SET_FLE_BPID(sge + 4, bpid);
 	} else {
 		DPAA2_SET_FD_IVP(fd);
 		DPAA2_SET_FLE_IVP(fle);
@@ -577,6 +578,7 @@ build_authenc_gcm_fd(dpaa2_sec_session *sess,
 		DPAA2_SET_FLE_IVP((sge + 1));
 		DPAA2_SET_FLE_IVP((sge + 2));
 		DPAA2_SET_FLE_IVP((sge + 3));
+		DPAA2_SET_FLE_IVP((sge + 4));
 	}
 
 	/* Save the shared descriptor */
