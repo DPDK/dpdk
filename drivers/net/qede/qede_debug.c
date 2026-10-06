@@ -332,7 +332,7 @@ struct split_type_defs {
 
 #define BYTES_IN_DWORD			sizeof(u32)
 /* In the macros below, size and offset are specified in bits */
-#define CEIL_DWORDS(size)		DIV_ROUND_UP(size, 32)
+#define CEIL_DWORDS(size)		RTE_DIV_ROUND_UP(size, 32)
 #define FIELD_BIT_OFFSET(type, field)	type ## _ ## field ## _ ## OFFSET
 #define FIELD_BIT_SIZE(type, field)	type ## _ ## field ## _ ## SIZE
 #define FIELD_DWORD_OFFSET(type, field) \
@@ -3053,7 +3053,7 @@ static u32 qed_grc_dump_big_ram(struct ecore_hwfn *p_hwfn,
 		return offset + ram_size;
 
 	/* Dump Big RAM */
-	for (i = 0; i < DIV_ROUND_UP(ram_size, BRB_REG_BIG_RAM_DATA_SIZE);
+	for (i = 0; i < RTE_DIV_ROUND_UP(ram_size, BRB_REG_BIG_RAM_DATA_SIZE);
 	     i++) {
 		u32 addr, len;
 
@@ -4154,8 +4154,8 @@ static enum dbg_status qed_mcp_trace_dump(struct ecore_hwfn *p_hwfn,
 
 	/* Find trace data size */
 	trace_data_size_dwords =
-	    DIV_ROUND_UP(trace_data_size_bytes + sizeof(struct mcp_trace),
-			 BYTES_IN_DWORD);
+	    RTE_DIV_ROUND_UP(trace_data_size_bytes + sizeof(struct mcp_trace),
+			     BYTES_IN_DWORD);
 
 	/* Dump trace data section header and param */
 	offset += qed_dump_section_hdr(dump_buf + offset,
@@ -4810,10 +4810,10 @@ static u32 qed_ilt_dump(struct ecore_hwfn *p_hwfn,
 		offset += num_pages * PAGE_MEM_DESC_SIZE_DWORDS;
 	}
 
-	valid_conn_pf_pages = DIV_ROUND_UP(valid_conn_pf_cids,
-					   num_cids_per_page);
-	valid_conn_vf_pages = DIV_ROUND_UP(valid_conn_vf_cids,
-					   num_cids_per_page);
+	valid_conn_pf_pages = RTE_DIV_ROUND_UP(valid_conn_pf_cids,
+					       num_cids_per_page);
+	valid_conn_vf_pages = RTE_DIV_ROUND_UP(valid_conn_vf_cids,
+					       num_cids_per_page);
 
 	/* Dump ILT pages IDs */
 	offset += qed_ilt_dump_pages_section(p_hwfn,

@@ -459,7 +459,7 @@ static inline unsigned int sgl_len(unsigned int n)
  */
 static inline unsigned int flits_to_desc(unsigned int n)
 {
-	return DIV_ROUND_UP(n, 8);
+	return RTE_DIV_ROUND_UP(n, 8);
 }
 
 /**
@@ -505,7 +505,7 @@ static inline unsigned int calc_tx_flits(const struct rte_mbuf *m,
 
 	hdrlen = is_eth_imm(m);
 	if (hdrlen)
-		return DIV_ROUND_UP(m->pkt_len + hdrlen, sizeof(__be64));
+		return RTE_DIV_ROUND_UP(m->pkt_len + hdrlen, sizeof(__be64));
 
 	/*
 	 * Otherwise, we're going to have to construct a Scatter gather list
@@ -779,7 +779,7 @@ static inline void ship_tx_pkt_coalesce_wr(struct adapter *adap,
 	wr = (void *)&q->desc[q->pidx];
 	vmwr = (void *)&q->desc[q->pidx];
 
-	wr_mid = V_FW_WR_LEN16(DIV_ROUND_UP(q->coalesce.flits, 2));
+	wr_mid = V_FW_WR_LEN16(RTE_DIV_ROUND_UP(q->coalesce.flits, 2));
 	ndesc = flits_to_desc(q->coalesce.flits);
 	wr->equiq_to_len16 = htonl(wr_mid);
 	wr->plen = cpu_to_be16(q->coalesce.len);
@@ -866,7 +866,7 @@ static inline int should_tx_packet_coalesce(struct sge_eth_txq *txq,
 
 	/* If coalescing is on, the mbuf is added to a pkts WR */
 	if (q->coalesce.idx) {
-		ndesc = DIV_ROUND_UP(q->coalesce.flits + flits, 8);
+		ndesc = RTE_DIV_ROUND_UP(q->coalesce.flits + flits, 8);
 		credits = txq_avail(q) - ndesc;
 
 		if (unlikely(wraps_around(q, ndesc)))
@@ -950,7 +950,7 @@ static inline int tx_do_packet_coalesce(struct sge_eth_txq *txq,
 		mc->cmd_dest = htonl(V_ULPTX_CMD(4) | V_ULP_TXPKT_DEST(0) |
 				     V_ULP_TXPKT_FID(adap->sge.fw_evtq.cntxt_id) |
 				     F_ULP_TXPKT_RO);
-		mc->len = htonl(DIV_ROUND_UP(flits, 2));
+		mc->len = htonl(RTE_DIV_ROUND_UP(flits, 2));
 		sc_imm = (struct ulptx_idata *)(mc + 1);
 		sc_imm->cmd_more = htonl(V_ULPTX_CMD(ULP_TX_SC_IMM) |
 					 F_ULP_TX_SC_MORE);
@@ -1116,7 +1116,7 @@ out_free:
 		goto out_free;
 	}
 
-	wr_mid = V_FW_WR_LEN16(DIV_ROUND_UP(flits, 2));
+	wr_mid = V_FW_WR_LEN16(RTE_DIV_ROUND_UP(flits, 2));
 	if (Q_IDXDIFF(&txq->q, equeidx)  >= 64) {
 		txq->q.equeidx = txq->q.pidx;
 		wr_mid |= F_FW_WR_EQUEQ;
@@ -1322,7 +1322,7 @@ static int ctrl_xmit(struct sge_ctrl_txq *q, struct rte_mbuf *mbuf)
 	}
 
 	reclaim_completed_tx_imm(&q->q);
-	ndesc = DIV_ROUND_UP(mbuf->pkt_len, sizeof(struct tx_desc));
+	ndesc = RTE_DIV_ROUND_UP(mbuf->pkt_len, sizeof(struct tx_desc));
 	t4_os_lock(&q->ctrlq_lock);
 
 	q->full = txq_avail(&q->q) < ndesc ? 1 : 0;

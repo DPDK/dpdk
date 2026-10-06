@@ -166,7 +166,7 @@ typedef uint64_t  dma_addr_t;
 typedef char *caddr_t;
 #endif
 
-#define DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
+#define DIV_ROUND_UP(n, d) RTE_DIV_ROUND_UP(n, d)
 #define DELAY(x) rte_delay_us(x)
 #define udelay(x) DELAY(x)
 #define msleep(x) DELAY(1000 * (x))

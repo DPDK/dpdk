@@ -2334,8 +2334,8 @@ static void bnx2x_ilt_set_info(struct bnx2x_softc *sc)
 		ilt_client->start = line;
 
 		/* 4 bytes for each cid */
-		line += DIV_ROUND_UP(sc->qm_cid_count * QM_QUEUES_PER_FUNC * 4,
-				     QM_ILT_PAGE_SZ);
+		line += RTE_DIV_ROUND_UP(sc->qm_cid_count * QM_QUEUES_PER_FUNC * 4,
+					 QM_ILT_PAGE_SZ);
 
 		ilt_client->end = (line - 1);
 	}

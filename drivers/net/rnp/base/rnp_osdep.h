@@ -53,10 +53,9 @@ typedef uint64_t u64;
 #define cpu_to_le32(v)	rte_cpu_to_le_32((u32)(v))
 #endif
 
-#ifndef DIV_ROUND_UP
-#define DIV_ROUND_UP(n, d)      (((n) + (d) - 1) / (d))
+#ifndef BITS_TO_LONGS
 #define BITS_PER_BYTE           (8)
-#define BITS_TO_LONGS(nr)       DIV_ROUND_UP(nr, BITS_PER_BYTE * sizeof(long))
+#define BITS_TO_LONGS(nr)       RTE_DIV_ROUND_UP(nr, BITS_PER_BYTE * sizeof(long))
 #endif
 
 #define fls(n)	rte_fls_u32(n)

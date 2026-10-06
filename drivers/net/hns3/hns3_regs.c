@@ -4,6 +4,7 @@
 
 #include <ethdev_pci.h>
 #include <rte_io.h>
+#include <rte_common.h>
 
 #include "hns3_ethdev.h"
 #include "hns3_logs.h"
@@ -1034,8 +1035,8 @@ hns3_get_32_bit_regs(struct hns3_hw *hw, uint32_t regs_num, struct rte_dev_reg_i
 	if (regs_num == 0)
 		return 0;
 
-	cmd_num = DIV_ROUND_UP(regs_num + HNS3_32_BIT_DESC_NODATA_LEN,
-			       HNS3_32_BIT_REG_RTN_DATANUM);
+	cmd_num = RTE_DIV_ROUND_UP(regs_num + HNS3_32_BIT_DESC_NODATA_LEN,
+				   HNS3_32_BIT_REG_RTN_DATANUM);
 	desc = rte_zmalloc("hns3-32bit-regs",
 			   sizeof(struct hns3_cmd_desc) * cmd_num, 0);
 	if (desc == NULL) {
@@ -1093,8 +1094,8 @@ hns3_get_64_bit_regs(struct hns3_hw *hw, uint32_t regs_num, struct rte_dev_reg_i
 	if (regs_num == 0)
 		return 0;
 
-	cmd_num = DIV_ROUND_UP(regs_num + HNS3_64_BIT_DESC_NODATA_LEN,
-			       HNS3_64_BIT_REG_RTN_DATANUM);
+	cmd_num = RTE_DIV_ROUND_UP(regs_num + HNS3_64_BIT_DESC_NODATA_LEN,
+				   HNS3_64_BIT_REG_RTN_DATANUM);
 	desc = rte_zmalloc("hns3-64bit-regs",
 			   sizeof(struct hns3_cmd_desc) * cmd_num, 0);
 	if (desc == NULL) {

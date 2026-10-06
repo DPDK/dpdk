@@ -542,7 +542,7 @@ nfp_nsp_command_buf_dma_sg(struct nfp_nsp *nsp,
 	struct nfp_nsp_dma_desc *descs;
 
 	chunk_size = RTE_BIT64(chunk_order);
-	nseg = DIV_ROUND_UP(max_size, chunk_size);
+	nseg = RTE_DIV_ROUND_UP(max_size, chunk_size);
 
 	/* Malloc memory */
 	total_len = sizeof(struct nfp_nsp_dma_buf) +

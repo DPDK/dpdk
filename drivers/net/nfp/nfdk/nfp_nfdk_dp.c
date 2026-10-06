@@ -103,7 +103,7 @@ nfp_net_nfdk_tx_maybe_close_block(struct nfp_net_txq *txq,
 	n_descs = nfp_net_nfdk_headlen_to_segs(pkt_temp->data_len);
 	while (pkt_temp->next != NULL) {
 		pkt_temp = pkt_temp->next;
-		n_descs += DIV_ROUND_UP(pkt_temp->data_len, NFDK_TX_MAX_DATA_PER_DESC);
+		n_descs += RTE_DIV_ROUND_UP(pkt_temp->data_len, NFDK_TX_MAX_DATA_PER_DESC);
 	}
 
 	if (unlikely(n_descs > NFDK_TX_DESC_GATHER_MAX))

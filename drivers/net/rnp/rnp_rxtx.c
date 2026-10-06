@@ -1165,7 +1165,7 @@ rnp_calc_pkt_desc(struct rte_mbuf *tx_pkt)
 	uint16_t count = 0;
 
 	while (txd != NULL) {
-		count += DIV_ROUND_UP(txd->data_len, RNP_MAX_TSO_SEG_LEN);
+		count += RTE_DIV_ROUND_UP(txd->data_len, RNP_MAX_TSO_SEG_LEN);
 		txd = txd->next;
 	}
 

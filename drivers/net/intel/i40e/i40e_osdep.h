@@ -229,12 +229,11 @@ struct i40e_spinlock {
 #define i40e_memset(a, b, c, d) memset((a), (b), (c))
 #define i40e_memcpy(a, b, c, d) memcpy((a), (b), (c))
 
-#define DIV_ROUND_UP(n,d) (((n) + (d) - 1) / (d))
 #define DELAY(x) rte_delay_us_sleep(x)
 #define i40e_usec_delay(x) DELAY(x)
 #define i40e_msec_delay(x) DELAY(1000 * (x))
 #define udelay(x) DELAY(x)
 #define msleep(x) DELAY(1000*(x))
-#define usleep_range(min, max) msleep(DIV_ROUND_UP(min, 1000))
+#define usleep_range(min, max) msleep(RTE_DIV_ROUND_UP(min, 1000))
 
 #endif /* _I40E_OSDEP_H_ */

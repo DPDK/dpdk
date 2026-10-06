@@ -7,6 +7,7 @@
 #include <rte_hash_crc.h>
 #include <rte_io.h>
 #include <rte_malloc.h>
+#include <rte_common.h>
 
 #include "hns3_ethdev.h"
 #include "hns3_logs.h"
@@ -129,7 +130,7 @@ static const struct key_info tuple_key_info[] = {
 #define MAX_KEY_LENGTH		400
 #define MAX_200B_KEY_LENGTH	200
 #define MAX_META_DATA_LENGTH	16
-#define MAX_KEY_DWORDS	DIV_ROUND_UP(MAX_KEY_LENGTH / HNS3_BITS_PER_BYTE, 4)
+#define MAX_KEY_DWORDS	RTE_DIV_ROUND_UP(MAX_KEY_LENGTH / HNS3_BITS_PER_BYTE, 4)
 #define MAX_KEY_BYTES	(MAX_KEY_DWORDS * 4)
 
 enum HNS3_FD_PACKET_TYPE {

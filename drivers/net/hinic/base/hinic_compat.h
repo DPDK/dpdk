@@ -70,11 +70,8 @@ typedef uint64_t  dma_addr_t;
 #define upper_32_bits(n) ((u32)(((n) >> 16) >> 16))
 #define lower_32_bits(n) ((u32)(n))
 
-/* Returns X / Y, rounding up.  X must be nonnegative to round correctly. */
-#define DIV_ROUND_UP(X, Y) (((X) + ((Y) - 1)) / (Y))
-
 /* Returns X rounded up to the nearest multiple of Y. */
-#define ROUND_UP(X, Y) (DIV_ROUND_UP(X, Y) * (Y))
+#define ROUND_UP(X, Y) (RTE_DIV_ROUND_UP(X, Y) * (Y))
 
 #undef  ALIGN
 #define ALIGN(x, a)  RTE_ALIGN(x, a)

@@ -978,8 +978,6 @@ static inline struct hns3_vf *HNS3_DEV_HW_TO_VF(struct hns3_hw *hw)
 #define roundup(x, y) ((((x) + ((y) - 1)) / (y)) * (y))
 #define rounddown(x, y) ((x) - ((x) % (y)))
 
-#define DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
-
 /*
  * Because hardware always access register in little-endian mode based on hns3
  * network engine, so driver should also call rte_cpu_to_le_32 to convert data

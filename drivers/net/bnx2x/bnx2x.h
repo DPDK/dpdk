@@ -18,6 +18,7 @@
 #include <rte_spinlock.h>
 #include <bus_pci_driver.h>
 #include <rte_io.h>
+#include <rte_common.h>
 
 #include "bnx2x_osal.h"
 #include "bnx2x_ethdev.h"
@@ -36,9 +37,6 @@
 
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(arr) RTE_DIM(arr)
-#endif
-#ifndef DIV_ROUND_UP
-#define DIV_ROUND_UP(n, d) (((n) + (d) - 1) / (d))
 #endif
 #ifndef roundup
 #define roundup(x, y) ((((x) + ((y) - 1)) / (y)) * (y))
@@ -393,7 +391,7 @@ union cdu_context {
 #define CNIC_ISCSI_CID_MAX 256
 #define CNIC_FCOE_CID_MAX  2048
 #define CNIC_CID_MAX       (CNIC_ISCSI_CID_MAX + CNIC_FCOE_CID_MAX)
-#define CNIC_ILT_LINES     DIV_ROUND_UP(CNIC_CID_MAX, ILT_PAGE_CIDS)
+#define CNIC_ILT_LINES     RTE_DIV_ROUND_UP(CNIC_CID_MAX, ILT_PAGE_CIDS)
 
 #define QM_ILT_PAGE_SZ_HW  0
 #define QM_ILT_PAGE_SZ     (4096 << QM_ILT_PAGE_SZ_HW) /* 4K */
@@ -405,7 +403,7 @@ union cdu_context {
 /*#define TM_CONN_NUM        (CNIC_STARTING_CID+CNIC_ISCSI_CXT_MAX) */
 #define TM_CONN_NUM        1024
 #define TM_ILT_SZ          (8 * TM_CONN_NUM)
-#define TM_ILT_LINES       DIV_ROUND_UP(TM_ILT_SZ, TM_ILT_PAGE_SZ)
+#define TM_ILT_LINES       RTE_DIV_ROUND_UP(TM_ILT_SZ, TM_ILT_PAGE_SZ)
 
 /* SRC (Searcher) host DB constants */
 #define SRC_ILT_PAGE_SZ_HW 0
@@ -414,7 +412,7 @@ union cdu_context {
 #define SRC_CONN_NUM       (1 << SRC_HASH_BITS) /* 1024 */
 #define SRC_ILT_SZ         (sizeof(struct src_ent) * SRC_CONN_NUM)
 #define SRC_T2_SZ          SRC_ILT_SZ
-#define SRC_ILT_LINES      DIV_ROUND_UP(SRC_ILT_SZ, SRC_ILT_PAGE_SZ)
+#define SRC_ILT_LINES      RTE_DIV_ROUND_UP(SRC_ILT_SZ, SRC_ILT_PAGE_SZ)
 
 struct hw_context {
     struct bnx2x_dma    vcxt_dma;
@@ -1258,7 +1256,7 @@ struct bnx2x_softc {
 #define BNX2X_L2_CID_COUNT(sc)                                             \
 	(BNX2X_NUM_ETH_QUEUES(sc) * ECORE_MULTI_TX_COS + 2 * CNIC_SUPPORT(sc))
 #define L2_ILT_LINES(sc)                                \
-	(DIV_ROUND_UP(BNX2X_L2_CID_COUNT(sc), ILT_PAGE_CIDS))
+	(RTE_DIV_ROUND_UP(BNX2X_L2_CID_COUNT(sc), ILT_PAGE_CIDS))
 
 	int qm_cid_count;
 
