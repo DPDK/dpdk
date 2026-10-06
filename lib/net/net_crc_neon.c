@@ -24,6 +24,31 @@ struct crc_pmull_ctx {
 alignas(16) struct crc_pmull_ctx crc32_eth_pmull;
 alignas(16) struct crc_pmull_ctx crc16_ccitt_pmull;
 
+static const alignas(16) uint8_t crc_neon_shift_tab[32] = {
+	0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8,
+	0xf7, 0xf6, 0xf5, 0xf4, 0xf3, 0xf2, 0xf1, 0xf0,
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+	0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f
+};
+
+/**
+ * Shifts left 128 bit register by specified number of bytes
+ *
+ * @param reg
+ *   128 bit value
+ * @param num
+ *   number of bytes to shift left reg by (0-16)
+ *
+ * @return
+ *   reg << (num * 8)
+ */
+static inline uint64x2_t
+neon_shift_left(uint64x2_t reg, const unsigned int num)
+{
+	uint8x16_t tbl = vld1q_u8(crc_neon_shift_tab + 16 - num);
+	return vreinterpretq_u64_u8(vqtbl1q_u8(vreinterpretq_u8_u64(reg), tbl));
+}
+
 /**
  * @brief Performs one folding round
  *
@@ -46,12 +71,12 @@ crcr32_folding_round(uint64x2_t data_block, uint64x2_t precomp,
 	uint64x2_t fold)
 {
 	uint64x2_t tmp0 = vreinterpretq_u64_p128(vmull_p64(
-			vgetq_lane_p64(vreinterpretq_p64_u64(fold), 1),
+			vgetq_lane_p64(vreinterpretq_p64_u64(fold), 0),
 			vgetq_lane_p64(vreinterpretq_p64_u64(precomp), 0)));
 
-	uint64x2_t tmp1 = vreinterpretq_u64_p128(vmull_p64(
-			vgetq_lane_p64(vreinterpretq_p64_u64(fold), 0),
-			vgetq_lane_p64(vreinterpretq_p64_u64(precomp), 1)));
+	uint64x2_t tmp1 = vreinterpretq_u64_p128(vmull_high_p64(
+			vreinterpretq_p64_u64(fold),
+			vreinterpretq_p64_u64(precomp)));
 
 	return veorq_u64(tmp1, veorq_u64(data_block, tmp0));
 }
@@ -98,26 +123,19 @@ static inline uint32_t
 crcr32_reduce_64_to_32(uint64x2_t data64,
 	uint64x2_t precomp)
 {
-	static alignas(16) uint32_t mask1[4] = {
-		0xffffffff, 0xffffffff, 0x00000000, 0x00000000
-	};
-	static alignas(16) uint32_t mask2[4] = {
-		0x00000000, 0xffffffff, 0xffffffff, 0xffffffff
-	};
 	uint64x2_t tmp0, tmp1, tmp2;
 
-	tmp0 = vandq_u64(data64, vld1q_u64((uint64_t *)mask2));
+	tmp0 = vreinterpretq_u64_u32(
+		vsetq_lane_u32(0, vreinterpretq_u32_u64(data64), 0));
 
 	tmp1 = vreinterpretq_u64_p128(vmull_p64(
 		vgetq_lane_p64(vreinterpretq_p64_u64(tmp0), 0),
 		vgetq_lane_p64(vreinterpretq_p64_u64(precomp), 0)));
 	tmp1 = veorq_u64(tmp1, tmp0);
-	tmp1 = vandq_u64(tmp1, vld1q_u64((uint64_t *)mask1));
 
 	tmp2 = vreinterpretq_u64_p128(vmull_p64(
 		vgetq_lane_p64(vreinterpretq_p64_u64(tmp1), 0),
 		vgetq_lane_p64(vreinterpretq_p64_u64(precomp), 1)));
-	tmp2 = veorq_u64(tmp2, tmp1);
 	tmp2 = veorq_u64(tmp2, tmp0);
 
 	return vgetq_lane_u32(vreinterpretq_u32_u64(tmp2), 2);
@@ -177,10 +195,10 @@ crc32_eth_calc_pmull(
 		fold = vld1q_u64((uint64_t *)buffer);
 		fold = veorq_u64(fold, temp);
 		if (unlikely(data_len < 4)) {
-			fold = vshift_bytes_left(fold, 8 - data_len);
+			fold = neon_shift_left(fold, 8 - data_len);
 			goto barret_reduction;
 		}
-		fold = vshift_bytes_left(fold, 16 - data_len);
+		fold = neon_shift_left(fold, 16 - data_len);
 		goto reduction_128_64;
 	}
 
@@ -201,14 +219,17 @@ single_fold_loop:
 
 	/** Partial bytes - process last <16 bytes */
 	if (likely(n < data_len)) {
-		uint64x2_t last16, a, b, mask;
+		uint8x16_t last16, t1, t2;
+		uint64x2_t a, b;
 		uint32_t rem = data_len & 15;
 
-		last16 = vld1q_u64((const uint64_t *)&data[data_len - 16]);
-		a = vshift_bytes_left(fold, 16 - rem);
-		b = vshift_bytes_right(fold, rem);
-		mask = vshift_bytes_left(vdupq_n_u64(-1), 16 - rem);
-		b = vorrq_u64(b, vandq_u64(mask, last16));
+		last16 = vld1q_u8((const uint8_t *)&data[data_len - 16]);
+		t1 = vld1q_u8(crc_neon_shift_tab + rem);
+		a  = vreinterpretq_u64_u8(vqtbl1q_u8(vreinterpretq_u8_u64(fold), t1));
+		t2 = vmvnq_u8(t1);
+		t2 = vqtbl1q_u8(vreinterpretq_u8_u64(fold), t2);
+		t1 = vcgezq_s8(vreinterpretq_s8_u8(t1));
+		b  = vreinterpretq_u64_u8(vbslq_u8(t1, last16, t2));
 
 		/* k = rk3 & rk4 */
 		fold = crcr32_folding_round(b, k, a);
@@ -230,14 +251,14 @@ void
 rte_net_crc_neon_init(void)
 {
 	/* Initialize CRC16 data */
-	uint64_t ccitt_k1_k2[2] = {0x14ff2LLU, 0x19a3cLLU};
-	uint64_t ccitt_k3_k4[2] = {0x189aeLLU, 0x8e10LLU};
+	uint64_t ccitt_k1_k2[2] = {0x19a3cLLU, 0x14ff2LLU};
+	uint64_t ccitt_k3_k4[2] = {0x8e10LLU, 0x189aeLLU};
 	uint64_t ccitt_k5_k6[2] = {0x189aeLLU, 0x114aaLLU};
 	uint64_t ccitt_k7_k8[2] = {0x11c581910LLU, 0x10811LLU};
 
 	/* Initialize CRC32 data */
-	uint64_t eth_k1_k2[2] = {0x1c6e41596LLU, 0x154442bd4LLU};
-	uint64_t eth_k3_k4[2] = {0xccaa009eLLU, 0x1751997d0LLU};
+	uint64_t eth_k1_k2[2] = {0x154442bd4LLU, 0x1c6e41596LLU};
+	uint64_t eth_k3_k4[2] = {0x1751997d0LLU, 0xccaa009eLLU};
 	uint64_t eth_k5_k6[2] = {0xccaa009eLLU, 0x163cd6124LLU};
 	uint64_t eth_k7_k8[2] = {0x1f7011640LLU, 0x1db710641LLU};
 
