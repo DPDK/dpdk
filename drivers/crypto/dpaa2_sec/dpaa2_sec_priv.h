@@ -17,7 +17,7 @@ extern uint8_t cryptodev_driver_id;
 
 /* FLE_POOL_NUM_BUFS is set as per the ipsec-secgw application */
 #define FLE_POOL_NUM_BUFS	32000
-#define FLE_POOL_BUF_SIZE	256
+#define FLE_POOL_BUF_SIZE	288
 #define FLE_POOL_CACHE_SIZE	512
 #define FLE_SG_MEM_SIZE(num)	(FLE_POOL_BUF_SIZE + ((num) * 32))
 
