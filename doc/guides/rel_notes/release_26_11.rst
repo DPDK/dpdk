@@ -200,6 +200,15 @@ Removed Items
   which were based on the legacy pipeline library API.
   The ``pipeline`` example application covers the SWX pipeline API.
 
+* metrics: Removed the ``rte_metrics_telemetry.h`` header
+  and the experimental telemetry helper API: ``rte_metrics_tel_reg_all_ethdev``,
+  ``rte_metrics_tel_encode_json_format``, ``rte_metrics_tel_get_global_stats``,
+  ``rte_metrics_tel_get_port_stats_ids``, ``rte_metrics_tel_get_ports_stats_json``
+  and ``rte_metrics_tel_extract_data``.
+  These had no users and exposed jansson types in the public header.
+  The legacy telemetry commands ``ports_all_stat_values``,
+  ``global_stat_values`` and ``ports_stats_values_by_name`` are unchanged.
+
 * net/iavf: Removed the ``auto_reconfig`` devarg.
 
   The restoration of the promiscuous and all-multicast settings after a VF reset
