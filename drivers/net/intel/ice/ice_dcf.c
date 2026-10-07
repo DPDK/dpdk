@@ -913,7 +913,7 @@ ice_dcf_uninit_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw)
 	rte_free(hw->qos_bw_cfg);
 	hw->qos_bw_cfg = NULL;
 
-	rte_free(hw->ets_config);
+	ice_free(hw, hw->ets_config);
 	hw->ets_config = NULL;
 }
 

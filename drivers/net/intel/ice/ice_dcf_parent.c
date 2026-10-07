@@ -295,7 +295,7 @@ ice_dcf_query_port_ets(struct ice_hw *parent_hw, struct ice_dcf_hw *real_hw)
 			NULL);
 	if (ret) {
 		PMD_DRV_LOG(ERR, "DCF Query Port ETS failed");
-		rte_free(real_hw->ets_config);
+		ice_free(real_hw, real_hw->ets_config);
 		real_hw->ets_config = NULL;
 		return ret;
 	}
