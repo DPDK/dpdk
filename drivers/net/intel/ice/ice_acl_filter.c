@@ -86,11 +86,11 @@ ice_acl_prof_alloc(struct ice_hw *hw)
 fail_mem:
 	for (fltr_ptype = ICE_FLTR_PTYPE_NONF_NONE + 1;
 	     fltr_ptype < ptype; fltr_ptype++) {
-		rte_free(hw->acl_prof[fltr_ptype]);
+		ice_free(hw, hw->acl_prof[fltr_ptype]);
 		hw->acl_prof[fltr_ptype] = NULL;
 	}
 
-	rte_free(hw->acl_prof);
+	ice_free(hw, hw->acl_prof);
 	hw->acl_prof = NULL;
 
 	return -ENOMEM;
@@ -148,7 +148,7 @@ static void ice_deinit_acl(struct ice_pf *pf)
 
 	ice_acl_destroy_tbl(hw);
 
-	rte_free(hw->acl_tbl);
+	ice_free(hw, hw->acl_tbl);
 	hw->acl_tbl = NULL;
 
 	if (pf->acl.slots) {
@@ -1102,11 +1102,11 @@ ice_acl_prof_free(struct ice_hw *hw)
 
 	for (ptype = ICE_FLTR_PTYPE_NONF_NONE + 1;
 	     ptype < ICE_FLTR_PTYPE_MAX; ptype++) {
-		rte_free(hw->acl_prof[ptype]);
+		ice_free(hw, hw->acl_prof[ptype]);
 		hw->acl_prof[ptype] = NULL;
 	}
 
-	rte_free(hw->acl_prof);
+	ice_free(hw, hw->acl_prof);
 	hw->acl_prof = NULL;
 }
 
