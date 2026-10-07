@@ -898,6 +898,10 @@ ice_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 		u8 ts_buf_len = ice_struct_size(ts_elem, txtimeqs, 1);
 
 		ts_elem = ice_malloc(hw, ts_buf_len);
+		if (!ts_elem) {
+			ice_free(hw, txq_elem);
+			return -ENOMEM;
+		}
 		ice_setup_txtime_ctx(txq, &txtime_ctx, true);
 		ice_set_ctx(hw, (u8 *)&txtime_ctx,
 				ts_elem->txtimeqs[0].txtime_ctx,
