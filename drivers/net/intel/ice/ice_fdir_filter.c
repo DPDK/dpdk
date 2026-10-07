@@ -231,11 +231,11 @@ fail_mem:
 	for (fltr_ptype = ICE_FLTR_PTYPE_NONF_NONE + 1;
 	     fltr_ptype < ptype;
 	     fltr_ptype++) {
-		rte_free(hw->fdir_prof[fltr_ptype]);
+		ice_free(hw, hw->fdir_prof[fltr_ptype]);
 		hw->fdir_prof[fltr_ptype] = NULL;
 	}
 
-	rte_free(hw->fdir_prof);
+	ice_free(hw, hw->fdir_prof);
 	hw->fdir_prof = NULL;
 
 	return -ENOMEM;
@@ -608,11 +608,11 @@ ice_fdir_prof_free(struct ice_hw *hw)
 	for (ptype = ICE_FLTR_PTYPE_NONF_NONE + 1;
 	     ptype < ICE_FLTR_PTYPE_MAX;
 	     ptype++) {
-		rte_free(hw->fdir_prof[ptype]);
+		ice_free(hw, hw->fdir_prof[ptype]);
 		hw->fdir_prof[ptype] = NULL;
 	}
 
-	rte_free(hw->fdir_prof);
+	ice_free(hw, hw->fdir_prof);
 	hw->fdir_prof = NULL;
 }
 
@@ -644,7 +644,7 @@ ice_fdir_prof_rm(struct ice_pf *pf, enum ice_fltr_ptype ptype, bool is_tunnel)
 		}
 	}
 	ice_flow_rem_prof(hw, ICE_BLK_FD, prof_id);
-	rte_free(hw_prof->fdir_seg[is_tunnel]);
+	ice_free(hw, hw_prof->fdir_seg[is_tunnel]);
 	hw_prof->fdir_seg[is_tunnel] = NULL;
 
 	for (i = 0; i < hw_prof->cnt; i++)
@@ -1350,7 +1350,7 @@ ice_fdir_input_set_conf(struct ice_pf *pf, enum ice_fltr_ptype flow,
 	if (!ret) {
 		return ret;
 	} else if (ret < 0) {
-		rte_free(seg_tun);
+		ice_free(pf->adapter->hw, seg_tun);
 		return (ret == -EEXIST) ? 0 : ret;
 	} else {
 		return ret;

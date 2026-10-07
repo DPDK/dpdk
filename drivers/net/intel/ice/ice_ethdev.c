@@ -1178,7 +1178,7 @@ ice_add_mac_filter(struct ice_vsi *vsi, struct rte_ether_addr *mac_addr)
 	ret = 0;
 
 DONE:
-	rte_free(m_list_itr);
+	ice_free(hw, m_list_itr);
 	return ret;
 }
 
@@ -1229,7 +1229,7 @@ ice_remove_mac_filter(struct ice_vsi *vsi, struct rte_ether_addr *mac_addr)
 
 	ret = 0;
 DONE:
-	rte_free(m_list_itr);
+	ice_free(hw, m_list_itr);
 	return ret;
 }
 
@@ -1314,7 +1314,7 @@ ice_add_vlan_filter(struct ice_vsi *vsi, struct ice_vlan *vlan)
 	ret = 0;
 
 DONE:
-	rte_free(v_list_itr);
+	ice_free(hw, v_list_itr);
 	return ret;
 }
 
@@ -1372,7 +1372,7 @@ ice_remove_vlan_filter(struct ice_vsi *vsi, struct ice_vlan *vlan)
 
 	ret = 0;
 DONE:
-	rte_free(v_list_itr);
+	ice_free(hw, v_list_itr);
 	return ret;
 }
 
@@ -2572,7 +2572,7 @@ ice_get_hw_res(struct ice_hw *hw, uint16_t res_type,
 			(*num_prof), ICE_NONDMA_TO_NONDMA);
 
 exit:
-	rte_free(resp_buf);
+	ice_free(hw, resp_buf);
 	return ret;
 }
 static int
@@ -2772,7 +2772,7 @@ ice_dev_init(struct rte_eth_dev *dev)
 		ret = ice_init_hw_tbls(hw);
 		if (ret) {
 			PMD_INIT_LOG(ERR, "ice_init_hw_tbls failed: %d", ret);
-			rte_free(hw->pkg_copy);
+			ice_free(hw, hw->pkg_copy);
 		}
 	}
 
@@ -3098,7 +3098,7 @@ ice_dev_close(struct rte_eth_dev *dev)
 	ice_release_vsi(pf->main_vsi);
 	ice_sched_cleanup_all(hw);
 	ice_free_hw_tbls(hw);
-	rte_free(hw->port_info);
+	ice_free(hw, hw->port_info);
 	hw->port_info = NULL;
 	free((void *)(uintptr_t)ad->devargs.ddp_filename);
 	ad->devargs.ddp_filename = NULL;

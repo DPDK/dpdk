@@ -854,13 +854,13 @@ ice_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 		}
 		if (cgd_idx >= ICE_MAX_TRAFFIC_CLASS) {
 			PMD_DRV_LOG(ERR, "Bad queue mapping configuration");
-			rte_free(txq_elem);
+			ice_free(hw, txq_elem);
 			return -EINVAL;
 		}
 	} else if (pf->dcb_num_tcs > 1) {
 		/* TM only manages the TC0 scheduler subtree. */
 		PMD_DRV_LOG(ERR, "TM hierarchy is not supported together with multi-TC DCB");
-		rte_free(txq_elem);
+		ice_free(hw, txq_elem);
 		return -EINVAL;
 	}
 
@@ -874,7 +874,7 @@ ice_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 			txq_elem, buf_len, NULL);
 	if (err) {
 		PMD_DRV_LOG(ERR, "Failed to add lan txq");
-		rte_free(txq_elem);
+		ice_free(hw, txq_elem);
 		return -EIO;
 	}
 	/* store the schedule node id */
@@ -884,7 +884,7 @@ ice_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	if (pf->tm_conf.committed)
 		if (ice_tm_setup_txq_node(pf, hw, tx_queue_id, txq->q_teid) != 0) {
 			PMD_DRV_LOG(ERR, "Failed to set up txq traffic management node");
-			rte_free(txq_elem);
+			ice_free(hw, txq_elem);
 			return -EIO;
 		}
 
@@ -909,10 +909,10 @@ ice_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 		ICE_PCI_REG_WRITE(txq->qtx_tail, 0);
 
 		err = ice_aq_set_txtimeq(hw, txq->reg_idx, 1, ts_elem, ts_buf_len, NULL);
-		rte_free(ts_elem);
+		ice_free(hw, ts_elem);
 		if (err) {
 			PMD_DRV_LOG(ERR, "Failed to set Tx Time queue context, error: %d", err);
-			rte_free(txq_elem);
+			ice_free(hw, txq_elem);
 			return err;
 		}
 	} else {
@@ -924,7 +924,7 @@ ice_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 
 	dev->data->tx_queue_state[tx_queue_id] = RTE_ETH_QUEUE_STATE_STARTED;
 
-	rte_free(txq_elem);
+	ice_free(hw, txq_elem);
 	return 0;
 }
 
@@ -1096,13 +1096,13 @@ ice_fdir_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 			      txq_elem, buf_len, NULL);
 	if (err) {
 		PMD_DRV_LOG(ERR, "Failed to add FDIR txq");
-		rte_free(txq_elem);
+		ice_free(hw, txq_elem);
 		return -EIO;
 	}
 	/* store the schedule node id */
 	txq->q_teid = txq_elem->txqs[0].q_teid;
 
-	rte_free(txq_elem);
+	ice_free(hw, txq_elem);
 	return 0;
 }
 
