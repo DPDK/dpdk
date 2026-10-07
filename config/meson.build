@@ -177,6 +177,12 @@ if not is_ms_compiler
         machine_args += '-mtune=' + cpu_instruction_set
         compiler_arch_support = cc.has_argument('-mcpu=' + cpu_instruction_set)
     else
+        # Meson uses x86_64, but GCC/Clang expect x86-64.
+        # See https://mesonbuild.com/Reference-tables.html#cpu-families
+        if cpu_instruction_set == 'x86_64'
+            # Feature level derived from DPDK minimum CPU feature requirements
+            cpu_instruction_set = 'x86-64-v2'
+        endif
         machine_args += '-march=' + cpu_instruction_set
         # arm manages generic/auto config in config/arm/meson.build
         if cpu_instruction_set != 'generic' and cpu_instruction_set != 'auto'
