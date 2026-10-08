@@ -25,6 +25,8 @@
 #define SFF_A0_DOM_PWRT                   RTE_BIT32(3)
 
 #define SFF_A0_OPTIONS_AW                 RTE_BIT32(7)
+#define SFF_A0_OPTIONS_SOFT_TX_FAULT      RTE_BIT32(5)
+#define SFF_A0_OPTIONS_SOFT_RX_LOS        RTE_BIT32(4)
 
 /*
  * This is the offset at which the A2 page is in the EEPROM
@@ -62,6 +64,10 @@
 #define SFF_A2_RX_PWR_LALRM               34
 #define SFF_A2_RX_PWR_HWARN               36
 #define SFF_A2_RX_PWR_LWARN               38
+
+#define SFF_A2_STATUS                     110
+#define SFF_A2_STATUS_TX_FAULT            RTE_BIT32(2)
+#define SFF_A2_STATUS_RX_LOS              RTE_BIT32(1)
 
 #define SFF_A2_ALRM_FLG                   112
 #define SFF_A2_WARN_FLG                   116
@@ -272,6 +278,7 @@ void sff_8472_show_all(const uint8_t *data, struct sff_output *d)
 	struct sff_diags sd = {0};
 	const char *rx_power_string = NULL;
 	char val_string[SFF_ITEM_VAL_COMPOSE_SIZE];
+	uint8_t status;
 	int i;
 
 	sff_8472_parse_eeprom(data, &sd);
@@ -301,6 +308,18 @@ void sff_8472_show_all(const uint8_t *data, struct sff_output *d)
 
 	SFF_SPRINT_VCC(val_string, sd.sfp_voltage[SFF_MCURR]);
 	sff_output_field(d, "Module voltage", val_string);
+
+	/*
+	 * Real-time state of the pins, unlike the latched SFF-8636 flags,
+	 * reported in the same single lane format.
+	 */
+	status = data[SFF_A2_BASE + SFF_A2_STATUS];
+	if (data[SFF_A0_OPTIONS] & SFF_A0_OPTIONS_SOFT_RX_LOS)
+		sff_show_lane_status("Rx loss of signal", 1,
+				     !!(status & SFF_A2_STATUS_RX_LOS), d);
+	if (data[SFF_A0_OPTIONS] & SFF_A0_OPTIONS_SOFT_TX_FAULT)
+		sff_show_lane_status("Tx fault", 1,
+				     !!(status & SFF_A2_STATUS_TX_FAULT), d);
 
 	sff_output_field(d, "Alarm/warning flags implemented",
 			(sd.supports_alarms ? "Yes" : "No"));

@@ -176,6 +176,7 @@ New Features
   uses it to display the decoded module EEPROM.
   The SFF-8636 decoder also reports the per-lane loss of signal,
   loss of lock and Tx fault flags.
+  The SFF-8472 decoder also reports the Rx loss of signal and Tx fault state.
 
 
 Removed Items
