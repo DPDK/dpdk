@@ -84,6 +84,31 @@ void sff_show_ascii(const uint8_t *data, unsigned int first_reg,
 	sff_output_field(d, name, val_string);
 }
 
+/*
+ * Report a per-lane status bitmap, lane 1 in bit 0:
+ * "None" if no lane is flagged, otherwise "[ Yes, No, ... ]".
+ */
+void sff_show_lane_status(const char *name, unsigned int lane_cnt,
+			  unsigned int value, struct sff_output *d)
+{
+	char val_string[SFF_ITEM_VAL_COMPOSE_SIZE];
+	unsigned int lane;
+
+	if (value == 0) {
+		sff_output_field(d, name, "None");
+		return;
+	}
+
+	strlcpy(val_string, "[", sizeof(val_string));
+	for (lane = 0; lane < lane_cnt; lane++) {
+		strlcat(val_string, (value & RTE_BIT32(lane)) ? " Yes" : " No",
+			sizeof(val_string));
+		strlcat(val_string, lane + 1 < lane_cnt ? "," : " ]",
+			sizeof(val_string));
+	}
+	sff_output_field(d, name, val_string);
+}
+
 void sff_8024_show_oui(const uint8_t *data, int id_offset, struct sff_output *d)
 {
 	char val_string[SFF_ITEM_VAL_COMPOSE_SIZE];
