@@ -1145,72 +1145,112 @@ port_eeprom_set(portid_t port_id,
 		fprintf(stderr, "Unable to set EEPROM: %s\n", rte_strerror(-ret));
 }
 
+static int
+port_module_eeprom_read(portid_t port_id, struct rte_eth_dev_module_info *minfo,
+		struct rte_dev_eeprom_info *einfo)
+{
+	int ret;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN)) {
+		print_valid_ports();
+		return -EINVAL;
+	}
+
+	ret = rte_eth_dev_get_module_info(port_id, minfo);
+	if (ret != 0) {
+		switch (ret) {
+		case -ENODEV:
+			fprintf(stderr, "port index %d invalid\n", port_id);
+			break;
+		case -ENOTSUP:
+			fprintf(stderr, "operation not supported by device\n");
+			break;
+		case -EIO:
+			fprintf(stderr, "device is removed\n");
+			break;
+		default:
+			fprintf(stderr, "Unable to get module EEPROM: %d\n",
+				ret);
+			break;
+		}
+		return ret;
+	}
+
+	einfo->offset = 0;
+	einfo->length = minfo->eeprom_len;
+	einfo->data = calloc(1, minfo->eeprom_len);
+	if (!einfo->data) {
+		fprintf(stderr,
+			"Allocation of port %u eeprom data failed\n",
+			port_id);
+		return -ENOMEM;
+	}
+
+	ret = rte_eth_dev_get_module_eeprom(port_id, einfo);
+	if (ret != 0) {
+		switch (ret) {
+		case -ENODEV:
+			fprintf(stderr, "port index %d invalid\n", port_id);
+			break;
+		case -ENOTSUP:
+			fprintf(stderr, "operation not supported by device\n");
+			break;
+		case -EIO:
+			fprintf(stderr, "device is removed\n");
+			break;
+		default:
+			fprintf(stderr, "Unable to get module EEPROM: %d\n",
+				ret);
+			break;
+		}
+		free(einfo->data);
+		einfo->data = NULL;
+		return ret;
+	}
+
+	return 0;
+}
+
 void
 port_module_eeprom_display(portid_t port_id)
 {
 	struct rte_eth_dev_module_info minfo;
 	struct rte_dev_eeprom_info einfo;
-	int ret;
 
-	if (port_id_is_invalid(port_id, ENABLED_WARN)) {
-		print_valid_ports();
+	if (port_module_eeprom_read(port_id, &minfo, &einfo) != 0)
 		return;
-	}
-
-
-	ret = rte_eth_dev_get_module_info(port_id, &minfo);
-	if (ret != 0) {
-		switch (ret) {
-		case -ENODEV:
-			fprintf(stderr, "port index %d invalid\n", port_id);
-			break;
-		case -ENOTSUP:
-			fprintf(stderr, "operation not supported by device\n");
-			break;
-		case -EIO:
-			fprintf(stderr, "device is removed\n");
-			break;
-		default:
-			fprintf(stderr, "Unable to get module EEPROM: %d\n",
-				ret);
-			break;
-		}
-		return;
-	}
-
-	einfo.offset = 0;
-	einfo.length = minfo.eeprom_len;
-	einfo.data = calloc(1, minfo.eeprom_len);
-	if (!einfo.data) {
-		fprintf(stderr,
-			"Allocation of port %u eeprom data failed\n",
-			port_id);
-		return;
-	}
-
-	ret = rte_eth_dev_get_module_eeprom(port_id, &einfo);
-	if (ret != 0) {
-		switch (ret) {
-		case -ENODEV:
-			fprintf(stderr, "port index %d invalid\n", port_id);
-			break;
-		case -ENOTSUP:
-			fprintf(stderr, "operation not supported by device\n");
-			break;
-		case -EIO:
-			fprintf(stderr, "device is removed\n");
-			break;
-		default:
-			fprintf(stderr, "Unable to get module EEPROM: %d\n",
-				ret);
-			break;
-		}
-		free(einfo.data);
-		return;
-	}
 
 	rte_hexdump(stdout, "hexdump", einfo.data, einfo.length);
 	printf("Finish -- Port: %d MODULE EEPROM length: %d bytes\n", port_id, einfo.length);
+	free(einfo.data);
+}
+
+static void
+port_module_eeprom_field_print(const char *name, const char *value,
+		__rte_unused void *arg)
+{
+	printf("\t%-41s : %s\n", name, value);
+}
+
+void
+port_module_eeprom_decode_display(portid_t port_id)
+{
+	struct rte_eth_dev_module_info minfo;
+	struct rte_dev_eeprom_info einfo;
+	int ret;
+
+	if (port_module_eeprom_read(port_id, &minfo, &einfo) != 0)
+		return;
+
+	printf("Port %u module EEPROM (type 0x%x, %u bytes):\n",
+		port_id, minfo.type, einfo.length);
+	ret = rte_eth_module_eeprom_parse(minfo.type, einfo.data, einfo.length,
+			port_module_eeprom_field_print, NULL);
+	if (ret == -ENOTSUP)
+		fprintf(stderr, "Unsupported module type: 0x%x\n", minfo.type);
+	else if (ret != 0)
+		fprintf(stderr, "Unable to decode module EEPROM: %s\n",
+			rte_strerror(-ret));
 	free(einfo.data);
 }
 

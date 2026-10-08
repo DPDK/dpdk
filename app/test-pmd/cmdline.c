@@ -172,6 +172,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"show port port_id (module_eeprom|eeprom)\n"
 			"    Display the module EEPROM or EEPROM information for port_id.\n\n"
 
+			"show port (port_id) module_eeprom decode\n"
+			"    Display the decoded module EEPROM of port_id.\n\n"
+
 			"set port (port_id) eeprom (accept_risk) magic (magic_num)"
 			" value (value) offset (offset)\n"
 			"    Set the device eeprom for certain port.\nNote:\n"
@@ -7826,6 +7829,50 @@ static cmdline_parse_inst_t cmd_showeeprom = {
 	},
 };
 
+struct cmd_showeeprom_decode_result {
+	cmdline_fixed_string_t show;
+	cmdline_fixed_string_t port;
+	uint16_t portnum;
+	cmdline_fixed_string_t module_eeprom;
+	cmdline_fixed_string_t decode;
+};
+
+static void cmd_showeeprom_decode_parsed(void *parsed_result,
+		__rte_unused struct cmdline *cl,
+		__rte_unused void *data)
+{
+	struct cmd_showeeprom_decode_result *res = parsed_result;
+
+	port_module_eeprom_decode_display(res->portnum);
+}
+
+static cmdline_parse_token_string_t cmd_showeeprom_decode_show =
+	TOKEN_STRING_INITIALIZER(struct cmd_showeeprom_decode_result, show, "show");
+static cmdline_parse_token_string_t cmd_showeeprom_decode_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_showeeprom_decode_result, port, "port");
+static cmdline_parse_token_num_t cmd_showeeprom_decode_portnum =
+	TOKEN_NUM_INITIALIZER(struct cmd_showeeprom_decode_result, portnum,
+			RTE_UINT16);
+static cmdline_parse_token_string_t cmd_showeeprom_decode_module_eeprom =
+	TOKEN_STRING_INITIALIZER(struct cmd_showeeprom_decode_result, module_eeprom,
+			"module_eeprom");
+static cmdline_parse_token_string_t cmd_showeeprom_decode_decode =
+	TOKEN_STRING_INITIALIZER(struct cmd_showeeprom_decode_result, decode, "decode");
+
+static cmdline_parse_inst_t cmd_showeeprom_decode = {
+	.f = cmd_showeeprom_decode_parsed,
+	.data = NULL,
+	.help_str = "show port <port_id> module_eeprom decode",
+	.tokens = {
+		(void *)&cmd_showeeprom_decode_show,
+		(void *)&cmd_showeeprom_decode_port,
+		(void *)&cmd_showeeprom_decode_portnum,
+		(void *)&cmd_showeeprom_decode_module_eeprom,
+		(void *)&cmd_showeeprom_decode_decode,
+		NULL,
+	},
+};
+
 /* *** SET PORT EEPROM *** */
 struct cmd_seteeprom_result {
 	cmdline_fixed_string_t set;
@@ -14219,6 +14266,7 @@ static cmdline_parse_ctx_t builtin_ctx[] = {
 	&cmd_showport,
 	&cmd_showqueue,
 	&cmd_showeeprom,
+	&cmd_showeeprom_decode,
 	&cmd_seteeprom,
 	&cmd_showportall,
 	&cmd_representor_info,
