@@ -222,6 +222,14 @@ Display the EEPROM information of a port::
 
    testpmd> show port (port_id) (module_eeprom|eeprom)
 
+show port module_eeprom decode
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Display the module EEPROM of a port decoded according to the SFF specifications,
+for example the vendor, the transceiver type and the digital diagnostics::
+
+   testpmd> show port (port_id) module_eeprom decode
+
 set eeprom
 ~~~~~~~~~~
 

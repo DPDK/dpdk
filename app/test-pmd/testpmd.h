@@ -990,6 +990,7 @@ void port_eeprom_display(portid_t port_id);
 void port_eeprom_set(portid_t port_id, uint32_t magic, uint32_t offset,
 		     uint32_t length, uint8_t *value);
 void port_module_eeprom_display(portid_t port_id);
+void port_module_eeprom_decode_display(portid_t port_id);
 void port_summary_header_display(void);
 void rx_queue_infos_display(portid_t port_idi, uint16_t queue_id);
 void tx_queue_infos_display(portid_t port_idi, uint16_t queue_id);

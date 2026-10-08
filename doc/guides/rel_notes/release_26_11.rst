@@ -172,6 +172,8 @@ New Features
   It can decode data read with ``rte_eth_dev_get_module_eeprom()``
   or obtained from any other source with the same layout,
   such as the Linux ethtool ``ETHTOOL_GMODULEEEPROM`` ioctl.
+  The testpmd command ``show port (port_id) module_eeprom decode``
+  uses it to display the decoded module EEPROM.
 
 
 Removed Items
