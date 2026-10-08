@@ -55,6 +55,12 @@
 #define	SFF_8636_TX2_FAULT_AW	RTE_BIT32(1)
 #define	SFF_8636_TX1_FAULT_AW	RTE_BIT32(0)
 
+#define	SFF_8636_LOL_AW_OFFSET	0x05
+
+/* Lanes 1-4 of the channel status flags are in bits 0-3 or 4-7 */
+#define	SFF_8636_LANES_LOW(val)		((val) & 0xf)
+#define	SFF_8636_LANES_HIGH(val)	(((val) >> 4) & 0xf)
+
 /* Module Monitor Interrupt Flags - 6-8 */
 #define	SFF_8636_TEMP_AW_OFFSET	0x06
 #define	SFF_8636_TEMP_HALARM_STATUS		RTE_BIT32(7)
@@ -488,9 +494,15 @@
 #define	SFF_8636_ETHERNET_100G_ACC2		0x19
 
 #define	SFF_8636_OPTION_2_OFFSET	0xC1
+/* Tx input equalizers auto-adaptive */
+#define	SFF_8636_O2_TX_EQ_AUTO		RTE_BIT32(3)
 /* Rx output amplitude */
 #define	SFF_8636_O2_RX_OUTPUT_AMP	RTE_BIT32(0)
 #define	SFF_8636_OPTION_3_OFFSET	0xC2
+/* Tx CDR Loss of Lock flag implemented */
+#define	SFF_8636_O3_TX_LOL		RTE_BIT32(5)
+/* Rx CDR Loss of Lock flag implemented */
+#define	SFF_8636_O3_RX_LOL		RTE_BIT32(4)
 /* Rx Squelch Disable */
 #define	SFF_8636_O3_RX_SQL_DSBL	RTE_BIT32(3)
 /* Rx Output Disable capable */

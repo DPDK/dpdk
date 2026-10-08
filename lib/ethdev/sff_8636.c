@@ -452,6 +452,39 @@ static void sff_8636_show_rate_identifier(const uint8_t *data, struct sff_output
 	sff_output_field(d, "Rate identifier", val_string);
 }
 
+/*
+ * Channel status flags are latched and cleared when read by the host,
+ * so they report the events since the previous read of the module.
+ * Each flag except Rx LOS is reported only if the module advertises it.
+ */
+static void sff_8636_show_signals(const uint8_t *data, struct sff_output *d)
+{
+	uint8_t los = data[SFF_8636_LOS_AW_OFFSET];
+	uint8_t fault = data[SFF_8636_FAULT_AW_OFFSET];
+	uint8_t lol = data[SFF_8636_LOL_AW_OFFSET];
+
+	/* Rx LOS has no implemented bit, it reads as not flagged if absent */
+	sff_show_lane_status("Rx loss of signal", SFF_MAX_CHANNEL_NUM,
+			     SFF_8636_LANES_LOW(los), d);
+	if (data[SFF_8636_OPTION_4_OFFSET] & SFF_8636_O4_TX_LOS)
+		sff_show_lane_status("Tx loss of signal", SFF_MAX_CHANNEL_NUM,
+				     SFF_8636_LANES_HIGH(los), d);
+
+	if (data[SFF_8636_OPTION_3_OFFSET] & SFF_8636_O3_RX_LOL)
+		sff_show_lane_status("Rx loss of lock", SFF_MAX_CHANNEL_NUM,
+				     SFF_8636_LANES_LOW(lol), d);
+	if (data[SFF_8636_OPTION_3_OFFSET] & SFF_8636_O3_TX_LOL)
+		sff_show_lane_status("Tx loss of lock", SFF_MAX_CHANNEL_NUM,
+				     SFF_8636_LANES_HIGH(lol), d);
+
+	if (data[SFF_8636_OPTION_4_OFFSET] & SFF_8636_O4_TX_FAULT)
+		sff_show_lane_status("Tx fault", SFF_MAX_CHANNEL_NUM,
+				     SFF_8636_LANES_LOW(fault), d);
+	if (data[SFF_8636_OPTION_2_OFFSET] & SFF_8636_O2_TX_EQ_AUTO)
+		sff_show_lane_status("Tx adaptive eq fault", SFF_MAX_CHANNEL_NUM,
+				     SFF_8636_LANES_HIGH(fault), d);
+}
+
 static void sff_8636_show_oui(const uint8_t *data, struct sff_output *d)
 {
 	sff_8024_show_oui(data, SFF_8636_VENDOR_OUI_OFFSET, d);
@@ -761,6 +794,7 @@ void sff_8636_show_all(const uint8_t *data, uint32_t eeprom_len, struct sff_outp
 		sff_show_ascii(data, SFF_8636_DATE_YEAR_OFFSET,
 			     SFF_8636_DATE_VENDOR_LOT_OFFSET + 1, "Date code", d);
 		sff_8636_show_revision_compliance(data, d);
+		sff_8636_show_signals(data, d);
 		sff_8636_show_dom(data, eeprom_len, d);
 	}
 }

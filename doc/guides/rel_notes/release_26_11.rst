@@ -174,6 +174,8 @@ New Features
   such as the Linux ethtool ``ETHTOOL_GMODULEEEPROM`` ioctl.
   The testpmd command ``show port (port_id) module_eeprom decode``
   uses it to display the decoded module EEPROM.
+  The SFF-8636 decoder also reports the per-lane loss of signal,
+  loss of lock and Tx fault flags.
 
 
 Removed Items
