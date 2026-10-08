@@ -243,6 +243,45 @@ test_module_eeprom_qsfp_8636_thresholds(void)
 	return TEST_SUCCESS;
 }
 
+/* SFF-8472 status bits and their implemented bits */
+#define SFP_ENH_OPTIONS		93
+#define SFP_A2_STATUS		110
+
+static int
+test_module_eeprom_sfp_8472_status(void)
+{
+	uint8_t data[RTE_ETH_MODULE_SFF_8472_LEN];
+	uint8_t *a2 = data + RTE_ETH_MODULE_SFF_8079_LEN;
+
+	/* state is raised but the module does not advertise it */
+	fill_sfp(data);
+	a2[SFP_A2_STATUS] = 0x06;
+	TEST_ASSERT_SUCCESS(parse(RTE_ETH_MODULE_SFF_8472, data, sizeof(data)),
+		"Failed to parse SFF-8472 data");
+	CHECK_NO_FIELD("Rx loss of signal");
+	CHECK_NO_FIELD("Tx fault");
+
+	data[SFP_ENH_OPTIONS] |= 0x30;	/* soft Tx fault and Rx LOS monitoring */
+	a2[SFP_A2_STATUS] = 0;
+	TEST_ASSERT_SUCCESS(parse(RTE_ETH_MODULE_SFF_8472, data, sizeof(data)),
+		"Failed to parse SFF-8472 data without status bits");
+	CHECK_FIELD("Rx loss of signal", "None");
+	CHECK_FIELD("Tx fault", "None");
+
+	a2[SFP_A2_STATUS] = 0x02;	/* Rx LOS */
+	TEST_ASSERT_SUCCESS(parse(RTE_ETH_MODULE_SFF_8472, data, sizeof(data)),
+		"Failed to parse SFF-8472 data with Rx LOS");
+	CHECK_FIELD("Rx loss of signal", "[ Yes ]");
+	CHECK_FIELD("Tx fault", "None");
+
+	a2[SFP_A2_STATUS] = 0x04;	/* Tx fault */
+	TEST_ASSERT_SUCCESS(parse(RTE_ETH_MODULE_SFF_8472, data, sizeof(data)),
+		"Failed to parse SFF-8472 data with Tx fault");
+	CHECK_FIELD("Rx loss of signal", "None");
+	CHECK_FIELD("Tx fault", "[ Yes ]");
+	return TEST_SUCCESS;
+}
+
 /* SFF-8636 lower page channel status flags and their implemented bits */
 #define QSFP_LOS_FLAGS		3
 #define QSFP_FAULT_FLAGS	4
@@ -527,6 +566,7 @@ static struct unit_test_suite module_eeprom_testsuite = {
 		TEST_CASE(test_module_eeprom_sfp_8472_cal_saturate_max),
 		TEST_CASE(test_module_eeprom_sfp_8472_cal_saturate_min),
 		TEST_CASE(test_module_eeprom_sfp_8472_cal_round),
+		TEST_CASE(test_module_eeprom_sfp_8472_status),
 		TEST_CASE(test_module_eeprom_qsfp_8636),
 		TEST_CASE(test_module_eeprom_qsfp_8636_thresholds),
 		TEST_CASE(test_module_eeprom_qsfp_8636_signals_not_implemented),
