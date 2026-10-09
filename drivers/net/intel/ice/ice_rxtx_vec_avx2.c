@@ -8,6 +8,7 @@
 #include "../common/tx_vec_x86.h"
 
 #include <rte_vect.h>
+#include <rte_mbuf_dyn.h>
 
 static __rte_always_inline void
 ice_rxq_rearm(struct ci_rx_queue *rxq)
@@ -441,12 +442,15 @@ _ice_recv_raw_pkts_vec_avx2(struct ci_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 
 		if (offload) {
 #ifndef RTE_NET_INTEL_USE_16BYTE_DESC
+			const uint64_t rxmode_offloads =
+				rxq->ice_vsi->adapter->pf.dev_data->dev_conf.rxmode.offloads;
 			/**
-			 * needs to load 2nd 16B of each desc for RSS hash parsing,
+			 * needs to load 2nd 16B of each desc for RSS hash parsing
+			 * or Rx timestamp offload,
 			 * will cause performance drop to get into this context.
 			 */
-			if (rxq->ice_vsi->adapter->pf.dev_data->dev_conf.rxmode.offloads &
-					RTE_ETH_RX_OFFLOAD_RSS_HASH) {
+			if (rxmode_offloads & (RTE_ETH_RX_OFFLOAD_RSS_HASH |
+					RTE_ETH_RX_OFFLOAD_TIMESTAMP)) {
 				/* load bottom half of every 32B desc */
 				const __m128i raw_desc_bh7 = _mm_load_si128
 					(RTE_CAST_PTR(const __m128i *, &rxdp[7].wb.status_error1));
@@ -489,37 +493,77 @@ _ice_recv_raw_pkts_vec_avx2(struct ci_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 						(_mm256_castsi128_si256(raw_desc_bh0),
 						raw_desc_bh1, 1);
 
-				/**
-				 * to shift the 32b RSS hash value to the
-				 * highest 32b of each 128b before mask
-				 */
-				__m256i rss_hash6_7 =
-					_mm256_slli_epi64(raw_desc_bh6_7, 32);
-				__m256i rss_hash4_5 =
-					_mm256_slli_epi64(raw_desc_bh4_5, 32);
-				__m256i rss_hash2_3 =
-					_mm256_slli_epi64(raw_desc_bh2_3, 32);
-				__m256i rss_hash0_1 =
-					_mm256_slli_epi64(raw_desc_bh0_1, 32);
+				if (rxmode_offloads & RTE_ETH_RX_OFFLOAD_RSS_HASH) {
+					/**
+					 * to shift the 32b RSS hash value to the
+					 * highest 32b of each 128b before mask
+					 */
+					__m256i rss_hash6_7 =
+						_mm256_slli_epi64(raw_desc_bh6_7, 32);
+					__m256i rss_hash4_5 =
+						_mm256_slli_epi64(raw_desc_bh4_5, 32);
+					__m256i rss_hash2_3 =
+						_mm256_slli_epi64(raw_desc_bh2_3, 32);
+					__m256i rss_hash0_1 =
+						_mm256_slli_epi64(raw_desc_bh0_1, 32);
 
-				__m256i rss_hash_msk =
-					_mm256_set_epi32(0xFFFFFFFF, 0, 0, 0,
-							 0xFFFFFFFF, 0, 0, 0);
+					__m256i rss_hash_msk =
+						_mm256_set_epi32(0xFFFFFFFF, 0, 0, 0,
+								 0xFFFFFFFF, 0, 0, 0);
 
-				rss_hash6_7 = _mm256_and_si256
-						(rss_hash6_7, rss_hash_msk);
-				rss_hash4_5 = _mm256_and_si256
-						(rss_hash4_5, rss_hash_msk);
-				rss_hash2_3 = _mm256_and_si256
-						(rss_hash2_3, rss_hash_msk);
-				rss_hash0_1 = _mm256_and_si256
-						(rss_hash0_1, rss_hash_msk);
+					rss_hash6_7 = _mm256_and_si256
+							(rss_hash6_7, rss_hash_msk);
+					rss_hash4_5 = _mm256_and_si256
+							(rss_hash4_5, rss_hash_msk);
+					rss_hash2_3 = _mm256_and_si256
+							(rss_hash2_3, rss_hash_msk);
+					rss_hash0_1 = _mm256_and_si256
+							(rss_hash0_1, rss_hash_msk);
 
-				mb6_7 = _mm256_or_si256(mb6_7, rss_hash6_7);
-				mb4_5 = _mm256_or_si256(mb4_5, rss_hash4_5);
-				mb2_3 = _mm256_or_si256(mb2_3, rss_hash2_3);
-				mb0_1 = _mm256_or_si256(mb0_1, rss_hash0_1);
-			} /* if() on RSS hash parsing */
+					mb6_7 = _mm256_or_si256(mb6_7, rss_hash6_7);
+					mb4_5 = _mm256_or_si256(mb4_5, rss_hash4_5);
+					mb2_3 = _mm256_or_si256(mb2_3, rss_hash2_3);
+					mb0_1 = _mm256_or_si256(mb0_1, rss_hash0_1);
+				} /* if() on RSS hash parsing */
+
+				if (rxmode_offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP) {
+					/**
+					 * Extract the 32b Rx timestamp (flex_ts.ts_high),
+					 * located in the highest 32b of each 32B desc, and
+					 * stash it (low 32b) into the mbuf timestamp
+					 * dynfield. The 32b->64b conversion with rollover
+					 * tracking is performed in a scalar pass after the
+					 * main loop (see below), matching the scalar path.
+					 */
+					*RTE_MBUF_DYNFIELD(rx_pkts[i + 0],
+						rxq->ts_offset, uint32_t *) =
+						_mm256_extract_epi32(raw_desc_bh0_1, 3);
+					*RTE_MBUF_DYNFIELD(rx_pkts[i + 1],
+						rxq->ts_offset, uint32_t *) =
+						_mm256_extract_epi32(raw_desc_bh0_1, 7);
+					*RTE_MBUF_DYNFIELD(rx_pkts[i + 2],
+						rxq->ts_offset, uint32_t *) =
+						_mm256_extract_epi32(raw_desc_bh2_3, 3);
+					*RTE_MBUF_DYNFIELD(rx_pkts[i + 3],
+						rxq->ts_offset, uint32_t *) =
+						_mm256_extract_epi32(raw_desc_bh2_3, 7);
+					*RTE_MBUF_DYNFIELD(rx_pkts[i + 4],
+						rxq->ts_offset, uint32_t *) =
+						_mm256_extract_epi32(raw_desc_bh4_5, 3);
+					*RTE_MBUF_DYNFIELD(rx_pkts[i + 5],
+						rxq->ts_offset, uint32_t *) =
+						_mm256_extract_epi32(raw_desc_bh4_5, 7);
+					*RTE_MBUF_DYNFIELD(rx_pkts[i + 6],
+						rxq->ts_offset, uint32_t *) =
+						_mm256_extract_epi32(raw_desc_bh6_7, 3);
+					*RTE_MBUF_DYNFIELD(rx_pkts[i + 7],
+						rxq->ts_offset, uint32_t *) =
+						_mm256_extract_epi32(raw_desc_bh6_7, 7);
+
+					mbuf_flags = _mm256_or_si256(mbuf_flags,
+						_mm256_set1_epi32((int)rxq->ts_flag));
+				} /* if() on Rx timestamp parsing */
+			} /* if() on RSS hash or Rx timestamp parsing */
 #endif
 		}
 
@@ -653,6 +697,51 @@ _ice_recv_raw_pkts_vec_avx2(struct ci_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		if (burst != ICE_VPMD_DESCS_PER_LOOP_WIDE)
 			break;
 	}
+
+#ifndef RTE_NET_INTEL_USE_16BYTE_DESC
+	/**
+	 * Convert the stashed 32b Rx timestamps to 64b for the packets that
+	 * were actually received, tracking the register rollover. This mirrors
+	 * the scalar Rx path and is only done over valid (received) packets, so
+	 * timestamps of non-DD descriptors never corrupt the rollover state.
+	 */
+	if (offload && received > 0 &&
+			(rxq->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP)) {
+		struct ice_vsi *vsi = rxq->ice_vsi;
+		struct ice_hw *hw = ICE_VSI_TO_HW(vsi);
+		struct ice_adapter *ad = vsi->adapter;
+		uint64_t ts_ns;
+		bool is_tsinit = false;
+		uint64_t sw_cur_time =
+			rte_get_timer_cycles() / (rte_get_timer_hz() / 1000);
+
+		if (unlikely(sw_cur_time - rxq->hw_time_update > 4))
+			is_tsinit = true;
+
+		for (uint16_t k = 0; k < received; k++) {
+			uint32_t ts_high = *RTE_MBUF_DYNFIELD(rx_pkts[k],
+					rxq->ts_offset, uint32_t *);
+
+			rxq->time_high = ts_high;
+			if (unlikely(is_tsinit)) {
+				ts_ns = ice_tstamp_convert_32b_64b(hw, ad, 1,
+								   ts_high);
+				rxq->hw_time_low = (uint32_t)ts_ns;
+				rxq->hw_time_high = (uint32_t)(ts_ns >> 32);
+				is_tsinit = false;
+			} else {
+				if (ts_high < rxq->hw_time_low)
+					rxq->hw_time_high += 1;
+				ts_ns = (uint64_t)rxq->hw_time_high << 32 | ts_high;
+				rxq->hw_time_low = ts_high;
+			}
+			*RTE_MBUF_DYNFIELD(rx_pkts[k], rxq->ts_offset,
+					   rte_mbuf_timestamp_t *) = ts_ns;
+		}
+		rxq->hw_time_update = rte_get_timer_cycles() /
+				      (rte_get_timer_hz() / 1000);
+	}
+#endif
 
 	/* update tail pointers */
 	rxq->rx_tail += received;

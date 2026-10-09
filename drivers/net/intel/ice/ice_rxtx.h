@@ -109,6 +109,10 @@
 		RTE_ETH_RX_OFFLOAD_VLAN_STRIP |	\
 		RTE_ETH_RX_OFFLOAD_VLAN_FILTER |\
 		RTE_ETH_RX_OFFLOAD_RSS_HASH)
+/* vector offload paths that also support Rx timestamp (AVX2/AVX512 only) */
+#define ICE_RX_VECTOR_OFFLOAD_TS_OFFLOADS (	\
+		ICE_RX_VECTOR_OFFLOAD_OFFLOADS |\
+		RTE_ETH_RX_OFFLOAD_TIMESTAMP)
 
 /* basic scalar path */
 #define ICE_TX_SCALAR_OFFLOADS (		\
