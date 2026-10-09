@@ -1139,12 +1139,12 @@ rte_pmd_cnxk_ae_fpm_table_get(uint8_t dev_id)
 	struct rte_cryptodev *dev;
 	struct cnxk_cpt_vf *vf;
 
-	dev = rte_cryptodev_pmd_get_dev(dev_id);
-	if (dev == NULL) {
+	if (!rte_cryptodev_is_valid_dev(dev_id)) {
 		plt_err("Invalid dev_id %u", dev_id);
 		return NULL;
 	}
 
+	dev = rte_cryptodev_pmd_get_dev(dev_id);
 	vf = dev->data->dev_private;
 	if (vf == NULL) {
 		plt_err("VF is not initialized");
@@ -1161,12 +1161,17 @@ rte_pmd_cnxk_ae_ec_grp_table_get(uint8_t dev_id, uint16_t *nb_max_entries)
 	struct rte_cryptodev *dev;
 	struct cnxk_cpt_vf *vf;
 
-	dev = rte_cryptodev_pmd_get_dev(dev_id);
-	if (dev == NULL) {
+	if (nb_max_entries == NULL) {
+		plt_err("Invalid nb_max_entries pointer");
+		return NULL;
+	}
+
+	if (!rte_cryptodev_is_valid_dev(dev_id)) {
 		plt_err("Invalid dev_id %u", dev_id);
 		return NULL;
 	}
 
+	dev = rte_cryptodev_pmd_get_dev(dev_id);
 	vf = dev->data->dev_private;
 	if (vf == NULL) {
 		plt_err("VF is not initialized");
