@@ -170,6 +170,8 @@ New Features
   * Added support for Tx rate limiting per queue.
   * Made the existing diagnostic dump functions available through
     the public ``rte_pmd_ice.h`` header.
+  * Added support for the Rx hardware timestamp offload
+    (``RTE_ETH_RX_OFFLOAD_TIMESTAMP``) in the AVX2 and AVX512 vector Rx paths.
 
 * **Updated Intel ixgbe driver.**
 
