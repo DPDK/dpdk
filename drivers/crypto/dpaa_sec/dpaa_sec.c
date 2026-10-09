@@ -3848,9 +3848,6 @@ cryptodev_dpaa_sec_remove(struct rte_dpaa_device *dpaa_dev)
 
 static struct rte_dpaa_driver rte_dpaa_sec_driver = {
 	.drv_type = FSL_DPAA_CRYPTO,
-	.driver = {
-		.name = "DPAA SEC PMD"
-	},
 	.probe = cryptodev_dpaa_sec_probe,
 	.remove = cryptodev_dpaa_sec_remove,
 };
