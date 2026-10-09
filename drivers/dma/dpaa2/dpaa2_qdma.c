@@ -1333,6 +1333,32 @@ dpaa2_qdma_vchan_rbp_set(struct qdma_virt_queue *vq,
 	return 0;
 }
 
+struct dpaa2_qdma_fle_pool_check {
+	uint64_t iova2va_offset;
+	bool bad;
+};
+
+static void
+dpaa2_qdma_fle_pool_iova_check(struct rte_mempool *mp __rte_unused,
+		void *opaque, struct rte_mempool_memhdr *memhdr,
+		unsigned int mem_idx)
+{
+	struct dpaa2_qdma_fle_pool_check *check = opaque;
+	uint64_t offset;
+
+	if (memhdr->iova == RTE_BAD_IOVA) {
+		check->bad = true;
+		return;
+	}
+
+	offset = (uint64_t)memhdr->addr - memhdr->iova;
+
+	if (mem_idx == 0)
+		check->iova2va_offset = offset;
+	else if (offset != check->iova2va_offset)
+		check->bad = true;
+}
+
 static int
 dpaa2_qdma_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
 	const struct rte_dma_vchan_conf *conf,
@@ -1340,10 +1366,10 @@ dpaa2_qdma_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
 {
 	struct dpaa2_dpdmai_dev *dpdmai_dev = dev->data->dev_private;
 	struct qdma_device *qdma_dev = dpdmai_dev->qdma_dev;
+	struct dpaa2_qdma_fle_pool_check fle_check = {0};
 	uint32_t pool_size;
 	char pool_name[64];
 	int ret;
-	uint64_t iova, va;
 
 	DPAA2_QDMA_FUNC_TRACE();
 
@@ -1379,9 +1405,18 @@ dpaa2_qdma_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
 		DPAA2_QDMA_ERR("%s create failed", pool_name);
 		return -ENOMEM;
 	}
-	iova = qdma_dev->vqs[vchan].fle_pool->mz->iova;
-	va = qdma_dev->vqs[vchan].fle_pool->mz->addr_64;
-	qdma_dev->vqs[vchan].fle_iova2va_offset = va - iova;
+	rte_mempool_mem_iter(qdma_dev->vqs[vchan].fle_pool,
+			dpaa2_qdma_fle_pool_iova_check, &fle_check);
+
+	if (fle_check.bad) {
+		DPAA2_QDMA_ERR("%s spans inconsistent IOVA offsets",
+				pool_name);
+		ret = -EINVAL;
+		goto err_pool;
+	}
+
+	qdma_dev->vqs[vchan].fle_iova2va_offset =
+		fle_check.iova2va_offset;
 
 	if (qdma_dev->is_silent) {
 		ret = rte_mempool_get_bulk(qdma_dev->vqs[vchan].fle_pool,
@@ -1390,7 +1425,7 @@ dpaa2_qdma_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
 		if (ret) {
 			DPAA2_QDMA_ERR("sg cntx get from %s for silent mode",
 				       pool_name);
-			return ret;
+			goto err_pool;
 		}
 		ret = rte_mempool_get_bulk(qdma_dev->vqs[vchan].fle_pool,
 				(void **)qdma_dev->vqs[vchan].cntx_fle_sdd,
@@ -1398,7 +1433,7 @@ dpaa2_qdma_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
 		if (ret) {
 			DPAA2_QDMA_ERR("long cntx get from %s for silent mode",
 				       pool_name);
-			return ret;
+			goto err_pool;
 		}
 	} else {
 		qdma_dev->vqs[vchan].ring_cntx_idx = rte_malloc(NULL,
@@ -1406,7 +1441,8 @@ dpaa2_qdma_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
 				RTE_CACHE_LINE_SIZE);
 		if (!qdma_dev->vqs[vchan].ring_cntx_idx) {
 			DPAA2_QDMA_ERR("DQ response ring alloc failed.");
-			return -ENOMEM;
+			ret = -ENOMEM;
+			goto err_pool;
 		}
 		qdma_dev->vqs[vchan].ring_cntx_idx->start = 0;
 		qdma_dev->vqs[vchan].ring_cntx_idx->tail = 0;
@@ -1422,6 +1458,11 @@ dpaa2_qdma_vchan_setup(struct rte_dma_dev *dev, uint16_t vchan,
 	qdma_dev->vqs[vchan].nb_desc = conf->nb_desc;
 
 	return 0;
+
+err_pool:
+	rte_mempool_free(qdma_dev->vqs[vchan].fle_pool);
+	qdma_dev->vqs[vchan].fle_pool = NULL;
+	return ret;
 }
 
 static int
