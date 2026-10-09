@@ -714,14 +714,13 @@ ioat_dmadev_destroy(const char *name)
 
 /* Probe DMA device. */
 static int
-ioat_dmadev_probe(struct rte_pci_driver *drv, struct rte_pci_device *dev)
+ioat_dmadev_probe(struct rte_pci_driver *drv __rte_unused, struct rte_pci_device *dev)
 {
 	char name[32];
 
 	rte_pci_device_name(&dev->addr, name, sizeof(name));
 	IOAT_PMD_INFO("Init %s on NUMA node %d", name, dev->device.numa_node);
 
-	dev->device.driver = &drv->driver;
 	return ioat_dmadev_create(name, dev);
 }
 

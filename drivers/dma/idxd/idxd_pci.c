@@ -323,7 +323,7 @@ err:
 }
 
 static int
-idxd_dmadev_probe_pci(struct rte_pci_driver *drv, struct rte_pci_device *dev)
+idxd_dmadev_probe_pci(struct rte_pci_driver *drv __rte_unused, struct rte_pci_device *dev)
 {
 	struct idxd_dmadev idxd = {0};
 	uint8_t nb_wqs;
@@ -333,7 +333,6 @@ idxd_dmadev_probe_pci(struct rte_pci_driver *drv, struct rte_pci_device *dev)
 
 	rte_pci_device_name(&dev->addr, name, sizeof(name));
 	IDXD_PMD_INFO("Init %s on NUMA node %d", name, dev->device.numa_node);
-	dev->device.driver = &drv->driver;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
 		char qname[32];
