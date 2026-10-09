@@ -43,7 +43,25 @@ static int16_t s_dpaa2_pool_ops_idx = RTE_MEMPOOL_MAX_OPS_IDX;
 RTE_EXPORT_INTERNAL_SYMBOL(rte_dpaa2_mpool_get_ops_idx)
 int rte_dpaa2_mpool_get_ops_idx(void)
 {
-	return s_dpaa2_pool_ops_idx;
+	uint32_t i;
+
+	if (s_dpaa2_pool_ops_idx != RTE_MEMPOOL_MAX_OPS_IDX)
+		return s_dpaa2_pool_ops_idx;
+
+	/* Mempool ops are registered by constructor in the same order in
+	 * every process, so the index is process-invariant. Scan the ops
+	 * table locally and cache the result.
+	 */
+	for (i = 0; i < rte_mempool_ops_table.num_ops; i++) {
+		if (strcmp(rte_mempool_ops_table.ops[i].name,
+				DPAA2_MEMPOOL_OPS_NAME) == 0) {
+			s_dpaa2_pool_ops_idx = (int16_t)i;
+			return s_dpaa2_pool_ops_idx;
+		}
+	}
+
+	DPAA2_MEMPOOL_ERR("dpaa2 mempool ops not found");
+	return -ENOENT;
 }
 
 static int
@@ -128,7 +146,7 @@ rte_hw_mbuf_create_pool(struct rte_mempool *mp)
 	if (s_dpaa2_pool_ops_idx == RTE_MEMPOOL_MAX_OPS_IDX) {
 		s_dpaa2_pool_ops_idx = mp->ops_index;
 	} else if (s_dpaa2_pool_ops_idx != mp->ops_index) {
-		DPAA2_MEMPOOL_ERR("Only single ops index only");
+		DPAA2_MEMPOOL_ERR("Single ops index only");
 		ret = -EINVAL;
 		goto err4;
 	}
@@ -172,7 +190,7 @@ rte_hw_mbuf_free_pool(struct rte_mempool *mp)
 	struct dpaa2_dpbp_dev *dpbp_node;
 
 	if (!mp->pool_data) {
-		DPAA2_MEMPOOL_ERR("Not a valid dpaa2 buffer pool");
+		DPAA2_MEMPOOL_ERR("Not a valid dpaa2 buffer pool %s", mp->name);
 		return;
 	}
 
