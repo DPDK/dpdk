@@ -1896,10 +1896,10 @@ parse_error:
 }
 
 static struct rte_vdev_driver octeontx_pmd_drv = {
+	.driver.alias = "eth_octeontx",
 	.probe = octeontx_probe,
 	.remove = octeontx_remove,
 };
 
 RTE_PMD_REGISTER_VDEV(OCTEONTX_PMD, octeontx_pmd_drv);
-RTE_PMD_REGISTER_ALIAS(OCTEONTX_PMD, eth_octeontx);
 RTE_PMD_REGISTER_PARAM_STRING(OCTEONTX_PMD, "nr_port=<int> ");

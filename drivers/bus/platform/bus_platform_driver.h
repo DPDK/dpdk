@@ -117,18 +117,12 @@ struct rte_platform_driver {
 
 /** Helper for platform driver registration. */
 #define RTE_PMD_REGISTER_PLATFORM(nm, platform_drv) \
-static const char *pdrvinit_ ## nm ## _alias; \
 RTE_INIT(pdrvinitfn_ ##nm) \
 { \
 	(platform_drv).driver.name = RTE_STR(nm); \
-	(platform_drv).driver.alias = pdrvinit_ ## nm ## _alias; \
 	rte_platform_register(&(platform_drv)); \
 } \
 RTE_PMD_EXPORT_NAME(nm)
-
-/** Helper for setting platform driver alias. */
-#define RTE_PMD_REGISTER_ALIAS(nm, alias) \
-static const char *pdrvinit_ ## nm ## _alias = RTE_STR(alias)
 
 /**
  * Register a platform device driver.

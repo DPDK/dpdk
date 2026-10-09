@@ -845,8 +845,9 @@ cryptodev_armv8_crypto_uninit(struct rte_vdev_device *vdev)
 }
 
 static struct rte_vdev_driver armv8_crypto_pmd_drv = {
+	.driver.alias = "cryptodev_armv8_pmd",
 	.probe = cryptodev_armv8_crypto_init,
-	.remove = cryptodev_armv8_crypto_uninit
+	.remove = cryptodev_armv8_crypto_uninit,
 };
 
 static struct cryptodev_driver armv8_crypto_drv;
@@ -854,7 +855,6 @@ static struct cryptodev_driver armv8_crypto_drv;
 RTE_LOG_REGISTER_DEFAULT(crypto_armv8_log_type, ERR);
 
 RTE_PMD_REGISTER_VDEV(CRYPTODEV_NAME_ARMV8_PMD, armv8_crypto_pmd_drv);
-RTE_PMD_REGISTER_ALIAS(CRYPTODEV_NAME_ARMV8_PMD, cryptodev_armv8_pmd);
 RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_ARMV8_PMD,
 	"max_nb_queue_pairs=<int> "
 	"socket_id=<int>");

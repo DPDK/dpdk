@@ -95,12 +95,12 @@ vdev_nfb_vdev_remove(struct rte_vdev_device *dev)
 
 /** Virtual device descriptor. */
 static struct rte_vdev_driver vdev_nfb_vdev = {
+	.driver.alias = "eth_vdev_nfb",
 	.probe = vdev_nfb_vdev_probe,
 	.remove = vdev_nfb_vdev_remove,
 };
 
 RTE_PMD_REGISTER_VDEV(VDEV_NFB_DRIVER, vdev_nfb_vdev);
-RTE_PMD_REGISTER_ALIAS(VDEV_NFB_DRIVER, eth_vdev_nfb);
 RTE_PMD_REGISTER_PARAM_STRING(net_vdev_nfb,
 		VDEV_NFB_ARG_DEV "=<string> "
 		NFB_COMMON_ARGS

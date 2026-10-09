@@ -1893,12 +1893,12 @@ ifpga_cfg_remove(struct rte_vdev_device *vdev)
 }
 
 static struct rte_vdev_driver ifpga_cfg_driver = {
+	.driver.alias = "ifpga_cfg",
 	.probe = ifpga_cfg_probe,
 	.remove = ifpga_cfg_remove,
 };
 
 RTE_PMD_REGISTER_VDEV(ifpga_rawdev_cfg, ifpga_cfg_driver);
-RTE_PMD_REGISTER_ALIAS(ifpga_rawdev_cfg, ifpga_cfg);
 RTE_PMD_REGISTER_PARAM_STRING(ifpga_rawdev_cfg,
 	"ifpga=<string> "
 	"port=<int> "

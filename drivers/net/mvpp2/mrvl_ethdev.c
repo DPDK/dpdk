@@ -3316,10 +3316,10 @@ rte_pmd_mrvl_remove(struct rte_vdev_device *vdev)
 }
 
 static struct rte_vdev_driver pmd_mrvl_drv = {
+	.driver.alias = "eth_mvpp2",
 	.probe = rte_pmd_mrvl_probe,
 	.remove = rte_pmd_mrvl_remove,
 };
 
 RTE_PMD_REGISTER_VDEV(net_mvpp2, pmd_mrvl_drv);
-RTE_PMD_REGISTER_ALIAS(net_mvpp2, eth_mvpp2);
 RTE_LOG_REGISTER_DEFAULT(mrvl_logtype, NOTICE);

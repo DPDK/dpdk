@@ -1792,12 +1792,12 @@ rte_pmd_vhost_remove(struct rte_vdev_device *dev)
 }
 
 static struct rte_vdev_driver pmd_vhost_drv = {
+	.driver.alias = "eth_vhost",
 	.probe = rte_pmd_vhost_probe,
 	.remove = rte_pmd_vhost_remove,
 };
 
 RTE_PMD_REGISTER_VDEV(net_vhost, pmd_vhost_drv);
-RTE_PMD_REGISTER_ALIAS(net_vhost, eth_vhost);
 RTE_PMD_REGISTER_PARAM_STRING(net_vhost,
 	"iface=<ifc> "
 	"queues=<int> "

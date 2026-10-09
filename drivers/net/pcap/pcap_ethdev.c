@@ -2128,12 +2128,12 @@ pmd_pcap_remove(struct rte_vdev_device *dev)
 }
 
 static struct rte_vdev_driver pmd_pcap_drv = {
+	.driver.alias = "eth_pcap",
 	.probe = pmd_pcap_probe,
 	.remove = pmd_pcap_remove,
 };
 
 RTE_PMD_REGISTER_VDEV(net_pcap, pmd_pcap_drv);
-RTE_PMD_REGISTER_ALIAS(net_pcap, eth_pcap);
 RTE_PMD_REGISTER_PARAM_STRING(net_pcap,
 	ETH_PCAP_RX_PCAP_ARG "=<string> "
 	ETH_PCAP_TX_PCAP_ARG "=<string> "

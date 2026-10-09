@@ -767,12 +767,12 @@ rte_pmd_null_remove(struct rte_vdev_device *dev)
 }
 
 static struct rte_vdev_driver pmd_null_drv = {
+	.driver.alias = "eth_null",
 	.probe = rte_pmd_null_probe,
 	.remove = rte_pmd_null_remove,
 };
 
 RTE_PMD_REGISTER_VDEV(net_null, pmd_null_drv);
-RTE_PMD_REGISTER_ALIAS(net_null, eth_null);
 RTE_PMD_REGISTER_PARAM_STRING(net_null,
 	"size=<int> "
 	"copy=<int> "

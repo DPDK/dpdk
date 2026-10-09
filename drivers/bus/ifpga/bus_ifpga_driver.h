@@ -119,17 +119,12 @@ __rte_internal
 void rte_ifpga_driver_unregister(struct rte_afu_driver *driver);
 
 #define RTE_PMD_REGISTER_AFU(nm, afudrv)\
-static const char *afudrvinit_ ## nm ## _alias;\
 RTE_INIT(afudrvinitfn_ ##afudrv)\
 {\
 	(afudrv).driver.name = RTE_STR(nm);\
-	(afudrv).driver.alias = afudrvinit_ ## nm ## _alias;\
 	rte_ifpga_driver_register(&afudrv);\
 } \
 RTE_PMD_EXPORT_NAME(nm)
-
-#define RTE_PMD_REGISTER_AFU_ALIAS(nm, alias)\
-static const char *afudrvinit_ ## nm ## _alias = RTE_STR(alias)
 
 #ifdef __cplusplus
 }
