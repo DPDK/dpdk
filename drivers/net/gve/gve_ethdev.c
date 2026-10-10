@@ -1759,7 +1759,7 @@ gve_dev_init(struct rte_eth_dev *eth_dev)
 	gve_write_version(&reg_bar->driver_version);
 
 	priv->reg_bar0 = reg_bar;
-	priv->db_bar2 = db_bar;
+	priv->db_bar = db_bar;
 	priv->pci_dev = pci_dev;
 	priv->port_id = eth_dev->data->port_id;
 	priv->state_flags = 0x0;

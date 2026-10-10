@@ -606,7 +606,7 @@ gve_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id, uint16_t nb_desc,
 	txq->ntfy_id = queue_id;
 	txq->is_gqi_qpl = hw->queue_format == GVE_GQI_QPL_FORMAT;
 	txq->hw = hw;
-	txq->ntfy_addr = &hw->db_bar2[rte_be_to_cpu_32(hw->irq_dbs[txq->ntfy_id].id)];
+	txq->ntfy_addr = &hw->db_bar[rte_be_to_cpu_32(hw->irq_dbs[txq->ntfy_id].id)];
 
 	/* Allocate software ring */
 	txq->sw_ring = rte_zmalloc_socket("gve tx sw ring",
@@ -694,7 +694,7 @@ gve_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 
 	txq = dev->data->tx_queues[tx_queue_id];
 
-	txq->qtx_tail = &hw->db_bar2[rte_be_to_cpu_32(txq->qres->db_index)];
+	txq->qtx_tail = &hw->db_bar[rte_be_to_cpu_32(txq->qres->db_index)];
 	txq->qtx_head =
 		&hw->cnt_array[rte_be_to_cpu_32(txq->qres->counter_index)];
 
