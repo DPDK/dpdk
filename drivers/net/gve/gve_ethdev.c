@@ -251,8 +251,6 @@ gve_dev_configure(struct rte_eth_dev *dev)
 		if (err)
 			PMD_DRV_LOG(ERR,
 				"Could not reconfigure RSS redirection table.");
-		else
-			gve_update_priv_rss_config(priv, &update_reta_config);
 
 		gve_free_rss_config(&update_reta_config);
 		return err;
@@ -1187,8 +1185,6 @@ gve_rss_hash_update(struct rte_eth_dev *dev,
 			gve_rss_conf.indir_size * sizeof(*priv->rss_config.indir));
 
 	err = process_priv->ctrl_ops->configure_rss(priv, &gve_rss_conf);
-	if (!err)
-		gve_update_priv_rss_config(priv, &gve_rss_conf);
 
 err:
 	gve_free_rss_config(&gve_rss_conf);
@@ -1266,8 +1262,6 @@ gve_rss_reta_update(struct rte_eth_dev *dev,
 	err = process_priv->ctrl_ops->configure_rss(priv, &gve_rss_conf);
 	if (err)
 		PMD_DRV_LOG(ERR, "Problem configuring RSS with device.");
-	else
-		gve_update_priv_rss_config(priv, &gve_rss_conf);
 
 	gve_free_rss_config(&gve_rss_conf);
 	return err;
