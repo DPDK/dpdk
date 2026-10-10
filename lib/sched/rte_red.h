@@ -15,6 +15,7 @@
 #include <rte_debug.h>
 #include <rte_cycles.h>
 #include <rte_branch_prediction.h>
+#include <rte_random.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -34,8 +35,6 @@ extern "C" {
 /**
  * Externs
  */
-extern uint32_t rte_red_rand_val;
-extern uint32_t rte_red_rand_seed;
 extern uint16_t rte_red_log2_1_minus_Wq[RTE_RED_WQ_LOG2_NUM];
 extern uint16_t rte_red_pow2_frac_inv[16];
 
@@ -101,23 +100,6 @@ rte_red_config_init(struct rte_red_config *red_cfg,
 	const uint16_t min_th,
 	const uint16_t max_th,
 	const uint16_t maxp_inv);
-
-/**
- * @brief Generate random number for RED
- *
- * Implementation based on:
- * http://software.intel.com/en-us/articles/fast-random-number-generator-on-the-intel-pentiumr-4-processor/
- *
- * 10 bit shift has been found through empirical tests (was 16).
- *
- * @return Random number between 0 and (2^22 - 1)
- */
-static inline uint32_t
-rte_fast_rand(void)
-{
-	rte_red_rand_seed = (214013 * rte_red_rand_seed) + 2531011;
-	return rte_red_rand_seed >> 10;
-}
 
 /**
  * @brief calculate factor to scale average queue size when queue
@@ -293,12 +275,8 @@ __rte_red_drop(const struct rte_red_config *red_cfg, struct rte_red *red)
 
 	pa_den = red_cfg->pa_const - pa_num_count;
 
-	/* If drop, generate and save random number to be used next time */
-	if (unlikely((rte_red_rand_val % pa_den) < pa_num)) {
-		rte_red_rand_val = rte_fast_rand();
-
+	if (unlikely((rte_rand() % pa_den) < pa_num))
 		return 1;
-	}
 
 	/* No drop */
 	return 0;

@@ -328,6 +328,9 @@ Removed Items
   which were based on the legacy pipeline library API.
   The ``pipeline`` example application covers the SWX pipeline API.
 
+* sched: Removed the private random number generator used by RED:
+  the inline function ``rte_fast_rand()``.
+
 * metrics: Removed the ``rte_metrics_telemetry.h`` header
   and the experimental telemetry helper API: ``rte_metrics_tel_reg_all_ethdev``,
   ``rte_metrics_tel_encode_json_format``, ``rte_metrics_tel_get_global_stats``,
