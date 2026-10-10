@@ -918,8 +918,10 @@ iavf_hash_parse_raw_pattern(const struct rte_flow_item *item,
 		return -ENOMEM;
 
 	msk_buf = rte_zmalloc(NULL, pkt_len, 0);
-	if (!msk_buf)
+	if (!msk_buf) {
+		rte_free(pkt_buf);
 		return -ENOMEM;
+	}
 
 	/* convert string to int array */
 	for (i = 0, j = 0; i < spec_len; i += 2, j++) {
@@ -1538,7 +1540,7 @@ iavf_hash_parse_pattern_action(struct iavf_adapter *ad,
 
 	rss_meta_ptr = rte_zmalloc(NULL, sizeof(*rss_meta_ptr), 0);
 	if (!rss_meta_ptr) {
-		rte_flow_error_set(error, EINVAL,
+		rte_flow_error_set(error, ENOMEM,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 				   "No memory for rss_meta_ptr");
 		return -ENOMEM;
@@ -1594,9 +1596,10 @@ iavf_hash_create(__rte_unused struct iavf_adapter *ad,
 	rss_cfg = rte_zmalloc("iavf rss rule",
 			      sizeof(struct virtchnl_rss_cfg), 0);
 	if (!rss_cfg) {
-		rte_flow_error_set(error, EINVAL,
+		rte_flow_error_set(error, ENOMEM,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 				   "No memory for rss rule");
+		rte_free(meta);
 		return -ENOMEM;
 	}
 
@@ -1612,6 +1615,7 @@ iavf_hash_create(__rte_unused struct iavf_adapter *ad,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 				   "Failed to add rss rule.");
 		rte_free(rss_cfg);
+		rte_free(meta);
 		return -rte_errno;
 	}
 
@@ -1629,19 +1633,22 @@ iavf_hash_destroy(__rte_unused struct iavf_adapter *ad,
 	struct virtchnl_rss_cfg *rss_cfg;
 	int ret = 0;
 
-	if (vf->vf_reset)
-		return 0;
-
 	rss_cfg = (struct virtchnl_rss_cfg *)flow->rule;
 
-	ret = iavf_add_del_rss_cfg(ad, rss_cfg, false);
-	if (ret) {
-		PMD_DRV_LOG(ERR, "fail to del RSS configure");
-		rte_flow_error_set(error, -ret,
-				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
-				   "Failed to delete rss rule.");
-		return -rte_errno;
+	if (!vf->vf_reset) {
+		ret = iavf_add_del_rss_cfg(ad, rss_cfg, false);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "fail to del RSS configure");
+			rte_flow_error_set(error, -ret,
+					   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+					   "Failed to delete rss rule.");
+			return -rte_errno;
+		}
 	}
+
+	flow->rule = NULL;
+	rte_free(rss_cfg);
+
 	return ret;
 }
 
