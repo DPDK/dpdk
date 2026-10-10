@@ -71,9 +71,8 @@ void
 gve_free_rss_config(struct gve_rss_config *gve_rss_conf)
 {
 	rte_free(gve_rss_conf->indir);
-	gve_rss_conf->indir = NULL;
 	rte_free(gve_rss_conf->key);
-	gve_rss_conf->key = NULL;
+	memset(gve_rss_conf, 0, sizeof(*gve_rss_conf));
 }
 
 int
