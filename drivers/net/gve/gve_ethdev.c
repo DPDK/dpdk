@@ -699,6 +699,7 @@ gve_teardown_device_resources(struct gve_priv *priv)
 	gve_free_ptype_lut_dqo(priv);
 	gve_free_counter_array(priv);
 	gve_free_irq_db(priv);
+	gve_free_rss_config(&priv->rss_config);
 	gve_clear_device_resources_ok(priv);
 }
 
