@@ -173,10 +173,17 @@ static void sff_8079_show_transceiver(const uint8_t *data, struct sff_output *d)
 		sff_output_field(d, name, "FC: 1200 MBytes/sec");
 	if (data[10] & (1 << 6))
 		sff_output_field(d, name, "FC: 800 MBytes/sec");
+	if (data[10] & (1 << 5))
+		sff_output_field(d, name, "FC: 1600 MBytes/sec");
 	if (data[10] & (1 << 4))
 		sff_output_field(d, name, "FC: 400 MBytes/sec");
+	if (data[10] & (1 << 3))
+		sff_output_field(d, name, "FC: 3200 MBytes/sec");
 	if (data[10] & (1 << 2))
 		sff_output_field(d, name, "FC: 200 MBytes/sec");
+	/* bit 1 refers to the Fibre Channel Speed 2 byte */
+	if ((data[10] & (1 << 1)) && (data[62] & (1 << 0)))
+		sff_output_field(d, name, "FC: 6400 MBytes/sec");
 	if (data[10] & (1 << 0))
 		sff_output_field(d, name, "FC: 100 MBytes/sec");
 

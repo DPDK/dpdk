@@ -364,6 +364,10 @@ static void sff_8636_show_transceiver(const uint8_t *data, struct sff_output *d)
 		sff_output_field(d, name, "SONET: OC-48, short reach");
 
 	/* SAS/SATA Compliance Codes */
+	if (data[SFF_8636_SAS_COMP_OFFSET] & SFF_8636_SAS_24G)
+		sff_output_field(d, name, "SAS 24.0G");
+	if (data[SFF_8636_SAS_COMP_OFFSET] & SFF_8636_SAS_12G)
+		sff_output_field(d, name, "SAS 12.0G");
 	if (data[SFF_8636_SAS_COMP_OFFSET] & SFF_8636_SAS_6G)
 		sff_output_field(d, name, "SAS 6.0G");
 	if (data[SFF_8636_SAS_COMP_OFFSET] & SFF_8636_SAS_3G)
@@ -432,6 +436,8 @@ static void sff_8636_show_transceiver(const uint8_t *data, struct sff_output *d)
 		sff_output_field(d, name, "FC: 1600 MBytes/sec");
 	if (data[SFF_8636_FC_SPEED_OFFSET] & SFF_8636_FC_SPEED_400_MBPS)
 		sff_output_field(d, name, "FC: 400 MBytes/sec");
+	if (data[SFF_8636_FC_SPEED_OFFSET] & SFF_8636_FC_SPEED_3200_MBPS)
+		sff_output_field(d, name, "FC: 3200 MBytes/sec");
 	if (data[SFF_8636_FC_SPEED_OFFSET] & SFF_8636_FC_SPEED_200_MBPS)
 		sff_output_field(d, name, "FC: 200 MBytes/sec");
 	if (data[SFF_8636_FC_SPEED_OFFSET] & SFF_8636_FC_SPEED_100_MBPS)

@@ -4,6 +4,7 @@
 
 #include <errno.h>
 #include <stdalign.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -66,6 +67,27 @@ parse(uint32_t type, const uint8_t *data, uint32_t length)
 
 #define CHECK_NO_FIELD(name) \
 	TEST_ASSERT_NULL(find_field(name), "Unexpected field \"%s\"", name)
+
+/* A field name may be reported more than once, e.g. "Transceiver type" */
+static bool
+has_field_value(const char *name, const char *value)
+{
+	unsigned int i;
+
+	for (i = 0; i < fields.count; i++)
+		if (strcmp(fields.field[i].name, name) == 0 &&
+		    strcmp(fields.field[i].value, value) == 0)
+			return true;
+	return false;
+}
+
+#define CHECK_FIELD_VALUE(name, value) \
+	TEST_ASSERT(has_field_value(name, value), \
+		"Field \"%s\" with value \"%s\" not found", name, value)
+
+#define CHECK_NO_FIELD_VALUE(name, value) \
+	TEST_ASSERT(!has_field_value(name, value), \
+		"Unexpected field \"%s\" with value \"%s\"", name, value)
 
 static void
 put_u16(uint8_t *data, unsigned int offset, uint16_t value)
@@ -240,6 +262,66 @@ test_module_eeprom_qsfp_8636_thresholds(void)
 	CHECK_FIELD("Alarm/warning flags implemented", "Yes");
 	CHECK_FIELD("Module temperature high alarm threshold",
 		"80.00 degrees C / 176.00 degrees F");
+	return TEST_SUCCESS;
+}
+
+static int
+test_module_eeprom_sfp_compliance(void)
+{
+	uint8_t data[RTE_ETH_MODULE_SFF_8472_LEN];
+
+	/* one bit at a time, so that swapped bits are detected */
+	fill_sfp(data);
+	data[10] = 0x20;	/* FC speed: 1600 MBytes/s */
+	TEST_ASSERT_SUCCESS(parse(RTE_ETH_MODULE_SFF_8472, data, sizeof(data)),
+		"Failed to parse SFF-8472 data with FC 1600");
+	CHECK_FIELD_VALUE("Transceiver type", "FC: 1600 MBytes/sec");
+	CHECK_NO_FIELD_VALUE("Transceiver type", "FC: 3200 MBytes/sec");
+
+	data[10] = 0x08;	/* FC speed: 3200 MBytes/s */
+	TEST_ASSERT_SUCCESS(parse(RTE_ETH_MODULE_SFF_8472, data, sizeof(data)),
+		"Failed to parse SFF-8472 data with FC 3200");
+	CHECK_FIELD_VALUE("Transceiver type", "FC: 3200 MBytes/sec");
+	CHECK_NO_FIELD_VALUE("Transceiver type", "FC: 1600 MBytes/sec");
+
+	data[10] = 0;
+	data[62] = 0x01;	/* 64GFC, without the byte 10 bit 1 pointer */
+	TEST_ASSERT_SUCCESS(parse(RTE_ETH_MODULE_SFF_8472, data, sizeof(data)),
+		"Failed to parse SFF-8472 data with byte 62 only");
+	CHECK_NO_FIELD_VALUE("Transceiver type", "FC: 6400 MBytes/sec");
+
+	data[10] = 0x02;	/* see byte 62, Fibre Channel Speed 2 */
+	TEST_ASSERT_SUCCESS(parse(RTE_ETH_MODULE_SFF_8472, data, sizeof(data)),
+		"Failed to parse SFF-8472 data with Fibre Channel Speed 2");
+	CHECK_FIELD_VALUE("Transceiver type", "FC: 6400 MBytes/sec");
+	return TEST_SUCCESS;
+}
+
+static int
+test_module_eeprom_qsfp_compliance(void)
+{
+	uint8_t data[RTE_ETH_MODULE_SFF_8636_LEN];
+
+	/* one bit at a time, so that swapped bits are detected */
+	fill_qsfp(data);
+	data[133] = 0x80;	/* SAS 24.0G */
+	TEST_ASSERT_SUCCESS(parse(RTE_ETH_MODULE_SFF_8636, data, sizeof(data)),
+		"Failed to parse SFF-8636 data with SAS 24.0G");
+	CHECK_FIELD_VALUE("Transceiver type", "SAS 24.0G");
+	CHECK_NO_FIELD_VALUE("Transceiver type", "SAS 12.0G");
+
+	data[133] = 0x40;	/* SAS 12.0G */
+	TEST_ASSERT_SUCCESS(parse(RTE_ETH_MODULE_SFF_8636, data, sizeof(data)),
+		"Failed to parse SFF-8636 data with SAS 12.0G");
+	CHECK_FIELD_VALUE("Transceiver type", "SAS 12.0G");
+	CHECK_NO_FIELD_VALUE("Transceiver type", "SAS 24.0G");
+
+	data[133] = 0;
+	data[138] = 0x08;	/* FC speed: 3200 MBytes/s */
+	TEST_ASSERT_SUCCESS(parse(RTE_ETH_MODULE_SFF_8636, data, sizeof(data)),
+		"Failed to parse SFF-8636 data with FC 3200");
+	CHECK_FIELD_VALUE("Transceiver type", "FC: 3200 MBytes/sec");
+	CHECK_NO_FIELD_VALUE("Transceiver type", "FC: 1600 MBytes/sec");
 	return TEST_SUCCESS;
 }
 
@@ -567,6 +649,8 @@ static struct unit_test_suite module_eeprom_testsuite = {
 		TEST_CASE(test_module_eeprom_sfp_8472_cal_saturate_min),
 		TEST_CASE(test_module_eeprom_sfp_8472_cal_round),
 		TEST_CASE(test_module_eeprom_sfp_8472_status),
+		TEST_CASE(test_module_eeprom_sfp_compliance),
+		TEST_CASE(test_module_eeprom_qsfp_compliance),
 		TEST_CASE(test_module_eeprom_qsfp_8636),
 		TEST_CASE(test_module_eeprom_qsfp_8636_thresholds),
 		TEST_CASE(test_module_eeprom_qsfp_8636_signals_not_implemented),
