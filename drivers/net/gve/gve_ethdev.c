@@ -1683,10 +1683,10 @@ gve_init_priv(struct gve_priv *priv, bool skip_describe_device)
 	priv->max_nb_txq = RTE_MIN(priv->max_nb_txq, priv->num_ntfy_blks / 2);
 	priv->max_nb_rxq = RTE_MIN(priv->max_nb_rxq, priv->num_ntfy_blks / 2);
 
-	if (priv->default_num_queues > 0) {
-		priv->max_nb_txq = RTE_MIN(priv->default_num_queues, priv->max_nb_txq);
-		priv->max_nb_rxq = RTE_MIN(priv->default_num_queues, priv->max_nb_rxq);
-	}
+	if (priv->default_tx_num_queues > 0)
+		priv->max_nb_txq = RTE_MIN(priv->default_tx_num_queues, priv->max_nb_txq);
+	if (priv->default_rx_num_queues > 0)
+		priv->max_nb_rxq = RTE_MIN(priv->default_rx_num_queues, priv->max_nb_rxq);
 
 	PMD_DRV_LOG(INFO, "Max TX queues %d, Max RX queues %d",
 		    priv->max_nb_txq, priv->max_nb_rxq);

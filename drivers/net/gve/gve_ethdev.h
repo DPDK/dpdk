@@ -339,7 +339,8 @@ struct gve_priv {
 
 	uint64_t max_registered_pages;
 	uint64_t num_registered_pages; /* num pages registered with NIC */
-	uint16_t default_num_queues; /* default num queues to set up */
+	uint16_t default_tx_num_queues; /* default num tx queues to set up */
+	uint16_t default_rx_num_queues; /* default num rx queues to set up */
 	enum gve_queue_format queue_format; /* see enum gve_queue_format */
 	uint8_t enable_rsc;
 
