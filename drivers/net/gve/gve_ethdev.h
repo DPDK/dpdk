@@ -193,7 +193,6 @@ struct gve_tx_queue {
 	uint16_t sw_size;
 	uint8_t cur_gen_bit;
 	uint32_t last_desc_cleaned;
-	void **txqs;
 	uint16_t re_cnt;
 
 	/* Only valid for DQO_RDA queue format */
