@@ -348,7 +348,7 @@ struct gve_priv {
 	uint32_t num_ntfy_blks; /* spilt between TX and RX so must be even */
 
 	struct gve_registers __iomem *reg_bar0; /* see gve_register.h */
-	rte_be32_t __iomem *db_bar2; /* "array" of doorbells */
+	rte_be32_t __iomem *db_bar; /* "array" of doorbells */
 	struct rte_pci_device *pci_dev;
 	uint16_t port_id;
 
