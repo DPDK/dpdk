@@ -119,6 +119,8 @@ gve_update_priv_rss_config(struct gve_priv *priv, struct gve_rss_config *config)
 	memcpy(priv_config->key, config->key,
 		config->key_size * sizeof(*priv_config->key));
 
+	priv->rss_cache_dirty = false;
+
 	return 0;
 }
 

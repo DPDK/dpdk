@@ -395,6 +395,7 @@ struct gve_priv {
 	uint16_t stats_end_idx; /* end index of array of stats written by NIC */
 
 	struct gve_rss_config rss_config;
+	bool rss_cache_dirty;
 	struct gve_ptype_lut *ptype_lut_dqo;
 
 	/* Flow rule management */
