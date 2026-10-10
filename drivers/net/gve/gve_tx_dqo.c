@@ -55,7 +55,6 @@ gve_tx_clean_dqo(struct gve_tx_queue *txq)
 {
 	struct gve_tx_compl_desc *compl_ring;
 	struct gve_tx_compl_desc *compl_desc;
-	struct gve_tx_queue *aim_txq;
 	struct gve_tx_pkt *pkt;
 	uint16_t new_tx_head;
 	uint16_t compl_tag;
@@ -70,15 +69,13 @@ gve_tx_clean_dqo(struct gve_tx_queue *txq)
 
 	rte_io_rmb();
 
-	aim_txq = txq->txqs[compl_desc->id];
-
 	switch (compl_desc->type) {
 	case GVE_COMPL_TYPE_DQO_DESC:
 		new_tx_head = rte_le_to_cpu_16(compl_desc->tx_head);
-		aim_txq->nb_free +=
-			(new_tx_head - aim_txq->last_desc_cleaned)
-				& (aim_txq->nb_tx_desc - 1);
-		aim_txq->last_desc_cleaned = new_tx_head;
+		txq->nb_free +=
+			(new_tx_head - txq->last_desc_cleaned)
+				& (txq->nb_tx_desc - 1);
+		txq->last_desc_cleaned = new_tx_head;
 		break;
 	case GVE_COMPL_TYPE_DQO_REINJECTION:
 		PMD_DRV_DP_LOG(DEBUG, "GVE_COMPL_TYPE_DQO_REINJECTION !!!");
@@ -93,7 +90,7 @@ gve_tx_clean_dqo(struct gve_tx_queue *txq)
 		}
 
 		/* Free packet.*/
-		pkt = &aim_txq->pkt_ring_dqo[compl_tag];
+		pkt = &txq->pkt_ring_dqo[compl_tag];
 		if (unlikely(!pkt->mbuf)) {
 			PMD_DRV_DP_LOG(ERR, "No outstanding packet for completion tag %d",
 				       compl_tag);
@@ -534,7 +531,6 @@ gve_tx_queue_setup_dqo(struct rte_eth_dev *dev, uint16_t queue_id,
 	txq->compl_ring = (struct gve_tx_compl_desc *)mz->addr;
 	txq->compl_ring_phys_addr = mz->iova;
 	txq->compl_ring_mz = mz;
-	txq->txqs = dev->data->tx_queues;
 
 	mz = rte_eth_dma_zone_reserve(dev, "txq_res", queue_id,
 				      sizeof(struct gve_queue_resources),
