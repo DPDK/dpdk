@@ -897,7 +897,8 @@ gve_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
 
 	dev_info->rx_offload_capa = RTE_ETH_RX_OFFLOAD_RSS_HASH;
-	if (!gve_is_gqi(priv) && priv->nic_ts_report_mz)
+	if (priv->clk_read_type != GVE_DEV_CLK_UNSUPPORTED &&
+	    priv->nic_ts_report_mz != NULL)
 		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_TIMESTAMP;
 	dev_info->tx_offload_capa =
 		RTE_ETH_TX_OFFLOAD_MULTI_SEGS	|
@@ -1377,7 +1378,7 @@ gve_read_clock(struct rte_eth_dev *dev, uint64_t *clock)
 	uint64_t ts;
 	int err;
 
-	if (!priv->nic_timestamp_supported)
+	if (priv->clk_read_type == GVE_DEV_CLK_UNSUPPORTED)
 		return -EOPNOTSUPP;
 
 	if (!priv->nic_ts_report_mz)
@@ -1477,7 +1478,7 @@ gve_setup_nic_timestamp(struct gve_priv *priv)
 {
 	int err;
 
-	if (!priv->nic_timestamp_supported)
+	if (priv->clk_read_type == GVE_DEV_CLK_UNSUPPORTED)
 		return;
 
 	rte_atomic_store_explicit(&priv->nic_ts_read_fails, 0, rte_memory_order_relaxed);

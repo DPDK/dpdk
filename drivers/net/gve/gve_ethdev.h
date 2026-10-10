@@ -274,6 +274,11 @@ extern const struct rte_flow_ops gve_flow_ops;
 struct gve_priv;
 struct gve_flow_rule_params;
 
+enum gve_dev_clk_type {
+	GVE_DEV_CLK_UNSUPPORTED = 0,
+	GVE_DEV_CLK_CMD,
+};
+
 struct gve_ctrl_ops {
 	int (*init_ctrl_plane)(struct gve_priv *priv);
 	void (*free_ctrl_plane)(struct gve_priv *priv);
@@ -407,7 +412,7 @@ struct gve_priv {
 	TAILQ_HEAD(, gve_flow) active_flows;
 
 	/* HW Timestamping Fields */
-	bool nic_timestamp_supported;
+	enum gve_dev_clk_type clk_read_type;
 	const struct rte_memzone *nic_ts_report_mz;
 	struct gve_nic_ts_report *nic_ts_report;
 	pthread_mutex_t nic_ts_lock;
