@@ -5,14 +5,9 @@
 #include <math.h>
 #include <eal_export.h>
 #include "rte_red.h"
-#include <rte_random.h>
 #include <rte_common.h>
 
-static int rte_red_init_done = 0;     /**< Flag to indicate that global initialisation is done */
-RTE_EXPORT_SYMBOL(rte_red_rand_val)
-uint32_t rte_red_rand_val = 0;        /**< Random value cache */
-RTE_EXPORT_SYMBOL(rte_red_rand_seed)
-uint32_t rte_red_rand_seed = 0;       /**< Seed for random number generation */
+static int rte_red_init_done;         /**< Flag to indicate that global initialisation is done */
 
 /**
  * table[i] = log2(1-Wq) * Scale * -1
@@ -116,8 +111,6 @@ rte_red_config_init(struct rte_red_config *red_cfg,
 	 *  Initialize the RED module if not already done
 	 */
 	if (!rte_red_init_done) {
-		rte_red_rand_seed = rte_rand();
-		rte_red_rand_val = rte_fast_rand();
 		__rte_red_init_tables();
 		rte_red_init_done = 1;
 	}
