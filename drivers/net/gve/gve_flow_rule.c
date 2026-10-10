@@ -446,11 +446,14 @@ gve_flow_free_bmp(struct gve_priv *priv)
 int
 gve_free_flow_rules(struct gve_priv *priv)
 {
+	struct gve_process_private *process_priv;
 	struct gve_flow *flow;
 	int err = 0;
 
+	process_priv = rte_eth_devices[priv->port_id].process_private;
+
 	if (!TAILQ_EMPTY(&priv->active_flows)) {
-		err = gve_adminq_reset_flow_rules(priv);
+		err = process_priv->ctrl_ops->reset_flow_rules(priv);
 		if (err) {
 			PMD_DRV_LOG(ERR,
 				"Failed to reset flow rules, internal device err=%d",
@@ -475,6 +478,7 @@ gve_create_flow_rule(struct rte_eth_dev *dev,
 		     const struct rte_flow_action actions[],
 		     struct rte_flow_error *error)
 {
+	struct gve_process_private *process_priv = dev->process_private;
 	struct gve_priv *priv = dev->data->dev_private;
 	struct gve_flow_rule_params rule = {0};
 	uint64_t slab_bits = 0;
@@ -516,7 +520,7 @@ gve_create_flow_rule(struct rte_eth_dev *dev,
 		goto free_flow_and_unlock;
 	}
 
-	err = gve_adminq_add_flow_rule(priv, &rule, flow->rule_id);
+	err = process_priv->ctrl_ops->add_flow_rule(priv, &rule, flow->rule_id);
 	if (err) {
 		rte_bitmap_set(priv->avail_flow_rule_bmp, flow->rule_id);
 		rte_flow_error_set(error, -err,
@@ -541,6 +545,7 @@ static int
 gve_destroy_flow_rule(struct rte_eth_dev *dev, struct rte_flow *flow_handle,
 		      struct rte_flow_error *error)
 {
+	struct gve_process_private *process_priv = dev->process_private;
 	struct gve_priv *priv = dev->data->dev_private;
 	struct gve_flow *flow;
 	bool flow_rule_active;
@@ -588,7 +593,7 @@ gve_destroy_flow_rule(struct rte_eth_dev *dev, struct rte_flow *flow_handle,
 		goto unlock;
 	}
 
-	err = gve_adminq_del_flow_rule(priv, flow->rule_id);
+	err = process_priv->ctrl_ops->del_flow_rule(priv, flow->rule_id);
 	if (err) {
 		rte_flow_error_set(error, -err,
 			RTE_FLOW_ERROR_TYPE_HANDLE, NULL,

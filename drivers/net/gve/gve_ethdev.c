@@ -153,9 +153,12 @@ gve_setup_queue_page_list(struct gve_priv *priv, uint16_t queue_id, bool is_rx,
 	uint32_t num_pages)
 {
 	const char *queue_type_string = is_rx ? "rx" : "tx";
+	struct gve_process_private *process_priv;
 	char qpl_name[RTE_MEMZONE_NAMESIZE];
 	struct gve_queue_page_list *qpl;
 	int err;
+
+	process_priv = rte_eth_devices[priv->port_id].process_private;
 
 	/* Allocate a new QPL. */
 	snprintf(qpl_name, sizeof(qpl_name), "gve_%s_%s_qpl%d",
@@ -181,7 +184,7 @@ gve_setup_queue_page_list(struct gve_priv *priv, uint16_t queue_id, bool is_rx,
 			    priv->max_registered_pages);
 		goto cleanup_qpl;
 	}
-	err = gve_adminq_register_page_list(priv, qpl);
+	err = process_priv->ctrl_ops->register_page_list(priv, qpl);
 	if (err) {
 		PMD_DRV_LOG(ERR,
 			    "Failed to register %s qpl for queue %hu.",
@@ -200,7 +203,11 @@ int
 gve_teardown_queue_page_list(struct gve_priv *priv,
 	struct gve_queue_page_list *qpl)
 {
-	int err = gve_adminq_unregister_page_list(priv, qpl->id);
+	struct gve_process_private *process_priv;
+	int err;
+
+	process_priv = rte_eth_devices[priv->port_id].process_private;
+	err = process_priv->ctrl_ops->unregister_page_list(priv, qpl->id);
 	if (err) {
 		PMD_DRV_LOG(CRIT, "Unable to unregister qpl %d!", qpl->id);
 		return err;
@@ -213,6 +220,7 @@ gve_teardown_queue_page_list(struct gve_priv *priv,
 static int
 gve_dev_configure(struct rte_eth_dev *dev)
 {
+	struct gve_process_private *process_priv = dev->process_private;
 	struct gve_priv *priv = dev->data->dev_private;
 	int err;
 
@@ -239,7 +247,7 @@ gve_dev_configure(struct rte_eth_dev *dev)
 		gve_init_rss_config_from_priv(priv, &update_reta_config);
 		gve_generate_rss_reta(dev, &update_reta_config);
 
-		err = gve_adminq_configure_rss(priv, &update_reta_config);
+		err = process_priv->ctrl_ops->configure_rss(priv, &update_reta_config);
 		if (err)
 			PMD_DRV_LOG(ERR,
 				"Could not reconfigure RSS redirection table.");
@@ -256,6 +264,7 @@ gve_dev_configure(struct rte_eth_dev *dev)
 static int
 gve_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complete)
 {
+	struct gve_process_private *process_priv = dev->process_private;
 	struct gve_priv *priv = dev->data->dev_private;
 	struct rte_eth_link link;
 	int err;
@@ -270,7 +279,7 @@ gve_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complete)
 	} else {
 		link.link_status = RTE_ETH_LINK_UP;
 		PMD_DRV_LOG(DEBUG, "Get link status from hw");
-		err = gve_adminq_report_link_speed(priv);
+		err = process_priv->ctrl_ops->report_link_speed(priv);
 		if (err) {
 			PMD_DRV_LOG(ERR, "Failed to get link speed.");
 			priv->link_speed = RTE_ETH_SPEED_NUM_UNKNOWN;
@@ -359,6 +368,7 @@ gve_get_imissed_from_nic(struct rte_eth_dev *dev)
 static int
 gve_start_queues(struct rte_eth_dev *dev)
 {
+	struct gve_process_private *process_priv = dev->process_private;
 	struct gve_priv *priv = dev->data->dev_private;
 	uint16_t num_queues;
 	uint16_t i;
@@ -366,7 +376,7 @@ gve_start_queues(struct rte_eth_dev *dev)
 
 	num_queues = dev->data->nb_tx_queues;
 	priv->txqs = (struct gve_tx_queue **)dev->data->tx_queues;
-	ret = gve_adminq_create_tx_queues(priv, num_queues);
+	ret = process_priv->ctrl_ops->create_tx_queues(priv, num_queues);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "Failed to create %u tx queues.", num_queues);
 		return ret;
@@ -384,7 +394,7 @@ gve_start_queues(struct rte_eth_dev *dev)
 
 	num_queues = dev->data->nb_rx_queues;
 	priv->rxqs = (struct gve_rx_queue **)dev->data->rx_queues;
-	ret = gve_adminq_create_rx_queues(priv, num_queues);
+	ret = process_priv->ctrl_ops->create_rx_queues(priv, num_queues);
 	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "Failed to create %u rx queues.", num_queues);
 		goto err_tx;
@@ -422,6 +432,7 @@ err_tx:
 static int
 gve_dev_start(struct rte_eth_dev *dev)
 {
+	struct gve_process_private *process_priv = dev->process_private;
 	struct gve_priv *priv;
 	int ret;
 
@@ -450,11 +461,12 @@ gve_dev_start(struct rte_eth_dev *dev)
 				"Failed to allocate region for stats reporting.");
 			return ret;
 		}
-		ret = gve_adminq_report_stats(priv, priv->stats_report_len,
+		ret = process_priv->ctrl_ops->setup_stats_report(priv,
+				priv->stats_report_len,
 				priv->stats_report_mem->iova,
 				GVE_STATS_REPORT_TIMER_PERIOD);
 		if (ret != 0) {
-			PMD_DRV_LOG(ERR, "gve_adminq_report_stats command failed.");
+			PMD_DRV_LOG(ERR, "setup_stats_report command failed.");
 			return ret;
 		}
 	}
@@ -467,6 +479,7 @@ gve_dev_start(struct rte_eth_dev *dev)
 static void
 gve_read_nic_clock(void *arg)
 {
+	struct gve_process_private *process_priv;
 	struct gve_priv *priv = arg;
 	uint32_t fails;
 	uint64_t ts;
@@ -475,10 +488,12 @@ gve_read_nic_clock(void *arg)
 	if (!priv || !priv->nic_ts_report_mz)
 		return;
 
+	process_priv = rte_eth_devices[priv->port_id].process_private;
+
 	pthread_mutex_lock(&priv->nic_ts_lock);
 	memset(priv->nic_ts_report, 0, sizeof(struct gve_nic_ts_report));
 
-	err = gve_adminq_report_nic_timestamp(priv, priv->nic_ts_report_mz->iova);
+	err = process_priv->ctrl_ops->report_nic_timestamp(priv, priv->nic_ts_report_mz->iova);
 	if (err == 0) {
 		ts = be64_to_cpu(priv->nic_ts_report->nic_timestamp);
 		pthread_mutex_unlock(&priv->nic_ts_lock);
@@ -678,11 +693,14 @@ gve_teardown_flow_subsystem(struct gve_priv *priv)
 static void
 gve_teardown_device_resources(struct gve_priv *priv)
 {
+	struct gve_process_private *process_priv;
 	int err;
+
+	process_priv = rte_eth_devices[priv->port_id].process_private;
 
 	/* Tell device its resources are being freed */
 	if (gve_get_device_resources_ok(priv)) {
-		err = gve_adminq_deconfigure_device_resources(priv);
+		err = process_priv->ctrl_ops->free_db_resources(priv);
 		if (err)
 			PMD_DRV_LOG(ERR,
 				"Could not deconfigure device resources: err=%d",
@@ -706,11 +724,15 @@ gve_teardown_device_resources(struct gve_priv *priv)
 static int
 gve_dev_close(struct rte_eth_dev *dev)
 {
+	struct gve_process_private *process_priv = dev->process_private;
 	struct gve_priv *priv = dev->data->dev_private;
 	int err = 0;
 
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		free(dev->process_private);
+		dev->process_private = NULL;
 		return 0;
+	}
 
 	if (dev->data->dev_started) {
 		err = gve_dev_stop(dev);
@@ -723,12 +745,15 @@ gve_dev_close(struct rte_eth_dev *dev)
 
 	gve_free_queues(dev);
 	gve_teardown_device_resources(priv);
-	gve_adminq_free(priv);
+	process_priv->ctrl_ops->free_ctrl_plane(priv);
 
 	pthread_mutex_destroy(&priv->flow_rule_lock);
 	pthread_mutex_destroy(&priv->nic_ts_lock);
 
 	dev->data->mac_addrs = NULL;
+
+	free(dev->process_private);
+	dev->process_private = NULL;
 
 	return err;
 }
@@ -736,6 +761,7 @@ gve_dev_close(struct rte_eth_dev *dev)
 static int
 gve_dev_reset(struct rte_eth_dev *dev)
 {
+	struct gve_process_private *process_priv = dev->process_private;
 	struct gve_priv *priv = dev->data->dev_private;
 	int err;
 
@@ -757,7 +783,7 @@ gve_dev_reset(struct rte_eth_dev *dev)
 	 */
 	gve_free_queues(dev);
 	gve_teardown_device_resources(priv);
-	gve_adminq_free(priv);
+	process_priv->ctrl_ops->free_ctrl_plane(priv);
 
 	err = gve_init_priv(priv, true);
 	if (err != 0) {
@@ -953,6 +979,7 @@ gve_dev_stats_reset(struct rte_eth_dev *dev)
 static int
 gve_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 {
+	struct gve_process_private *process_priv = dev->process_private;
 	struct gve_priv *priv = dev->data->dev_private;
 	int err;
 
@@ -968,7 +995,7 @@ gve_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		return -EBUSY;
 	}
 
-	err = gve_adminq_set_mtu(priv, mtu);
+	err = process_priv->ctrl_ops->set_mtu(priv, mtu);
 	if (err) {
 		PMD_DRV_LOG(ERR, "Failed to set mtu as %u err = %d", mtu, err);
 		return err;
@@ -1098,6 +1125,7 @@ static int
 gve_rss_hash_update(struct rte_eth_dev *dev,
 			struct rte_eth_rss_conf *rss_conf)
 {
+	struct gve_process_private *process_priv = dev->process_private;
 	struct gve_priv *priv = dev->data->dev_private;
 	struct gve_rss_config gve_rss_conf;
 	int rss_reta_size;
@@ -1158,7 +1186,7 @@ gve_rss_hash_update(struct rte_eth_dev *dev,
 		memcpy(gve_rss_conf.indir, priv->rss_config.indir,
 			gve_rss_conf.indir_size * sizeof(*priv->rss_config.indir));
 
-	err = gve_adminq_configure_rss(priv, &gve_rss_conf);
+	err = process_priv->ctrl_ops->configure_rss(priv, &gve_rss_conf);
 	if (!err)
 		gve_update_priv_rss_config(priv, &gve_rss_conf);
 
@@ -1198,6 +1226,7 @@ static int
 gve_rss_reta_update(struct rte_eth_dev *dev,
 	struct rte_eth_rss_reta_entry64 *reta_conf, uint16_t reta_size)
 {
+	struct gve_process_private *process_priv = dev->process_private;
 	struct gve_priv *priv = dev->data->dev_private;
 	struct gve_rss_config gve_rss_conf;
 	int table_id;
@@ -1234,7 +1263,7 @@ gve_rss_reta_update(struct rte_eth_dev *dev,
 			table_id++;
 	}
 
-	err = gve_adminq_configure_rss(priv, &gve_rss_conf);
+	err = process_priv->ctrl_ops->configure_rss(priv, &gve_rss_conf);
 	if (err)
 		PMD_DRV_LOG(ERR, "Problem configuring RSS with device.");
 	else
@@ -1300,6 +1329,7 @@ gve_flow_ops_get(struct rte_eth_dev *dev, const struct rte_flow_ops **ops)
 static int
 gve_read_clock(struct rte_eth_dev *dev, uint64_t *clock)
 {
+	struct gve_process_private *process_priv = dev->process_private;
 	struct gve_priv *priv = dev->data->dev_private;
 	uint64_t ts;
 	int err;
@@ -1311,7 +1341,7 @@ gve_read_clock(struct rte_eth_dev *dev, uint64_t *clock)
 		return -EIO;
 
 	pthread_mutex_lock(&priv->nic_ts_lock);
-	err = gve_adminq_report_nic_timestamp(priv, priv->nic_ts_report_mz->iova);
+	err = process_priv->ctrl_ops->report_nic_timestamp(priv, priv->nic_ts_report_mz->iova);
 	if (err != 0) {
 		pthread_mutex_unlock(&priv->nic_ts_lock);
 		return err;
@@ -1428,9 +1458,12 @@ gve_setup_nic_timestamp(struct gve_priv *priv)
 static int
 gve_setup_device_resources(struct gve_priv *priv)
 {
+	struct gve_process_private *process_priv;
 	char z_name[RTE_MEMZONE_NAMESIZE];
 	const struct rte_memzone *mz;
 	int err = 0;
+
+	process_priv = rte_eth_devices[priv->port_id].process_private;
 
 	snprintf(z_name, sizeof(z_name), "gve_%s_cnt_arr", priv->pci_dev->device.name);
 	mz = rte_memzone_reserve_aligned(z_name,
@@ -1457,11 +1490,7 @@ gve_setup_device_resources(struct gve_priv *priv)
 	priv->irq_dbs = (struct gve_irq_db *)mz->addr;
 	priv->irq_dbs_mz = mz;
 
-	err = gve_adminq_configure_device_resources(priv,
-						    priv->cnt_array_mz->iova,
-						    priv->num_event_counters,
-						    priv->irq_dbs_mz->iova,
-						    priv->num_ntfy_blks);
+	err = process_priv->ctrl_ops->get_interrupt_dbs(priv);
 	if (unlikely(err)) {
 		PMD_DRV_LOG(ERR, "Could not config device resources: err=%d", err);
 		goto free_irq_dbs;
@@ -1474,7 +1503,7 @@ gve_setup_device_resources(struct gve_priv *priv)
 			err = -ENOMEM;
 			goto free_irq_dbs;
 		}
-		err = gve_adminq_get_ptype_map_dqo(priv, priv->ptype_lut_dqo);
+		err = process_priv->ctrl_ops->get_ptype_map(priv);
 		if (unlikely(err)) {
 			PMD_DRV_LOG(ERR, "Failed to get ptype map: err=%d", err);
 			goto free_ptype_lut;
@@ -1563,21 +1592,59 @@ gve_stop_dev_status_polling(struct rte_eth_dev *dev)
 }
 
 static int
-gve_init_priv(struct gve_priv *priv, bool skip_describe_device)
+gve_adminq_get_device_properties(struct gve_priv *priv)
 {
-	int num_ntfy;
 	int err;
 
-	/* Set up the adminq */
-	err = gve_adminq_alloc(priv);
-	if (err) {
-		PMD_DRV_LOG(ERR, "Failed to alloc admin queue: err=%d", err);
-		return err;
-	}
 	err = gve_verify_driver_compatibility(priv);
 	if (err) {
 		PMD_DRV_LOG(ERR, "Could not verify driver compatibility: err=%d", err);
-		goto free_adminq;
+		return err;
+	}
+
+	/* Get max queues to alloc etherdev */
+	priv->max_nb_txq = ioread32be(&priv->reg_bar0->max_tx_queues);
+	priv->max_nb_rxq = ioread32be(&priv->reg_bar0->max_rx_queues);
+
+	return gve_adminq_describe_device(priv);
+}
+
+static const struct gve_ctrl_ops gve_adminq_ops = {
+	.init_ctrl_plane = gve_adminq_alloc,
+	.free_ctrl_plane = gve_adminq_free,
+	.get_device_properties = gve_adminq_get_device_properties,
+	.get_ptype_map = gve_adminq_get_ptype_map_dqo,
+	.get_interrupt_dbs = gve_adminq_configure_device_resources,
+	.create_tx_queues = gve_adminq_create_tx_queues,
+	.destroy_tx_queues = gve_adminq_destroy_tx_queues,
+	.create_rx_queues = gve_adminq_create_rx_queues,
+	.destroy_rx_queues = gve_adminq_destroy_rx_queues,
+	.report_link_speed = gve_adminq_report_link_speed,
+	.configure_rss = gve_adminq_configure_rss,
+	.add_flow_rule = gve_adminq_add_flow_rule,
+	.del_flow_rule = gve_adminq_del_flow_rule,
+	.reset_flow_rules = gve_adminq_reset_flow_rules,
+	.free_db_resources = gve_adminq_deconfigure_device_resources,
+	.setup_stats_report = gve_adminq_report_stats,
+	.report_nic_timestamp = gve_adminq_report_nic_timestamp,
+	.set_mtu = gve_adminq_set_mtu,
+	.register_page_list = gve_adminq_register_page_list,
+	.unregister_page_list = gve_adminq_unregister_page_list,
+};
+
+static int
+gve_init_priv(struct gve_priv *priv, bool skip_describe_device)
+{
+	struct gve_process_private *process_priv;
+	int num_ntfy;
+	int err;
+
+	process_priv = rte_eth_devices[priv->port_id].process_private;
+
+	err = process_priv->ctrl_ops->init_ctrl_plane(priv);
+	if (err) {
+		PMD_DRV_LOG(ERR, "Failed to alloc control plane: err=%d", err);
+		return err;
 	}
 
 	if (skip_describe_device)
@@ -1587,7 +1654,7 @@ gve_init_priv(struct gve_priv *priv, bool skip_describe_device)
 	gve_set_default_ring_size_bounds(priv);
 
 	/* Get the initial information we need from the device */
-	err = gve_adminq_describe_device(priv);
+	err = process_priv->ctrl_ops->get_device_properties(priv);
 	if (err) {
 		PMD_DRV_LOG(ERR, "Could not get device information: err=%d", err);
 		goto free_adminq;
@@ -1637,7 +1704,7 @@ setup_device:
 	if (!err)
 		return 0;
 free_adminq:
-	gve_adminq_free(priv);
+	process_priv->ctrl_ops->free_ctrl_plane(priv);
 	return err;
 }
 
@@ -1645,12 +1712,20 @@ static int
 gve_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct gve_priv *priv = eth_dev->data->dev_private;
-	int max_tx_queues, max_rx_queues;
+	struct gve_process_private *process_priv;
 	struct rte_pci_device *pci_dev;
 	struct gve_registers *reg_bar;
 	pthread_mutexattr_t mutexattr;
 	rte_be32_t *db_bar;
 	int err;
+
+	process_priv = calloc(1, sizeof(struct gve_process_private));
+	if (!process_priv) {
+		PMD_DRV_LOG(ERR, "Failed to alloc process_private");
+		return -ENOMEM;
+	}
+	process_priv->ctrl_ops = &gve_adminq_ops;
+	eth_dev->process_private = process_priv;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
 		if (gve_is_gqi(priv)) {
@@ -1670,27 +1745,24 @@ gve_dev_init(struct rte_eth_dev *eth_dev)
 	reg_bar = pci_dev->mem_resource[GVE_REG_BAR].addr;
 	if (!reg_bar) {
 		PMD_DRV_LOG(ERR, "Failed to map pci bar!");
-		return -ENOMEM;
+		err = -ENOMEM;
+		goto free_process_priv;
 	}
 
 	db_bar = pci_dev->mem_resource[GVE_DB_BAR].addr;
 	if (!db_bar) {
 		PMD_DRV_LOG(ERR, "Failed to map doorbell bar!");
-		return -ENOMEM;
+		err = -ENOMEM;
+		goto free_process_priv;
 	}
 
 	gve_write_version(&reg_bar->driver_version);
-	/* Get max queues to alloc etherdev */
-	max_tx_queues = ioread32be(&reg_bar->max_tx_queues);
-	max_rx_queues = ioread32be(&reg_bar->max_rx_queues);
 
 	priv->reg_bar0 = reg_bar;
 	priv->db_bar2 = db_bar;
 	priv->pci_dev = pci_dev;
+	priv->port_id = eth_dev->data->port_id;
 	priv->state_flags = 0x0;
-
-	priv->max_nb_txq = max_tx_queues;
-	priv->max_nb_rxq = max_rx_queues;
 
 	pthread_mutexattr_init(&mutexattr);
 	pthread_mutexattr_setpshared(&mutexattr, PTHREAD_PROCESS_SHARED);
@@ -1703,7 +1775,7 @@ gve_dev_init(struct rte_eth_dev *eth_dev)
 	if (err) {
 		pthread_mutex_destroy(&priv->flow_rule_lock);
 		pthread_mutex_destroy(&priv->nic_ts_lock);
-		return err;
+		goto free_process_priv;
 	}
 
 	if (gve_is_gqi(priv)) {
@@ -1719,6 +1791,11 @@ gve_dev_init(struct rte_eth_dev *eth_dev)
 	eth_dev->data->mac_addrs = &priv->dev_addr;
 
 	return 0;
+
+free_process_priv:
+	free(eth_dev->process_private);
+	eth_dev->process_private = NULL;
+	return err;
 }
 
 static int

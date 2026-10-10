@@ -556,11 +556,12 @@ gve_rx_queue_stop_dqo(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 void
 gve_stop_rx_queues_dqo(struct rte_eth_dev *dev)
 {
+	struct gve_process_private *process_priv = dev->process_private;
 	struct gve_priv *hw = dev->data->dev_private;
 	uint16_t i;
 	int err;
 
-	err = gve_adminq_destroy_rx_queues(hw, dev->data->nb_rx_queues);
+	err = process_priv->ctrl_ops->destroy_rx_queues(hw, dev->data->nb_rx_queues);
 	if (err != 0)
 		PMD_DRV_LOG(WARNING, "failed to destroy rxqs");
 

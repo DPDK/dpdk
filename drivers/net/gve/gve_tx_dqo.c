@@ -608,11 +608,12 @@ gve_tx_queue_stop_dqo(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 void
 gve_stop_tx_queues_dqo(struct rte_eth_dev *dev)
 {
+	struct gve_process_private *process_priv = dev->process_private;
 	struct gve_priv *hw = dev->data->dev_private;
 	uint16_t i;
 	int err;
 
-	err = gve_adminq_destroy_tx_queues(hw, dev->data->nb_tx_queues);
+	err = process_priv->ctrl_ops->destroy_tx_queues(hw, dev->data->nb_tx_queues);
 	if (err != 0)
 		PMD_DRV_LOG(WARNING, "failed to destroy txqs");
 
