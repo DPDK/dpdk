@@ -994,9 +994,10 @@ static void gve_enable_supported_features(struct gve_priv *priv,
 		priv->max_mtu = be16_to_cpu(dev_op_jumbo_frames->max_mtu);
 	}
 	if (dev_op_nic_timestamp &&
-	    (supported_features_mask & GVE_SUP_NIC_TIMESTAMP_MASK)) {
+	    (supported_features_mask & GVE_SUP_NIC_TIMESTAMP_MASK) &&
+	    !gve_is_gqi(priv)) {
 		PMD_DRV_LOG(INFO, "NIC TIMESTAMP device option enabled.");
-		priv->nic_timestamp_supported = true;
+		priv->clk_read_type = GVE_DEV_CLK_CMD;
 	}
 }
 
