@@ -664,11 +664,7 @@ int gve_adminq_report_nic_timestamp(struct gve_priv *priv, dma_addr_t nic_ts_rep
  * gve arranges the msix vectors so that the management vector is last.
  */
 #define GVE_NTFY_BLK_BASE_MSIX_IDX	0
-int gve_adminq_configure_device_resources(struct gve_priv *priv,
-					  dma_addr_t counter_array_bus_addr,
-					  u32 num_counters,
-					  dma_addr_t db_array_bus_addr,
-					  u32 num_ntfy_blks)
+int gve_adminq_configure_device_resources(struct gve_priv *priv)
 {
 	union gve_adminq_command cmd;
 
@@ -676,10 +672,10 @@ int gve_adminq_configure_device_resources(struct gve_priv *priv,
 	cmd.opcode = cpu_to_be32(GVE_ADMINQ_CONFIGURE_DEVICE_RESOURCES);
 	cmd.configure_device_resources =
 		(struct gve_adminq_configure_device_resources) {
-		.counter_array = cpu_to_be64(counter_array_bus_addr),
-		.num_counters = cpu_to_be32(num_counters),
-		.irq_db_addr = cpu_to_be64(db_array_bus_addr),
-		.num_irq_dbs = cpu_to_be32(num_ntfy_blks),
+		.counter_array = cpu_to_be64(priv->cnt_array_mz->iova),
+		.num_counters = cpu_to_be32(priv->num_event_counters),
+		.irq_db_addr = cpu_to_be64(priv->irq_dbs_mz->iova),
+		.num_irq_dbs = cpu_to_be32(priv->num_ntfy_blks),
 		.irq_db_stride = cpu_to_be32(sizeof(*priv->irq_dbs)),
 		.ntfy_blk_msix_base_idx =
 					cpu_to_be32(GVE_NTFY_BLK_BASE_MSIX_IDX),
@@ -1198,9 +1194,9 @@ int gve_adminq_report_link_speed(struct gve_priv *priv)
 	return err;
 }
 
-int gve_adminq_get_ptype_map_dqo(struct gve_priv *priv,
-				 struct gve_ptype_lut *ptype_lut)
+int gve_adminq_get_ptype_map_dqo(struct gve_priv *priv)
 {
+	struct gve_ptype_lut *ptype_lut = priv->ptype_lut_dqo;
 	struct gve_dma_mem ptype_map_dma_mem;
 	struct gve_ptype_map *ptype_map;
 	union gve_adminq_command cmd;
