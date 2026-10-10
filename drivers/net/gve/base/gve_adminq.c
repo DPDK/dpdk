@@ -3,9 +3,12 @@
  * Copyright (C) 2015-2022 Google, Inc.
  */
 
+#include <rte_common.h>
+
 #include "../gve_ethdev.h"
 #include "gve_adminq.h"
 #include "gve_register.h"
+#include "gve_rss.h"
 
 #define GVE_MAX_ADMINQ_RELEASE_CHECK	500
 #define GVE_ADMINQ_SLEEP_LEN		20
@@ -1275,6 +1278,8 @@ int gve_adminq_configure_rss(struct gve_priv *priv,
 	};
 
 	err = gve_adminq_execute_cmd(priv, &cmd);
+	if (err == 0)
+		gve_update_priv_rss_config(priv, rss_config);
 
 out:
 	if (indir)
