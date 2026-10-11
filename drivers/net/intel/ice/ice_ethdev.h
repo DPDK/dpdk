@@ -547,6 +547,14 @@ struct ice_mbuf_stats {
 	uint64_t tx_pkt_errors;
 };
 
+/* Chip temperature and the firmware thresholds, in degrees Celsius */
+struct ice_temp_stats {
+	uint64_t temp;
+	uint64_t warning;
+	uint64_t critical;
+	uint64_t fatal;
+};
+
 
 /**
  * Used to store previous values of fields reported by ice_stats_get that can overflow
@@ -597,6 +605,8 @@ struct ice_pf {
 	struct ice_hw_port_stats stats_offset;
 	struct ice_hw_port_stats stats;
 	struct ice_mbuf_stats mbuf_stats;
+	struct ice_temp_stats temp_stats;
+	uint64_t temp_read_tsc; /* timer cycles of the last sensor read */
 	/* internal packet statistics, it should be excluded from the total */
 	struct ice_eth_stats internal_stats_offset;
 	struct ice_eth_stats internal_stats;

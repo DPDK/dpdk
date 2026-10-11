@@ -1018,6 +1018,28 @@ To start ``testpmd``, and add vlan 10 to port 0:
 
     testpmd> rx_vlan add 10 0
 
+Chip Temperature
+~~~~~~~~~~~~~~~~
+
+When the firmware supports the internal temperature sensor,
+the extended statistics of each port include the chip temperature
+and the warning, critical and fatal thresholds set by the firmware,
+in whole degrees Celsius:
+
+* ``chip_temperature_celsius``
+* ``chip_temperature_warning_celsius``
+* ``chip_temperature_critical_celsius``
+* ``chip_temperature_fatal_celsius``
+
+The sensor is read with a firmware command at most once per second;
+in between, the last reading is reported.
+If the reading fails, all four values are 0.
+Firmware without the sensor support does not report these statistics.
+
+Usage::
+
+    testpmd> show port xstats <port_id>
+
 Diagnostic Utilities
 --------------------
 
