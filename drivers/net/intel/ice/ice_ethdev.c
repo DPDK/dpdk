@@ -397,6 +397,18 @@ static const struct ice_xstats_name_off ice_mbuf_strings[] = {
 
 #define ICE_NB_MBUF_XSTATS (sizeof(ice_mbuf_strings) / sizeof(ice_mbuf_strings[0]))
 
+static const struct ice_xstats_name_off ice_temp_strings[] = {
+	{"chip_temperature_celsius", offsetof(struct ice_temp_stats, temp)},
+	{"chip_temperature_warning_celsius",
+		offsetof(struct ice_temp_stats, warning)},
+	{"chip_temperature_critical_celsius",
+		offsetof(struct ice_temp_stats, critical)},
+	{"chip_temperature_fatal_celsius",
+		offsetof(struct ice_temp_stats, fatal)},
+};
+
+#define ICE_NB_TEMP_XSTATS RTE_DIM(ice_temp_strings)
+
 static const struct ice_xstats_name_off ice_hw_port_strings[] = {
 	{"tx_link_down_dropped", offsetof(struct ice_hw_port_stats,
 		tx_dropped_link_down)},
@@ -7265,12 +7277,56 @@ ice_stats_reset(struct rte_eth_dev *dev)
 	return 0;
 }
 
-static uint32_t
-ice_xstats_calc_num(void)
+static bool
+ice_temp_sensor_supported(struct ice_hw *hw)
 {
+	return (hw->dev_caps.supported_sensors &
+		ICE_SENSOR_SUPPORT_E810_INT_TEMP) != 0;
+}
+
+/*
+ * Read the internal temperature sensor with the admin queue command
+ * "Get Sensor Reading". The result is kept for one second so that frequent
+ * xstats polling does not load the firmware. On failure all values are 0.
+ */
+static void
+ice_update_temp_stats(struct ice_pf *pf, struct ice_hw *hw)
+{
+	struct ice_aqc_get_sensor_reading_resp resp;
+	struct ice_temp_stats *ts = &pf->temp_stats;
+	uint64_t now = rte_get_timer_cycles();
+	int ret;
+
+	if (pf->temp_read_tsc != 0 &&
+	    now - pf->temp_read_tsc < rte_get_timer_hz())
+		return;
+	pf->temp_read_tsc = now;
+
+	memset(&resp, 0, sizeof(resp));
+	ret = ice_aq_get_sensor_reading(hw, ICE_AQC_INT_TEMP_SENSOR,
+					ICE_AQC_INT_TEMP_FORMAT, &resp, NULL);
+	if (ret != 0) {
+		PMD_DRV_LOG(DEBUG, "Failed to read chip temperature: %d", ret);
+		memset(ts, 0, sizeof(*ts));
+		return;
+	}
+
+	/* the reading is signed, report below zero as 0 */
+	ts->temp = resp.data.s0f0.temp > 0 ? (uint64_t)resp.data.s0f0.temp : 0;
+	ts->warning = resp.data.s0f0.temp_warning_threshold;
+	ts->critical = resp.data.s0f0.temp_critical_threshold;
+	ts->fatal = resp.data.s0f0.temp_fatal_threshold;
+}
+
+static uint32_t
+ice_xstats_calc_num(struct rte_eth_dev *dev)
+{
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t num;
 
 	num = ICE_NB_ETH_XSTATS + ICE_NB_MBUF_XSTATS + ICE_NB_HW_PORT_XSTATS;
+	if (ice_temp_sensor_supported(hw))
+		num += ICE_NB_TEMP_XSTATS;
 
 	return num;
 }
@@ -7301,7 +7357,7 @@ ice_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	unsigned int count;
 	struct ice_hw_port_stats *hw_stats = &pf->stats;
 
-	count = ice_xstats_calc_num();
+	count = ice_xstats_calc_num(dev);
 	if (n < count)
 		return count;
 
@@ -7341,18 +7397,31 @@ ice_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 		count++;
 	}
 
+	/* Get chip temperature from ice_temp_stats struct */
+	if (ice_temp_sensor_supported(hw)) {
+		ice_update_temp_stats(pf, hw);
+		for (i = 0; i < ICE_NB_TEMP_XSTATS; i++) {
+			xstats[count].value =
+				*(uint64_t *)((char *)&pf->temp_stats +
+					      ice_temp_strings[i].offset);
+			xstats[count].id = count;
+			count++;
+		}
+	}
+
 	return count;
 }
 
-static int ice_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
+static int ice_xstats_get_names(struct rte_eth_dev *dev,
 				struct rte_eth_xstat_name *xstats_names,
 				__rte_unused unsigned int limit)
 {
+	struct ice_hw *hw = ICE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	unsigned int count = 0;
 	unsigned int i;
 
 	if (!xstats_names)
-		return ice_xstats_calc_num();
+		return ice_xstats_calc_num(dev);
 
 	/* Note: limit checked in rte_eth_xstats_names() */
 
@@ -7375,6 +7444,16 @@ static int ice_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 		strlcpy(xstats_names[count].name, ice_hw_port_strings[i].name,
 			sizeof(xstats_names[count].name));
 		count++;
+	}
+
+	/* Get chip temperature from ice_temp_stats struct */
+	if (ice_temp_sensor_supported(hw)) {
+		for (i = 0; i < ICE_NB_TEMP_XSTATS; i++) {
+			strlcpy(xstats_names[count].name,
+				ice_temp_strings[i].name,
+				sizeof(xstats_names[count].name));
+			count++;
+		}
 	}
 
 	return count;
