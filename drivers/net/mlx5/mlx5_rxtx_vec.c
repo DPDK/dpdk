@@ -244,6 +244,20 @@ rxq_copy_mprq_mbuf_v(struct mlx5_rxq_data *rxq,
 		}
 		strd_cnt = (elts[i]->pkt_len / strd_sz) +
 			   ((elts[i]->pkt_len % strd_sz) ? 1 : 0);
+		/* Drop and realign if the stride index drifted past the
+		 * buffer, rather than letting mprq_buf_to_pkt() index
+		 * past shinfos[] and the stride region (bug 1369).
+		 */
+		if (unlikely(rxq->consumed_strd + strd_cnt > strd_n)) {
+			rxq->consumed_strd = strd_n;
+			rte_pktmbuf_free_seg(elts[i]);
+#ifdef MLX5_PMD_SOFT_COUNTERS
+			rxq->stats.ipackets -= 1;
+			rxq->stats.ibytes -= elts[i]->pkt_len;
+#endif
+			++rxq->stats.idropped;
+			continue;
+		}
 		rxq_code = mprq_buf_to_pkt(rxq, elts[i], elts[i]->pkt_len,
 					   buf, rxq->consumed_strd, strd_cnt);
 		rxq->consumed_strd += strd_cnt;
