@@ -1297,7 +1297,7 @@ ice_rx_queue_setup(struct rte_eth_dev *dev,
 	uint16_t i;
 
 	if (nb_desc % ICE_ALIGN_RING_DESC != 0 ||
-	    nb_desc > ICE_MAX_RING_DESC ||
+	    nb_desc > ICE_MAX_NUM_DESC_BY_MAC(hw) ||
 	    nb_desc < ICE_MIN_RING_DESC) {
 		PMD_INIT_LOG(ERR, "Number (%u) of receive descriptors is "
 			     "invalid", nb_desc);
@@ -1514,7 +1514,7 @@ ice_tx_queue_setup(struct rte_eth_dev *dev,
 	offloads = tx_conf->offloads | dev->data->dev_conf.txmode.offloads;
 
 	if (nb_desc % ICE_ALIGN_RING_DESC != 0 ||
-	    nb_desc > ICE_MAX_RING_DESC ||
+	    nb_desc > ICE_MAX_NUM_DESC_BY_MAC(hw) ||
 	    nb_desc < ICE_MIN_RING_DESC) {
 		PMD_INIT_LOG(ERR, "Number (%u) of transmit descriptors is "
 			     "invalid", nb_desc);
