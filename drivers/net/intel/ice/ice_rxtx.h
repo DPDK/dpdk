@@ -22,6 +22,10 @@
 
 #define ICE_ALIGN_RING_DESC  32
 #define ICE_MIN_RING_DESC    64
+/*
+ * E830 needs a lower cap, so use ICE_MAX_NUM_DESC_BY_MAC() for ring
+ * limits rather than ICE_MAX_RING_DESC directly.
+ */
 #define ICE_MAX_RING_DESC    (8192 - 32)
 #define ICE_MAX_RING_DESC_E830	  8096
 #define ICE_MAX_NUM_DESC_BY_MAC(hw) ((hw)->phy_model == \
