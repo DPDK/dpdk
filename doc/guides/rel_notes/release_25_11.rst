@@ -1314,3 +1314,31 @@ at https://bugs.dpdk.org/show_bug.cgi?id=1941.
 * 7773d4ad0d  net/ice: use granular packet types for L2TPv2 PPP
 * 96d0e13e5f  dts: fix cryptodev latency parsing
 * 8e038dee42  net/idpf: fix Tx of large mbuf segments
+
+25.11.4 Release Notes
+---------------------
+
+This release contains fixes for CVE-2026-86561 CVE-2026-86562 CVE-2026-86563 CVE-2026-86565 CVE-2026-86566 CVE-2026-86567 CVE-2026-86845 CVE-2026-86846 CVE-2026-86847 CVE-2026-86848 CVE-2026-86849 CVE-2026-86856 CVE-2026-93683 CVE-2026-100236
+
+25.11.4 Fixes
+~~~~~~~~~~~~~
+
+* gso: fix overflow when writing to very small buffers
+* vhost: check number of queues for VDPA
+* vhost/crypto: catch incorrect request length
+* vhost/crypto: drop crypto session cache
+* vhost/crypto: fix TOCTOU OOB write in finalize path
+* vhost/crypto: fix write back chains termination
+* vhost: fix double-fetch vulnerability in control queue
+* vhost: fix header copy to multiple descriptors
+* vhost: fix indirect descriptor table double fetch
+* vhost: fix inflight descriptor table overflow
+* vhost: fix log base address mapping offset
+* vhost: fix missing memory size validation before mmap
+* vhost: fix out-of-bounds read in control virtqueue handler
+* vhost: fix VDUSE stale vring pointers after IOTLB invalidation
+
+25.11.4 Validation
+~~~~~~~~~~~~~~~~~~
+
+* Tested by UNH and local testing
