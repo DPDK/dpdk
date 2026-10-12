@@ -396,7 +396,7 @@ test_lcores(void)
 	unsigned int i;
 
 	for (i = 0; i < RTE_MAX_LCORE; i++) {
-		if (!rte_lcore_has_role(i, ROLE_OFF))
+		if (!rte_lcore_has_role(i, RTE_LCORE_ROLE_OFF))
 			eal_threads_count++;
 	}
 	if (eal_threads_count == 0) {
