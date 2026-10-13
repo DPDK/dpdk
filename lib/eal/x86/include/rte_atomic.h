@@ -60,22 +60,7 @@ extern "C" {
  * Basic idea is to use lock prefixed add with some dummy memory location
  * as the destination. From their experiments 128B(2 cache lines) below
  * current stack pointer looks like a good candidate.
- * So below we use that technique for rte_smp_mb() implementation.
  */
-
-static __rte_always_inline void
-rte_smp_mb(void)
-{
-#ifdef RTE_TOOLCHAIN_MSVC
-	_mm_mfence();
-#else
-#ifdef RTE_ARCH_I686
-	asm volatile("lock addl $0, -128(%%esp); " ::: "memory");
-#else
-	asm volatile("lock addl $0, -128(%%rsp); " ::: "memory");
-#endif
-#endif
-}
 
 #define rte_io_mb() rte_mb()
 
@@ -86,17 +71,27 @@ rte_smp_mb(void)
 /**
  * Synchronization fence between threads based on the specified memory order.
  *
- * On x86 the __rte_atomic_thread_fence(rte_memory_order_seq_cst) generates full 'mfence'
- * which is quite expensive. The optimized implementation of rte_smp_mb is
- * used instead.
+ * On x86 the __rte_atomic_thread_fence(rte_memory_order_seq_cst) generates
+ * a full 'mfence' which is quite expensive. The optimized lock add on a
+ * dummy stack location (see above) is used instead.
  */
 static __rte_always_inline void
 rte_atomic_thread_fence(rte_memory_order memorder)
 {
-	if (memorder == rte_memory_order_seq_cst)
-		rte_smp_mb();
-	else
+	if (memorder != rte_memory_order_seq_cst) {
 		__rte_atomic_thread_fence(memorder);
+		return;
+	}
+
+#ifdef RTE_TOOLCHAIN_MSVC
+	_mm_mfence();
+#else
+#ifdef RTE_ARCH_I686
+	asm volatile("lock addl $0, -128(%%esp); " ::: "memory");
+#else
+	asm volatile("lock addl $0, -128(%%rsp); " ::: "memory");
+#endif
+#endif
 }
 
 #ifdef __cplusplus
