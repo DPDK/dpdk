@@ -105,7 +105,7 @@ struct vmbus_bufring {
 	 * page aligned and starts at rte_mem_page_size() from the beginning
 	 * of this structure
 	 */
-} __rte_packed;
+};
 
 /*
  * Channel packets
