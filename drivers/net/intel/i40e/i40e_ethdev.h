@@ -887,8 +887,8 @@ enum i40e_tunnel_iptype {
 	I40E_TUNNEL_IPTYPE_IPV6,
 };
 
-/* Tunnel filter struct */
-struct i40e_tunnel_filter_input {
+/* Tunnel filter hash table match key */
+struct i40e_tunnel_filter_match_key {
 	uint8_t outer_mac[6];    /* Outer mac address to match */
 	uint8_t inner_mac[6];    /* Inner mac address to match */
 	uint16_t inner_vlan;     /* Inner vlan address to match */
@@ -898,20 +898,39 @@ struct i40e_tunnel_filter_input {
 	uint16_t general_fields[32];  /* Big buffer */
 };
 
-struct i40e_tunnel_filter {
-	TAILQ_ENTRY(i40e_tunnel_filter) rules;
-	struct i40e_tunnel_filter_input input;
-	uint8_t is_to_vf; /* 0 - to PF, 1 - to VF */
-	uint16_t vf_id;   /* VF id, available when is_to_vf is 1. */
-	uint16_t queue; /* Queue assigned to when match */
+enum i40e_tunnel_replacement_type {
+	I40E_TUNNEL_REPLACEMENT_DEFAULT,
+	I40E_TUNNEL_REPLACEMENT_MPLS,
+	I40E_TUNNEL_REPLACEMENT_GTP,
+	I40E_TUNNEL_REPLACEMENT_QINQ,
+	I40E_TUNNEL_REPLACEMENT_SRC_PORT,
+	I40E_TUNNEL_REPLACEMENT_DST_PORT,
 };
 
-TAILQ_HEAD(i40e_tunnel_filter_list, i40e_tunnel_filter);
+enum i40e_tunnel_filter_state {
+	I40E_TUNNEL_FILTER_NOT_REPLACED,
+	I40E_TUNNEL_FILTER_REPLACED,
+	/* when a filter replace fails we can't undo it until reset */
+	I40E_TUNNEL_FILTER_RESET_NEEDED,
+};
 
-struct i40e_tunnel_rule {
-	struct i40e_tunnel_filter_list tunnel_list;
-	struct i40e_tunnel_filter  **hash_map;
+#define I40E_TUNNEL_REPLACEMENT_DATA_SIZE 12
+
+struct i40e_tunnel_filter_replacement {
+	uint8_t valid_flags;
+	uint8_t old_filter_type;
+	uint8_t new_filter_type;
+	uint8_t tr_bit;
+	uint8_t tr_bit2;
+	uint8_t data[I40E_TUNNEL_REPLACEMENT_DATA_SIZE];
+};
+
+struct i40e_tunnel_state {
+	ci_usage_count_t use_count;
 	struct rte_hash *hash_table;
+	ci_usage_count_t flow_count;
+	enum i40e_tunnel_replacement_type configured_recipe;
+	enum i40e_tunnel_filter_state replacement_state;
 };
 
 /**
@@ -1180,7 +1199,7 @@ struct i40e_pf {
 	struct i40e_vmdq_info *vmdq;
 
 	struct i40e_fdir_info fdir; /* flow director info */
-	struct i40e_tunnel_rule tunnel; /* Tunnel filter rule */
+	struct i40e_tunnel_state tunnel_state; /* tunnel flow engine state */
 	struct i40e_rss_conf_list rss_config_list; /* RSS rule list */
 	struct i40e_queue_regions queue_region; /* queue region info */
 	struct i40e_fc_conf fc_conf; /* Flow control conf */
@@ -1190,12 +1209,6 @@ struct i40e_pf {
 	struct i40e_flow_list flow_list;
 	/* flow engine configuration */
 	struct ci_flow_engine_conf flow_engine_conf;
-	bool mpls_replace_flag;  /* 1 - MPLS filter replace is done */
-	bool gtp_replace_flag;   /* 1 - GTP-C/U filter replace is done */
-	bool qinq_replace_flag;  /* QINQ filter replace is done */
-	/* l4 port flag */
-	bool sport_replace_flag;   /* Source port replace is done */
-	bool dport_replace_flag;   /* Destination port replace is done */
 	struct i40e_tm_conf tm_conf;
 	bool support_multi_driver; /* 1 - support multiple driver */
 
@@ -1327,21 +1340,8 @@ struct i40e_vf_representor {
 extern const struct rte_flow_ops i40e_flow_ops;
 
 struct i40e_filter_ctx {
-	union {
-		struct i40e_tunnel_filter_conf consistent_tunnel_filter;
-		struct i40e_rte_flow_rss_conf rss_conf;
-	};
+	struct i40e_rte_flow_rss_conf rss_conf;
 	enum rte_filter_type type;
-};
-
-typedef int (*parse_filter_t)(struct rte_eth_dev *dev,
-			      const struct rte_flow_item pattern[],
-			      const struct rte_flow_action actions[],
-			      struct rte_flow_error *error,
-			      struct i40e_filter_ctx *filter);
-struct i40e_valid_pattern {
-	enum rte_flow_item_type *items;
-	parse_filter_t parse_filter;
 };
 
 int i40e_dev_switch_queues(struct i40e_pf *pf, bool on);
@@ -1409,11 +1409,6 @@ int i40e_rx_burst_mode_get(struct rte_eth_dev *dev, uint16_t queue_id,
 			   struct rte_eth_burst_mode *mode);
 int i40e_tx_burst_mode_get(struct rte_eth_dev *dev, uint16_t queue_id,
 			   struct rte_eth_burst_mode *mode);
-struct i40e_tunnel_filter *
-i40e_sw_tunnel_filter_lookup(struct i40e_tunnel_rule *tunnel_rule,
-			     const struct i40e_tunnel_filter_input *input);
-int i40e_sw_tunnel_filter_del(struct i40e_pf *pf,
-			      struct i40e_tunnel_filter_input *input);
 uint64_t i40e_get_default_input_set(uint16_t pctype);
 int i40e_ethertype_filter_program(struct i40e_pf *pf,
 			      struct rte_eth_ethertype_filter *filter,
@@ -1459,9 +1454,16 @@ void i40e_fdir_flex_store(struct i40e_fdir_state *dst_state,
 int i40e_dev_tunnel_filter_set(struct i40e_pf *pf,
 			       struct rte_eth_tunnel_filter_conf *tunnel_filter,
 			       uint8_t add);
-int i40e_dev_consistent_tunnel_filter_set(struct i40e_pf *pf,
-				  struct i40e_tunnel_filter_conf *tunnel_filter,
-				  uint8_t add);
+int i40e_tunnel_filter_match_key_get(struct i40e_pf *pf,
+				 struct i40e_tunnel_filter_conf *tunnel_filter,
+				 struct i40e_tunnel_filter_match_key *out);
+struct i40e_tunnel_state *i40e_tunnel_state_attach(struct rte_eth_dev_data *dev_data);
+void i40e_tunnel_state_detach(struct i40e_tunnel_state *state);
+int i40e_tunnel_filter_program(struct i40e_pf *pf,
+			       struct i40e_tunnel_filter_conf *tunnel_filter,
+			       uint8_t add);
+int i40e_tunnel_filter_replace(struct i40e_pf *pf,
+		const struct i40e_tunnel_filter_replacement *replacement);
 int i40e_fdir_flush(struct i40e_pf *pf);
 int i40e_find_all_vlan_for_mac(struct i40e_vsi *vsi,
 			       struct i40e_macvlan_filter *mv_f,
