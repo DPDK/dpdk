@@ -313,8 +313,6 @@ struct ixgbe_l2_tn_info {
 struct rte_flow {
 	struct ci_flow flow;
 	enum rte_filter_type filter_type;
-	/* security flows are not rte_filter_type */
-	bool is_security;
 	void *rule;
 };
 
