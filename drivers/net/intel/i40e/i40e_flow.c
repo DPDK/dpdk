@@ -26,8 +26,11 @@
 #include "base/i40e_prototype.h"
 #include "i40e_ethdev.h"
 #include "i40e_hash.h"
+#include "i40e_flow.h"
 
 #include "../common/flow_check.h"
+
+const struct ci_flow_engine_list i40e_flow_engine_list = {0};
 
 #define I40E_IPV6_TC_MASK	(0xFF << I40E_FDIR_IPv6_TC_OFFSET)
 #define I40E_IPV6_FRAG_HEADER	44
@@ -1268,6 +1271,25 @@ i40e_flow_dev_dump(struct rte_eth_dev *dev,
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct rte_flow *p_flow;
 	bool found = false;
+	int ret;
+
+	/* try the new flow engine first */
+	ret = ci_flow_dump(&pf->flow_engine_conf, flow, file, error);
+
+	/*
+	 * There are multiple possible situations here:
+	 *
+	 * - User requested to dump all flows
+	 * - User requested to dump a specific flow
+	 *
+	 * For the first case, we keep going because legacy engines might still
+	 * have flows we want to dump.
+	 *
+	 * For the second case, we only keep going if the flow we were asked to
+	 * dump was not found in the new engines.
+	 */
+	if (flow != NULL && ret == 0)
+		return 0;
 
 	TAILQ_FOREACH(p_flow, &pf->flow_list, node) {
 		size_t rule_size = 0;
@@ -3892,8 +3914,15 @@ i40e_flow_validate(struct rte_eth_dev *dev,
 		   const struct rte_flow_action actions[],
 		   struct rte_flow_error *error)
 {
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	/* creates dummy context */
 	struct i40e_filter_ctx filter_ctx = {0};
+	int ret;
+
+	/* try the new engine first */
+	ret = ci_flow_validate(&pf->flow_engine_conf, attr, pattern, actions, error);
+	if (ret == 0)
+		return 0;
 
 	return i40e_flow_check(dev, attr, pattern, actions, &filter_ctx, error);
 }
@@ -3910,6 +3939,11 @@ i40e_flow_create(struct rte_eth_dev *dev,
 	struct rte_flow *flow = NULL;
 	struct i40e_fdir_info *fdir_info = &pf->fdir;
 	int ret;
+
+	/* try the new engine first */
+	flow = ci_flow_create(&pf->flow_engine_conf, attr, pattern, actions, error);
+	if (flow != NULL)
+		return flow;
 
 	ret = i40e_flow_check(dev, attr, pattern, actions, &filter_ctx, error);
 	if (ret < 0)
@@ -4016,6 +4050,11 @@ i40e_flow_destroy(struct rte_eth_dev *dev,
 	enum rte_filter_type filter_type = flow->filter_type;
 	struct i40e_fdir_info *fdir_info = &pf->fdir;
 	int ret = 0;
+
+	/* try the new engine first */
+	ret = ci_flow_destroy(&pf->flow_engine_conf, flow, error);
+	if (ret == 0)
+		return 0;
 
 	switch (filter_type) {
 	case RTE_ETH_FILTER_ETHERTYPE:
@@ -4160,6 +4199,11 @@ i40e_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	int ret;
+
+	/* flush the new engine first */
+	ret = ci_flow_flush(&pf->flow_engine_conf, error);
+	if (ret != 0)
+		return ret;
 
 	ret = i40e_flow_flush_fdir_filter(pf);
 	if (ret) {
@@ -4310,14 +4354,21 @@ i40e_flow_flush_tunnel_filter(struct i40e_pf *pf)
 }
 
 static int
-i40e_flow_query(struct rte_eth_dev *dev __rte_unused,
+i40e_flow_query(struct rte_eth_dev *dev,
 		struct rte_flow *flow,
 		const struct rte_flow_action *actions,
 		void *data, struct rte_flow_error *error)
 {
+	struct i40e_pf *pf = dev->data->dev_private;
 	struct i40e_rss_filter *rss_rule = (struct i40e_rss_filter *)flow->rule;
 	enum rte_filter_type filter_type = flow->filter_type;
 	struct rte_flow_action_rss *rss_conf = data;
+	int ret;
+
+	/* try the new engine first */
+	ret = ci_flow_query(&pf->flow_engine_conf, flow, actions, data, error);
+	if (ret == 0)
+		return 0;
 
 	if (!rss_rule) {
 		rte_flow_error_set(error, EINVAL,
