@@ -392,14 +392,6 @@ static int i40e_set_default_mac_addr(struct rte_eth_dev *dev,
 
 static int i40e_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 
-static int i40e_tunnel_filter_convert(
-	struct i40e_aqc_cloud_filters_element_bb *cld_filter,
-	struct i40e_tunnel_filter *tunnel_filter);
-static int i40e_sw_tunnel_filter_insert(struct i40e_pf *pf,
-				struct i40e_tunnel_filter *tunnel_filter);
-static int i40e_cloud_filter_qinq_create(struct i40e_pf *pf);
-
-static void i40e_tunnel_filter_restore(struct i40e_pf *pf);
 static void i40e_filter_restore(struct i40e_pf *pf);
 static void i40e_notify_all_vfs_link_status(struct rte_eth_dev *dev);
 static int i40e_fec_get_capability(struct rte_eth_dev *dev,
@@ -996,49 +988,43 @@ config_floating_veb(struct rte_eth_dev *dev)
 #define I40E_L2_TAGS_S_TAG_SHIFT 1
 #define I40E_L2_TAGS_S_TAG_MASK I40E_MASK(0x1, I40E_L2_TAGS_S_TAG_SHIFT)
 
-static int
-i40e_init_tunnel_filter_list(struct rte_eth_dev *dev)
+struct i40e_tunnel_state *
+i40e_tunnel_state_attach(struct rte_eth_dev_data *dev_data)
 {
-	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
-	struct i40e_tunnel_rule *tunnel_rule = &pf->tunnel;
-	char tunnel_hash_name[RTE_HASH_NAMESIZE];
-	int ret;
-
-	struct rte_hash_parameters tunnel_hash_params = {
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev_data->dev_private);
+	struct i40e_tunnel_state *state = &pf->tunnel_state;
+	char tunnel_hash_name[RTE_HASH_NAMESIZE] = {0};
+	struct rte_hash_parameters hash_params = {
 		.name = tunnel_hash_name,
 		.entries = I40E_MAX_TUNNEL_FILTER_NUM,
-		.key_len = sizeof(struct i40e_tunnel_filter_input),
+		.key_len = sizeof(struct i40e_tunnel_filter_match_key),
 		.hash_func = rte_hash_crc,
 		.hash_func_init_val = 0,
 		.socket_id = rte_socket_id(),
 	};
 
-	/* Initialize tunnel filter rule list and hash */
-	TAILQ_INIT(&tunnel_rule->tunnel_list);
-	snprintf(tunnel_hash_name, RTE_HASH_NAMESIZE,
-		 "tunnel_%s", dev->device->name);
-	tunnel_rule->hash_table = rte_hash_create(&tunnel_hash_params);
-	if (!tunnel_rule->hash_table) {
-		PMD_INIT_LOG(ERR, "Failed to create tunnel hash table!");
-		return -EINVAL;
-	}
-	tunnel_rule->hash_map = rte_zmalloc("i40e_tunnel_hash_map",
-				    sizeof(struct i40e_tunnel_filter *) *
-				    I40E_MAX_TUNNEL_FILTER_NUM,
-				    0);
-	if (!tunnel_rule->hash_map) {
-		PMD_INIT_LOG(ERR,
-			     "Failed to allocate memory for tunnel hash map!");
-		ret = -ENOMEM;
-		goto err_tunnel_hash_map_alloc;
+	snprintf(tunnel_hash_name, RTE_HASH_NAMESIZE, "tunnel_%s", dev_data->name);
+
+	if (ci_usage_count_claim(&state->use_count)) {
+		state->hash_table = rte_hash_create(&hash_params);
+		if (state->hash_table == NULL) {
+			PMD_DRV_LOG(ERR, "Failed to create tunnel hash table");
+			ci_usage_count_release(&state->use_count);
+			return NULL;
+		}
 	}
 
-	return 0;
+	return state;
+}
 
-err_tunnel_hash_map_alloc:
-	rte_hash_free(tunnel_rule->hash_table);
+void
+i40e_tunnel_state_detach(struct i40e_tunnel_state *state)
+{
+	if (!ci_usage_count_release(&state->use_count))
+		return;
 
-	return ret;
+	rte_hash_free(state->hash_table);
+	state->hash_table = NULL;
 }
 
 static void
@@ -1656,10 +1642,9 @@ eth_i40e_dev_init(struct rte_eth_dev *dev, void *init_params __rte_unused)
 	/* Initialize the filter invalidation configuration */
 	i40e_init_filter_invalidation(pf);
 
-	ret = i40e_init_tunnel_filter_list(dev);
-	if (ret < 0)
-		goto err_init_tunnel_filter_list;
 	i40e_fdir_flow_store_init(dev);
+	/* after device init, tunnel configuration is in its default state */
+	pf->tunnel_state = (struct i40e_tunnel_state){0};
 
 	/* initialize flow engine configuration */
 	ret = ci_flow_engine_conf_init(&pf->flow_engine_conf,
@@ -1676,9 +1661,6 @@ eth_i40e_dev_init(struct rte_eth_dev *dev, void *init_params __rte_unused)
 	return 0;
 
 err_flow_engine_conf_init:
-	rte_hash_free(pf->tunnel.hash_table);
-	rte_free(pf->tunnel.hash_map);
-err_init_tunnel_filter_list:
 	rte_intr_callback_unregister(intr_handle,
 		i40e_dev_interrupt_handler, dev);
 	rte_free(dev->data->mac_addrs);
@@ -1699,23 +1681,6 @@ err_get_capabilities:
 	(void)i40e_shutdown_adminq(hw);
 
 	return ret;
-}
-
-static void
-i40e_rm_tunnel_filter_list(struct i40e_pf *pf)
-{
-	struct i40e_tunnel_filter *p_tunnel;
-	struct i40e_tunnel_rule *tunnel_rule;
-
-	tunnel_rule = &pf->tunnel;
-	/* Remove all tunnel director rules and hash */
-	rte_free(tunnel_rule->hash_map);
-	rte_hash_free(tunnel_rule->hash_table);
-
-	while ((p_tunnel = TAILQ_FIRST(&tunnel_rule->tunnel_list))) {
-		TAILQ_REMOVE(&tunnel_rule->tunnel_list, p_tunnel, rules);
-		rte_free(p_tunnel);
-	}
 }
 
 void i40e_flex_payload_reg_set_default(struct i40e_hw *hw)
@@ -2570,8 +2535,6 @@ i40e_dev_close(struct rte_eth_dev *dev)
 		}
 		i40e_msec_delay(500);
 	} while (retries++ < 5);
-
-	i40e_rm_tunnel_filter_list(pf);
 
 	/* Remove all flows */
 	while ((p_flow = TAILQ_FIRST(&pf->flow_list))) {
@@ -7719,569 +7682,76 @@ i40e_dev_get_filter_type(uint16_t filter_type, uint16_t *flag)
 	return 0;
 }
 
-/* Convert tunnel filter structure */
-static int
-i40e_tunnel_filter_convert(
-	struct i40e_aqc_cloud_filters_element_bb *cld_filter,
-	struct i40e_tunnel_filter *tunnel_filter)
-{
-	rte_ether_addr_copy((struct rte_ether_addr *)
-			&cld_filter->element.outer_mac,
-		(struct rte_ether_addr *)&tunnel_filter->input.outer_mac);
-	rte_ether_addr_copy((struct rte_ether_addr *)
-			&cld_filter->element.inner_mac,
-		(struct rte_ether_addr *)&tunnel_filter->input.inner_mac);
-	tunnel_filter->input.inner_vlan = cld_filter->element.inner_vlan;
-	if ((rte_le_to_cpu_16(cld_filter->element.flags) &
-	     I40E_AQC_ADD_CLOUD_FLAGS_IPV6) ==
-	    I40E_AQC_ADD_CLOUD_FLAGS_IPV6)
-		tunnel_filter->input.ip_type = I40E_TUNNEL_IPTYPE_IPV6;
-	else
-		tunnel_filter->input.ip_type = I40E_TUNNEL_IPTYPE_IPV4;
-	tunnel_filter->input.flags = cld_filter->element.flags;
-	tunnel_filter->input.tenant_id = cld_filter->element.tenant_id;
-	tunnel_filter->queue = cld_filter->element.queue_number;
-	memcpy(tunnel_filter->input.general_fields,
-		   cld_filter->general_fields,
-		   sizeof(cld_filter->general_fields));
-
-	return 0;
-}
-
-/* Check if there exists the tunnel filter */
-struct i40e_tunnel_filter *
-i40e_sw_tunnel_filter_lookup(struct i40e_tunnel_rule *tunnel_rule,
-			     const struct i40e_tunnel_filter_input *input)
-{
-	int ret;
-
-	ret = rte_hash_lookup(tunnel_rule->hash_table, (const void *)input);
-	if (ret < 0)
-		return NULL;
-
-	return tunnel_rule->hash_map[ret];
-}
-
-/* Add a tunnel filter into the SW list */
-static int
-i40e_sw_tunnel_filter_insert(struct i40e_pf *pf,
-			     struct i40e_tunnel_filter *tunnel_filter)
-{
-	struct i40e_tunnel_rule *rule = &pf->tunnel;
-	int ret;
-
-	ret = rte_hash_add_key(rule->hash_table, &tunnel_filter->input);
-	if (ret < 0) {
-		PMD_DRV_LOG(ERR,
-			    "Failed to insert tunnel filter to hash table %d!",
-			    ret);
-		return ret;
-	}
-	rule->hash_map[ret] = tunnel_filter;
-
-	TAILQ_INSERT_TAIL(&rule->tunnel_list, tunnel_filter, rules);
-
-	return 0;
-}
-
-/* Delete a tunnel filter from the SW list */
 int
-i40e_sw_tunnel_filter_del(struct i40e_pf *pf,
-			  struct i40e_tunnel_filter_input *input)
+i40e_tunnel_filter_replace(struct i40e_pf *pf,
+		const struct i40e_tunnel_filter_replacement *replacement)
 {
-	struct i40e_tunnel_rule *rule = &pf->tunnel;
-	struct i40e_tunnel_filter *tunnel_filter;
+	struct i40e_aqc_replace_cloud_filters_cmd_buf buffer = {0};
+	struct i40e_aqc_replace_cloud_filters_cmd command = {
+		.valid_flags = replacement->valid_flags,
+		.old_filter_type = replacement->old_filter_type,
+		.new_filter_type = replacement->new_filter_type,
+		.tr_bit = replacement->tr_bit,
+		.tr_bit2 = replacement->tr_bit2,
+	};
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	struct rte_eth_dev *dev = &rte_eth_devices[pf->dev_data->port_id];
 	int ret;
 
-	ret = rte_hash_del_key(rule->hash_table, input);
-	if (ret < 0) {
-		PMD_DRV_LOG(ERR,
-			    "Failed to delete tunnel filter to hash table %d!",
-			    ret);
-		return ret;
+	if (pf->support_multi_driver) {
+		PMD_DRV_LOG(ERR, "Replacing tunnel filters is not supported.");
+		return I40E_NOT_SUPPORTED;
 	}
-	tunnel_filter = rule->hash_map[ret];
-	rule->hash_map[ret] = NULL;
 
-	TAILQ_REMOVE(&rule->tunnel_list, tunnel_filter, rules);
-	rte_free(tunnel_filter);
+	memcpy(buffer.data, replacement->data, sizeof(replacement->data));
+	ret = i40e_aq_replace_cloud_filters(hw, &command, &buffer);
+	if (ret != I40E_SUCCESS)
+		return ret;
+
+	PMD_DRV_LOG(WARNING, "i40e device %s changed %s filter type."
+			" original: 0x%x, new: 0x%x",
+			dev->device->name,
+			(command.valid_flags & I40E_AQC_REPLACE_CLOUD_FILTER) != 0 ?
+			"cloud" : "cloud l1",
+			command.old_filter_type, command.new_filter_type);
 
 	return 0;
 }
 
-#define I40E_AQC_REPLACE_CLOUD_CMD_INPUT_TR_WORD0 0x48
-#define I40E_TR_VXLAN_GRE_KEY_MASK		0x4
-#define I40E_TR_GENEVE_KEY_MASK			0x8
-#define I40E_TR_GENERIC_UDP_TUNNEL_MASK		0x40
-#define I40E_TR_GRE_KEY_MASK			0x400
-#define I40E_TR_GRE_KEY_WITH_XSUM_MASK		0x800
-#define I40E_TR_GRE_NO_KEY_MASK			0x8000
-#define I40E_AQC_REPLACE_CLOUD_CMD_INPUT_PORT_TR_WORD0 0x49
-#define I40E_AQC_REPLACE_CLOUD_CMD_INPUT_DIRECTION_WORD0 0x41
-#define I40E_AQC_REPLACE_CLOUD_CMD_INPUT_INGRESS_WORD0 0x80
 #define I40E_DIRECTION_INGRESS_KEY		0x8000
 #define I40E_TR_L4_TYPE_TCP			0x2
 #define I40E_TR_L4_TYPE_UDP			0x4
 #define I40E_TR_L4_TYPE_SCTP			0x8
 
-static enum
-i40e_status_code i40e_replace_mpls_l1_filter(struct i40e_pf *pf)
-{
-	struct i40e_aqc_replace_cloud_filters_cmd  filter_replace;
-	struct i40e_aqc_replace_cloud_filters_cmd_buf  filter_replace_buf;
-	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
-	struct rte_eth_dev *dev = &rte_eth_devices[pf->dev_data->port_id];
-	enum i40e_status_code status = I40E_SUCCESS;
-
-	if (pf->support_multi_driver) {
-		PMD_DRV_LOG(ERR, "Replace l1 filter is not supported.");
-		return I40E_NOT_SUPPORTED;
-	}
-
-	memset(&filter_replace, 0,
-	       sizeof(struct i40e_aqc_replace_cloud_filters_cmd));
-	memset(&filter_replace_buf, 0,
-	       sizeof(struct i40e_aqc_replace_cloud_filters_cmd_buf));
-
-	/* create L1 filter */
-	filter_replace.old_filter_type =
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_FV_IMAC;
-	filter_replace.new_filter_type = I40E_AQC_ADD_L1_FILTER_0X11;
-	filter_replace.tr_bit = 0;
-
-	/* Prepare the buffer, 3 entries */
-	filter_replace_buf.data[0] =
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_FV_TEID_WORD0;
-	filter_replace_buf.data[0] |=
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
-	filter_replace_buf.data[2] = 0xFF;
-	filter_replace_buf.data[3] = 0xFF;
-	filter_replace_buf.data[4] =
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_FV_TEID_WORD1;
-	filter_replace_buf.data[4] |=
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
-	filter_replace_buf.data[7] = 0xF0;
-	filter_replace_buf.data[8]
-		= I40E_AQC_REPLACE_CLOUD_CMD_INPUT_TR_WORD0;
-	filter_replace_buf.data[8] |=
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
-	filter_replace_buf.data[10] = I40E_TR_VXLAN_GRE_KEY_MASK |
-		I40E_TR_GENEVE_KEY_MASK |
-		I40E_TR_GENERIC_UDP_TUNNEL_MASK;
-	filter_replace_buf.data[11] = (I40E_TR_GRE_KEY_MASK |
-		I40E_TR_GRE_KEY_WITH_XSUM_MASK |
-		I40E_TR_GRE_NO_KEY_MASK) >> 8;
-
-	status = i40e_aq_replace_cloud_filters(hw, &filter_replace,
-					       &filter_replace_buf);
-	if (!status && (filter_replace.old_filter_type !=
-			filter_replace.new_filter_type))
-		PMD_DRV_LOG(WARNING, "i40e device %s changed cloud l1 type."
-			    " original: 0x%x, new: 0x%x",
-			    dev->device->name,
-			    filter_replace.old_filter_type,
-			    filter_replace.new_filter_type);
-
-	return status;
-}
-
-static enum
-i40e_status_code i40e_replace_mpls_cloud_filter(struct i40e_pf *pf)
-{
-	struct i40e_aqc_replace_cloud_filters_cmd  filter_replace;
-	struct i40e_aqc_replace_cloud_filters_cmd_buf  filter_replace_buf;
-	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
-	struct rte_eth_dev *dev = &rte_eth_devices[pf->dev_data->port_id];
-	enum i40e_status_code status = I40E_SUCCESS;
-
-	if (pf->support_multi_driver) {
-		PMD_DRV_LOG(ERR, "Replace cloud filter is not supported.");
-		return I40E_NOT_SUPPORTED;
-	}
-
-	/* For MPLSoUDP */
-	memset(&filter_replace, 0,
-	       sizeof(struct i40e_aqc_replace_cloud_filters_cmd));
-	memset(&filter_replace_buf, 0,
-	       sizeof(struct i40e_aqc_replace_cloud_filters_cmd_buf));
-	filter_replace.valid_flags = I40E_AQC_REPLACE_CLOUD_FILTER |
-		I40E_AQC_MIRROR_CLOUD_FILTER;
-	filter_replace.old_filter_type = I40E_AQC_ADD_CLOUD_FILTER_IIP;
-	filter_replace.new_filter_type =
-		I40E_AQC_ADD_CLOUD_FILTER_0X11;
-	/* Prepare the buffer, 2 entries */
-	filter_replace_buf.data[0] = I40E_AQC_REPLACE_CLOUD_CMD_INPUT_FV_STAG;
-	filter_replace_buf.data[0] |=
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
-	filter_replace_buf.data[4] = I40E_AQC_ADD_L1_FILTER_0X11;
-	filter_replace_buf.data[4] |=
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
-	status = i40e_aq_replace_cloud_filters(hw, &filter_replace,
-					       &filter_replace_buf);
-	if (status < 0)
-		return status;
-	if (filter_replace.old_filter_type !=
-	    filter_replace.new_filter_type)
-		PMD_DRV_LOG(WARNING, "i40e device %s changed cloud filter type."
-			    " original: 0x%x, new: 0x%x",
-			    dev->device->name,
-			    filter_replace.old_filter_type,
-			    filter_replace.new_filter_type);
-
-	/* For MPLSoGRE */
-	memset(&filter_replace, 0,
-	       sizeof(struct i40e_aqc_replace_cloud_filters_cmd));
-	memset(&filter_replace_buf, 0,
-	       sizeof(struct i40e_aqc_replace_cloud_filters_cmd_buf));
-
-	filter_replace.valid_flags = I40E_AQC_REPLACE_CLOUD_FILTER |
-		I40E_AQC_MIRROR_CLOUD_FILTER;
-	filter_replace.old_filter_type = I40E_AQC_ADD_CLOUD_FILTER_IMAC;
-	filter_replace.new_filter_type =
-		I40E_AQC_ADD_CLOUD_FILTER_0X12;
-	/* Prepare the buffer, 2 entries */
-	filter_replace_buf.data[0] = I40E_AQC_REPLACE_CLOUD_CMD_INPUT_FV_STAG;
-	filter_replace_buf.data[0] |=
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
-	filter_replace_buf.data[4] = I40E_AQC_ADD_L1_FILTER_0X11;
-	filter_replace_buf.data[4] |=
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
-
-	status = i40e_aq_replace_cloud_filters(hw, &filter_replace,
-					       &filter_replace_buf);
-	if (!status && (filter_replace.old_filter_type !=
-			filter_replace.new_filter_type))
-		PMD_DRV_LOG(WARNING, "i40e device %s changed cloud filter type."
-			    " original: 0x%x, new: 0x%x",
-			    dev->device->name,
-			    filter_replace.old_filter_type,
-			    filter_replace.new_filter_type);
-
-	return status;
-}
-
-static enum i40e_status_code
-i40e_replace_gtp_l1_filter(struct i40e_pf *pf)
-{
-	struct i40e_aqc_replace_cloud_filters_cmd  filter_replace;
-	struct i40e_aqc_replace_cloud_filters_cmd_buf  filter_replace_buf;
-	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
-	struct rte_eth_dev *dev = &rte_eth_devices[pf->dev_data->port_id];
-	enum i40e_status_code status = I40E_SUCCESS;
-
-	if (pf->support_multi_driver) {
-		PMD_DRV_LOG(ERR, "Replace l1 filter is not supported.");
-		return I40E_NOT_SUPPORTED;
-	}
-
-	/* For GTP-C */
-	memset(&filter_replace, 0,
-	       sizeof(struct i40e_aqc_replace_cloud_filters_cmd));
-	memset(&filter_replace_buf, 0,
-	       sizeof(struct i40e_aqc_replace_cloud_filters_cmd_buf));
-	/* create L1 filter */
-	filter_replace.old_filter_type =
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_FV_IMAC;
-	filter_replace.new_filter_type = I40E_AQC_ADD_L1_FILTER_0X12;
-	filter_replace.tr_bit = I40E_AQC_NEW_TR_22 |
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
-	/* Prepare the buffer, 2 entries */
-	filter_replace_buf.data[0] =
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_FV_TEID_WORD0;
-	filter_replace_buf.data[0] |=
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
-	filter_replace_buf.data[2] = 0xFF;
-	filter_replace_buf.data[3] = 0xFF;
-	filter_replace_buf.data[4] =
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_FV_TEID_WORD1;
-	filter_replace_buf.data[4] |=
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
-	filter_replace_buf.data[6] = 0xFF;
-	filter_replace_buf.data[7] = 0xFF;
-	status = i40e_aq_replace_cloud_filters(hw, &filter_replace,
-					       &filter_replace_buf);
-	if (status < 0)
-		return status;
-	if (filter_replace.old_filter_type !=
-	    filter_replace.new_filter_type)
-		PMD_DRV_LOG(WARNING, "i40e device %s changed cloud l1 type."
-			    " original: 0x%x, new: 0x%x",
-			    dev->device->name,
-			    filter_replace.old_filter_type,
-			    filter_replace.new_filter_type);
-
-	/* for GTP-U */
-	memset(&filter_replace, 0,
-	       sizeof(struct i40e_aqc_replace_cloud_filters_cmd));
-	memset(&filter_replace_buf, 0,
-	       sizeof(struct i40e_aqc_replace_cloud_filters_cmd_buf));
-	/* create L1 filter */
-	filter_replace.old_filter_type =
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_FV_TUNNLE_KEY;
-	filter_replace.new_filter_type = I40E_AQC_ADD_L1_FILTER_0X13;
-	filter_replace.tr_bit = I40E_AQC_NEW_TR_21 |
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
-	/* Prepare the buffer, 2 entries */
-	filter_replace_buf.data[0] =
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_FV_TEID_WORD0;
-	filter_replace_buf.data[0] |=
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
-	filter_replace_buf.data[2] = 0xFF;
-	filter_replace_buf.data[3] = 0xFF;
-	filter_replace_buf.data[4] =
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_FV_TEID_WORD1;
-	filter_replace_buf.data[4] |=
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
-	filter_replace_buf.data[6] = 0xFF;
-	filter_replace_buf.data[7] = 0xFF;
-
-	status = i40e_aq_replace_cloud_filters(hw, &filter_replace,
-					       &filter_replace_buf);
-	if (!status && (filter_replace.old_filter_type !=
-			filter_replace.new_filter_type))
-		PMD_DRV_LOG(WARNING, "i40e device %s changed cloud l1 type."
-			    " original: 0x%x, new: 0x%x",
-			    dev->device->name,
-			    filter_replace.old_filter_type,
-			    filter_replace.new_filter_type);
-
-	return status;
-}
-
-static enum
-i40e_status_code i40e_replace_gtp_cloud_filter(struct i40e_pf *pf)
-{
-	struct i40e_aqc_replace_cloud_filters_cmd  filter_replace;
-	struct i40e_aqc_replace_cloud_filters_cmd_buf  filter_replace_buf;
-	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
-	struct rte_eth_dev *dev = &rte_eth_devices[pf->dev_data->port_id];
-	enum i40e_status_code status = I40E_SUCCESS;
-
-	if (pf->support_multi_driver) {
-		PMD_DRV_LOG(ERR, "Replace cloud filter is not supported.");
-		return I40E_NOT_SUPPORTED;
-	}
-
-	/* for GTP-C */
-	memset(&filter_replace, 0,
-	       sizeof(struct i40e_aqc_replace_cloud_filters_cmd));
-	memset(&filter_replace_buf, 0,
-	       sizeof(struct i40e_aqc_replace_cloud_filters_cmd_buf));
-	filter_replace.valid_flags = I40E_AQC_REPLACE_CLOUD_FILTER;
-	filter_replace.old_filter_type = I40E_AQC_ADD_CLOUD_FILTER_IMAC_IVLAN;
-	filter_replace.new_filter_type =
-		I40E_AQC_ADD_CLOUD_FILTER_0X11;
-	/* Prepare the buffer, 2 entries */
-	filter_replace_buf.data[0] = I40E_AQC_ADD_L1_FILTER_0X12;
-	filter_replace_buf.data[0] |=
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
-	filter_replace_buf.data[4] = I40E_AQC_REPLACE_CLOUD_CMD_INPUT_FV_STAG;
-	filter_replace_buf.data[4] |=
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
-	status = i40e_aq_replace_cloud_filters(hw, &filter_replace,
-					       &filter_replace_buf);
-	if (status < 0)
-		return status;
-	if (filter_replace.old_filter_type !=
-	    filter_replace.new_filter_type)
-		PMD_DRV_LOG(WARNING, "i40e device %s changed cloud filter type."
-			    " original: 0x%x, new: 0x%x",
-			    dev->device->name,
-			    filter_replace.old_filter_type,
-			    filter_replace.new_filter_type);
-
-	/* for GTP-U */
-	memset(&filter_replace, 0,
-	       sizeof(struct i40e_aqc_replace_cloud_filters_cmd));
-	memset(&filter_replace_buf, 0,
-	       sizeof(struct i40e_aqc_replace_cloud_filters_cmd_buf));
-	filter_replace.valid_flags = I40E_AQC_REPLACE_CLOUD_FILTER;
-	filter_replace.old_filter_type =
-		I40E_AQC_ADD_CLOUD_FILTER_IMAC_IVLAN_TEN_ID;
-	filter_replace.new_filter_type =
-		I40E_AQC_ADD_CLOUD_FILTER_0X12;
-	/* Prepare the buffer, 2 entries */
-	filter_replace_buf.data[0] = I40E_AQC_ADD_L1_FILTER_0X13;
-	filter_replace_buf.data[0] |=
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
-	filter_replace_buf.data[4] = I40E_AQC_REPLACE_CLOUD_CMD_INPUT_FV_STAG;
-	filter_replace_buf.data[4] |=
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
-
-	status = i40e_aq_replace_cloud_filters(hw, &filter_replace,
-					       &filter_replace_buf);
-	if (!status && (filter_replace.old_filter_type !=
-			filter_replace.new_filter_type))
-		PMD_DRV_LOG(WARNING, "i40e device %s changed cloud filter type."
-			    " original: 0x%x, new: 0x%x",
-			    dev->device->name,
-			    filter_replace.old_filter_type,
-			    filter_replace.new_filter_type);
-
-	return status;
-}
-
-static enum i40e_status_code
-i40e_replace_port_l1_filter(struct i40e_pf *pf,
-			    enum i40e_l4_port_type l4_port_type)
-{
-	struct i40e_aqc_replace_cloud_filters_cmd_buf  filter_replace_buf;
-	struct i40e_aqc_replace_cloud_filters_cmd  filter_replace;
-	enum i40e_status_code status = I40E_SUCCESS;
-	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
-	struct rte_eth_dev *dev = &rte_eth_devices[pf->dev_data->port_id];
-
-	if (pf->support_multi_driver) {
-		PMD_DRV_LOG(ERR, "Replace l1 filter is not supported.");
-		return I40E_NOT_SUPPORTED;
-	}
-
-	memset(&filter_replace, 0,
-	       sizeof(struct i40e_aqc_replace_cloud_filters_cmd));
-	memset(&filter_replace_buf, 0,
-	       sizeof(struct i40e_aqc_replace_cloud_filters_cmd_buf));
-
-	/* create L1 filter */
-	if (l4_port_type == I40E_L4_PORT_TYPE_SRC) {
-		filter_replace.old_filter_type =
-			I40E_AQC_REPLACE_CLOUD_CMD_INPUT_FV_TUNNLE_KEY;
-		filter_replace.new_filter_type = I40E_AQC_ADD_L1_FILTER_0X11;
-		filter_replace_buf.data[8] =
-			I40E_AQC_REPLACE_CLOUD_CMD_INPUT_FV_SRC_PORT;
-	} else {
-		filter_replace.old_filter_type =
-			I40E_AQC_REPLACE_CLOUD_CMD_INPUT_FV_STAG_IVLAN;
-		filter_replace.new_filter_type = I40E_AQC_ADD_L1_FILTER_0X10;
-		filter_replace_buf.data[8] =
-			I40E_AQC_REPLACE_CLOUD_CMD_INPUT_FV_DST_PORT;
-	}
-
-	filter_replace.tr_bit = 0;
-	/* Prepare the buffer, 3 entries */
-	filter_replace_buf.data[0] =
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_DIRECTION_WORD0;
-	filter_replace_buf.data[0] |=
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
-	filter_replace_buf.data[2] = 0x00;
-	filter_replace_buf.data[3] =
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_INGRESS_WORD0;
-	filter_replace_buf.data[4] =
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_PORT_TR_WORD0;
-	filter_replace_buf.data[4] |=
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
-	filter_replace_buf.data[5] = 0x00;
-	filter_replace_buf.data[6] = I40E_TR_L4_TYPE_UDP |
-		I40E_TR_L4_TYPE_TCP |
-		I40E_TR_L4_TYPE_SCTP;
-	filter_replace_buf.data[7] = 0x00;
-	filter_replace_buf.data[8] |=
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
-	filter_replace_buf.data[9] = 0x00;
-	filter_replace_buf.data[10] = 0xFF;
-	filter_replace_buf.data[11] = 0xFF;
-
-	status = i40e_aq_replace_cloud_filters(hw, &filter_replace,
-					       &filter_replace_buf);
-	if (!status && filter_replace.old_filter_type !=
-	    filter_replace.new_filter_type)
-		PMD_DRV_LOG(WARNING, "i40e device %s changed cloud l1 type."
-			    " original: 0x%x, new: 0x%x",
-			    dev->device->name,
-			    filter_replace.old_filter_type,
-			    filter_replace.new_filter_type);
-
-	return status;
-}
-
-static enum i40e_status_code
-i40e_replace_port_cloud_filter(struct i40e_pf *pf,
-			       enum i40e_l4_port_type l4_port_type)
-{
-	struct i40e_aqc_replace_cloud_filters_cmd_buf  filter_replace_buf;
-	struct i40e_aqc_replace_cloud_filters_cmd  filter_replace;
-	enum i40e_status_code status = I40E_SUCCESS;
-	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
-	struct rte_eth_dev *dev = &rte_eth_devices[pf->dev_data->port_id];
-
-	if (pf->support_multi_driver) {
-		PMD_DRV_LOG(ERR, "Replace cloud filter is not supported.");
-		return I40E_NOT_SUPPORTED;
-	}
-
-	memset(&filter_replace, 0,
-	       sizeof(struct i40e_aqc_replace_cloud_filters_cmd));
-	memset(&filter_replace_buf, 0,
-	       sizeof(struct i40e_aqc_replace_cloud_filters_cmd_buf));
-
-	if (l4_port_type == I40E_L4_PORT_TYPE_SRC) {
-		filter_replace.old_filter_type = I40E_AQC_ADD_CLOUD_FILTER_IIP;
-		filter_replace.new_filter_type =
-			I40E_AQC_ADD_CLOUD_FILTER_0X11;
-		filter_replace_buf.data[4] = I40E_AQC_ADD_CLOUD_FILTER_0X11;
-	} else {
-		filter_replace.old_filter_type = I40E_AQC_ADD_CLOUD_FILTER_OIP;
-		filter_replace.new_filter_type =
-			I40E_AQC_ADD_CLOUD_FILTER_0X10;
-		filter_replace_buf.data[4] = I40E_AQC_ADD_CLOUD_FILTER_0X10;
-	}
-
-	filter_replace.valid_flags = I40E_AQC_REPLACE_CLOUD_FILTER;
-	filter_replace.tr_bit = 0;
-	/* Prepare the buffer, 2 entries */
-	filter_replace_buf.data[0] = I40E_AQC_REPLACE_CLOUD_CMD_INPUT_FV_STAG;
-	filter_replace_buf.data[0] |=
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
-	filter_replace_buf.data[4] |=
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
-	status = i40e_aq_replace_cloud_filters(hw, &filter_replace,
-					       &filter_replace_buf);
-
-	if (!status && filter_replace.old_filter_type !=
-	    filter_replace.new_filter_type)
-		PMD_DRV_LOG(WARNING, "i40e device %s changed cloud filter type."
-			    " original: 0x%x, new: 0x%x",
-			    dev->device->name,
-			    filter_replace.old_filter_type,
-			    filter_replace.new_filter_type);
-
-	return status;
-}
-
-int
-i40e_dev_consistent_tunnel_filter_set(struct i40e_pf *pf,
-		      struct i40e_tunnel_filter_conf *tunnel_filter,
-		      uint8_t add)
+static int
+i40e_tunnel_filter_convert_conf(struct i40e_pf *pf,
+		struct i40e_tunnel_filter_conf *tunnel_filter,
+		struct i40e_aqc_cloud_filters_element_bb *cld_filter,
+		struct i40e_vsi **vsi, bool *big_buffer)
 {
 	uint16_t ip_type;
 	uint32_t ipv4_addr, ipv4_addr_le;
 	uint8_t i, tun_type = 0;
 	/* internal variable to convert ipv6 byte order */
 	uint32_t convert_ipv6[4];
-	int val, ret = 0;
+	int val;
 	struct i40e_pf_vf *vf = NULL;
-	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
-	struct i40e_vsi *vsi;
-	struct i40e_aqc_cloud_filters_element_bb cld_filter = {0};
-	struct i40e_tunnel_rule *tunnel_rule = &pf->tunnel;
-	struct i40e_tunnel_filter *node;
-	struct i40e_tunnel_filter check_filter; /* Check if filter exists */
 	uint32_t teid_le;
-	bool big_buffer = 0;
 
 	rte_ether_addr_copy(&tunnel_filter->outer_mac,
-			(struct rte_ether_addr *)&cld_filter.element.outer_mac);
+			(struct rte_ether_addr *)&cld_filter->element.outer_mac);
 	rte_ether_addr_copy(&tunnel_filter->inner_mac,
-			(struct rte_ether_addr *)&cld_filter.element.inner_mac);
+			(struct rte_ether_addr *)&cld_filter->element.inner_mac);
 
-	cld_filter.element.inner_vlan =
+	cld_filter->element.inner_vlan =
 		rte_cpu_to_le_16(tunnel_filter->inner_vlan);
 	if (tunnel_filter->ip_type == I40E_TUNNEL_IPTYPE_IPV4) {
 		ip_type = I40E_AQC_ADD_CLOUD_FLAGS_IPV4;
 		ipv4_addr = rte_be_to_cpu_32(tunnel_filter->ip_addr.ipv4_addr);
 		ipv4_addr_le = rte_cpu_to_le_32(ipv4_addr);
-		memcpy(&cld_filter.element.ipaddr.v4.data,
+		memcpy(&cld_filter->element.ipaddr.v4.data,
 				&ipv4_addr_le,
-				sizeof(cld_filter.element.ipaddr.v4.data));
+				sizeof(cld_filter->element.ipaddr.v4.data));
 	} else {
 		ip_type = I40E_AQC_ADD_CLOUD_FLAGS_IPV6;
 		for (i = 0; i < 4; i++) {
@@ -8289,9 +7759,9 @@ i40e_dev_consistent_tunnel_filter_set(struct i40e_pf *pf,
 			rte_cpu_to_le_32(rte_be_to_cpu_32(
 					 tunnel_filter->ip_addr.ipv6_addr[i]));
 		}
-		memcpy(&cld_filter.element.ipaddr.v6.data,
+		memcpy(&cld_filter->element.ipaddr.v6.data,
 			   &convert_ipv6,
-			   sizeof(cld_filter.element.ipaddr.v6.data));
+			   sizeof(cld_filter->element.ipaddr.v6.data));
 	}
 
 	/* check tunneled type */
@@ -8306,139 +7776,96 @@ i40e_dev_consistent_tunnel_filter_set(struct i40e_pf *pf,
 		tun_type = I40E_AQC_ADD_CLOUD_TNL_TYPE_IP;
 		break;
 	case I40E_TUNNEL_TYPE_MPLSoUDP:
-		if (!pf->mpls_replace_flag) {
-			i40e_replace_mpls_l1_filter(pf);
-			i40e_replace_mpls_cloud_filter(pf);
-			pf->mpls_replace_flag = 1;
-		}
 		teid_le = rte_cpu_to_le_32(tunnel_filter->tenant_id);
-		cld_filter.general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X11_WORD0] =
+		cld_filter->general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X11_WORD0] =
 			teid_le >> 4;
-		cld_filter.general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X11_WORD1] =
+		cld_filter->general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X11_WORD1] =
 			(teid_le & 0xF) << 12;
-		cld_filter.general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X11_WORD2] =
+		cld_filter->general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X11_WORD2] =
 			0x40;
-		big_buffer = 1;
+		*big_buffer = 1;
 		tun_type = I40E_AQC_ADD_CLOUD_TNL_TYPE_MPLSOUDP;
 		break;
 	case I40E_TUNNEL_TYPE_MPLSoGRE:
-		if (!pf->mpls_replace_flag) {
-			i40e_replace_mpls_l1_filter(pf);
-			i40e_replace_mpls_cloud_filter(pf);
-			pf->mpls_replace_flag = 1;
-		}
 		teid_le = rte_cpu_to_le_32(tunnel_filter->tenant_id);
-		cld_filter.general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X11_WORD0] =
+		cld_filter->general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X11_WORD0] =
 			teid_le >> 4;
-		cld_filter.general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X11_WORD1] =
+		cld_filter->general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X11_WORD1] =
 			(teid_le & 0xF) << 12;
-		cld_filter.general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X11_WORD2] =
+		cld_filter->general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X11_WORD2] =
 			0x0;
-		big_buffer = 1;
+		*big_buffer = 1;
 		tun_type = I40E_AQC_ADD_CLOUD_TNL_TYPE_MPLSOGRE;
 		break;
 	case I40E_TUNNEL_TYPE_GTPC:
-		if (!pf->gtp_replace_flag) {
-			i40e_replace_gtp_l1_filter(pf);
-			i40e_replace_gtp_cloud_filter(pf);
-			pf->gtp_replace_flag = 1;
-		}
 		teid_le = rte_cpu_to_le_32(tunnel_filter->tenant_id);
-		cld_filter.general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X12_WORD0] =
+		cld_filter->general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X12_WORD0] =
 			(teid_le >> 16) & 0xFFFF;
-		cld_filter.general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X12_WORD1] =
+		cld_filter->general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X12_WORD1] =
 			teid_le & 0xFFFF;
-		cld_filter.general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X12_WORD2] =
+		cld_filter->general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X12_WORD2] =
 			0x0;
-		big_buffer = 1;
+		*big_buffer = 1;
 		break;
 	case I40E_TUNNEL_TYPE_GTPU:
-		if (!pf->gtp_replace_flag) {
-			i40e_replace_gtp_l1_filter(pf);
-			i40e_replace_gtp_cloud_filter(pf);
-			pf->gtp_replace_flag = 1;
-		}
 		teid_le = rte_cpu_to_le_32(tunnel_filter->tenant_id);
-		cld_filter.general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X13_WORD0] =
+		cld_filter->general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X13_WORD0] =
 			(teid_le >> 16) & 0xFFFF;
-		cld_filter.general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X13_WORD1] =
+		cld_filter->general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X13_WORD1] =
 			teid_le & 0xFFFF;
-		cld_filter.general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X13_WORD2] =
+		cld_filter->general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X13_WORD2] =
 			0x0;
-		big_buffer = 1;
+		*big_buffer = 1;
 		break;
 	case I40E_TUNNEL_TYPE_QINQ:
-		if (!pf->qinq_replace_flag) {
-			ret = i40e_cloud_filter_qinq_create(pf);
-			if (ret < 0) {
-				PMD_DRV_LOG(ERR, "Failed to create QinQ tunnel filter.");
-				/* ret is a raw i40e_status_code, not an errno */
-				return -ENOTSUP;
-			}
-			pf->qinq_replace_flag = 1;
-		}
 		/*	Add in the General fields the values of
 		 *	the Outer and Inner VLAN
 		 *	Big Buffer should be set, see changes in
 		 *	i40e_aq_add_cloud_filters
 		 */
-		cld_filter.general_fields[0] = tunnel_filter->inner_vlan;
-		cld_filter.general_fields[1] = tunnel_filter->outer_vlan;
-		big_buffer = 1;
+		cld_filter->general_fields[0] = tunnel_filter->inner_vlan;
+		cld_filter->general_fields[1] = tunnel_filter->outer_vlan;
+		*big_buffer = 1;
 		break;
 	case I40E_CLOUD_TYPE_UDP:
 	case I40E_CLOUD_TYPE_TCP:
 	case I40E_CLOUD_TYPE_SCTP:
 		if (tunnel_filter->l4_port_type == I40E_L4_PORT_TYPE_SRC) {
-			if (!pf->sport_replace_flag) {
-				i40e_replace_port_l1_filter(pf,
-						tunnel_filter->l4_port_type);
-				i40e_replace_port_cloud_filter(pf,
-						tunnel_filter->l4_port_type);
-				pf->sport_replace_flag = 1;
-			}
 			teid_le = rte_cpu_to_le_32(tunnel_filter->tenant_id);
-			cld_filter.general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X11_WORD0] =
+			cld_filter->general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X11_WORD0] =
 				I40E_DIRECTION_INGRESS_KEY;
 
 			if (tunnel_filter->tunnel_type == I40E_CLOUD_TYPE_UDP)
-				cld_filter.general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X11_WORD1] =
+				cld_filter->general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X11_WORD1] =
 					I40E_TR_L4_TYPE_UDP;
 			else if (tunnel_filter->tunnel_type == I40E_CLOUD_TYPE_TCP)
-				cld_filter.general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X11_WORD1] =
+				cld_filter->general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X11_WORD1] =
 					I40E_TR_L4_TYPE_TCP;
 			else
-				cld_filter.general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X11_WORD1] =
+				cld_filter->general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X11_WORD1] =
 					I40E_TR_L4_TYPE_SCTP;
 
-			cld_filter.general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X11_WORD2] =
+			cld_filter->general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X11_WORD2] =
 				(teid_le >> 16) & 0xFFFF;
-			big_buffer = 1;
+			*big_buffer = 1;
 		} else {
-			if (!pf->dport_replace_flag) {
-				i40e_replace_port_l1_filter(pf,
-						tunnel_filter->l4_port_type);
-				i40e_replace_port_cloud_filter(pf,
-						tunnel_filter->l4_port_type);
-				pf->dport_replace_flag = 1;
-			}
 			teid_le = rte_cpu_to_le_32(tunnel_filter->tenant_id);
-			cld_filter.general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X10_WORD0] =
+			cld_filter->general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X10_WORD0] =
 				I40E_DIRECTION_INGRESS_KEY;
 
 			if (tunnel_filter->tunnel_type == I40E_CLOUD_TYPE_UDP)
-				cld_filter.general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X10_WORD1] =
+				cld_filter->general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X10_WORD1] =
 					I40E_TR_L4_TYPE_UDP;
 			else if (tunnel_filter->tunnel_type == I40E_CLOUD_TYPE_TCP)
-				cld_filter.general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X10_WORD1] =
+				cld_filter->general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X10_WORD1] =
 					I40E_TR_L4_TYPE_TCP;
 			else
-				cld_filter.general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X10_WORD1] =
+				cld_filter->general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X10_WORD1] =
 					I40E_TR_L4_TYPE_SCTP;
 
-			cld_filter.general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X10_WORD2] =
+			cld_filter->general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X10_WORD2] =
 				(teid_le >> 16) & 0xFFFF;
-			big_buffer = 1;
+			*big_buffer = 1;
 		}
 
 		break;
@@ -8449,74 +7876,111 @@ i40e_dev_consistent_tunnel_filter_set(struct i40e_pf *pf,
 	}
 
 	if (tunnel_filter->tunnel_type == I40E_TUNNEL_TYPE_MPLSoUDP)
-		cld_filter.element.flags =
+		cld_filter->element.flags =
 			I40E_AQC_ADD_CLOUD_FILTER_0X11;
 	else if (tunnel_filter->tunnel_type == I40E_TUNNEL_TYPE_MPLSoGRE)
-		cld_filter.element.flags =
+		cld_filter->element.flags =
 			I40E_AQC_ADD_CLOUD_FILTER_0X12;
 	else if (tunnel_filter->tunnel_type == I40E_TUNNEL_TYPE_GTPC)
-		cld_filter.element.flags =
+		cld_filter->element.flags =
 			I40E_AQC_ADD_CLOUD_FILTER_0X11;
 	else if (tunnel_filter->tunnel_type == I40E_TUNNEL_TYPE_GTPU)
-		cld_filter.element.flags =
+		cld_filter->element.flags =
 			I40E_AQC_ADD_CLOUD_FILTER_0X12;
 	else if (tunnel_filter->tunnel_type == I40E_TUNNEL_TYPE_QINQ)
-		cld_filter.element.flags |=
+		cld_filter->element.flags |=
 			I40E_AQC_ADD_CLOUD_FILTER_0X10;
 	else if (tunnel_filter->tunnel_type == I40E_CLOUD_TYPE_UDP ||
 		 tunnel_filter->tunnel_type == I40E_CLOUD_TYPE_TCP ||
 		 tunnel_filter->tunnel_type == I40E_CLOUD_TYPE_SCTP) {
 		if (tunnel_filter->l4_port_type == I40E_L4_PORT_TYPE_SRC)
-			cld_filter.element.flags |=
+			cld_filter->element.flags |=
 				I40E_AQC_ADD_CLOUD_FILTER_0X11;
 		else
-			cld_filter.element.flags |=
+			cld_filter->element.flags |=
 				I40E_AQC_ADD_CLOUD_FILTER_0X10;
 	} else {
 		val = i40e_dev_get_filter_type(tunnel_filter->filter_type,
-						&cld_filter.element.flags);
+						&cld_filter->element.flags);
 		if (val < 0) {
 			return -EINVAL;
 		}
 	}
 
-	cld_filter.element.flags |=
+	cld_filter->element.flags |=
 			rte_cpu_to_le_16(I40E_AQC_ADD_CLOUD_FLAGS_TO_QUEUE | ip_type |
 				(tun_type << I40E_AQC_ADD_CLOUD_TNL_TYPE_SHIFT));
-	cld_filter.element.tenant_id = rte_cpu_to_le_32(tunnel_filter->tenant_id);
-	cld_filter.element.queue_number =
+	cld_filter->element.tenant_id = rte_cpu_to_le_32(tunnel_filter->tenant_id);
+	cld_filter->element.queue_number =
 		rte_cpu_to_le_16(tunnel_filter->queue_id);
 
 	if (!tunnel_filter->is_to_vf)
-		vsi = pf->main_vsi;
+		*vsi = pf->main_vsi;
 	else {
 		if (tunnel_filter->vf_id >= pf->vf_num) {
 			PMD_DRV_LOG(ERR, "Invalid argument.");
 			return -EINVAL;
 		}
 		vf = &pf->vfs[tunnel_filter->vf_id];
-		vsi = vf->vsi;
+		*vsi = vf->vsi;
 	}
 
-	/* Check if there is the filter in SW list */
-	memset(&check_filter, 0, sizeof(check_filter));
-	i40e_tunnel_filter_convert(&cld_filter, &check_filter);
-	check_filter.is_to_vf = tunnel_filter->is_to_vf;
-	check_filter.vf_id = tunnel_filter->vf_id;
-	node = i40e_sw_tunnel_filter_lookup(tunnel_rule, &check_filter.input);
-	if (add && node) {
-		PMD_DRV_LOG(ERR, "Conflict with existing tunnel rules!");
-		return -EINVAL;
-	}
+	return 0;
+}
 
-	if (!add && !node) {
-		PMD_DRV_LOG(ERR, "There's no corresponding tunnel filter!");
-		return -EINVAL;
-	}
+int
+i40e_tunnel_filter_match_key_get(struct i40e_pf *pf,
+		struct i40e_tunnel_filter_conf *tunnel_filter,
+		struct i40e_tunnel_filter_match_key *input)
+{
+	struct i40e_aqc_cloud_filters_element_bb cld_filter = {0};
+	struct i40e_vsi *vsi;
+	bool big_buffer = 0;
+	int ret;
+
+	ret = i40e_tunnel_filter_convert_conf(pf, tunnel_filter, &cld_filter,
+			&vsi, &big_buffer);
+	if (ret != 0)
+		return ret;
+
+	rte_ether_addr_copy((struct rte_ether_addr *)
+			&cld_filter.element.outer_mac,
+		(struct rte_ether_addr *)&input->outer_mac);
+	rte_ether_addr_copy((struct rte_ether_addr *)
+			&cld_filter.element.inner_mac,
+		(struct rte_ether_addr *)&input->inner_mac);
+	input->inner_vlan = cld_filter.element.inner_vlan;
+	if ((rte_le_to_cpu_16(cld_filter.element.flags) &
+	     I40E_AQC_ADD_CLOUD_FLAGS_IPV6) ==
+	    I40E_AQC_ADD_CLOUD_FLAGS_IPV6)
+		input->ip_type = I40E_TUNNEL_IPTYPE_IPV6;
+	else
+		input->ip_type = I40E_TUNNEL_IPTYPE_IPV4;
+	input->flags = cld_filter.element.flags;
+	input->tenant_id = cld_filter.element.tenant_id;
+	memcpy(input->general_fields, cld_filter.general_fields,
+			sizeof(cld_filter.general_fields));
+
+	return 0;
+}
+
+int
+i40e_tunnel_filter_program(struct i40e_pf *pf,
+		struct i40e_tunnel_filter_conf *tunnel_filter,
+		uint8_t add)
+{
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	struct i40e_aqc_cloud_filters_element_bb cld_filter = {0};
+	struct i40e_vsi *vsi;
+	bool big_buffer = 0;
+	int ret;
+
+	ret = i40e_tunnel_filter_convert_conf(pf, tunnel_filter, &cld_filter,
+			&vsi, &big_buffer);
+	if (ret != 0)
+		return ret;
 
 	if (add) {
-		struct i40e_tunnel_filter *tunnel;
-
 		if (big_buffer)
 			ret = i40e_aq_add_cloud_filters_bb(hw,
 						   vsi->seid, &cld_filter, 1);
@@ -8527,16 +7991,6 @@ i40e_dev_consistent_tunnel_filter_set(struct i40e_pf *pf,
 			PMD_DRV_LOG(ERR, "Failed to add a tunnel filter.");
 			return -ENOTSUP;
 		}
-		tunnel = rte_zmalloc("tunnel_filter", sizeof(*tunnel), 0);
-		if (tunnel == NULL) {
-			PMD_DRV_LOG(ERR, "Failed to alloc memory.");
-			return -ENOMEM;
-		}
-
-		memcpy(tunnel, &check_filter, sizeof(check_filter));
-		ret = i40e_sw_tunnel_filter_insert(pf, tunnel);
-		if (ret < 0)
-			rte_free(tunnel);
 	} else {
 		if (big_buffer)
 			ret = i40e_aq_rem_cloud_filters_bb(
@@ -8548,7 +8002,6 @@ i40e_dev_consistent_tunnel_filter_set(struct i40e_pf *pf,
 			PMD_DRV_LOG(ERR, "Failed to delete a tunnel filter.");
 			return -ENOTSUP;
 		}
-		ret = i40e_sw_tunnel_filter_del(pf, &node->input);
 	}
 
 	return ret;
@@ -11256,65 +10709,9 @@ i40e_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu __rte_unused)
 	return 0;
 }
 
-/* Restore tunnel filter */
-static void
-i40e_tunnel_filter_restore(struct i40e_pf *pf)
-{
-	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
-	struct i40e_vsi *vsi;
-	struct i40e_pf_vf *vf;
-	struct i40e_tunnel_filter_list
-		*tunnel_list = &pf->tunnel.tunnel_list;
-	struct i40e_tunnel_filter *f;
-	struct i40e_aqc_cloud_filters_element_bb cld_filter;
-	bool big_buffer = 0;
-
-	TAILQ_FOREACH(f, tunnel_list, rules) {
-		if (!f->is_to_vf)
-			vsi = pf->main_vsi;
-		else {
-			vf = &pf->vfs[f->vf_id];
-			vsi = vf->vsi;
-		}
-		memset(&cld_filter, 0, sizeof(cld_filter));
-		rte_ether_addr_copy((struct rte_ether_addr *)
-				&f->input.outer_mac,
-			(struct rte_ether_addr *)&cld_filter.element.outer_mac);
-		rte_ether_addr_copy((struct rte_ether_addr *)
-				&f->input.inner_mac,
-			(struct rte_ether_addr *)&cld_filter.element.inner_mac);
-		cld_filter.element.inner_vlan = f->input.inner_vlan;
-		cld_filter.element.flags = f->input.flags;
-		cld_filter.element.tenant_id = f->input.tenant_id;
-		cld_filter.element.queue_number = f->queue;
-		memcpy(cld_filter.general_fields,
-			   f->input.general_fields,
-			   sizeof(f->input.general_fields));
-
-		if (((f->input.flags &
-		     I40E_AQC_ADD_CLOUD_FILTER_0X11) ==
-		     I40E_AQC_ADD_CLOUD_FILTER_0X11) ||
-		    ((f->input.flags &
-		     I40E_AQC_ADD_CLOUD_FILTER_0X12) ==
-		     I40E_AQC_ADD_CLOUD_FILTER_0X12) ||
-		    ((f->input.flags &
-		     I40E_AQC_ADD_CLOUD_FILTER_0X10) ==
-		     I40E_AQC_ADD_CLOUD_FILTER_0X10))
-			big_buffer = 1;
-
-		if (big_buffer)
-			i40e_aq_add_cloud_filters_bb(hw,
-					vsi->seid, &cld_filter, 1);
-		else
-			i40e_aq_add_cloud_filters(hw, vsi->seid,
-						  &cld_filter.element, 1);
-	}
-}
-
 static void
 i40e_filter_restore(struct i40e_pf *pf)
 {
-	i40e_tunnel_filter_restore(pf);
 	i40e_fdir_filter_restore(pf);
 	(void)i40e_hash_filter_restore(pf);
 }
@@ -11745,133 +11142,6 @@ i40e_update_customized_info(struct rte_eth_dev *dev, uint8_t *pkg,
 		PMD_DRV_LOG(INFO, "No ptype is updated.");
 
 	free(proto);
-}
-
-/* Create a QinQ cloud filter
- *
- * The Fortville NIC has limited resources for tunnel filters,
- * so we can only reuse existing filters.
- *
- * In step 1 we define which Field Vector fields can be used for
- * filter types.
- * As we do not have the inner tag defined as a field,
- * we have to define it first, by reusing one of L1 entries.
- *
- * In step 2 we are replacing one of existing filter types with
- * a new one for QinQ.
- * As we reusing L1 and replacing L2, some of the default filter
- * types will disappear,which depends on L1 and L2 entries we reuse.
- *
- * Step 1: Create L1 filter of outer vlan (12b) + inner vlan (12b)
- *
- * 1.	Create L1 filter of outer vlan (12b) which will be in use
- *		later when we define the cloud filter.
- *	a.	Valid_flags.replace_cloud = 0
- *	b.	Old_filter = 10 (Stag_Inner_Vlan)
- *	c.	New_filter = 0x10
- *	d.	TR bit = 0xff (optional, not used here)
- *	e.	Buffer – 2 entries:
- *		i.	Byte 0 = 8 (outer vlan FV index).
- *			Byte 1 = 0 (rsv)
- *			Byte 2-3 = 0x0fff
- *		ii.	Byte 0 = 37 (inner vlan FV index).
- *			Byte 1 =0 (rsv)
- *			Byte 2-3 = 0x0fff
- *
- * Step 2:
- * 2.	Create cloud filter using two L1 filters entries: stag and
- *		new filter(outer vlan+ inner vlan)
- *	a.	Valid_flags.replace_cloud = 1
- *	b.	Old_filter = 1 (instead of outer IP)
- *	c.	New_filter = 0x10
- *	d.	Buffer – 2 entries:
- *		i.	Byte 0 = 0x80 | 7 (valid | Stag).
- *			Byte 1-3 = 0 (rsv)
- *		ii.	Byte 8 = 0x80 | 0x10 (valid | new l1 filter step1)
- *			Byte 9-11 = 0 (rsv)
- */
-static int
-i40e_cloud_filter_qinq_create(struct i40e_pf *pf)
-{
-	int ret = -ENOTSUP;
-	struct i40e_aqc_replace_cloud_filters_cmd  filter_replace;
-	struct i40e_aqc_replace_cloud_filters_cmd_buf  filter_replace_buf;
-	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
-	struct rte_eth_dev *dev = &rte_eth_devices[pf->dev_data->port_id];
-
-	if (pf->support_multi_driver) {
-		PMD_DRV_LOG(ERR, "Replace cloud filter is not supported.");
-		return ret;
-	}
-
-	/* Init */
-	memset(&filter_replace, 0,
-	       sizeof(struct i40e_aqc_replace_cloud_filters_cmd));
-	memset(&filter_replace_buf, 0,
-	       sizeof(struct i40e_aqc_replace_cloud_filters_cmd_buf));
-
-	/* create L1 filter */
-	filter_replace.old_filter_type =
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_FV_STAG_IVLAN;
-	filter_replace.new_filter_type = I40E_AQC_ADD_CLOUD_FILTER_0X10;
-	filter_replace.tr_bit = 0;
-
-	/* Prepare the buffer, 2 entries */
-	filter_replace_buf.data[0] = I40E_AQC_REPLACE_CLOUD_CMD_INPUT_FV_VLAN;
-	filter_replace_buf.data[0] |=
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
-	/* Field Vector 12b mask */
-	filter_replace_buf.data[2] = 0xff;
-	filter_replace_buf.data[3] = 0x0f;
-	filter_replace_buf.data[4] =
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_FV_INNER_VLAN;
-	filter_replace_buf.data[4] |=
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
-	/* Field Vector 12b mask */
-	filter_replace_buf.data[6] = 0xff;
-	filter_replace_buf.data[7] = 0x0f;
-	ret = i40e_aq_replace_cloud_filters(hw, &filter_replace,
-			&filter_replace_buf);
-	if (ret != I40E_SUCCESS)
-		return ret;
-
-	if (filter_replace.old_filter_type !=
-	    filter_replace.new_filter_type)
-		PMD_DRV_LOG(WARNING, "i40e device %s changed cloud l1 type."
-			    " original: 0x%x, new: 0x%x",
-			    dev->device->name,
-			    filter_replace.old_filter_type,
-			    filter_replace.new_filter_type);
-
-	/* Apply the second L2 cloud filter */
-	memset(&filter_replace, 0,
-	       sizeof(struct i40e_aqc_replace_cloud_filters_cmd));
-	memset(&filter_replace_buf, 0,
-	       sizeof(struct i40e_aqc_replace_cloud_filters_cmd_buf));
-
-	/* create L2 filter, input for L2 filter will be L1 filter  */
-	filter_replace.valid_flags = I40E_AQC_REPLACE_CLOUD_FILTER;
-	filter_replace.old_filter_type = I40E_AQC_ADD_CLOUD_FILTER_OIP;
-	filter_replace.new_filter_type = I40E_AQC_ADD_CLOUD_FILTER_0X10;
-
-	/* Prepare the buffer, 2 entries */
-	filter_replace_buf.data[0] = I40E_AQC_REPLACE_CLOUD_CMD_INPUT_FV_STAG;
-	filter_replace_buf.data[0] |=
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
-	filter_replace_buf.data[4] = I40E_AQC_ADD_CLOUD_FILTER_0X10;
-	filter_replace_buf.data[4] |=
-		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
-	ret = i40e_aq_replace_cloud_filters(hw, &filter_replace,
-			&filter_replace_buf);
-	if (!ret && (filter_replace.old_filter_type !=
-		     filter_replace.new_filter_type))
-		PMD_DRV_LOG(WARNING, "i40e device %s changed cloud filter type."
-			    " original: 0x%x, new: 0x%x",
-			    dev->device->name,
-			    filter_replace.old_filter_type,
-			    filter_replace.new_filter_type);
-
-	return ret;
 }
 
 static int
