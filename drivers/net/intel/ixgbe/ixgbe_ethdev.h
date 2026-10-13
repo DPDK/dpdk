@@ -311,8 +311,6 @@ struct ixgbe_filter_info {
 	/* Bit mask for every used 5tuple filter */
 	uint32_t fivetuple_mask[IXGBE_5TUPLE_ARRAY_SIZE];
 	struct ixgbe_5tuple_filter_list fivetuple_list;
-	/* store the SYN filter info */
-	uint32_t syn_info;
 	/* store the rss filter info */
 	struct ixgbe_rte_flow_rss_conf rss_info;
 	/* shared EtherType (ETQF) slot table */
@@ -676,15 +674,13 @@ bool ixgbe_rss_update_sp(enum ixgbe_mac_type mac_type);
 int ixgbe_add_del_ntuple_filter(struct ixgbe_adapter *adapter,
 			struct rte_eth_ntuple_filter *filter,
 			bool add);
-int ixgbe_syn_filter_set(struct ixgbe_adapter *adapter,
-			struct rte_eth_syn_filter *filter,
-			bool add);
 
 void ixgbe_ethertype_filter_program(struct ixgbe_hw *hw, uint8_t idx,
 			uint32_t etqf, uint32_t etqs);
 int ixgbe_ethertype_table_add(struct ixgbe_ethertype_table *table,
 			uint16_t ethertype, uint32_t etqf, uint32_t etqs);
 int ixgbe_ethertype_table_del(struct ixgbe_ethertype_table *table, uint8_t idx);
+void ixgbe_syn_filter_program(struct ixgbe_hw *hw, uint32_t synqf);
 
 /**
  * l2 tunnel configuration.
@@ -758,7 +754,6 @@ int ixgbe_clear_all_fdir_filter(struct rte_eth_dev *dev);
 extern const struct rte_flow_ops ixgbe_flow_ops;
 
 void ixgbe_clear_all_ntuple_filter(struct rte_eth_dev *dev);
-void ixgbe_clear_syn_filter(struct rte_eth_dev *dev);
 int ixgbe_clear_all_l2_tn_filter(struct rte_eth_dev *dev);
 
 int ixgbe_disable_sec_tx_path_generic(struct ixgbe_hw *hw);

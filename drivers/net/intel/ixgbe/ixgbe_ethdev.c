@@ -6478,43 +6478,11 @@ ixgbevf_set_default_mac_addr(struct rte_eth_dev *dev,
 	return 0;
 }
 
-int
-ixgbe_syn_filter_set(struct ixgbe_adapter *adapter,
-			struct rte_eth_syn_filter *filter,
-			bool add)
+void
+ixgbe_syn_filter_program(struct ixgbe_hw *hw, uint32_t synqf)
 {
-	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(adapter);
-	struct ixgbe_filter_info *filter_info =
-		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(adapter);
-	uint32_t syn_info;
-	uint32_t synqf;
-
-	if (filter->queue >= IXGBE_MAX_RX_QUEUE_NUM)
-		return -EINVAL;
-
-	syn_info = filter_info->syn_info;
-
-	if (add) {
-		if (syn_info & IXGBE_SYN_FILTER_ENABLE)
-			return -EINVAL;
-		synqf = (uint32_t)(((filter->queue << IXGBE_SYN_FILTER_QUEUE_SHIFT) &
-			IXGBE_SYN_FILTER_QUEUE) | IXGBE_SYN_FILTER_ENABLE);
-
-		if (filter->hig_pri)
-			synqf |= IXGBE_SYN_FILTER_SYNQFP;
-		else
-			synqf &= ~IXGBE_SYN_FILTER_SYNQFP;
-	} else {
-		synqf = IXGBE_READ_REG(hw, IXGBE_SYNQF);
-		if (!(syn_info & IXGBE_SYN_FILTER_ENABLE))
-			return -ENOENT;
-		synqf &= ~(IXGBE_SYN_FILTER_QUEUE | IXGBE_SYN_FILTER_ENABLE);
-	}
-
-	filter_info->syn_info = synqf;
 	IXGBE_WRITE_REG(hw, IXGBE_SYNQF, synqf);
 	IXGBE_WRITE_FLUSH(hw);
-	return 0;
 }
 
 
@@ -8364,23 +8332,6 @@ ixgbe_ntuple_filter_restore(struct rte_eth_dev *dev)
 	}
 }
 
-/* restore SYN filter */
-static inline void
-ixgbe_syn_filter_restore(struct rte_eth_dev *dev)
-{
-	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct ixgbe_filter_info *filter_info =
-		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
-	uint32_t synqf;
-
-	synqf = filter_info->syn_info;
-
-	if (synqf & IXGBE_SYN_FILTER_ENABLE) {
-		IXGBE_WRITE_REG(hw, IXGBE_SYNQF, synqf);
-		IXGBE_WRITE_FLUSH(hw);
-	}
-}
-
 /* restore L2 tunnel filter */
 static inline void
 ixgbe_l2_tn_filter_restore(struct rte_eth_dev *dev)
@@ -8419,7 +8370,6 @@ static int
 ixgbe_filter_restore(struct rte_eth_dev *dev)
 {
 	ixgbe_ntuple_filter_restore(dev);
-	ixgbe_syn_filter_restore(dev);
 	ixgbe_fdir_filter_restore(dev);
 	ixgbe_l2_tn_filter_restore(dev);
 	ixgbe_rss_filter_restore(dev);
@@ -8455,22 +8405,6 @@ ixgbe_clear_all_ntuple_filter(struct rte_eth_dev *dev)
 
 	while ((p_5tuple = TAILQ_FIRST(&filter_info->fivetuple_list)))
 		ixgbe_remove_5tuple_filter(adapter, p_5tuple);
-}
-
-/* remove the SYN filter */
-void
-ixgbe_clear_syn_filter(struct rte_eth_dev *dev)
-{
-	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct ixgbe_filter_info *filter_info =
-		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
-
-	if (filter_info->syn_info & IXGBE_SYN_FILTER_ENABLE) {
-		filter_info->syn_info = 0;
-
-		IXGBE_WRITE_REG(hw, IXGBE_SYNQF, 0);
-		IXGBE_WRITE_FLUSH(hw);
-	}
 }
 
 /* remove all the L2 tunnel filters */
