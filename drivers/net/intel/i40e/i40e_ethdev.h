@@ -693,7 +693,7 @@ struct i40e_fdir_action {
 /* A structure used to define the flow director filter entry by filter_ctrl API
  * It supports RTE_ETH_FILTER_FDIR data representation.
  */
-struct i40e_fdir_filter_conf {
+struct i40e_fdir_filter {
 	uint32_t soft_id;
 	/* ID, an unique value is required when deal with FDIR entry */
 	struct i40e_fdir_input input;    /* Input set */
@@ -713,9 +713,26 @@ struct i40e_fdir_flex_mask {
 #define I40E_FILTER_PCTYPE_MAX     64
 #define I40E_MAX_FDIR_FILTER_NUM   (1024 * 8)
 
-struct i40e_fdir_filter {
-	TAILQ_ENTRY(i40e_fdir_filter) rules;
-	struct i40e_fdir_filter_conf fdir;
+/*
+ * A filter added through the PMD packet template API. It owns the raw packet,
+ * and fdir.input.flow.raw_flow.packet points at that copy, so the filter stays
+ * self-contained and can be reprogrammed at any time.
+ */
+struct i40e_fdir_tmpl_filter {
+	TAILQ_ENTRY(i40e_fdir_tmpl_filter) rules;
+	struct i40e_fdir_filter fdir;
+	uint8_t *packet;
+};
+
+/*
+ * Packet templates are keyed on their contents, which are too big for a hash
+ * key, so the key borrows the packet and a custom comparison walks it. The
+ * hash signature is computed by the caller and passed to the _with_hash() API.
+ */
+struct i40e_fdir_tmpl_key {
+	uint16_t pctype;
+	uint32_t length;
+	const uint8_t *packet;
 };
 
 /* fdir memory pool entry */
@@ -735,7 +752,46 @@ struct i40e_fdir_flow_pool {
 #define FLOW_TO_FLOW_BITMAP(f) \
 	container_of((f), struct i40e_fdir_entry, flow)
 
-TAILQ_HEAD(i40e_fdir_filter_list, i40e_fdir_filter);
+TAILQ_HEAD(i40e_fdir_tmpl_list, i40e_fdir_tmpl_filter);
+
+/* tracking for rte_flow-backed filters */
+struct i40e_fdir_pctype_state {
+	/* input set bits for this pctype */
+	uint64_t input_set;
+	uint32_t flow_count;
+	struct i40e_fdir_flex_mask flex_mask;
+	bool flex_mask_flag;
+};
+
+struct i40e_fdir_layer_state {
+	/*
+	 * The rule for extracting a byte stream as flexible payload. Each layer
+	 * can have up to three elements, and all filters sharing the same layer
+	 * reuse the same programmed layout.
+	 */
+	struct i40e_fdir_flex_pit flex_set[I40E_MAX_FLXPLD_FIED];
+	bool flex_pit_flag;
+	uint32_t flex_flow_count;
+};
+
+struct i40e_fdir_flow_store {
+	struct rte_hash *hash_table;
+	/* the pre-allocated pool of the rte_flow */
+	struct i40e_fdir_flow_pool flow_pool;
+
+	struct i40e_fdir_pctype_state pctype[I40E_FILTER_PCTYPE_MAX];
+	struct i40e_fdir_layer_state layer[I40E_MAX_FLXPLD_LAYER];
+};
+
+/* tracking for packet template filters; allocated on first use */
+struct i40e_fdir_tmpl_store {
+	struct rte_hash *hash_table;
+	/* filters indexed by their hash table slot */
+	struct i40e_fdir_tmpl_filter *filter_array;
+	/* these filters have no other owner, so they are enumerated here */
+	struct i40e_fdir_tmpl_list list;
+};
+
 /*
  *  A structure used to define fields of a FDIR related info.
  */
@@ -752,20 +808,8 @@ struct i40e_fdir_info {
 	 */
 	int txq_available_buf_count;
 
-	/* input set bits for each pctype */
-	uint64_t input_set[I40E_FILTER_PCTYPE_MAX];
-	/*
-	 * the rule how bytes stream is extracted as flexible payload
-	 * for each payload layer, the setting can up to three elements
-	 */
-	struct i40e_fdir_flex_pit flex_set[I40E_MAX_FLXPLD_LAYER * I40E_MAX_FLXPLD_FIED];
-	struct i40e_fdir_flex_mask flex_mask[I40E_FILTER_PCTYPE_MAX];
-
-	struct i40e_fdir_filter_list fdir_list;
-	struct i40e_fdir_filter **hash_map;
-	struct rte_hash *hash_table;
-	/* An array to store the inserted rules input */
-	struct i40e_fdir_filter *fdir_filter_array;
+	struct i40e_fdir_flow_store flows;
+	struct i40e_fdir_tmpl_store tmpls;
 
 	/*
 	 * Priority ordering at filter invalidation(destroying a flow) between
@@ -784,22 +828,10 @@ struct i40e_fdir_info {
 	 * shared space
 	 */
 	uint32_t fdir_space_size;
-	/* the actual number of the fdir rules in hardware, initialized as 0 */
+	/* number of filters in hardware, across both stores */
 	uint32_t fdir_actual_cnt;
-	/* the free guaranteed space of the fdir */
-	uint32_t fdir_guarantee_free_space;
 	/* the fdir total guaranteed space */
 	uint32_t fdir_guarantee_total_space;
-	/* the pre-allocated pool of the rte_flow */
-	struct i40e_fdir_flow_pool fdir_flow_pool;
-
-	/* Mark if flex pit and mask is set */
-	bool flex_pit_flag[I40E_MAX_FLXPLD_LAYER];
-	bool flex_mask_flag[I40E_FILTER_PCTYPE_MAX];
-
-	uint32_t flow_count[I40E_FILTER_PCTYPE_MAX];
-
-	uint32_t flex_flow_count[I40E_MAX_FLXPLD_LAYER];
 };
 
 /* Ethertype filter number HW supports */
@@ -1303,7 +1335,7 @@ extern const struct rte_flow_ops i40e_flow_ops;
 
 struct i40e_filter_ctx {
 	union {
-		struct i40e_fdir_filter_conf fdir_filter;
+		struct i40e_fdir_filter fdir_filter;
 		struct i40e_tunnel_filter_conf consistent_tunnel_filter;
 		struct i40e_rte_flow_rss_conf rss_conf;
 	};
@@ -1353,8 +1385,9 @@ const struct rte_memzone *i40e_memzone_reserve(const char *name,
 					uint32_t len,
 					int socket_id);
 int i40e_fdir_configure(struct rte_eth_dev *dev);
-void i40e_fdir_rx_proc_enable(struct rte_eth_dev *dev, bool on);
+void i40e_fdir_rx_proc_sync(struct rte_eth_dev *dev);
 void i40e_fdir_teardown(struct i40e_pf *pf);
+int i40e_fdir_engine_init(struct rte_eth_dev *dev);
 enum i40e_filter_pctype
 	i40e_flowtype_to_pctype(const struct i40e_adapter *adapter,
 				uint16_t flow_type);
@@ -1384,8 +1417,6 @@ int i40e_rx_burst_mode_get(struct rte_eth_dev *dev, uint16_t queue_id,
 			   struct rte_eth_burst_mode *mode);
 int i40e_tx_burst_mode_get(struct rte_eth_dev *dev, uint16_t queue_id,
 			   struct rte_eth_burst_mode *mode);
-int i40e_sw_fdir_filter_del(struct i40e_pf *pf,
-			    struct i40e_fdir_input *input);
 struct i40e_tunnel_filter *
 i40e_sw_tunnel_filter_lookup(struct i40e_tunnel_rule *tunnel_rule,
 			     const struct i40e_tunnel_filter_input *input);
@@ -1399,9 +1430,28 @@ struct rte_flow *
 i40e_fdir_entry_pool_get(struct i40e_fdir_info *fdir_info);
 void i40e_fdir_entry_pool_put(struct i40e_fdir_info *fdir_info,
 		struct rte_flow *flow);
-int i40e_flow_add_del_fdir_filter(struct rte_eth_dev *dev,
-			      const struct i40e_fdir_filter_conf *filter,
-			      bool add);
+int i40e_fdir_tmpl_add(struct rte_eth_dev *dev,
+				 const struct i40e_fdir_filter *filter);
+int i40e_fdir_tmpl_del(struct rte_eth_dev *dev,
+				 const struct i40e_fdir_filter *filter);
+struct i40e_fdir_filter *
+i40e_fdir_filter_lookup(struct i40e_fdir_info *fdir_info,
+			const struct i40e_fdir_input *input);
+int i40e_fdir_filter_validate(struct rte_eth_dev *dev,
+			      const struct i40e_fdir_filter *filter);
+int i40e_fdir_filter_register(struct rte_eth_dev *dev,
+			      const struct i40e_fdir_filter *filter,
+			      struct i40e_fdir_filter **node);
+int i40e_fdir_filter_unregister(struct rte_eth_dev *dev,
+				struct i40e_fdir_filter *node);
+int i40e_fdir_filter_program(struct rte_eth_dev *dev,
+			     const struct i40e_fdir_filter *filter,
+			     bool add, bool wait_status);
+bool i40e_fdir_filter_needs_status_wait(const struct i40e_pf *pf,
+					uint32_t filter_count);
+void i40e_fdir_tmpl_store_free(struct i40e_fdir_info *fdir_info);
+int i40e_fdir_flow_store_init(struct rte_eth_dev *dev);
+void i40e_fdir_flow_store_free(struct i40e_fdir_info *fdir_info);
 int i40e_dev_tunnel_filter_set(struct i40e_pf *pf,
 			       struct rte_eth_tunnel_filter_conf *tunnel_filter,
 			       uint8_t add);
