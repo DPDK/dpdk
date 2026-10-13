@@ -237,10 +237,13 @@ vmbus_rxbr_read(struct vmbus_br *rbr, void *data, size_t dlen, size_t skip)
 	 */
 	rindex = vmbus_br_idxinc(rindex, sizeof(uint64_t), br_dsize);
 
-	/* Update the read index _after_ the channel packet is fetched.	 */
-	rte_compiler_barrier();
-
-	vbr->rindex = rindex;
+	/*
+	 * Update the read index after the channel packet is fetched.
+	 * Release store ensures the host can not observe the new read
+	 * index before the data copy is complete.
+	 */
+	rte_atomic_store_explicit((volatile uint32_t __rte_atomic *)&vbr->rindex,
+				  rindex, rte_memory_order_release);
 
 	return 0;
 }
