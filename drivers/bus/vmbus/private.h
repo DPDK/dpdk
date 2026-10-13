@@ -12,6 +12,7 @@
 #include <bus_driver.h>
 #include <bus_vmbus_driver.h>
 #include <rte_log.h>
+#include <rte_stdatomic.h>
 #include <rte_eal_paging.h>
 #include <rte_vmbus_reg.h>
 
@@ -130,7 +131,16 @@ vmbus_br_availwrite(const struct vmbus_br *br, uint32_t windex)
 static inline uint32_t
 vmbus_br_availread(const struct vmbus_br *br)
 {
-	return br->dsize - vmbus_br_availwrite(br, br->vbr->windex);
+	uint32_t windex;
+
+	/* Pairs with the host's release store of the write index;
+	 * ring data must not be read before the index.
+	 */
+	windex = rte_atomic_load_explicit(
+		(volatile uint32_t __rte_atomic *)&br->vbr->windex,
+		rte_memory_order_acquire);
+
+	return br->dsize - vmbus_br_availwrite(br, windex);
 }
 
 int vmbus_txbr_write(struct vmbus_br *tbr, const struct iovec iov[], int iovlen,
