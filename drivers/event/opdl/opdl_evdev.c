@@ -200,8 +200,9 @@ opdl_port_setup(struct rte_eventdev *dev,
 	p->queue_id = OPDL_INVALID_QID;
 	p->external_qid = OPDL_INVALID_QID;
 	dev->data->ports[port_id] = p;
-	rte_smp_wmb();
-	p->configured = 1;
+	/* Release publishes port setup before the configured flag */
+	rte_atomic_store_explicit((uint8_t __rte_atomic *)&p->configured, 1,
+				  rte_memory_order_release);
 	device->nb_ports++;
 	return 0;
 }
@@ -474,10 +475,7 @@ opdl_stop(struct rte_eventdev *dev)
 
 	destroy_queues_and_rings(dev);
 
-
 	device->started = 0;
-
-	rte_smp_wmb();
 }
 
 static int
