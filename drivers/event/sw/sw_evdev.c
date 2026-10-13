@@ -84,8 +84,9 @@ sw_port_link(struct rte_eventdev *dev, void *port, const uint8_t queues[],
 		}
 
 		q->cq_map[q->cq_num_mapped_cqs] = p->id;
-		rte_smp_wmb();
-		q->cq_num_mapped_cqs++;
+		/* Release publishes the map entry before the new count */
+		rte_atomic_store_explicit((uint32_t __rte_atomic *)&q->cq_num_mapped_cqs,
+			q->cq_num_mapped_cqs + 1, rte_memory_order_release);
 	}
 	return i;
 }
@@ -105,8 +106,11 @@ sw_port_unlink(struct rte_eventdev *dev, void *port, uint8_t queues[],
 			if (q->cq_map[j] == p->id) {
 				q->cq_map[j] =
 					q->cq_map[q->cq_num_mapped_cqs - 1];
-				rte_smp_wmb();
-				q->cq_num_mapped_cqs--;
+				/* Release publishes the map update before the new count */
+				rte_atomic_store_explicit(
+					(uint32_t __rte_atomic *)&q->cq_num_mapped_cqs,
+					q->cq_num_mapped_cqs - 1,
+					rte_memory_order_release);
 				unlinked++;
 
 				p->num_qids_mapped--;
@@ -210,8 +214,9 @@ sw_port_setup(struct rte_eventdev *dev, uint8_t port_id,
 	}
 	dev->data->ports[port_id] = p;
 
-	rte_smp_wmb();
-	p->initialized = 1;
+	/* Release publishes the port setup before initialized flag */
+	rte_atomic_store_explicit((uint8_t __rte_atomic *)&p->initialized, 1,
+		rte_memory_order_release);
 	return 0;
 }
 
@@ -817,8 +822,9 @@ sw_start(struct rte_eventdev *dev)
 	if (sw_xstats_init(sw) < 0)
 		return -EINVAL;
 
-	rte_smp_wmb();
-	sw->started = 1;
+	/* Release publishes device state before the started flag */
+	rte_atomic_store_explicit((uint8_t __rte_atomic *)&sw->started, 1,
+		rte_memory_order_release);
 
 	return 0;
 }
@@ -847,7 +853,8 @@ sw_stop(struct rte_eventdev *dev)
 	sw_clean_qid_iqs(dev);
 	sw_xstats_uninit(sw);
 	sw->started = 0;
-	rte_smp_wmb();
+	/* Order the started store before re-enabling the service */
+	rte_atomic_thread_fence(rte_memory_order_release);
 
 	if (runstate == 1)
 		rte_service_runstate_set(sw->service_id, 1);

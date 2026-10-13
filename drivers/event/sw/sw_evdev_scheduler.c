@@ -513,7 +513,11 @@ sw_event_schedule(struct rte_eventdev *dev)
 	uint32_t i;
 
 	sw->sched_called++;
-	if (unlikely(!sw->started))
+	/* Acquire pairs with the release store in sw_start(), so the device state it published
+	 * is visible before any of it is used here. Once per service call, not per event.
+	 */
+	if (unlikely(!rte_atomic_load_explicit((uint8_t __rte_atomic *)&sw->started,
+			rte_memory_order_acquire)))
 		return -EAGAIN;
 
 	do {
