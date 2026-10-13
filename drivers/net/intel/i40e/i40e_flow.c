@@ -30,7 +30,11 @@
 
 #include "../common/flow_check.h"
 
-const struct ci_flow_engine_list i40e_flow_engine_list = {0};
+const struct ci_flow_engine_list i40e_flow_engine_list = {
+	{
+		&i40e_flow_engine_ethertype,
+	}
+};
 
 #define I40E_IPV6_TC_MASK	(0xFF << I40E_FDIR_IPv6_TC_OFFSET)
 #define I40E_IPV6_FRAG_HEADER	44
@@ -60,15 +64,6 @@ static int i40e_flow_dev_dump(struct rte_eth_dev *dev,
 			      struct rte_flow *flow,
 			      FILE *file,
 			      struct rte_flow_error *error);
-static int
-i40e_flow_parse_ethertype_pattern(struct rte_eth_dev *dev,
-				  const struct rte_flow_item *pattern,
-				  struct rte_flow_error *error,
-				  struct rte_eth_ethertype_filter *filter);
-static int i40e_flow_parse_ethertype_action(struct rte_eth_dev *dev,
-				    const struct rte_flow_action *actions,
-				    struct rte_flow_error *error,
-				    struct rte_eth_ethertype_filter *filter);
 static int i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 					const struct rte_flow_item *pattern,
 					struct rte_flow_error *error,
@@ -81,11 +76,6 @@ static int i40e_flow_parse_tunnel_action(struct rte_eth_dev *dev,
 				 const struct rte_flow_action *actions,
 				 struct rte_flow_error *error,
 				 struct i40e_tunnel_filter_conf *filter);
-static int i40e_flow_parse_ethertype_filter(struct rte_eth_dev *dev,
-				    const struct rte_flow_item pattern[],
-				    const struct rte_flow_action actions[],
-				    struct rte_flow_error *error,
-				    struct i40e_filter_ctx *filter);
 static int i40e_flow_parse_fdir_filter(struct rte_eth_dev *dev,
 				       const struct rte_flow_item pattern[],
 				       const struct rte_flow_action actions[],
@@ -111,12 +101,9 @@ static int i40e_flow_parse_gtp_filter(struct rte_eth_dev *dev,
 				      const struct rte_flow_action actions[],
 				      struct rte_flow_error *error,
 				      struct i40e_filter_ctx *filter);
-static int i40e_flow_destroy_ethertype_filter(struct i40e_pf *pf,
-				      struct i40e_ethertype_filter *filter);
 static int i40e_flow_destroy_tunnel_filter(struct i40e_pf *pf,
 					   struct i40e_tunnel_filter *filter);
 static int i40e_flow_flush_fdir_filter(struct i40e_pf *pf);
-static int i40e_flow_flush_ethertype_filter(struct i40e_pf *pf);
 static int i40e_flow_flush_tunnel_filter(struct i40e_pf *pf);
 static int
 i40e_flow_parse_qinq_filter(struct rte_eth_dev *dev,
@@ -987,8 +974,6 @@ static enum rte_flow_item_type pattern_fdir_ipv6_udp_esp[] = {
 };
 
 static struct i40e_valid_pattern i40e_supported_patterns[] = {
-	/* Ethertype */
-	{ pattern_ethertype, i40e_flow_parse_ethertype_filter },
 	/* FDIR - support default flow type without flexible payload*/
 	{ pattern_ethertype, i40e_flow_parse_fdir_filter },
 	{ pattern_fdir_ipv4, i40e_flow_parse_fdir_filter },
@@ -1206,8 +1191,6 @@ static const char *
 i40e_flow_rule_name(enum rte_filter_type filter_type)
 {
 	switch (filter_type) {
-	case RTE_ETH_FILTER_ETHERTYPE:
-		return "ethertype";
 	case RTE_ETH_FILTER_FDIR:
 		return "fdir";
 	case RTE_ETH_FILTER_TUNNEL:
@@ -1223,8 +1206,6 @@ static size_t
 i40e_flow_rule_size(enum rte_filter_type filter_type)
 {
 	switch (filter_type) {
-	case RTE_ETH_FILTER_ETHERTYPE:
-		return sizeof(struct i40e_ethertype_filter);
 	case RTE_ETH_FILTER_FDIR:
 		return sizeof(struct i40e_fdir_filter);
 	case RTE_ETH_FILTER_TUNNEL:
@@ -1324,11 +1305,11 @@ i40e_flow_dev_dump(struct rte_eth_dev *dev,
 	return 0;
 }
 
-static int
-i40e_get_outer_vlan(struct rte_eth_dev *dev, uint16_t *tpid)
+int
+i40e_get_outer_vlan(struct i40e_pf *pf, uint16_t *tpid)
 {
-	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	int qinq = dev->data->dev_conf.rxmode.offloads &
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	int qinq = pf->dev_data->dev_conf.rxmode.offloads &
 		RTE_ETH_RX_OFFLOAD_VLAN_EXTEND;
 	uint64_t reg_r = 0;
 	uint16_t reg_id;
@@ -1349,181 +1330,6 @@ i40e_get_outer_vlan(struct rte_eth_dev *dev, uint16_t *tpid)
 	*tpid = (reg_r >> I40E_GL_SWT_L2TAGCTRL_ETHERTYPE_SHIFT) & 0xFFFF;
 
 	return 0;
-}
-
-/* 1. Last in item should be NULL as range is not supported.
- * 2. Supported filter types: MAC_ETHTYPE and ETHTYPE.
- * 3. SRC mac_addr mask should be 00:00:00:00:00:00.
- * 4. DST mac_addr mask should be 00:00:00:00:00:00 or
- *    FF:FF:FF:FF:FF:FF
- * 5. Ether_type mask should be 0xFFFF.
- */
-static int
-i40e_flow_parse_ethertype_pattern(struct rte_eth_dev *dev,
-				  const struct rte_flow_item *pattern,
-				  struct rte_flow_error *error,
-				  struct rte_eth_ethertype_filter *filter)
-{
-	const struct rte_flow_item *item = pattern;
-	const struct rte_flow_item_eth *eth_spec;
-	const struct rte_flow_item_eth *eth_mask;
-	enum rte_flow_item_type item_type;
-	int ret;
-	uint16_t tpid;
-
-	for (; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
-		if (item->last) {
-			rte_flow_error_set(error, EINVAL,
-					   RTE_FLOW_ERROR_TYPE_ITEM,
-					   item,
-					   "Not support range");
-			return -rte_errno;
-		}
-		item_type = item->type;
-		switch (item_type) {
-		case RTE_FLOW_ITEM_TYPE_ETH:
-			eth_spec = item->spec;
-			eth_mask = item->mask;
-			/* Get the MAC info. */
-			if (!eth_spec || !eth_mask) {
-				rte_flow_error_set(error, EINVAL,
-						   RTE_FLOW_ERROR_TYPE_ITEM,
-						   item,
-						   "NULL ETH spec/mask");
-				return -rte_errno;
-			}
-
-			/* Mask bits of source MAC address must be full of 0.
-			 * Mask bits of destination MAC address must be full
-			 * of 1 or full of 0.
-			 */
-			if (!rte_is_zero_ether_addr(&eth_mask->hdr.src_addr) ||
-			    (!rte_is_zero_ether_addr(&eth_mask->hdr.dst_addr) &&
-			     !rte_is_broadcast_ether_addr(&eth_mask->hdr.dst_addr))) {
-				rte_flow_error_set(error, EINVAL,
-						   RTE_FLOW_ERROR_TYPE_ITEM,
-						   item,
-						   "Invalid MAC_addr mask");
-				return -rte_errno;
-			}
-
-			if ((eth_mask->hdr.ether_type & UINT16_MAX) != UINT16_MAX) {
-				rte_flow_error_set(error, EINVAL,
-						   RTE_FLOW_ERROR_TYPE_ITEM,
-						   item,
-						   "Invalid ethertype mask");
-				return -rte_errno;
-			}
-
-			/* If mask bits of destination MAC address
-			 * are full of 1, set RTE_ETHTYPE_FLAGS_MAC.
-			 */
-			if (rte_is_broadcast_ether_addr(&eth_mask->hdr.dst_addr)) {
-				filter->mac_addr = eth_spec->hdr.dst_addr;
-				filter->flags |= RTE_ETHTYPE_FLAGS_MAC;
-			} else {
-				filter->flags &= ~RTE_ETHTYPE_FLAGS_MAC;
-			}
-			filter->ether_type = rte_be_to_cpu_16(eth_spec->hdr.ether_type);
-
-			if (filter->ether_type == RTE_ETHER_TYPE_IPV4 ||
-			    filter->ether_type == RTE_ETHER_TYPE_IPV6 ||
-			    filter->ether_type == RTE_ETHER_TYPE_LLDP) {
-				rte_flow_error_set(error, EINVAL,
-						   RTE_FLOW_ERROR_TYPE_ITEM,
-						   item,
-						   "Unsupported ether_type in control packet filter.");
-				return -rte_errno;
-			}
-
-			ret = i40e_get_outer_vlan(dev, &tpid);
-			if (ret != 0) {
-				rte_flow_error_set(error, EIO,
-						RTE_FLOW_ERROR_TYPE_ITEM,
-						item,
-						"Can not get the Ethertype identifying the L2 tag");
-				return -rte_errno;
-			}
-			if (filter->ether_type == tpid) {
-				rte_flow_error_set(error, EINVAL,
-						   RTE_FLOW_ERROR_TYPE_ITEM,
-						   item,
-						   "Unsupported ether_type in"
-						   " control packet filter.");
-				return -rte_errno;
-			}
-
-			break;
-		default:
-			break;
-		}
-	}
-
-	return 0;
-}
-
-/* Ethertype action only supports QUEUE or DROP. */
-static int
-i40e_flow_parse_ethertype_action(struct rte_eth_dev *dev,
-				 const struct rte_flow_action *actions,
-				 struct rte_flow_error *error,
-				 struct rte_eth_ethertype_filter *filter)
-{
-	struct ci_flow_actions parsed_actions = {0};
-	struct ci_flow_actions_check_param ac_param = {
-		.allowed_types = (enum rte_flow_action_type[]) {
-			RTE_FLOW_ACTION_TYPE_QUEUE,
-			RTE_FLOW_ACTION_TYPE_DROP,
-			RTE_FLOW_ACTION_TYPE_END,
-		},
-		.max_actions = 1,
-	};
-	const struct rte_flow_action *action;
-	int ret;
-
-	ret = ci_flow_check_actions(actions, &ac_param, &parsed_actions, error);
-	if (ret)
-		return ret;
-	action = parsed_actions.actions[0];
-
-	if (action->type == RTE_FLOW_ACTION_TYPE_QUEUE) {
-		const struct rte_flow_action_queue *act_q = action->conf;
-		/* check queue index */
-		if (act_q->index >= dev->data->nb_rx_queues) {
-			return rte_flow_error_set(error, EINVAL,
-					RTE_FLOW_ERROR_TYPE_ACTION, action,
-					"Invalid queue index");
-		}
-		filter->queue = act_q->index;
-	} else if (action->type == RTE_FLOW_ACTION_TYPE_DROP) {
-		filter->flags |= RTE_ETHTYPE_FLAGS_DROP;
-	}
-	return 0;
-}
-
-static int
-i40e_flow_parse_ethertype_filter(struct rte_eth_dev *dev,
-				 const struct rte_flow_item pattern[],
-				 const struct rte_flow_action actions[],
-				 struct rte_flow_error *error,
-				 struct i40e_filter_ctx *filter)
-{
-	struct rte_eth_ethertype_filter *ethertype_filter = &filter->ethertype_filter;
-	int ret;
-
-	ret = i40e_flow_parse_ethertype_pattern(dev, pattern, error,
-						ethertype_filter);
-	if (ret)
-		return ret;
-
-	ret = i40e_flow_parse_ethertype_action(dev, actions, error,
-					       ethertype_filter);
-	if (ret)
-		return ret;
-
-	filter->type = RTE_ETH_FILTER_ETHERTYPE;
-
-	return ret;
 }
 
 static int
@@ -1786,7 +1592,7 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 						     "Unsupported ether_type.");
 					return -rte_errno;
 				}
-				ret = i40e_get_outer_vlan(dev, &tpid);
+				ret = i40e_get_outer_vlan(pf, &tpid);
 				if (ret != 0) {
 					rte_flow_error_set(error, EIO,
 							RTE_FLOW_ERROR_TYPE_ITEM,
@@ -1852,7 +1658,7 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 						     "Unsupported inner_type.");
 					return -rte_errno;
 				}
-				ret = i40e_get_outer_vlan(dev, &tpid);
+				ret = i40e_get_outer_vlan(pf, &tpid);
 				if (ret != 0) {
 					rte_flow_error_set(error, EIO,
 							RTE_FLOW_ERROR_TYPE_ITEM,
@@ -3991,13 +3797,6 @@ i40e_flow_create(struct rte_eth_dev *dev,
 	}
 
 	switch (filter_ctx.type) {
-	case RTE_ETH_FILTER_ETHERTYPE:
-		ret = i40e_ethertype_filter_set(pf, &filter_ctx.ethertype_filter, 1);
-		if (ret)
-			goto free_flow;
-		flow->rule = TAILQ_LAST(&pf->ethertype.ethertype_list,
-					i40e_ethertype_filter_list);
-		break;
 	case RTE_ETH_FILTER_FDIR:
 		ret = i40e_flow_add_del_fdir_filter(dev, &filter_ctx.fdir_filter, 1);
 		if (ret)
@@ -4057,10 +3856,6 @@ i40e_flow_destroy(struct rte_eth_dev *dev,
 		return 0;
 
 	switch (filter_type) {
-	case RTE_ETH_FILTER_ETHERTYPE:
-		ret = i40e_flow_destroy_ethertype_filter(pf,
-			 (struct i40e_ethertype_filter *)flow->rule);
-		break;
 	case RTE_ETH_FILTER_TUNNEL:
 		ret = i40e_flow_destroy_tunnel_filter(pf,
 			      (struct i40e_tunnel_filter *)flow->rule);
@@ -4096,41 +3891,6 @@ i40e_flow_destroy(struct rte_eth_dev *dev,
 		rte_flow_error_set(error, -ret,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 				   "Failed to destroy flow.");
-
-	return ret;
-}
-
-static int
-i40e_flow_destroy_ethertype_filter(struct i40e_pf *pf,
-				   struct i40e_ethertype_filter *filter)
-{
-	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
-	struct i40e_ethertype_rule *ethertype_rule = &pf->ethertype;
-	struct i40e_ethertype_filter *node;
-	struct i40e_control_filter_stats stats;
-	uint16_t flags = 0;
-	int ret = 0;
-
-	if (!(filter->flags & RTE_ETHTYPE_FLAGS_MAC))
-		flags |= I40E_AQC_ADD_CONTROL_PACKET_FLAGS_IGNORE_MAC;
-	if (filter->flags & RTE_ETHTYPE_FLAGS_DROP)
-		flags |= I40E_AQC_ADD_CONTROL_PACKET_FLAGS_DROP;
-	flags |= I40E_AQC_ADD_CONTROL_PACKET_FLAGS_TO_QUEUE;
-
-	memset(&stats, 0, sizeof(stats));
-	ret = i40e_aq_add_rem_control_packet_filter(hw,
-				    filter->input.mac_addr.addr_bytes,
-				    filter->input.ether_type,
-				    flags, pf->main_vsi->seid,
-				    filter->queue, 0, &stats, NULL);
-	if (ret < 0)
-		return ret;
-
-	node = i40e_sw_ethertype_filter_lookup(ethertype_rule, &filter->input);
-	if (!node)
-		return -EINVAL;
-
-	ret = i40e_sw_ethertype_filter_del(pf, &node->input);
 
 	return ret;
 }
@@ -4213,14 +3973,6 @@ i40e_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error)
 		return -rte_errno;
 	}
 
-	ret = i40e_flow_flush_ethertype_filter(pf);
-	if (ret) {
-		rte_flow_error_set(error, -ret,
-				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
-				   "Failed to ethertype flush flows.");
-		return -rte_errno;
-	}
-
 	ret = i40e_flow_flush_tunnel_filter(pf);
 	if (ret) {
 		rte_flow_error_set(error, -ret,
@@ -4292,34 +4044,6 @@ i40e_flow_flush_fdir_filter(struct i40e_pf *pf)
 
 		/* Disable FDIR processing as all FDIR rules are now flushed */
 		i40e_fdir_rx_proc_enable(dev, 0);
-	}
-
-	return ret;
-}
-
-/* Flush all ethertype filters */
-static int
-i40e_flow_flush_ethertype_filter(struct i40e_pf *pf)
-{
-	struct i40e_ethertype_filter_list
-		*ethertype_list = &pf->ethertype.ethertype_list;
-	struct i40e_ethertype_filter *filter;
-	struct rte_flow *flow;
-	void *temp;
-	int ret = 0;
-
-	while ((filter = TAILQ_FIRST(ethertype_list))) {
-		ret = i40e_flow_destroy_ethertype_filter(pf, filter);
-		if (ret)
-			return ret;
-	}
-
-	/* Delete ethertype flows in flow list. */
-	RTE_TAILQ_FOREACH_SAFE(flow, &pf->flow_list, node, temp) {
-		if (flow->filter_type == RTE_ETH_FILTER_ETHERTYPE) {
-			TAILQ_REMOVE(&pf->flow_list, flow, node);
-			rte_free(flow);
-		}
 	}
 
 	return ret;
