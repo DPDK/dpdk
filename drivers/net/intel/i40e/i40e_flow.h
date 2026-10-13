@@ -23,5 +23,8 @@ extern const struct ci_flow_engine i40e_flow_engine_tunnel_nvgre;
 extern const struct ci_flow_engine i40e_flow_engine_tunnel_mpls;
 extern const struct ci_flow_engine i40e_flow_engine_tunnel_gtp;
 extern const struct ci_flow_engine i40e_flow_engine_tunnel_l4;
+extern const struct ci_flow_engine i40e_flow_engine_hash_pattern;
+extern const struct ci_flow_engine i40e_flow_engine_hash_vlan;
+extern const struct ci_flow_engine i40e_flow_engine_hash_empty;
 
 #endif /* _I40E_FLOW_H_ */

@@ -1027,6 +1027,27 @@ i40e_tunnel_state_detach(struct i40e_tunnel_state *state)
 	state->hash_table = NULL;
 }
 
+struct i40e_rss_state *
+i40e_rss_state_attach(struct rte_eth_dev_data *dev_data)
+{
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev_data->dev_private);
+	struct i40e_rss_state *state = &pf->rss_state;
+
+	if (ci_usage_count_claim(&state->use_count))
+		TAILQ_INIT(&state->list);
+
+	return state;
+}
+
+void
+i40e_rss_state_detach(struct i40e_rss_state *state)
+{
+	if (!ci_usage_count_release(&state->use_count))
+		return;
+
+	*state = (struct i40e_rss_state){0};
+}
+
 static void
 i40e_init_customized_info(struct i40e_pf *pf)
 {
@@ -1630,9 +1651,6 @@ eth_i40e_dev_init(struct rte_eth_dev *dev, void *init_params __rte_unused)
 	 */
 	i40e_add_tx_flow_control_drop_filter(pf);
 
-	/* initialize RSS rule list */
-	TAILQ_INIT(&pf->rss_config_list);
-
 	/* initialize Traffic Manager configuration */
 	i40e_tm_conf_init(dev);
 
@@ -1774,8 +1792,6 @@ i40e_dev_configure(struct rte_eth_dev *dev)
 			goto err_dcb;
 		}
 	}
-
-	TAILQ_INIT(&pf->flow_list);
 
 	return 0;
 
@@ -2444,7 +2460,6 @@ i40e_dev_close(struct rte_eth_dev *dev)
 	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	struct i40e_filter_control_settings settings;
-	struct rte_flow *p_flow;
 	uint32_t reg;
 	int i;
 	int ret;
@@ -2535,12 +2550,6 @@ i40e_dev_close(struct rte_eth_dev *dev)
 		}
 		i40e_msec_delay(500);
 	} while (retries++ < 5);
-
-	/* Remove all flows */
-	while ((p_flow = TAILQ_FIRST(&pf->flow_list))) {
-		TAILQ_REMOVE(&pf->flow_list, p_flow, node);
-		rte_free(p_flow);
-	}
 
 	/* Remove all Traffic Manager configuration */
 	i40e_tm_conf_uninit(dev);
@@ -10713,7 +10722,6 @@ static void
 i40e_filter_restore(struct i40e_pf *pf)
 {
 	i40e_fdir_filter_restore(pf);
-	(void)i40e_hash_filter_restore(pf);
 }
 
 bool

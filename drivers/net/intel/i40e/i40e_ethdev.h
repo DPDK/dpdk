@@ -282,9 +282,6 @@ enum i40e_flxpld_layer_idx {
  */
 struct rte_flow {
 	struct ci_flow base;
-	TAILQ_ENTRY(rte_flow) node;
-	enum rte_filter_type filter_type;
-	void *rule;
 };
 
 /**
@@ -993,8 +990,6 @@ struct i40e_tunnel_filter_conf {
 	uint16_t vf_id;         /**< VF id, available when is_to_vf is 1. */
 };
 
-TAILQ_HEAD(i40e_flow_list, rte_flow);
-
 /* Struct to store Traffic Manager shaper profile. */
 struct i40e_tm_shaper_profile {
 	TAILQ_ENTRY(i40e_tm_shaper_profile) node;
@@ -1081,7 +1076,7 @@ struct i40e_customized_pctype {
 
 #define I40E_RSS_KEY_LEN ((I40E_PFQF_HKEY_MAX_INDEX + 1) * sizeof(uint32_t))
 
-struct i40e_rte_flow_rss_conf {
+struct i40e_rss_conf {
 	enum rte_eth_hash_function func;
 	uint64_t types; /**< Specific RSS hash types (see RTE_ETH_RSS_*). */
 	uint32_t key_len; /**< Hash key length in bytes. */
@@ -1116,14 +1111,23 @@ struct i40e_rss_filter_data {
 	uint64_t reset_symmetric_pctypes;
 };
 
-/* RSS filter list structure */
-struct i40e_rss_filter {
-	TAILQ_ENTRY(i40e_rss_filter) next;
-	struct i40e_rte_flow_rss_conf rss_filter_info;
+/*
+ * Tracking entry for a registered RSS flow: points back to the flow that
+ * owns the rss_conf, plus the metadata recording which HW state it owns.
+ */
+struct i40e_rss_flow_node {
+	TAILQ_ENTRY(i40e_rss_flow_node) next;
+	struct ci_flow *flow;
 	struct i40e_rss_filter_data filter_data;
 };
 
-TAILQ_HEAD(i40e_rss_conf_list, i40e_rss_filter);
+TAILQ_HEAD(i40e_rss_node_list, i40e_rss_flow_node);
+
+/* RSS flow engine shared state, attached/detached by the RSS engines */
+struct i40e_rss_state {
+	ci_usage_count_t use_count;
+	struct i40e_rss_node_list list;
+};
 
 struct i40e_vf_msg_cfg {
 	/* maximal VF message during a statistic period */
@@ -1200,13 +1204,12 @@ struct i40e_pf {
 
 	struct i40e_fdir_info fdir; /* flow director info */
 	struct i40e_tunnel_state tunnel_state; /* tunnel flow engine state */
-	struct i40e_rss_conf_list rss_config_list; /* RSS rule list */
+	struct i40e_rss_state rss_state; /* RSS flow engine state */
 	struct i40e_queue_regions queue_region; /* queue region info */
 	struct i40e_fc_conf fc_conf; /* Flow control conf */
 	bool floating_veb; /* The flag to use the floating VEB */
 	/* The floating enable flag for the specific VF */
 	bool floating_veb_list[I40E_MAX_VF];
-	struct i40e_flow_list flow_list;
 	/* flow engine configuration */
 	struct ci_flow_engine_conf flow_engine_conf;
 	struct i40e_tm_conf tm_conf;
@@ -1339,11 +1342,6 @@ struct i40e_vf_representor {
 
 extern const struct rte_flow_ops i40e_flow_ops;
 
-struct i40e_filter_ctx {
-	struct i40e_rte_flow_rss_conf rss_conf;
-	enum rte_filter_type type;
-};
-
 int i40e_dev_switch_queues(struct i40e_pf *pf, bool on);
 int i40e_vsi_release(struct i40e_vsi *vsi);
 struct i40e_vsi *i40e_vsi_setup(struct i40e_pf *pf,
@@ -1459,6 +1457,8 @@ int i40e_tunnel_filter_match_key_get(struct i40e_pf *pf,
 				 struct i40e_tunnel_filter_match_key *out);
 struct i40e_tunnel_state *i40e_tunnel_state_attach(struct rte_eth_dev_data *dev_data);
 void i40e_tunnel_state_detach(struct i40e_tunnel_state *state);
+struct i40e_rss_state *i40e_rss_state_attach(struct rte_eth_dev_data *dev_data);
+void i40e_rss_state_detach(struct i40e_rss_state *state);
 int i40e_tunnel_filter_program(struct i40e_pf *pf,
 			       struct i40e_tunnel_filter_conf *tunnel_filter,
 			       uint8_t add);

@@ -13,19 +13,12 @@
 extern "C" {
 #endif
 
-int i40e_hash_parse(struct rte_eth_dev *dev,
-		    const struct rte_flow_item pattern[],
-		    const struct rte_flow_action actions[],
-		    struct i40e_rte_flow_rss_conf *rss_conf,
-		    struct rte_flow_error *error);
-
-int i40e_hash_filter_create(struct i40e_pf *pf,
-			    struct i40e_rte_flow_rss_conf *rss_conf);
-
-int i40e_hash_filter_restore(struct i40e_pf *pf);
-int i40e_hash_filter_destroy(struct i40e_pf *pf,
-			     const struct i40e_rss_filter *rss_filter);
-int i40e_hash_filter_flush(struct i40e_pf *pf);
+int i40e_hash_program_hw(struct i40e_pf *pf,
+			 struct i40e_rss_conf *rss_conf);
+int i40e_hash_deprogram_hw(struct i40e_pf *pf,
+			   struct i40e_rss_filter_data *filter_data);
+void i40e_hash_compute_reset_flags(const struct i40e_rss_conf *rss_conf,
+				   struct i40e_rss_filter_data *filter_data);
 
 extern const uint8_t i40e_rss_key_default[I40E_RSS_KEY_LEN];
 
