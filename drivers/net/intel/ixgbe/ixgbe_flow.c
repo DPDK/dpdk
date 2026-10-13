@@ -209,6 +209,7 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 	const struct rte_flow_item_vlan *vlan_mask;
 	struct rte_flow_item_eth eth_null;
 	struct rte_flow_item_vlan vlan_null;
+	uint16_t priority;
 
 	/* Priority must be 16-bit */
 	if (attr->priority > UINT16_MAX) {
@@ -503,9 +504,21 @@ action:
 
 	filter->queue = q_act->index;
 
-	filter->priority = (uint16_t)attr->priority;
-	if (attr->priority < IXGBE_MIN_N_TUPLE_PRIO || attr->priority > IXGBE_MAX_N_TUPLE_PRIO)
-		filter->priority = 1;
+	/*
+	 * rte_flow priority: 0 through UINT32_MAX, 0 is highest
+	 *
+	 * ntuple priority: 001b through 111b, 111b is highest
+	 *
+	 * which means we need to transform priority from rte_flow to ntuple:
+	 *
+	 * 1) clamp max value
+	 * 2) reverse
+	 * 3) add min value
+	 */
+	priority = RTE_MIN(IXGBE_MAX_N_TUPLE_PRIO - 1, (uint16_t)attr->priority);
+	priority = IXGBE_MAX_N_TUPLE_PRIO - 1 - priority;
+	priority += IXGBE_MIN_N_TUPLE_PRIO;
+	filter->priority = priority;
 
 	return 0;
 }
