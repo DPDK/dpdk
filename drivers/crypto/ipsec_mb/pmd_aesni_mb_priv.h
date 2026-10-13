@@ -937,6 +937,48 @@ static const struct rte_cryptodev_capabilities aesni_mb_capabilities[] = {
 			}, }
 		}, }
 	},
+	{	/* SHAKE-128 */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_SHAKE_128,
+				.block_size = 168,
+				.key_size = {
+					.min = 0,
+					.max = 0,
+					.increment = 0
+				},
+				.digest_size = {
+					.min = 1,
+					.max = 64,
+					.increment = 1
+				},
+				.iv_size = { 0 }
+			}, }
+		}, }
+	},
+	{	/* SHAKE-256 */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_SHAKE_256,
+				.block_size = 136,
+				.key_size = {
+					.min = 0,
+					.max = 0,
+					.increment = 0
+				},
+				.digest_size = {
+					.min = 1,
+					.max = 64,
+					.increment = 1
+				},
+				.iv_size = { 0 }
+			}, }
+		}, }
+	},
 #endif
 	{	/* SM4 CBC */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
@@ -1073,7 +1115,9 @@ static const unsigned int auth_blocksize[] = {
 		[IMB_AUTH_HMAC_SHA3_224]	= 144,
 		[IMB_AUTH_HMAC_SHA3_256]	= 136,
 		[IMB_AUTH_HMAC_SHA3_384]	= 104,
-		[IMB_AUTH_HMAC_SHA3_512]	= 72
+		[IMB_AUTH_HMAC_SHA3_512]	= 72,
+		[IMB_AUTH_SHAKE128]		= 168,
+		[IMB_AUTH_SHAKE256]		= 136
 #endif
 };
 
@@ -1117,7 +1161,9 @@ static const unsigned int auth_truncated_digest_byte_lengths[] = {
 		[IMB_AUTH_HMAC_SHA3_224]	= 28,
 		[IMB_AUTH_HMAC_SHA3_256]	= 32,
 		[IMB_AUTH_HMAC_SHA3_384]	= 48,
-		[IMB_AUTH_HMAC_SHA3_512]	= 64
+		[IMB_AUTH_HMAC_SHA3_512]	= 64,
+		[IMB_AUTH_SHAKE128]		= 64,
+		[IMB_AUTH_SHAKE256]		= 64
 #endif
 };
 
@@ -1166,7 +1212,9 @@ static const unsigned int auth_digest_byte_lengths[] = {
 		[IMB_AUTH_HMAC_SHA3_224]	= 28,
 		[IMB_AUTH_HMAC_SHA3_256]	= 32,
 		[IMB_AUTH_HMAC_SHA3_384]	= 48,
-		[IMB_AUTH_HMAC_SHA3_512]	= 64
+		[IMB_AUTH_HMAC_SHA3_512]	= 64,
+		[IMB_AUTH_SHAKE128]		= 64,
+		[IMB_AUTH_SHAKE256]		= 64
 #endif
 	/**< Vector mode dependent pointer table of the multi-buffer APIs */
 
