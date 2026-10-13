@@ -100,8 +100,6 @@
 #define IXGBE_L34T_IMIR_LLI             0x00100000
 #define IXGBE_L34T_IMIR_QUEUE           0x0FE00000
 #define IXGBE_L34T_IMIR_QUEUE_SHIFT     21
-#define IXGBE_5TUPLE_MAX_PRI            7
-#define IXGBE_5TUPLE_MIN_PRI            1
 
 /* The overhead from MTU to max frame size. */
 #define IXGBE_ETH_OVERHEAD (RTE_ETHER_HDR_LEN + RTE_ETHER_CRC_LEN)
@@ -265,8 +263,6 @@ enum ixgbe_5tuple_protocol {
 	IXGBE_FILTER_PROTOCOL_NONE,
 };
 
-TAILQ_HEAD(ixgbe_5tuple_filter_list, ixgbe_5tuple_filter);
-
 struct ixgbe_5tuple_filter_info {
 	uint32_t dst_ip;
 	uint32_t src_ip;
@@ -282,18 +278,6 @@ struct ixgbe_5tuple_filter_info {
 		proto_mask:1;    /* if mask is 1b, do not compare protocol. */
 };
 
-/* 5tuple filter structure */
-struct ixgbe_5tuple_filter {
-	TAILQ_ENTRY(ixgbe_5tuple_filter) entries;
-	uint16_t index;       /* the index of 5tuple filter */
-	struct ixgbe_5tuple_filter_info filter_info;
-	uint16_t queue;       /* rx queue assigned to */
-};
-
-#define IXGBE_5TUPLE_ARRAY_SIZE \
-	(RTE_ALIGN(IXGBE_MAX_FTQF_FILTERS, (sizeof(uint32_t) * NBBY)) / \
-	 (sizeof(uint32_t) * NBBY))
-
 /* Shared EtherType (ETQF) filter table. */
 struct ixgbe_ethertype_table {
 	struct ixgbe_ethertype_entry {
@@ -308,9 +292,6 @@ struct ixgbe_ethertype_table {
  * Structure to store filters' info.
  */
 struct ixgbe_filter_info {
-	/* Bit mask for every used 5tuple filter */
-	uint32_t fivetuple_mask[IXGBE_5TUPLE_ARRAY_SIZE];
-	struct ixgbe_5tuple_filter_list fivetuple_list;
 	/* store the rss filter info */
 	struct ixgbe_rte_flow_rss_conf rss_info;
 	/* shared EtherType (ETQF) slot table */
@@ -655,9 +636,10 @@ uint32_t ixgbe_rssrk_reg_get(enum ixgbe_mac_type mac_type, uint8_t i);
 
 bool ixgbe_rss_update_sp(enum ixgbe_mac_type mac_type);
 
-int ixgbe_add_del_ntuple_filter(struct ixgbe_adapter *adapter,
-			struct rte_eth_ntuple_filter *filter,
-			bool add);
+void ixgbe_ntuple_filter_program(struct ixgbe_hw *hw, uint16_t index,
+			const struct ixgbe_5tuple_filter_info *filter_info,
+			uint16_t queue);
+void ixgbe_ntuple_filter_clear(struct ixgbe_hw *hw, uint16_t index);
 
 void ixgbe_ethertype_filter_program(struct ixgbe_hw *hw, uint8_t idx,
 			uint32_t etqf, uint32_t etqs);
@@ -735,8 +717,6 @@ void ixgbe_fdir_filter_restore(struct rte_eth_dev *dev);
 int ixgbe_clear_all_fdir_filter(struct rte_eth_dev *dev);
 
 extern const struct rte_flow_ops ixgbe_flow_ops;
-
-void ixgbe_clear_all_ntuple_filter(struct rte_eth_dev *dev);
 
 int ixgbe_disable_sec_tx_path_generic(struct ixgbe_hw *hw);
 
