@@ -10,6 +10,7 @@ Ethernet Device Library
     ethdev
     switch_representation
     flow_offload
+    flow_graph
     traffic_metering_and_policing
     traffic_management
     qos_framework

@@ -6,6 +6,7 @@ sources = files(
         'ethdev_private.c',
         'ethdev_profile.c',
         'ethdev_trace_points.c',
+        'flow_graph.c',
         'rte_class_eth.c',
         'rte_ethdev.c',
         'rte_ethdev_cman.c',
@@ -40,6 +41,7 @@ driver_sdk_headers += files(
         'ethdev_pci.h',
         'ethdev_vdev.h',
         'rte_flow_driver.h',
+        'flow_graph.h',
         'rte_mtr_driver.h',
         'rte_tm_driver.h',
 )

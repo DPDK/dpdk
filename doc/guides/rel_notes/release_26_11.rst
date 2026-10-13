@@ -109,6 +109,11 @@ New Features
   Added ``RTE_FLOW_CONV_OP_ITEM_DEFAULT_MASK_PTR`` conversion operation
   to ``rte_flow_conv()`` to retrieve the default mask of a flow item type.
 
+* **Added internal ethdev flow graph parser helper API.**
+
+  Added internal ``flow_graph`` API in ethdev
+  for PMD drivers to build graph-based flow pattern parsers.
+
 * **Updated AF_XDP driver.**
 
   * Changed the default device plugin endpoint path used when
