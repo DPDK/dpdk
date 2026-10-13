@@ -59,10 +59,10 @@ ssows_fwd_group(struct ssows *ws, const struct rte_event *ev, const uint8_t grp)
 		newtag |= grp << 20;
 		newtag |= tag;
 		ssows_swtag_norm(ws, newtag, SSO_SYNC_ATOMIC);
-		rte_smp_wmb();
+		rte_io_wmb();
 		ssows_swtag_wait(ws);
 	} else {
-		rte_smp_wmb();
+		rte_io_wmb();
 	}
 	ssows_add_work(ws, event_ptr, tag, new_tt, grp);
 }
@@ -158,7 +158,7 @@ ssows_enq_burst(void *port, const struct rte_event ev[], uint16_t nb_events)
 
 	switch (ev->op) {
 	case RTE_EVENT_OP_NEW:
-		rte_smp_wmb();
+		rte_io_wmb();
 		ssows_new_event(ws, ev);
 		break;
 	case RTE_EVENT_OP_FORWARD:
@@ -179,7 +179,7 @@ ssows_enq_new_burst(void *port, const struct rte_event ev[], uint16_t nb_events)
 	uint16_t i;
 	struct ssows *ws = port;
 
-	rte_smp_wmb();
+	rte_io_wmb();
 	for (i = 0; i < nb_events; i++)
 		ssows_new_event(ws,  &ev[i]);
 
