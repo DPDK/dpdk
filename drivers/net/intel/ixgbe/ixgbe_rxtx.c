@@ -6098,23 +6098,10 @@ ixgbe_rss_conf_init(struct ixgbe_rss_conf *out,
 	return 0;
 }
 
-static bool
-ixgbe_rss_conf_same(const struct ixgbe_rss_conf *comp,
-		const struct ixgbe_rss_conf *with)
+void
+ixgbe_hw_rss_filter_program(struct ixgbe_hw *hw,
+		const struct ixgbe_rss_conf *conf)
 {
-	return comp->types == with->types &&
-		comp->key_len == with->key_len &&
-		comp->queue_num == with->queue_num &&
-		memcmp(comp->key, with->key, with->key_len) == 0 &&
-		memcmp(comp->queue, with->queue,
-			sizeof(*with->queue) * with->queue_num) == 0;
-}
-
-int
-ixgbe_config_rss_filter(struct ixgbe_adapter *adapter,
-		const struct ixgbe_rss_conf *conf, bool add)
-{
-	struct ixgbe_hw *hw;
 	uint32_t reta;
 	uint16_t i;
 	uint16_t j;
@@ -6126,25 +6113,11 @@ ixgbe_config_rss_filter(struct ixgbe_adapter *adapter,
 		.rss_key_len = conf->key_len,
 		.rss_hf = conf->types,
 	};
-	struct ixgbe_filter_info *filter_info =
-		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(adapter);
 
 	PMD_INIT_FUNC_TRACE();
-	hw = IXGBE_DEV_PRIVATE_TO_HW(adapter);
 
 	sp_reta_size = ixgbe_reta_size_get(hw->mac.type);
 
-	if (!add) {
-		if (ixgbe_rss_conf_same(&filter_info->rss_info, conf)) {
-			ixgbe_mrqc_rss_remove(hw);
-			filter_info->rss_info = (struct ixgbe_rss_conf){0};
-			return 0;
-		}
-		return -EINVAL;
-	}
-
-	if (filter_info->rss_info.queue_num)
-		return -EINVAL;
 	/* Fill in redirection table
 	 * The byte-swap is needed because NIC registers are in
 	 * little-endian order.
@@ -6166,13 +6139,15 @@ ixgbe_config_rss_filter(struct ixgbe_adapter *adapter,
 	 */
 	if ((rss_conf.rss_hf & IXGBE_RSS_OFFLOAD_ALL) == 0) {
 		ixgbe_mrqc_rss_remove(hw);
-		return 0;
+		return;
 	}
 	if (rss_conf.rss_key == NULL)
 		rss_conf.rss_key = rss_intel_key; /* Default hash key */
 	ixgbe_hw_rss_hash_set(hw, &rss_conf);
+}
 
-	filter_info->rss_info = *conf;
-
-	return 0;
+void
+ixgbe_hw_rss_filter_clear(struct ixgbe_hw *hw)
+{
+	ixgbe_mrqc_rss_remove(hw);
 }

@@ -32,6 +32,7 @@ sources += files(
         'ixgbe_flow_ntuple.c',
         'ixgbe_flow_security.c',
         'ixgbe_flow_fdir.c',
+        'ixgbe_flow_hash.c',
         'ixgbe_ipsec.c',
         'ixgbe_pf.c',
         'ixgbe_rxtx.c',

@@ -344,7 +344,6 @@ static int ixgbe_dev_udp_tunnel_port_add(struct rte_eth_dev *dev,
 					 struct rte_eth_udp_tunnel *udp_tunnel);
 static int ixgbe_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
 					 struct rte_eth_udp_tunnel *udp_tunnel);
-static int ixgbe_filter_restore(struct rte_eth_dev *dev);
 static void ixgbe_l2_tunnel_conf(struct rte_eth_dev *dev);
 static int ixgbe_wait_for_link_up(struct ixgbe_hw *hw);
 static int devarg_handle_int(__rte_unused const char *key, const char *value,
@@ -1269,9 +1268,6 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 			&ixgbe_flow_engine_list, eth_dev->data);
 	if (ret)
 		goto err_l2_tn_filter_init;
-
-	/* initialize flow filter lists */
-	ixgbe_filterlist_init(eth_dev);
 
 	/* initialize bandwidth configuration info */
 	memset(bw_conf, 0, sizeof(struct ixgbe_bw_conf));
@@ -2763,7 +2759,6 @@ skip_link_setup:
 	/* resume enabled intr since hw reset */
 	ixgbe_enable_intr(dev);
 	ixgbe_l2_tunnel_conf(dev);
-	ixgbe_filter_restore(dev);
 
 	if (tm_conf->root && !tm_conf->committed)
 		PMD_DRV_LOG(WARNING,
@@ -3019,9 +3014,6 @@ ixgbe_dev_close(struct rte_eth_dev *dev)
 
 	/* uninitialize PF if max_vfs not zero */
 	ixgbe_pf_host_uninit(dev);
-
-	/* clear all the filters list */
-	ixgbe_filterlist_flush(dev);
 
 	/* Remove all Traffic Manager configuration */
 	ixgbe_tm_conf_uninit(dev);
@@ -7835,28 +7827,6 @@ int ixgbe_enable_sec_tx_path_generic(struct ixgbe_hw *hw)
 	IXGBE_WRITE_FLUSH(hw);
 
 	return IXGBE_SUCCESS;
-}
-
-/* restore rss filter */
-static inline void
-ixgbe_rss_filter_restore(struct rte_eth_dev *dev)
-{
-	struct ixgbe_adapter *adapter =
-		IXGBE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
-	struct ixgbe_filter_info *filter_info =
-		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(adapter);
-
-	if (filter_info->rss_info.queue_num)
-		ixgbe_config_rss_filter(adapter,
-			&filter_info->rss_info, TRUE);
-}
-
-static int
-ixgbe_filter_restore(struct rte_eth_dev *dev)
-{
-	ixgbe_rss_filter_restore(dev);
-
-	return 0;
 }
 
 static void
