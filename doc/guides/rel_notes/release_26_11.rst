@@ -142,6 +142,11 @@ New Features
   * Raised the maximum Tx and Rx ring descriptor counts
     from 4096/8192 to 16384 each.
 
+* **Updated Intel i40e driver.**
+
+  * Advertised ``RTE_ETH_DEV_CAPA_FLOW_RULE_KEEP`` capability,
+    as flow rules were already kept across device restart.
+
 * **Updated Intel iavf driver.**
 
   * Runtime Rx/Tx queue setup is now automatically disabled
