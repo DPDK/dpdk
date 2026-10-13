@@ -6865,20 +6865,6 @@ ixgbe_ethertype_filter_program(struct ixgbe_hw *hw, uint8_t idx,
 	IXGBE_WRITE_FLUSH(hw);
 }
 
-static int
-ixgbe_ethertype_table_lookup(const struct ixgbe_ethertype_table *table,
-			uint16_t ethertype)
-{
-	int idx;
-
-	for (idx = 0; idx < IXGBE_MAX_ETQF_FILTERS; idx++) {
-		if (table->entries[idx].used &&
-				table->entries[idx].ethertype == ethertype)
-			return idx;
-	}
-	return -ENOENT;
-}
-
 int
 ixgbe_ethertype_table_add(struct ixgbe_ethertype_table *table,
 			uint16_t ethertype, uint32_t etqf, uint32_t etqs)
@@ -6913,42 +6899,6 @@ ixgbe_ethertype_table_del(struct ixgbe_ethertype_table *table, uint8_t idx)
 
 	table->entries[idx] = (struct ixgbe_ethertype_entry){0};
 
-	return 0;
-}
-
-int
-ixgbe_add_del_ethertype_filter(struct ixgbe_adapter *adapter,
-			struct rte_eth_ethertype_filter *filter, bool add)
-{
-	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(adapter);
-	struct ixgbe_ethertype_table *table =
-		&IXGBE_DEV_PRIVATE_TO_FILTER_INFO(adapter)->ethertype_table;
-	uint32_t etqf, etqs;
-	int idx;
-
-	if (filter->queue >= IXGBE_MAX_RX_QUEUE_NUM ||
-		filter->ether_type == RTE_ETHER_TYPE_IPV4 ||
-		filter->ether_type == RTE_ETHER_TYPE_IPV6 ||
-		filter->flags & (RTE_ETHTYPE_FLAGS_MAC | RTE_ETHTYPE_FLAGS_DROP))
-		return -EINVAL;
-
-	if (add) {
-		etqf = IXGBE_ETQF_FILTER_EN | filter->ether_type;
-		etqs = IXGBE_ETQS_QUEUE_EN |
-			(((uint32_t)filter->queue << IXGBE_ETQS_RX_QUEUE_SHIFT) &
-			IXGBE_ETQS_RX_QUEUE);
-		idx = ixgbe_ethertype_table_add(table, filter->ether_type, etqf, etqs);
-		if (idx < 0)
-			return idx;
-	} else {
-		idx = ixgbe_ethertype_table_lookup(table, filter->ether_type);
-		if (idx < 0)
-			return idx;
-		ixgbe_ethertype_table_del(table, idx);
-		etqf = 0;
-		etqs = 0;
-	}
-	ixgbe_ethertype_filter_program(hw, idx, etqf, etqs);
 	return 0;
 }
 
@@ -8414,27 +8364,6 @@ ixgbe_ntuple_filter_restore(struct rte_eth_dev *dev)
 	}
 }
 
-/* restore ethernet type filter */
-static inline void
-ixgbe_ethertype_filter_restore(struct rte_eth_dev *dev)
-{
-	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct ixgbe_filter_info *filter_info =
-		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
-	int i;
-
-	for (i = 0; i < IXGBE_MAX_ETQF_FILTERS; i++) {
-		/* skip over entries not managed by rte_flow */
-		if (!filter_info->ethertype_table.entries[i].used ||
-			(filter_info->timesync_installed && i == filter_info->timesync_idx) ||
-			(filter_info->antispoof_installed && i == filter_info->antispoof_idx))
-			continue;
-		ixgbe_ethertype_filter_program(hw, i,
-			filter_info->ethertype_table.entries[i].etqf,
-			filter_info->ethertype_table.entries[i].etqs);
-	}
-}
-
 /* restore SYN filter */
 static inline void
 ixgbe_syn_filter_restore(struct rte_eth_dev *dev)
@@ -8490,7 +8419,6 @@ static int
 ixgbe_filter_restore(struct rte_eth_dev *dev)
 {
 	ixgbe_ntuple_filter_restore(dev);
-	ixgbe_ethertype_filter_restore(dev);
 	ixgbe_syn_filter_restore(dev);
 	ixgbe_fdir_filter_restore(dev);
 	ixgbe_l2_tn_filter_restore(dev);
@@ -8527,26 +8455,6 @@ ixgbe_clear_all_ntuple_filter(struct rte_eth_dev *dev)
 
 	while ((p_5tuple = TAILQ_FIRST(&filter_info->fivetuple_list)))
 		ixgbe_remove_5tuple_filter(adapter, p_5tuple);
-}
-
-/* remove all the ether type filters */
-void
-ixgbe_clear_all_ethertype_filter(struct rte_eth_dev *dev)
-{
-	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct ixgbe_filter_info *filter_info =
-		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
-	int i;
-
-	for (i = 0; i < IXGBE_MAX_ETQF_FILTERS; i++) {
-		/* only clear rte_flow filters */
-		if (!filter_info->ethertype_table.entries[i].used ||
-			(filter_info->timesync_installed && i == filter_info->timesync_idx) ||
-			(filter_info->antispoof_installed && i == filter_info->antispoof_idx))
-			continue;
-		ixgbe_ethertype_table_del(&filter_info->ethertype_table, i);
-		ixgbe_ethertype_filter_program(hw, i, 0, 0);
-	}
 }
 
 /* remove the SYN filter */
