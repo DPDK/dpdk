@@ -499,7 +499,8 @@ nicvf_qset_rbdr_precharge(void *dev, struct nicvf *nic,
 			break;
 		}
 	}
-	nicvf_smp_wmb();
+	/* Descriptors must be visible to the device before the doorbell */
+	nicvf_io_wmb();
 	nicvf_queue_reg_write(nic, NIC_QSET_RBDR_0_1_DOOR, ridx, count);
 	rbdr->tail = nicvf_queue_reg_read(nic,
 				NIC_QSET_RBDR_0_1_TAIL, ridx) >> 3;
