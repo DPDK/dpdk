@@ -616,8 +616,8 @@ octeontx_fpa_bufpool_destroy(uintptr_t handle, int node_id)
 
 	RTE_SET_USED(node_id);
 
-	/* Wait for all outstanding writes to be committed */
-	rte_smp_wmb();
+	/* Make outstanding pool writes visible to the device */
+	rte_io_wmb();
 
 	if (unlikely(!octeontx_fpa_handle_valid(handle)))
 		return -EINVAL;
