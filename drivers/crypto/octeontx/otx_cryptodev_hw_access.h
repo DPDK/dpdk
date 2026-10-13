@@ -203,8 +203,8 @@ static __rte_always_inline void
 otx_cpt_ring_dbell(struct cpt_instance *instance, uint16_t count)
 {
 	struct cpt_vf *cptvf = (struct cpt_vf *)instance;
-	/* Memory barrier to flush pending writes */
-	rte_smp_wmb();
+	/* Instructions must be visible to the device before the doorbell */
+	rte_io_wmb();
 	otx_cpt_write_vq_doorbell(cptvf, count);
 }
 
