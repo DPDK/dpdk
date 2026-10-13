@@ -332,6 +332,14 @@ aesni_mb_set_session_auth_parameters(IMB_MGR *mb_mgr,
 	case RTE_CRYPTO_AUTH_SHA3_512_HMAC:
 		sess->template_job.hash_alg = IMB_AUTH_HMAC_SHA3_512;
 		break;
+	case RTE_CRYPTO_AUTH_SHAKE_128:
+		sess->template_job.hash_alg = IMB_AUTH_SHAKE128;
+		auth_precompute = 0;
+		break;
+	case RTE_CRYPTO_AUTH_SHAKE_256:
+		sess->template_job.hash_alg = IMB_AUTH_SHAKE256;
+		auth_precompute = 0;
+		break;
 #endif
 	default:
 		IPSEC_MB_LOG(ERR,
