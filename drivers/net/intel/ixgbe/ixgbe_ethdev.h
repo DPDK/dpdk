@@ -23,6 +23,7 @@
 #include <rte_tm_driver.h>
 
 #include "../common/flow_engine.h"
+#include "../common/flow_util.h"
 
 /* need update link, bit flag */
 #define IXGBE_FLAG_NEED_LINK_UPDATE (uint32_t)(1 << 0)
@@ -51,6 +52,7 @@
 #define IXGBE_VMDQ_DCB_NB_QUEUES     IXGBE_MAX_RX_QUEUE_NUM
 #define IXGBE_DCB_NB_QUEUES          IXGBE_MAX_RX_QUEUE_NUM
 #define IXGBE_NONE_MODE_TX_NB_QUEUES 64
+#define IXGBE_MAX_FLX_SOURCE_OFF 62
 
 #ifndef NBBY
 #define NBBY	8	/* number of bits in a byte */
@@ -161,17 +163,6 @@ struct ixgbe_hw_fdir_mask {
 	uint8_t  tunnel_type_mask;
 };
 
-struct ixgbe_fdir_filter {
-	TAILQ_ENTRY(ixgbe_fdir_filter) entries;
-	union ixgbe_atr_input ixgbe_fdir; /* key of fdir filter*/
-	uint32_t fdirflags; /* drop or forward */
-	uint32_t fdirhash; /* hash value for fdir */
-	uint8_t queue; /* assigned rx queue */
-};
-
-/* list of fdir filters */
-TAILQ_HEAD(ixgbe_fdir_filter_list, ixgbe_fdir_filter);
-
 struct ixgbe_fdir_rule {
 	struct ixgbe_hw_fdir_mask mask;
 	union ixgbe_atr_input ixgbe_fdir; /* key of fdir filter*/
@@ -184,23 +175,39 @@ struct ixgbe_fdir_rule {
 	uint8_t flex_bytes_offset;
 };
 
-struct ixgbe_hw_fdir_info {
-	struct ixgbe_hw_fdir_mask mask;
-	uint8_t     flex_bytes_offset;
-	uint16_t    collision;
-	uint16_t    free;
-	uint16_t    maxhash;
-	uint8_t     maxlen;
+struct ixgbe_fdir_stats {
 	uint64_t    add;
 	uint64_t    remove;
 	uint64_t    f_add;
 	uint64_t    f_remove;
-	struct ixgbe_fdir_filter_list fdir_list; /* filter list*/
-	/* store the pointers of the filters, index is the hash value. */
-	struct ixgbe_fdir_filter **hash_map;
-	struct rte_hash *hash_handle; /* cuckoo hash handler */
-	uint32_t n_flows;
-	bool mask_added; /* If already got mask from consistent filter */
+};
+
+struct ixgbe_fdir_hw_config {
+	enum rte_eth_fdir_pballoc_type pballoc;
+	enum rte_fdir_status_mode status;
+};
+
+/* track global fdir mode configuration and rule counts */
+struct ixgbe_fdir_config_state {
+	ci_usage_count_t rule_count;
+	enum rte_fdir_mode mode;
+	bool hw_configured;
+};
+
+/* track fdir mask and flex state */
+struct ixgbe_fdir_mask_state {
+	struct ixgbe_hw_fdir_mask mask;
+	uint8_t flex_bytes_offset;
+	bool mask_configured;
+};
+
+/* track overall fdir state */
+struct ixgbe_fdir_state {
+	ci_usage_count_t engine_use_count;
+	struct rte_hash *hash_handle;
+	struct ixgbe_fdir_config_state config;
+	struct ixgbe_fdir_mask_state mask_conf;
+	struct ixgbe_fdir_stats stats;
 };
 
 struct ixgbe_rte_flow_rss_conf {
@@ -432,8 +439,8 @@ struct ixgbe_adapter {
 	struct ixgbe_hw_stats       stats;
 	struct ixgbe_macsec_stats   macsec_stats;
 	struct ixgbe_macsec_setting	macsec_setting;
-	struct rte_eth_fdir_conf    fdir_conf;
-	struct ixgbe_hw_fdir_info   fdir;
+	struct ixgbe_fdir_hw_config fdir_hw_config;
+	struct ixgbe_fdir_state     fdir_state;
 	struct ixgbe_interrupt      intr;
 	struct ixgbe_vfta           shadow_vfta;
 	struct ixgbe_hwstrip		hwstrip;
@@ -484,14 +491,11 @@ int ixgbe_vf_representor_uninit(struct rte_eth_dev *ethdev);
 uint16_t ixgbe_vf_representor_rx_burst(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
 uint16_t ixgbe_vf_representor_tx_burst(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts);
 
-#define IXGBE_DEV_FDIR_CONF(dev) \
-	(&((struct ixgbe_adapter *)(dev)->data->dev_private)->fdir_conf)
-
 #define IXGBE_DEV_PRIVATE_TO_ADAPTER(adapter) \
 	((struct ixgbe_adapter *)adapter)
 
-#define IXGBE_DEV_PRIVATE_TO_FDIR_CONF(adapter) \
-	(&(adapter)->fdir_conf)
+#define IXGBE_DEV_PRIVATE_TO_FDIR_HW_CONFIG(adapter) \
+	(&(adapter)->fdir_hw_config)
 
 #define IXGBE_DEV_PRIVATE_TO_HW(adapter)\
 	(&((struct ixgbe_adapter *)adapter)->hw)
@@ -507,9 +511,6 @@ uint16_t ixgbe_vf_representor_tx_burst(void *tx_queue, struct rte_mbuf **tx_pkts
 
 #define IXGBE_DEV_PRIVATE_TO_INTR(adapter) \
 	(&((struct ixgbe_adapter *)adapter)->intr)
-
-#define IXGBE_DEV_PRIVATE_TO_FDIR_INFO(adapter) \
-	(&((struct ixgbe_adapter *)adapter)->fdir)
 
 #define IXGBE_DEV_PRIVATE_TO_VFTA(adapter) \
 	(&((struct ixgbe_adapter *)adapter)->shadow_vfta)
@@ -668,23 +669,27 @@ void ixgbe_filterlist_flush(struct rte_eth_dev *dev);
 /*
  * Flow director function prototypes
  */
-int ixgbe_fdir_configure(struct rte_eth_dev *dev,
-			 const struct rte_eth_fdir_conf *fdir_conf,
-			 const struct ixgbe_hw_fdir_mask *fdir_mask);
+int ixgbe_fdir_configure(struct rte_eth_dev_data *dev_data,
+		const struct ixgbe_fdir_hw_config *config,
+		enum rte_fdir_mode mode);
 void ixgbe_fdir_disable(struct ixgbe_hw *hw);
-int ixgbe_fdir_set_input_mask(struct ixgbe_adapter *adapter,
-			      const struct ixgbe_hw_fdir_mask *mask,
-			      enum rte_fdir_mode mode);
-int ixgbe_fdir_set_flexbytes_offset(struct ixgbe_adapter *adapter,
-				    uint16_t offset);
+int ixgbe_fdir_mask_program(struct ixgbe_adapter *adapter,
+		const struct ixgbe_hw_fdir_mask *mask,
+		uint8_t flex_bytes_offset,
+		enum rte_fdir_mode mode);
 int ixgbe_fdir_filter_program(struct ixgbe_adapter *adapter,
-		struct rte_eth_fdir_conf *fdir_conf,
-		struct ixgbe_fdir_rule *rule,
-		bool del, bool update);
+		struct ixgbe_fdir_rule *rule);
+int ixgbe_fdir_filter_clear(struct ixgbe_adapter *adapter,
+		struct ixgbe_fdir_rule *rule);
 void ixgbe_fdir_info_get(struct rte_eth_dev *dev,
 			 struct rte_eth_fdir_info *fdir_info);
 void ixgbe_fdir_stats_get(struct rte_eth_dev *dev,
 			  struct rte_eth_fdir_stats *fdir_stats);
+struct ixgbe_fdir_state *ixgbe_fdir_state_attach(struct rte_eth_dev_data *dev_data);
+void ixgbe_fdir_state_detach(struct ixgbe_fdir_state *state);
+void ixgbe_fdir_hw_invalidate(struct rte_eth_dev *dev);
+void ixgbe_fdir_mask_set_default(struct ixgbe_hw_fdir_mask *mask);
+bool ixgbe_fdir_mode_is_perfect(enum rte_fdir_mode mode);
 
 void ixgbe_configure_dcb(struct rte_eth_dev *dev);
 
@@ -710,9 +715,6 @@ void ixgbe_pf_mbx_process(struct rte_eth_dev *eth_dev);
 int ixgbe_pf_host_configure(struct rte_eth_dev *eth_dev);
 
 uint32_t ixgbe_convert_vm_rx_mask_to_val(uint16_t rx_mask, uint32_t orig_val);
-
-void ixgbe_fdir_filter_restore(struct rte_eth_dev *dev);
-int ixgbe_clear_all_fdir_filter(struct rte_eth_dev *dev);
 
 extern const struct rte_flow_ops ixgbe_flow_ops;
 
