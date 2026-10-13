@@ -237,6 +237,17 @@ Removed Items
   ``cmpset`` and ``exchange``). Use the C11 ``rte_atomic_*_explicit``
   operations instead.
 
+* Removed SMP memory barriers:
+
+  * ``rte_smp_mb()`` replaced with ``rte_atomic_thread_fence(rte_memory_order_seq_cst)``
+  * ``rte_smp_rmb()`` replaced with ``rte_atomic_thread_fence(rte_memory_order_acquire)``
+  * ``rte_smp_wmb()`` replaced with ``rte_atomic_thread_fence(rte_memory_order_release)``
+
+  Some call sites became release stores or acquire loads instead of a
+  standalone fence. Barriers that order CPU accesses against a device,
+  rather than against another CPU, should use ``rte_io_wmb()`` and
+  ``rte_io_rmb()`` instead.
+
 * mempool: Removed the deprecated and obsolete ``flushthresh`` field
   from the ``rte_mempool_cache`` structure.
 
