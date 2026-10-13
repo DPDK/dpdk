@@ -78,6 +78,7 @@ const struct ci_flow_engine_list ixgbe_flow_engine_list = {
 		&ixgbe_syn_flow_engine,
 		&ixgbe_l2_tunnel_flow_engine,
 		&ixgbe_ntuple_flow_engine,
+		&ixgbe_security_flow_engine,
 	},
 };
 
@@ -154,94 +155,6 @@ ixgbe_flow_actions_check(const struct ci_flow_actions *actions,
  * Because the pattern is used to describe the packets,
  * normally the packets should use network order.
  */
-
-static int
-ixgbe_parse_security_filter(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
-		const struct rte_flow_item pattern[], const struct rte_flow_action actions[],
-		struct rte_flow_error *error)
-{
-	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	const struct rte_flow_action_security *security;
-	struct rte_security_session *session;
-	const struct rte_flow_item *item;
-	struct ci_flow_actions parsed_actions;
-	struct ci_flow_actions_check_param ap_param = {
-		.allowed_types = (const enum rte_flow_action_type[]){
-			/* only security is allowed here */
-			RTE_FLOW_ACTION_TYPE_SECURITY,
-			RTE_FLOW_ACTION_TYPE_END
-		},
-		.max_actions = 1,
-	};
-	const struct rte_flow_action *action;
-	struct ip_spec spec;
-	int ret;
-
-	if (hw->mac.type != ixgbe_mac_82599EB &&
-			hw->mac.type != ixgbe_mac_X540 &&
-			hw->mac.type != ixgbe_mac_X550 &&
-			hw->mac.type != ixgbe_mac_X550EM_x &&
-			hw->mac.type != ixgbe_mac_X550EM_a &&
-			hw->mac.type != ixgbe_mac_E610)
-		return -ENOTSUP;
-
-	/* validate attributes */
-	ret = ci_flow_check_attr(attr, NULL, error);
-	if (ret)
-		return ret;
-
-	/* parse requested actions */
-	ret = ci_flow_check_actions(actions, &ap_param, &parsed_actions, error);
-	if (ret)
-		return ret;
-
-	action = parsed_actions.actions[0];
-	security = action->conf;
-
-	/* get the IP pattern*/
-	item = next_no_void_pattern(pattern, NULL);
-	while (item->type != RTE_FLOW_ITEM_TYPE_IPV4 &&
-			item->type != RTE_FLOW_ITEM_TYPE_IPV6) {
-		if (item->last || item->type == RTE_FLOW_ITEM_TYPE_END) {
-			rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ITEM,
-				item, "IP pattern missing.");
-			return -rte_errno;
-		}
-		item = next_no_void_pattern(pattern, item);
-	}
-	if (item->spec == NULL) {
-		rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ITEM_SPEC, item,
-				"NULL IP pattern.");
-		return -rte_errno;
-	}
-	spec.is_ipv6 = item->type == RTE_FLOW_ITEM_TYPE_IPV6;
-	if (spec.is_ipv6) {
-		const struct rte_flow_item_ipv6 *ipv6 = item->spec;
-		spec.spec.ipv6 = *ipv6;
-	} else {
-		const struct rte_flow_item_ipv4 *ipv4 = item->spec;
-		spec.spec.ipv4 = *ipv4;
-	}
-
-	/*
-	 * we get pointer to security session from security action, which is
-	 * const. however, we do need to act on the session, so either we do
-	 * some kind of pointer based lookup to get session pointer internally
-	 * (which quickly gets unwieldy for lots of flows case), or we simply
-	 * cast away constness. the latter path was chosen.
-	 */
-	session = RTE_CAST_PTR(struct rte_security_session *, security->security_session);
-	ret = ixgbe_crypto_add_ingress_sa_from_flow(session, &spec);
-	if (ret) {
-		rte_flow_error_set(error, -ret,
-				RTE_FLOW_ERROR_TYPE_ACTION, action,
-				"Failed to add security session.");
-		return -rte_errno;
-	}
-	return 0;
-}
 
 /* search next no void pattern and skip fuzzy */
 static inline
@@ -1919,15 +1832,6 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 	TAILQ_INSERT_TAIL(&adapter->flow_list,
 				&ixgbe_flow_mem_ptr->base, entries);
 
-	/**
-	 *  Special case for flow action type RTE_FLOW_ACTION_TYPE_SECURITY
-	 */
-	ret = ixgbe_parse_security_filter(dev, attr, pattern, actions, error);
-	if (!ret) {
-		flow->is_security = true;
-		return flow;
-	}
-
 	memset(&fdir_rule, 0, sizeof(struct ixgbe_fdir_rule));
 	ret = ixgbe_parse_fdir_filter(dev, attr, pattern,
 				actions, &fdir_rule, error);
@@ -2023,13 +1927,6 @@ ixgbe_flow_validate(struct rte_eth_dev *dev,
 
 	/* fall back to legacy engines */
 
-	/**
-	 *  Special case for flow action type RTE_FLOW_ACTION_TYPE_SECURITY
-	 */
-	ret = ixgbe_parse_security_filter(dev, attr, pattern, actions, error);
-	if (!ret)
-		return 0;
-
 	memset(&fdir_rule, 0, sizeof(struct ixgbe_fdir_rule));
 	ret = ixgbe_parse_fdir_filter(dev, attr, pattern,
 				actions, &fdir_rule, error);
@@ -2083,12 +1980,6 @@ ixgbe_flow_destroy(struct rte_eth_dev *dev,
 				"Flow not found for this port");
 	}
 
-	/* Special case for SECURITY flows */
-	if (flow->is_security) {
-		ret = 0;
-		goto free;
-	}
-
 	switch (filter_type) {
 	case RTE_ETH_FILTER_FDIR:
 		fdir_rule_ptr = (struct ixgbe_fdir_rule_ele *)pmd_flow->rule;
@@ -2126,7 +2017,6 @@ ixgbe_flow_destroy(struct rte_eth_dev *dev,
 		return ret;
 	}
 
-free:
 	TAILQ_REMOVE(&adapter->flow_list, flow_mem_base, entries);
 	rte_free(flow_mem_base);
 	rte_free(flow);
@@ -2168,9 +2058,6 @@ ixgbe_flow_flush(struct rte_eth_dev *dev,
 static const char *
 ixgbe_flow_rule_engine_name(const struct rte_flow *flow)
 {
-	if (flow->is_security)
-		return "security";
-
 	switch (flow->filter_type) {
 	case RTE_ETH_FILTER_ETHERTYPE:
 		return "ethertype";
@@ -2190,9 +2077,6 @@ ixgbe_flow_rule_engine_name(const struct rte_flow *flow)
 static size_t
 ixgbe_flow_rule_size(const struct rte_flow *flow)
 {
-	if (flow->is_security)
-		return 0;
-
 	switch (flow->filter_type) {
 	case RTE_ETH_FILTER_ETHERTYPE:
 		return sizeof(struct rte_eth_ethertype_filter);
@@ -2212,7 +2096,7 @@ ixgbe_flow_rule_size(const struct rte_flow *flow)
 static const void *
 ixgbe_flow_rule_data(const struct rte_flow *flow)
 {
-	if (flow->is_security || flow->rule == NULL)
+	if (flow->rule == NULL)
 		return NULL;
 
 	return RTE_PTR_ADD(flow->rule, sizeof(struct ixgbe_filter_ele_base));
