@@ -67,11 +67,11 @@ static int i40e_flow_dev_dump(struct rte_eth_dev *dev,
 static int i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 					const struct rte_flow_item *pattern,
 					struct rte_flow_error *error,
-					struct i40e_fdir_filter_conf *filter);
+					struct i40e_fdir_filter *filter);
 static int i40e_flow_parse_fdir_action(struct rte_eth_dev *dev,
 				       const struct rte_flow_action *actions,
 				       struct rte_flow_error *error,
-				       struct i40e_fdir_filter_conf *filter);
+				       struct i40e_fdir_filter *filter);
 static int i40e_flow_parse_tunnel_action(struct rte_eth_dev *dev,
 				 const struct rte_flow_action *actions,
 				 struct rte_flow_error *error,
@@ -1375,7 +1375,7 @@ i40e_flow_check_raw_item(const struct rte_flow_item *item,
 static uint8_t
 i40e_flow_fdir_get_pctype_value(struct i40e_pf *pf,
 				enum rte_flow_item_type item_type,
-				struct i40e_fdir_filter_conf *filter)
+				struct i40e_fdir_filter *filter)
 {
 	struct i40e_customized_pctype *cus_pctype = NULL;
 
@@ -1440,7 +1440,7 @@ i40e_flow_fdir_get_pctype_value(struct i40e_pf *pf,
 }
 
 static void
-i40e_flow_set_filter_spi(struct i40e_fdir_filter_conf *filter,
+i40e_flow_set_filter_spi(struct i40e_fdir_filter *filter,
 	const struct rte_flow_item_esp *esp_spec)
 {
 	if (filter->input.flow_ext.oip_type ==
@@ -1478,7 +1478,7 @@ static int
 i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 			     const struct rte_flow_item *pattern,
 			     struct rte_flow_error *error,
-			     struct i40e_fdir_filter_conf *filter)
+			     struct i40e_fdir_filter *filter)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	const struct rte_flow_item *item = pattern;
@@ -2310,7 +2310,7 @@ static int
 i40e_flow_parse_fdir_action(struct rte_eth_dev *dev,
 			    const struct rte_flow_action *actions,
 			    struct rte_flow_error *error,
-			    struct i40e_fdir_filter_conf *filter)
+			    struct i40e_fdir_filter *filter)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct ci_flow_actions parsed_actions = {0};
@@ -2430,7 +2430,7 @@ i40e_flow_parse_fdir_filter(struct rte_eth_dev *dev,
 			    struct rte_flow_error *error,
 			    struct i40e_filter_ctx *filter)
 {
-	struct i40e_fdir_filter_conf *fdir_filter = &filter->fdir_filter;
+	struct i40e_fdir_filter *fdir_filter = &filter->fdir_filter;
 	int ret;
 
 	ret = i40e_flow_parse_fdir_pattern(dev, pattern, error, fdir_filter);
@@ -3756,28 +3756,6 @@ i40e_flow_create(struct rte_eth_dev *dev,
 		return NULL;
 
 	if (filter_ctx.type == RTE_ETH_FILTER_FDIR) {
-		/* if this is the first time we're creating an fdir flow */
-		if (pf->fdir.fdir_vsi == NULL) {
-			ret = i40e_fdir_setup(pf);
-			if (ret != I40E_SUCCESS) {
-				rte_flow_error_set(error, ENOTSUP,
-						RTE_FLOW_ERROR_TYPE_HANDLE,
-						NULL, "Failed to setup fdir.");
-				return NULL;
-			}
-			ret = i40e_fdir_configure(dev);
-			if (ret < 0) {
-				rte_flow_error_set(error, ENOTSUP,
-						RTE_FLOW_ERROR_TYPE_HANDLE,
-						NULL, "Failed to configure fdir.");
-				i40e_fdir_teardown(pf);
-				return NULL;
-			}
-		}
-		/* If create the first fdir rule, enable fdir check for rx queues */
-		if (TAILQ_EMPTY(&pf->fdir.fdir_list))
-			i40e_fdir_rx_proc_enable(dev, 1);
-
 		flow = i40e_fdir_entry_pool_get(fdir_info);
 		if (flow == NULL) {
 			rte_flow_error_set(error, ENOBUFS,
@@ -3797,13 +3775,31 @@ i40e_flow_create(struct rte_eth_dev *dev,
 	}
 
 	switch (filter_ctx.type) {
-	case RTE_ETH_FILTER_FDIR:
-		ret = i40e_flow_add_del_fdir_filter(dev, &filter_ctx.fdir_filter, 1);
+	case RTE_ETH_FILTER_FDIR: {
+		struct i40e_fdir_filter *node;
+
+		ret = i40e_fdir_filter_validate(dev, &filter_ctx.fdir_filter);
 		if (ret)
 			goto free_flow;
-		flow->rule = TAILQ_LAST(&pf->fdir.fdir_list,
-					i40e_fdir_filter_list);
+		ret = i40e_fdir_filter_register(dev, &filter_ctx.fdir_filter,
+						&node);
+		if (ret)
+			goto free_flow;
+		ret = i40e_fdir_engine_init(dev);
+		if (ret) {
+			i40e_fdir_filter_unregister(dev, node);
+			goto free_flow;
+		}
+		ret = i40e_fdir_filter_program(dev, node, 1,
+				i40e_fdir_filter_needs_status_wait(pf,
+					fdir_info->fdir_actual_cnt - 1));
+		if (ret) {
+			i40e_fdir_filter_unregister(dev, node);
+			goto free_flow;
+		}
+		flow->rule = node;
 		break;
+	}
 	case RTE_ETH_FILTER_TUNNEL:
 		ret = i40e_dev_consistent_tunnel_filter_set(pf,
 				&filter_ctx.consistent_tunnel_filter, 1);
@@ -3860,16 +3856,15 @@ i40e_flow_destroy(struct rte_eth_dev *dev,
 		ret = i40e_flow_destroy_tunnel_filter(pf,
 			      (struct i40e_tunnel_filter *)flow->rule);
 		break;
-	case RTE_ETH_FILTER_FDIR:
-		ret = i40e_flow_add_del_fdir_filter(dev,
-				&((struct i40e_fdir_filter *)flow->rule)->fdir,
-				0);
+	case RTE_ETH_FILTER_FDIR: {
+		struct i40e_fdir_filter *node = flow->rule;
 
-		/* If the last flow is destroyed, disable fdir. */
-		if (!ret && TAILQ_EMPTY(&pf->fdir.fdir_list)) {
-			i40e_fdir_rx_proc_enable(dev, 0);
-		}
+		ret = i40e_fdir_filter_program(dev, node, 0, false);
+		if (ret)
+			break;
+		ret = i40e_fdir_filter_unregister(dev, node);
 		break;
+	}
 	case RTE_ETH_FILTER_HASH:
 		ret = i40e_hash_filter_destroy(pf, flow->rule);
 		break;
@@ -3994,59 +3989,24 @@ i40e_flow_flush_fdir_filter(struct i40e_pf *pf)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[pf->dev_data->port_id];
 	struct i40e_fdir_info *fdir_info = &pf->fdir;
-	struct i40e_fdir_filter *fdir_filter;
-	enum i40e_filter_pctype pctype;
 	struct rte_flow *flow;
 	void *temp;
 	int ret;
-	uint32_t i = 0;
 
-	ret = i40e_fdir_flush(dev);
-	if (!ret) {
-		/* Delete FDIR filters in FDIR list. */
-		while ((fdir_filter = TAILQ_FIRST(&fdir_info->fdir_list))) {
-			ret = i40e_sw_fdir_filter_del(pf,
-						      &fdir_filter->fdir.input);
-			if (ret < 0)
-				return ret;
-		}
-
-		/* Delete FDIR flows in flow list. */
-		RTE_TAILQ_FOREACH_SAFE(flow, &pf->flow_list, node, temp) {
-			if (flow->filter_type == RTE_ETH_FILTER_FDIR) {
-				TAILQ_REMOVE(&pf->flow_list, flow, node);
-			}
-		}
-
-		/* reset bitmap */
-		rte_bitmap_reset(fdir_info->fdir_flow_pool.bitmap);
-		for (i = 0; i < fdir_info->fdir_space_size; i++) {
-			fdir_info->fdir_flow_pool.pool[i].idx = i;
-			rte_bitmap_set(fdir_info->fdir_flow_pool.bitmap, i);
-		}
-
-		fdir_info->fdir_actual_cnt = 0;
-		fdir_info->fdir_guarantee_free_space =
-			fdir_info->fdir_guarantee_total_space;
-		memset(fdir_info->fdir_filter_array,
-			0,
-			sizeof(struct i40e_fdir_filter) *
-			I40E_MAX_FDIR_FILTER_NUM);
-
-		for (pctype = I40E_FILTER_PCTYPE_NONF_IPV4_UDP;
-		     pctype <= I40E_FILTER_PCTYPE_L2_PAYLOAD; pctype++) {
-			pf->fdir.flow_count[pctype] = 0;
-			pf->fdir.flex_mask_flag[pctype] = 0;
-		}
-
-		for (i = 0; i < I40E_MAX_FLXPLD_LAYER; i++)
-			pf->fdir.flex_pit_flag[i] = 0;
-
-		/* Disable FDIR processing as all FDIR rules are now flushed */
-		i40e_fdir_rx_proc_enable(dev, 0);
+	RTE_TAILQ_FOREACH_SAFE(flow, &pf->flow_list, node, temp) {
+		if (flow->filter_type != RTE_ETH_FILTER_FDIR)
+			continue;
+		ret = i40e_fdir_filter_program(dev, flow->rule, false, false);
+		if (ret < 0)
+			return ret;
+		ret = i40e_fdir_filter_unregister(dev, flow->rule);
+		if (ret < 0)
+			return ret;
+		TAILQ_REMOVE(&pf->flow_list, flow, node);
+		i40e_fdir_entry_pool_put(fdir_info, flow);
 	}
 
-	return ret;
+	return 0;
 }
 
 /* Flush all tunnel filters */

@@ -1041,129 +1041,6 @@ err_tunnel_hash_map_alloc:
 	return ret;
 }
 
-static int
-i40e_init_fdir_filter_list(struct rte_eth_dev *dev)
-{
-	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
-	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
-	struct i40e_fdir_info *fdir_info = &pf->fdir;
-	char fdir_hash_name[RTE_HASH_NAMESIZE];
-	uint32_t alloc = hw->func_caps.fd_filters_guaranteed;
-	uint32_t best = hw->func_caps.fd_filters_best_effort;
-	enum i40e_filter_pctype pctype;
-	struct rte_bitmap *bmp = NULL;
-	uint32_t bmp_size;
-	void *mem = NULL;
-	uint32_t i = 0;
-	int ret;
-
-	struct rte_hash_parameters fdir_hash_params = {
-		.name = fdir_hash_name,
-		.entries = I40E_MAX_FDIR_FILTER_NUM,
-		.key_len = sizeof(struct i40e_fdir_input),
-		.hash_func = rte_hash_crc,
-		.hash_func_init_val = 0,
-		.socket_id = rte_socket_id(),
-	};
-
-	/* Initialize flow director filter rule list and hash */
-	TAILQ_INIT(&fdir_info->fdir_list);
-	snprintf(fdir_hash_name, RTE_HASH_NAMESIZE,
-		 "fdir_%s", dev->device->name);
-	fdir_info->hash_table = rte_hash_create(&fdir_hash_params);
-	if (!fdir_info->hash_table) {
-		PMD_INIT_LOG(ERR, "Failed to create fdir hash table!");
-		return -EINVAL;
-	}
-
-	fdir_info->hash_map = rte_zmalloc("i40e_fdir_hash_map",
-					  sizeof(struct i40e_fdir_filter *) *
-					  I40E_MAX_FDIR_FILTER_NUM,
-					  0);
-	if (!fdir_info->hash_map) {
-		PMD_INIT_LOG(ERR,
-			     "Failed to allocate memory for fdir hash map!");
-		ret = -ENOMEM;
-		goto err_fdir_hash_map_alloc;
-	}
-
-	fdir_info->fdir_filter_array = rte_zmalloc("fdir_filter",
-			sizeof(struct i40e_fdir_filter) *
-			I40E_MAX_FDIR_FILTER_NUM,
-			0);
-
-	if (!fdir_info->fdir_filter_array) {
-		PMD_INIT_LOG(ERR,
-			     "Failed to allocate memory for fdir filter array!");
-		ret = -ENOMEM;
-		goto err_fdir_filter_array_alloc;
-	}
-
-	for (pctype = I40E_FILTER_PCTYPE_NONF_IPV4_UDP;
-	     pctype <= I40E_FILTER_PCTYPE_L2_PAYLOAD; pctype++)
-		pf->fdir.flow_count[pctype] = 0;
-
-	fdir_info->fdir_space_size = alloc + best;
-	fdir_info->fdir_actual_cnt = 0;
-	fdir_info->fdir_guarantee_total_space = alloc;
-	fdir_info->fdir_guarantee_free_space =
-		fdir_info->fdir_guarantee_total_space;
-
-	PMD_DRV_LOG(INFO, "FDIR guarantee space: %u, best_effort space %u.", alloc, best);
-
-	fdir_info->fdir_flow_pool.pool =
-			rte_zmalloc("i40e_fdir_entry",
-				sizeof(struct i40e_fdir_entry) *
-				fdir_info->fdir_space_size,
-				0);
-
-	if (!fdir_info->fdir_flow_pool.pool) {
-		PMD_INIT_LOG(ERR,
-			     "Failed to allocate memory for bitmap flow!");
-		ret = -ENOMEM;
-		goto err_fdir_bitmap_flow_alloc;
-	}
-
-	for (i = 0; i < fdir_info->fdir_space_size; i++)
-		fdir_info->fdir_flow_pool.pool[i].idx = i;
-
-	bmp_size =
-		rte_bitmap_get_memory_footprint(fdir_info->fdir_space_size);
-	mem = rte_zmalloc("fdir_bmap", bmp_size, RTE_CACHE_LINE_SIZE);
-	if (mem == NULL) {
-		PMD_INIT_LOG(ERR,
-			     "Failed to allocate memory for fdir bitmap!");
-		ret = -ENOMEM;
-		goto err_fdir_mem_alloc;
-	}
-	bmp = rte_bitmap_init(fdir_info->fdir_space_size, mem, bmp_size);
-	if (bmp == NULL) {
-		PMD_INIT_LOG(ERR,
-			     "Failed to initialization fdir bitmap!");
-		ret = -ENOMEM;
-		goto err_fdir_bmp_alloc;
-	}
-	for (i = 0; i < fdir_info->fdir_space_size; i++)
-		rte_bitmap_set(bmp, i);
-
-	fdir_info->fdir_flow_pool.bitmap = bmp;
-
-	return 0;
-
-err_fdir_bmp_alloc:
-	rte_free(mem);
-err_fdir_mem_alloc:
-	rte_free(fdir_info->fdir_flow_pool.pool);
-err_fdir_bitmap_flow_alloc:
-	rte_free(fdir_info->fdir_filter_array);
-err_fdir_filter_array_alloc:
-	rte_free(fdir_info->hash_map);
-err_fdir_hash_map_alloc:
-	rte_hash_free(fdir_info->hash_table);
-
-	return ret;
-}
-
 static void
 i40e_init_customized_info(struct i40e_pf *pf)
 {
@@ -1782,9 +1659,9 @@ eth_i40e_dev_init(struct rte_eth_dev *dev, void *init_params __rte_unused)
 	ret = i40e_init_tunnel_filter_list(dev);
 	if (ret < 0)
 		goto err_init_tunnel_filter_list;
-	ret = i40e_init_fdir_filter_list(dev);
+	ret = i40e_fdir_flow_store_init(dev);
 	if (ret < 0)
-		goto err_init_fdir_filter_list;
+		goto err_init_fdir_flow_store;
 
 	/* initialize flow engine configuration */
 	ret = ci_flow_engine_conf_init(&pf->flow_engine_conf,
@@ -1801,12 +1678,8 @@ eth_i40e_dev_init(struct rte_eth_dev *dev, void *init_params __rte_unused)
 	return 0;
 
 err_flow_engine_conf_init:
-	rte_free(pf->fdir.fdir_flow_pool.bitmap);
-	rte_free(pf->fdir.fdir_flow_pool.pool);
-	rte_free(pf->fdir.fdir_filter_array);
-	rte_free(pf->fdir.hash_map);
-	rte_hash_free(pf->fdir.hash_table);
-err_init_fdir_filter_list:
+	i40e_fdir_flow_store_free(&pf->fdir);
+err_init_fdir_flow_store:
 	rte_hash_free(pf->tunnel.hash_table);
 	rte_free(pf->tunnel.hash_map);
 err_init_tunnel_filter_list:
@@ -1850,31 +1723,12 @@ i40e_rm_tunnel_filter_list(struct i40e_pf *pf)
 }
 
 static void
-i40e_rm_fdir_filter_list(struct i40e_pf *pf)
-{
-	struct i40e_fdir_filter *p_fdir;
-	struct i40e_fdir_info *fdir_info;
-
-	fdir_info = &pf->fdir;
-
-	/* Remove all flow director rules */
-	while ((p_fdir = TAILQ_FIRST(&fdir_info->fdir_list)))
-		TAILQ_REMOVE(&fdir_info->fdir_list, p_fdir, rules);
-}
-
-static void
 i40e_fdir_memory_cleanup(struct i40e_pf *pf)
 {
-	struct i40e_fdir_info *fdir_info;
+	struct i40e_fdir_info *fdir_info = &pf->fdir;
 
-	fdir_info = &pf->fdir;
-
-	/* flow director memory cleanup */
-	rte_free(fdir_info->hash_map);
-	rte_hash_free(fdir_info->hash_table);
-	rte_free(fdir_info->fdir_flow_pool.bitmap);
-	rte_free(fdir_info->fdir_flow_pool.pool);
-	rte_free(fdir_info->fdir_filter_array);
+	i40e_fdir_flow_store_free(fdir_info);
+	i40e_fdir_tmpl_store_free(fdir_info);
 }
 
 void i40e_flex_payload_reg_set_default(struct i40e_hw *hw)
@@ -2659,6 +2513,7 @@ i40e_dev_close(struct rte_eth_dev *dev)
 	/* free the flows and reset flow config */
 	ci_flow_engine_conf_cleanup(&pf->flow_engine_conf);
 	ci_flow_engine_conf_reset(&pf->flow_engine_conf);
+	i40e_fdir_teardown(pf);
 
 	i40e_dev_free_queues(dev);
 
@@ -2730,7 +2585,6 @@ i40e_dev_close(struct rte_eth_dev *dev)
 	} while (retries++ < 5);
 
 	i40e_rm_tunnel_filter_list(pf);
-	i40e_rm_fdir_filter_list(pf);
 
 	/* Remove all flows */
 	while ((p_flow = TAILQ_FIRST(&pf->flow_list))) {
@@ -9758,7 +9612,12 @@ i40e_filter_input_set_init(struct i40e_pf *pf)
 		/* store the default input set */
 		if (!pf->support_multi_driver)
 			pf->hash_input_set[pctype] = input_set;
-		pf->fdir.input_set[pctype] = input_set;
+		{
+			struct i40e_fdir_pctype_state *state =
+				&pf->fdir.flows.pctype[pctype];
+
+			state->input_set = input_set;
+		}
 	}
 }
 
