@@ -572,7 +572,7 @@ hw_poll_job_ring(struct sec_job_ring_t *job_ring,
 		job_ring, job_ring->pidx, job_ring->cidx,
 		limit, number_of_jobs_available, jobs_no_to_notify);
 
-	rte_smp_rmb();
+	rte_atomic_thread_fence(rte_memory_order_acquire);
 
 	while (jobs_no_to_notify > notified_descs_no) {
 		static uint64_t false_alarm;
