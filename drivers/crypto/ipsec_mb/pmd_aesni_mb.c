@@ -303,6 +303,36 @@ aesni_mb_set_session_auth_parameters(IMB_MGR *mb_mgr,
 		sess->template_job.hash_alg = IMB_AUTH_HMAC_SM3;
 		break;
 #endif
+#if IMB_VERSION(3, 0, 0) <= IMB_VERSION_NUM
+	case RTE_CRYPTO_AUTH_SHA3_224:
+		sess->template_job.hash_alg = IMB_AUTH_SHA3_224;
+		auth_precompute = 0;
+		break;
+	case RTE_CRYPTO_AUTH_SHA3_224_HMAC:
+		sess->template_job.hash_alg = IMB_AUTH_HMAC_SHA3_224;
+		break;
+	case RTE_CRYPTO_AUTH_SHA3_256:
+		sess->template_job.hash_alg = IMB_AUTH_SHA3_256;
+		auth_precompute = 0;
+		break;
+	case RTE_CRYPTO_AUTH_SHA3_256_HMAC:
+		sess->template_job.hash_alg = IMB_AUTH_HMAC_SHA3_256;
+		break;
+	case RTE_CRYPTO_AUTH_SHA3_384:
+		sess->template_job.hash_alg = IMB_AUTH_SHA3_384;
+		auth_precompute = 0;
+		break;
+	case RTE_CRYPTO_AUTH_SHA3_384_HMAC:
+		sess->template_job.hash_alg = IMB_AUTH_HMAC_SHA3_384;
+		break;
+	case RTE_CRYPTO_AUTH_SHA3_512:
+		sess->template_job.hash_alg = IMB_AUTH_SHA3_512;
+		auth_precompute = 0;
+		break;
+	case RTE_CRYPTO_AUTH_SHA3_512_HMAC:
+		sess->template_job.hash_alg = IMB_AUTH_HMAC_SHA3_512;
+		break;
+#endif
 	default:
 		IPSEC_MB_LOG(ERR,
 			"Unsupported authentication algorithm selection");

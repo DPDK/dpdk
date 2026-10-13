@@ -282,6 +282,11 @@ New Features
   along with the corresponding ``pss_salt`` field in ``rte_crypto_rsa_op_param``
   to carry it per sign operation.
 
+* **Updated AESNI_MB crypto driver.**
+
+  * Added support for SHA3-224, SHA3-256, SHA3-384, and SHA3-512 hash
+    algorithms and their HMAC variants.
+
 * **Updated Intel QuickAssist Technology (QAT) crypto driver.**
 
   * Added support for Gen 6 QAT devices.
