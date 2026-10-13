@@ -1451,7 +1451,8 @@ err1:
 	/* Set ptr in input ring to current descriptor	*/
 	sec_write_addr(&ring->input_ring[ring->pidx],
 			(phys_addr_t)caam_jr_vtop_ctx(ctx, ctx->jobdes.desc));
-	rte_smp_wmb();
+	/* Descriptor must be visible to the device before the doorbell */
+	rte_io_wmb();
 
 	/* Notify HW that a new job is enqueued */
 	hw_enqueue_desc_on_job_ring(ring);
