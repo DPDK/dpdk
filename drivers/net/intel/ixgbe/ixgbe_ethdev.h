@@ -210,9 +210,11 @@ struct ixgbe_fdir_state {
 	struct ixgbe_fdir_stats stats;
 };
 
-struct ixgbe_rte_flow_rss_conf {
-	struct rte_flow_action_rss conf; /**< RSS parameters. */
-	uint8_t key[IXGBE_HKEY_MAX_INDEX * sizeof(uint32_t)]; /* Hash key. */
+struct ixgbe_rss_conf {
+	uint64_t types; /**< RSS hash types. */
+	uint32_t key_len; /**< Hash key length, 0 for default key. */
+	uint32_t queue_num; /**< Number of entries in queue. */
+	uint8_t key[IXGBE_HKEY_MAX_INDEX * sizeof(uint32_t)]; /**< Hash key. */
 	uint16_t queue[IXGBE_MAX_RX_QUEUE_NUM]; /**< Queues indices to use. */
 };
 
@@ -300,7 +302,7 @@ struct ixgbe_ethertype_table {
  */
 struct ixgbe_filter_info {
 	/* store the rss filter info */
-	struct ixgbe_rte_flow_rss_conf rss_info;
+	struct ixgbe_rss_conf rss_info;
 	/* shared EtherType (ETQF) slot table */
 	struct ixgbe_ethertype_table ethertype_table;
 	/* 1588 timestamping ETQF slot (valid when timesync_installed) */
@@ -731,12 +733,10 @@ void ixgbe_tm_conf_init(struct rte_eth_dev *dev);
 void ixgbe_tm_conf_uninit(struct rte_eth_dev *dev);
 int ixgbe_set_queue_rate_limit(struct rte_eth_dev *dev, uint16_t queue_idx,
 			       uint32_t tx_rate);
-int ixgbe_rss_conf_init(struct ixgbe_rte_flow_rss_conf *out,
-			const struct rte_flow_action_rss *in);
-int ixgbe_action_rss_same(const struct rte_flow_action_rss *comp,
-			  const struct rte_flow_action_rss *with);
+int ixgbe_rss_conf_init(struct ixgbe_rss_conf *out,
+		const struct rte_flow_action_rss *in);
 int ixgbe_config_rss_filter(struct ixgbe_adapter *adapter,
-		struct ixgbe_rte_flow_rss_conf *conf, bool add);
+		const struct ixgbe_rss_conf *conf, bool add);
 
 void ixgbe_dev_macsec_register_enable(struct rte_eth_dev *dev,
 		struct ixgbe_macsec_setting *macsec_setting);

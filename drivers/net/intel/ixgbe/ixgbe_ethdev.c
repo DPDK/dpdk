@@ -7846,7 +7846,7 @@ ixgbe_rss_filter_restore(struct rte_eth_dev *dev)
 	struct ixgbe_filter_info *filter_info =
 		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(adapter);
 
-	if (filter_info->rss_info.conf.queue_num)
+	if (filter_info->rss_info.queue_num)
 		ixgbe_config_rss_filter(adapter,
 			&filter_info->rss_info, TRUE);
 }
