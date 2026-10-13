@@ -21,6 +21,8 @@
 #include "base/i40e_type.h"
 #include "base/virtchnl.h"
 
+#include "../common/flow_engine.h"
+
 #define I40E_AQ_LEN               32
 #define I40E_AQ_BUF_SZ            4096
 /* Number of queues per TC should be one of 1, 2, 4, 8, 16, 32, 64 */
@@ -278,6 +280,7 @@ enum i40e_flxpld_layer_idx {
  * Struct to store flow created.
  */
 struct rte_flow {
+	struct ci_flow base;
 	TAILQ_ENTRY(rte_flow) node;
 	enum rte_filter_type filter_type;
 	void *rule;
@@ -1182,6 +1185,8 @@ struct i40e_pf {
 	/* The floating enable flag for the specific VF */
 	bool floating_veb_list[I40E_MAX_VF];
 	struct i40e_flow_list flow_list;
+	/* flow engine configuration */
+	struct ci_flow_engine_conf flow_engine_conf;
 	bool mpls_replace_flag;  /* 1 - MPLS filter replace is done */
 	bool gtp_replace_flag;   /* 1 - GTP-C/U filter replace is done */
 	bool qinq_replace_flag;  /* QINQ filter replace is done */
