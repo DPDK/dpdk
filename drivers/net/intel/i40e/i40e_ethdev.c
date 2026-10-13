@@ -42,6 +42,9 @@
 #include "i40e_regs.h"
 #include "rte_pmd_i40e.h"
 #include "i40e_hash.h"
+#include "i40e_flow.h"
+
+#include "../common/flow_engine.h"
 
 #define ETH_I40E_FLOATING_VEB_ARG	"enable_floating_veb"
 #define ETH_I40E_FLOATING_VEB_LIST_ARG	"floating_veb_list"
@@ -1838,6 +1841,12 @@ eth_i40e_dev_init(struct rte_eth_dev *dev, void *init_params __rte_unused)
 	if (ret < 0)
 		goto err_init_fdir_filter_list;
 
+	/* initialize flow engine configuration */
+	ret = ci_flow_engine_conf_init(&pf->flow_engine_conf,
+			&i40e_flow_engine_list, dev->data);
+	if (ret < 0)
+		goto err_flow_engine_conf_init;
+
 	/* initialize queue region configuration */
 	i40e_init_queue_region_conf(dev);
 
@@ -1846,6 +1855,12 @@ eth_i40e_dev_init(struct rte_eth_dev *dev, void *init_params __rte_unused)
 
 	return 0;
 
+err_flow_engine_conf_init:
+	rte_free(pf->fdir.fdir_flow_pool.bitmap);
+	rte_free(pf->fdir.fdir_flow_pool.pool);
+	rte_free(pf->fdir.fdir_filter_array);
+	rte_free(pf->fdir.hash_map);
+	rte_hash_free(pf->fdir.hash_table);
 err_init_fdir_filter_list:
 	rte_hash_free(pf->tunnel.hash_table);
 	rte_free(pf->tunnel.hash_map);
@@ -2613,6 +2628,8 @@ i40e_dev_start(struct rte_eth_dev *dev)
 	/* Set the max frame size to HW*/
 	i40e_aq_set_mac_config(hw, max_frame_size, TRUE, false, 0, NULL);
 
+	ci_flow_engine_conf_replay(&pf->flow_engine_conf);
+
 	return I40E_SUCCESS;
 
 tx_err:
@@ -2714,6 +2731,10 @@ i40e_dev_close(struct rte_eth_dev *dev)
 
 
 	ret = i40e_dev_stop(dev);
+
+	/* free the flows and reset flow config */
+	ci_flow_engine_conf_cleanup(&pf->flow_engine_conf);
+	ci_flow_engine_conf_reset(&pf->flow_engine_conf);
 
 	i40e_dev_free_queues(dev);
 
