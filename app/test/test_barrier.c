@@ -2,35 +2,35 @@
  * Copyright(c) 2010-2018 Intel Corporation
  */
 
- /*
-  * This is a simple functional test for rte_smp_mb() implementation.
-  * I.E. make sure that LOAD and STORE operations that precede the
-  * rte_smp_mb() call are globally visible across the lcores
-  * before the LOAD and STORE operations that follows it.
-  * The test uses simple implementation of Peterson's lock algorithm
-  * (https://en.wikipedia.org/wiki/Peterson%27s_algorithm)
-  * for two execution units to make sure that rte_smp_mb() prevents
-  * store-load reordering to happen.
-  * Also when executed on a single lcore could be used as a approximate
-  * estimation of number of cycles particular implementation of rte_smp_mb()
-  * will take.
-  */
+/*
+ * Functional test for the full barriers rte_mb() and
+ * rte_atomic_thread_fence(rte_memory_order_seq_cst).
+ * I.E. make sure that LOAD and STORE operations that precede the barrier
+ * are globally visible across the lcores before the LOAD and STORE
+ * operations that follow it.
+ * The test uses a simple implementation of Peterson's lock algorithm
+ * (https://en.wikipedia.org/wiki/Peterson%27s_algorithm)
+ * for two execution units, since that algorithm only works if
+ * store-load reordering is prevented.
+ * Also when executed on a single lcore it can be used as an approximate
+ * estimate of the number of cycles a particular barrier takes.
+ */
 
+#include <errno.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 #include <inttypes.h>
 
-#include <rte_memory.h>
-#include <rte_per_lcore.h>
 #include <rte_launch.h>
 #include <rte_eal.h>
 #include <rte_lcore.h>
+#include <rte_memory.h>
 #include <rte_pause.h>
 #include <rte_random.h>
 #include <rte_cycles.h>
-#include <rte_vect.h>
-#include <rte_debug.h>
+#include <rte_stdatomic.h>
 
 #include "test.h"
 
@@ -39,13 +39,13 @@
 
 enum plock_use_type {
 	USE_MB,
-	USE_SMP_MB,
+	USE_FENCE,
 	USE_NUM
 };
 
 struct plock {
-	volatile uint32_t flag[2];
-	volatile uint32_t victim;
+	RTE_ATOMIC(uint32_t) flag[2];
+	RTE_ATOMIC(uint32_t) victim;
 	enum plock_use_type utype;
 };
 
@@ -70,18 +70,20 @@ struct lcore_plock_test {
 };
 
 static inline void
-store_load_barrier(uint32_t utype)
+store_load_barrier(enum plock_use_type utype)
 {
 	if (utype == USE_MB)
 		rte_mb();
-	else if (utype == USE_SMP_MB)
-		rte_smp_mb();
 	else
-		RTE_VERIFY(0);
+		rte_atomic_thread_fence(rte_memory_order_seq_cst);
 }
 
 /*
  * Peterson lock implementation.
+ * The loads in the spin loop are relaxed on purpose: the barrier under
+ * test is the only thing keeping them after the stores above, so a
+ * barrier that fails to prevent store-load reordering shows up as two
+ * lcores in the critical section at once.
  */
 static void
 plock_lock(struct plock *l, uint32_t self)
@@ -90,22 +92,27 @@ plock_lock(struct plock *l, uint32_t self)
 
 	other = self ^ 1;
 
-	l->flag[self] = 1;
-	rte_smp_wmb();
-	l->victim = self;
+	rte_atomic_store_explicit(&l->flag[self], 1, rte_memory_order_relaxed);
+
+	/* Release so that the other lcore cannot see this lcore claim to be
+	 * the victim while its flag still reads zero, which would let both
+	 * lcores through.
+	 */
+	rte_atomic_store_explicit(&l->victim, self, rte_memory_order_release);
 
 	store_load_barrier(l->utype);
 
-	while (l->flag[other] == 1 && l->victim == self)
+	while (rte_atomic_load_explicit(&l->flag[other], rte_memory_order_relaxed) == 1 &&
+			rte_atomic_load_explicit(&l->victim, rte_memory_order_relaxed) == self)
 		rte_pause();
-	rte_smp_rmb();
+
+	rte_atomic_thread_fence(rte_memory_order_acquire);
 }
 
 static void
 plock_unlock(struct plock *l, uint32_t self)
 {
-	rte_smp_wmb();
-	l->flag[self] = 0;
+	rte_atomic_store_explicit(&l->flag[self], 0, rte_memory_order_release);
 }
 
 static void
