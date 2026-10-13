@@ -113,8 +113,10 @@ mbox_send_request(struct mbox *m, struct octeontx_mbox_hdr *hdr,
 
 	/* Write the msg header */
 	rte_write64(new_hdr.u64, ram_mbox_hdr);
-	rte_smp_wmb();
-	/* Notify PF about the new msg - write to MBOX reg generates PF IRQ */
+	/* Notify PF about the new msg - write to MBOX reg generates PF IRQ.
+	 * rte_write64() issues rte_io_wmb() which orders the header write
+	 * before the trigger; no separate barrier is needed.
+	 */
 	rte_write64(0, m->reg);
 }
 
