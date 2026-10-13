@@ -133,11 +133,23 @@ int ixgbe_pf_host_init(struct rte_eth_dev *eth_dev)
 
 void ixgbe_pf_host_uninit(struct rte_eth_dev *eth_dev)
 {
+	struct ixgbe_filter_info *filter_info =
+		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(eth_dev->data->dev_private);
+	struct ixgbe_hw *hw =
+		IXGBE_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 	struct ixgbe_vf_info **vfinfo;
 	uint16_t vf_num;
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
+
+	/* release the Tx anti-spoof ETQF slot */
+	if (filter_info->antispoof_installed) {
+		ixgbe_ethertype_filter_program(hw, filter_info->antispoof_idx, 0, 0);
+		ixgbe_ethertype_table_del(&filter_info->ethertype_table,
+				filter_info->antispoof_idx);
+		filter_info->antispoof_installed = false;
+	}
 
 	RTE_ETH_DEV_SRIOV(eth_dev).active = 0;
 	RTE_ETH_DEV_SRIOV(eth_dev).nb_q_per_pool = 0;
@@ -168,38 +180,29 @@ ixgbe_add_tx_flow_control_drop_filter(struct rte_eth_dev *eth_dev)
 	struct ixgbe_filter_info *filter_info =
 		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(eth_dev->data->dev_private);
 	uint16_t vf_num;
+	uint32_t etqf, etqs;
 	int i;
-	struct ixgbe_ethertype_filter ethertype_filter;
 
 	if (!hw->mac.ops.set_ethertype_anti_spoofing) {
 		PMD_DRV_LOG(INFO, "ether type anti-spoofing is not supported.");
 		return;
 	}
 
-	i = ixgbe_ethertype_filter_lookup(filter_info,
-					  IXGBE_ETHERTYPE_FLOW_CTRL);
-	if (i >= 0) {
-		PMD_DRV_LOG(ERR, "A ether type filter entity for flow control already exists!");
-		return;
-	}
+	etqf = IXGBE_ETQF_FILTER_EN | IXGBE_ETQF_TX_ANTISPOOF |
+			IXGBE_ETHERTYPE_FLOW_CTRL;
+	etqs = 0;
+	if (!filter_info->antispoof_installed) {
+		int idx = ixgbe_ethertype_table_add(&filter_info->ethertype_table,
+				IXGBE_ETHERTYPE_FLOW_CTRL, etqf, etqs);
 
-	ethertype_filter.ethertype = IXGBE_ETHERTYPE_FLOW_CTRL;
-	ethertype_filter.etqf = IXGBE_ETQF_FILTER_EN |
-				IXGBE_ETQF_TX_ANTISPOOF |
-				IXGBE_ETHERTYPE_FLOW_CTRL;
-	ethertype_filter.etqs = 0;
-	ethertype_filter.conf = TRUE;
-	i = ixgbe_ethertype_filter_insert(filter_info,
-					  &ethertype_filter);
-	if (i < 0) {
-		PMD_DRV_LOG(ERR, "Cannot find an unused ether type filter entity for flow control.");
-		return;
+		if (idx < 0) {
+			PMD_DRV_LOG(ERR, "no free ETQF slot for Tx anti-spoof filter");
+			return;
+		}
+		filter_info->antispoof_idx = idx;
+		filter_info->antispoof_installed = true;
 	}
-
-	IXGBE_WRITE_REG(hw, IXGBE_ETQF(i),
-			(IXGBE_ETQF_FILTER_EN |
-			IXGBE_ETQF_TX_ANTISPOOF |
-			IXGBE_ETHERTYPE_FLOW_CTRL));
+	ixgbe_ethertype_filter_program(hw, filter_info->antispoof_idx, etqf, etqs);
 
 	vf_num = dev_num_vf(eth_dev);
 	for (i = 0; i < vf_num; i++)
