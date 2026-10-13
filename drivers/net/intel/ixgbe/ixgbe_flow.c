@@ -358,9 +358,29 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 		return -rte_errno;
 	}
 
-	if ((item->type != RTE_FLOW_ITEM_TYPE_END) &&
-		(!item->spec && !item->mask)) {
-		goto action;
+	/* an L4 item always implies its protocol, even when empty */
+	if (item->type != RTE_FLOW_ITEM_TYPE_END) {
+		uint8_t proto;
+
+		if (item->type == RTE_FLOW_ITEM_TYPE_TCP)
+			proto = IPPROTO_TCP;
+		else if (item->type == RTE_FLOW_ITEM_TYPE_UDP)
+			proto = IPPROTO_UDP;
+		else
+			proto = IPPROTO_SCTP;
+
+		if (filter->proto_mask != 0 && filter->proto != proto) {
+			*filter = (struct rte_eth_ntuple_filter){0};
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "L4 item conflicts with IPv4 protocol");
+			return -rte_errno;
+		}
+		filter->proto = proto;
+		filter->proto_mask = UINT8_MAX;
+
+		if (item->spec == NULL && item->mask == NULL)
+			goto check_end;
 	}
 
 	/* get the TCP/UDP/SCTP info */
@@ -490,6 +510,7 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 		goto action;
 	}
 
+check_end:
 	/* check if the next not void item is END */
 	item = next_no_void_pattern(pattern, item);
 	if (item->type != RTE_FLOW_ITEM_TYPE_END) {
