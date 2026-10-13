@@ -262,6 +262,13 @@ auth_set_prerequisites(struct armv8_crypto_session *sess,
 	uint8_t partial[64] = { 0 };
 	int error;
 
+	/* Validate key */
+	if (xform->auth.key.data == NULL ||
+			xform->auth.key.length > SHA_BLOCK_MAX) {
+		ARMV8_CRYPTO_LOG_ERR("Invalid authentication key provided.");
+		return -1;
+	}
+
 	switch (xform->auth.algo) {
 	case RTE_CRYPTO_AUTH_SHA1_HMAC:
 		/*
