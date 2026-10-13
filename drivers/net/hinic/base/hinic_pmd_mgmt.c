@@ -459,7 +459,7 @@ hinic_pf_to_mgmt_sync(struct hinic_hwdev *hwdev,
 		goto unlock_sync_msg;
 	}
 
-	rte_smp_rmb();
+	rte_atomic_thread_fence(rte_memory_order_acquire);
 	if (recv_msg->msg_len && buf_out && out_size) {
 		if (recv_msg->msg_len <= *out_size) {
 			memcpy(buf_out, recv_msg->msg,

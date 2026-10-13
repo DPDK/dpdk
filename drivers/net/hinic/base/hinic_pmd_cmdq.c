@@ -825,7 +825,8 @@ static int cmdq_sync_cmd_direct_resp(struct hinic_cmdq *cmdq,
 		goto cmdq_unlock;
 	}
 
-	rte_smp_rmb();	/* read error code after completion */
+	/* read error code after completion */
+	rte_atomic_thread_fence(rte_memory_order_acquire);
 
 	if (out_param) {
 		wqe_lcmd = &curr_wqe->wqe_lcmd;
