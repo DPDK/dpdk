@@ -804,10 +804,10 @@ cons_parse_syn_filter(const struct rte_flow_attr *attr, const struct rte_flow_it
 	filter->queue = q_act->index;
 
 	/* Support 2 priorities, the lowest or highest. */
-	if (!attr->priority) {
-		filter->hig_pri = 0;
-	} else if (attr->priority == (uint32_t)~0U) {
+	if (attr->priority == 0) {
 		filter->hig_pri = 1;
+	} else if (attr->priority == (uint32_t)~0U) {
+		filter->hig_pri = 0;
 	} else {
 		memset(filter, 0, sizeof(struct rte_eth_syn_filter));
 		rte_flow_error_set(error, EINVAL,
