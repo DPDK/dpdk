@@ -58,11 +58,11 @@ void vmbus_br_setup(struct vmbus_br *br, void *buf, unsigned int blen)
 static inline bool
 vmbus_txbr_need_signal(const struct vmbus_bufring *vbr, uint32_t old_windex)
 {
-	rte_smp_mb();
+	rte_atomic_thread_fence(rte_memory_order_seq_cst);
 	if (vbr->imask)
 		return false;
 
-	rte_smp_rmb();
+	rte_atomic_thread_fence(rte_memory_order_acquire);
 
 	/*
 	 * This is the only case we need to signal when the

@@ -104,10 +104,9 @@ rte_vmbus_chan_signal_tx(struct rte_vmbus_device *dev, const struct vmbus_channe
 {
 	const struct vmbus_br *tbr = &chan->txbr;
 
-	/* Make sure all updates are done before signaling host */
-	rte_smp_wmb();
-
-	/* If host is ignoring interrupts? */
+	/* vmbus_txbr_write() did a full barrier after the write index
+	 * update, no further ordering needed here.
+	 */
 	if (tbr->vbr->imask)
 		return;
 
@@ -211,7 +210,7 @@ bool rte_vmbus_chan_rx_empty(const struct vmbus_channel *channel)
 {
 	const struct vmbus_br *br = &channel->rxbr;
 
-	rte_smp_rmb();
+	rte_atomic_thread_fence(rte_memory_order_acquire);
 	return br->vbr->rindex == br->vbr->windex;
 }
 
@@ -229,13 +228,13 @@ void rte_vmbus_chan_signal_read(struct rte_vmbus_device *dev,
 		return;
 
 	/* Make sure reading of pending happens after new read index */
-	rte_smp_mb();
+	rte_atomic_thread_fence(rte_memory_order_seq_cst);
 
 	pending_sz = rbr->vbr->pending_send;
 	if (!pending_sz)
 		return;
 
-	rte_smp_rmb();
+	rte_atomic_thread_fence(rte_memory_order_acquire);
 	write_sz = vmbus_br_availwrite(rbr, rbr->vbr->windex);
 
 	/* If there was space before then host was not blocked */
