@@ -323,23 +323,7 @@ struct ixgbe_filter_info {
 	uint8_t antispoof_idx;
 };
 
-struct ixgbe_l2_tn_key {
-	enum rte_eth_tunnel_type          l2_tn_type;
-	uint32_t                          tn_id;
-};
-
-struct ixgbe_l2_tn_filter {
-	TAILQ_ENTRY(ixgbe_l2_tn_filter)    entries;
-	struct ixgbe_l2_tn_key             key;
-	uint32_t                           pool;
-};
-
-TAILQ_HEAD(ixgbe_l2_tn_filter_list, ixgbe_l2_tn_filter);
-
 struct ixgbe_l2_tn_info {
-	struct ixgbe_l2_tn_filter_list      l2_tn_list;
-	struct ixgbe_l2_tn_filter         **hash_map;
-	struct rte_hash                    *hash_handle;
 	bool e_tag_en; /* e-tag enabled */
 	bool e_tag_fwd_en; /* e-tag based forwarding enabled */
 	uint16_t e_tag_ether_type; /* ether type for e-tag */
@@ -694,12 +678,11 @@ struct ixgbe_l2_tunnel_conf {
 };
 
 int
-ixgbe_dev_l2_tunnel_filter_add(struct ixgbe_adapter *adapter,
-			       struct ixgbe_l2_tunnel_conf *l2_tunnel,
-			       bool restore);
+ixgbe_e_tag_filter_add(struct ixgbe_adapter *adapter,
+		       struct ixgbe_l2_tunnel_conf *l2_tunnel);
 int
-ixgbe_dev_l2_tunnel_filter_del(struct ixgbe_adapter *adapter,
-			       struct ixgbe_l2_tunnel_conf *l2_tunnel);
+ixgbe_e_tag_filter_del(struct ixgbe_adapter *adapter,
+		       struct ixgbe_l2_tunnel_conf *l2_tunnel);
 void ixgbe_filterlist_init(struct rte_eth_dev *dev);
 void ixgbe_filterlist_flush(struct rte_eth_dev *dev);
 /*
@@ -754,7 +737,6 @@ int ixgbe_clear_all_fdir_filter(struct rte_eth_dev *dev);
 extern const struct rte_flow_ops ixgbe_flow_ops;
 
 void ixgbe_clear_all_ntuple_filter(struct rte_eth_dev *dev);
-int ixgbe_clear_all_l2_tn_filter(struct rte_eth_dev *dev);
 
 int ixgbe_disable_sec_tx_path_generic(struct ixgbe_hw *hw);
 
