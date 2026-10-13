@@ -1659,9 +1659,7 @@ eth_i40e_dev_init(struct rte_eth_dev *dev, void *init_params __rte_unused)
 	ret = i40e_init_tunnel_filter_list(dev);
 	if (ret < 0)
 		goto err_init_tunnel_filter_list;
-	ret = i40e_fdir_flow_store_init(dev);
-	if (ret < 0)
-		goto err_init_fdir_flow_store;
+	i40e_fdir_flow_store_init(dev);
 
 	/* initialize flow engine configuration */
 	ret = ci_flow_engine_conf_init(&pf->flow_engine_conf,
@@ -1678,8 +1676,6 @@ eth_i40e_dev_init(struct rte_eth_dev *dev, void *init_params __rte_unused)
 	return 0;
 
 err_flow_engine_conf_init:
-	i40e_fdir_flow_store_free(&pf->fdir);
-err_init_fdir_flow_store:
 	rte_hash_free(pf->tunnel.hash_table);
 	rte_free(pf->tunnel.hash_map);
 err_init_tunnel_filter_list:
@@ -1720,15 +1716,6 @@ i40e_rm_tunnel_filter_list(struct i40e_pf *pf)
 		TAILQ_REMOVE(&tunnel_rule->tunnel_list, p_tunnel, rules);
 		rte_free(p_tunnel);
 	}
-}
-
-static void
-i40e_fdir_memory_cleanup(struct i40e_pf *pf)
-{
-	struct i40e_fdir_info *fdir_info = &pf->fdir;
-
-	i40e_fdir_flow_store_free(fdir_info);
-	i40e_fdir_tmpl_store_free(fdir_info);
 }
 
 void i40e_flex_payload_reg_set_default(struct i40e_hw *hw)
@@ -2513,7 +2500,7 @@ i40e_dev_close(struct rte_eth_dev *dev)
 	/* free the flows and reset flow config */
 	ci_flow_engine_conf_cleanup(&pf->flow_engine_conf);
 	ci_flow_engine_conf_reset(&pf->flow_engine_conf);
-	i40e_fdir_teardown(pf);
+	i40e_fdir_cleanup(dev);
 
 	i40e_dev_free_queues(dev);
 
@@ -2589,13 +2576,8 @@ i40e_dev_close(struct rte_eth_dev *dev)
 	/* Remove all flows */
 	while ((p_flow = TAILQ_FIRST(&pf->flow_list))) {
 		TAILQ_REMOVE(&pf->flow_list, p_flow, node);
-		/* Do not free FDIR flows since they are static allocated */
-		if (p_flow->filter_type != RTE_ETH_FILTER_FDIR)
-			rte_free(p_flow);
+		rte_free(p_flow);
 	}
-
-	/* release the fdir static allocated memory */
-	i40e_fdir_memory_cleanup(pf);
 
 	/* Remove all Traffic Manager configuration */
 	i40e_tm_conf_uninit(dev);
@@ -9614,7 +9596,7 @@ i40e_filter_input_set_init(struct i40e_pf *pf)
 			pf->hash_input_set[pctype] = input_set;
 		{
 			struct i40e_fdir_pctype_state *state =
-				&pf->fdir.flows.pctype[pctype];
+				&pf->fdir.fdir_state.pctype[pctype];
 
 			state->input_set = input_set;
 		}
