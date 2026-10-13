@@ -119,8 +119,9 @@ sw_port_unlink(struct rte_eventdev *dev, void *port, uint8_t queues[],
 		}
 	}
 
-	p->unlinks_in_progress += unlinked;
-	rte_smp_mb();
+	/* Pairs with the acquire exchange in the scheduler */
+	rte_atomic_fetch_add_explicit(&p->unlinks_in_progress, unlinked,
+				      rte_memory_order_release);
 
 	return unlinked;
 }
@@ -130,7 +131,8 @@ sw_port_unlinks_in_progress(struct rte_eventdev *dev, void *port)
 {
 	RTE_SET_USED(dev);
 	struct sw_port *p = port;
-	return p->unlinks_in_progress;
+	return rte_atomic_load_explicit(&p->unlinks_in_progress,
+					rte_memory_order_acquire);
 }
 
 static int
