@@ -68,11 +68,6 @@ struct ixgbe_fdir_rule_ele {
 	struct ixgbe_filter_ele_base base;
 	struct ixgbe_fdir_rule filter_info;
 };
-/* l2_tunnel filter list structure */
-struct ixgbe_eth_l2_tunnel_conf_ele {
-	struct ixgbe_filter_ele_base base;
-	struct ixgbe_l2_tunnel_conf filter_info;
-};
 /* rss filter list structure */
 struct ixgbe_rss_conf_ele {
 	struct ixgbe_filter_ele_base base;
@@ -88,6 +83,7 @@ const struct ci_flow_engine_list ixgbe_flow_engine_list = {
 	{
 		&ixgbe_ethertype_flow_engine,
 		&ixgbe_syn_flow_engine,
+		&ixgbe_l2_tunnel_flow_engine,
 	},
 };
 
@@ -660,161 +656,6 @@ ixgbe_parse_ntuple_filter(struct rte_eth_dev *dev,
 	/* fixed value for ixgbe */
 	filter->flags = RTE_5TUPLE_FLAGS;
 	return 0;
-}
-
-/**
- * Parse the rule to see if it is a L2 tunnel rule.
- * And get the L2 tunnel filter info BTW.
- * Only support E-tag now.
- * pattern:
- * The first not void item can be E_TAG.
- * The next not void item must be END.
- * action:
- * The first not void action should be VF or PF.
- * The next not void action should be END.
- * pattern example:
- * ITEM		Spec			Mask
- * E_TAG	grp		0x1	0x3
-		e_cid_base	0x309	0xFFF
- * END
- * other members in mask and spec should set to 0x00.
- * item->last should be NULL.
- */
-static int
-cons_parse_l2_tn_filter(struct rte_eth_dev *dev,
-			const struct rte_flow_item pattern[],
-			const struct rte_flow_action *action,
-			struct ixgbe_l2_tunnel_conf *filter,
-			struct rte_flow_error *error)
-{
-	const struct rte_flow_item *item;
-	const struct rte_flow_item_e_tag *e_tag_spec;
-	const struct rte_flow_item_e_tag *e_tag_mask;
-	struct ixgbe_adapter *ad = IXGBE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
-
-	/* The first not void item should be e-tag. */
-	item = next_no_void_pattern(pattern, NULL);
-	if (item->type != RTE_FLOW_ITEM_TYPE_E_TAG) {
-		memset(filter, 0, sizeof(struct ixgbe_l2_tunnel_conf));
-		rte_flow_error_set(error, EINVAL,
-			RTE_FLOW_ERROR_TYPE_ITEM,
-			item, "Not supported by L2 tunnel filter");
-		return -rte_errno;
-	}
-
-	if (!item->spec || !item->mask) {
-		memset(filter, 0, sizeof(struct ixgbe_l2_tunnel_conf));
-		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
-			item, "Not supported by L2 tunnel filter");
-		return -rte_errno;
-	}
-
-	/*Not supported last point for range*/
-	if (item->last) {
-		rte_flow_error_set(error, EINVAL,
-			RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-			item, "Not supported last point for range");
-		return -rte_errno;
-	}
-
-	e_tag_spec = item->spec;
-	e_tag_mask = item->mask;
-
-	/* Only care about GRP and E cid base. */
-	if (e_tag_mask->epcp_edei_in_ecid_b ||
-	    e_tag_mask->in_ecid_e ||
-	    e_tag_mask->ecid_e ||
-	    e_tag_mask->rsvd_grp_ecid_b != rte_cpu_to_be_16(0x3FFF)) {
-		memset(filter, 0, sizeof(struct ixgbe_l2_tunnel_conf));
-		rte_flow_error_set(error, EINVAL,
-			RTE_FLOW_ERROR_TYPE_ITEM,
-			item, "Not supported by L2 tunnel filter");
-		return -rte_errno;
-	}
-
-	filter->l2_tunnel_type = RTE_ETH_L2_TUNNEL_TYPE_E_TAG;
-	/**
-	 * grp and e_cid_base are bit fields and only use 14 bits.
-	 * e-tag id is taken as little endian by HW.
-	 */
-	filter->tunnel_id = rte_be_to_cpu_16(e_tag_spec->rsvd_grp_ecid_b);
-
-	/* check if the next not void item is END */
-	item = next_no_void_pattern(pattern, item);
-	if (item->type != RTE_FLOW_ITEM_TYPE_END) {
-		memset(filter, 0, sizeof(struct ixgbe_l2_tunnel_conf));
-		rte_flow_error_set(error, EINVAL,
-			RTE_FLOW_ERROR_TYPE_ITEM,
-			item, "Not supported by L2 tunnel filter");
-		return -rte_errno;
-	}
-
-	if (action->type == RTE_FLOW_ACTION_TYPE_VF) {
-		const struct rte_flow_action_vf *act_vf = action->conf;
-		filter->pool = act_vf->id;
-	} else {
-		filter->pool = ad->max_vfs;
-	}
-
-	return 0;
-}
-
-static int
-ixgbe_parse_l2_tn_filter(struct rte_eth_dev *dev,
-			const struct rte_flow_attr *attr,
-			const struct rte_flow_item pattern[],
-			const struct rte_flow_action actions[],
-			struct ixgbe_l2_tunnel_conf *l2_tn_filter,
-			struct rte_flow_error *error)
-{
-	struct rte_eth_dev_data *dev_data = dev->data;
-	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev_data->dev_private);
-	struct ci_flow_actions parsed_actions;
-	struct ci_flow_actions_check_param ap_param = {
-		.allowed_types = (const enum rte_flow_action_type[]){
-			/* only vf/pf is allowed here */
-			RTE_FLOW_ACTION_TYPE_VF,
-			RTE_FLOW_ACTION_TYPE_PF,
-			RTE_FLOW_ACTION_TYPE_END
-		},
-		.driver_ctx = dev_data,
-		.check = ixgbe_flow_actions_check,
-		.max_actions = 1,
-	};
-	int ret = 0;
-	const struct rte_flow_action *action;
-
-	if (hw->mac.type != ixgbe_mac_X550 &&
-		hw->mac.type != ixgbe_mac_X550EM_x &&
-		hw->mac.type != ixgbe_mac_X550EM_a &&
-		hw->mac.type != ixgbe_mac_E610) {
-		rte_flow_error_set(error, EINVAL,
-			RTE_FLOW_ERROR_TYPE_ITEM,
-			NULL, "Not supported by L2 tunnel filter");
-		return -rte_errno;
-	}
-
-	/* validate attributes */
-	ret = ci_flow_check_attr(attr, NULL, error);
-	if (ret)
-		return ret;
-
-	/* parse requested actions */
-	ret = ci_flow_check_actions(actions, &ap_param, &parsed_actions, error);
-	if (ret)
-		return ret;
-
-	/* only one action is supported */
-	if (parsed_actions.count > 1) {
-		return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
-					  parsed_actions.actions[1],
-					  "Only one action can be specified at a time");
-	}
-	action = parsed_actions.actions[0];
-
-	ret = cons_parse_l2_tn_filter(dev, pattern, action, l2_tn_filter, error);
-
-	return ret;
 }
 
 /* search next no void pattern and skip fuzzy */
@@ -2463,13 +2304,11 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 		IXGBE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct rte_eth_ntuple_filter ntuple_filter;
 	struct ixgbe_fdir_rule fdir_rule;
-	struct ixgbe_l2_tunnel_conf l2_tn_filter;
 	struct ixgbe_hw_fdir_info *fdir_info =
 		IXGBE_DEV_PRIVATE_TO_FDIR_INFO(adapter);
 	struct ixgbe_rte_flow_rss_conf rss_conf;
 	struct rte_flow *flow = NULL;
 	struct ixgbe_ntuple_filter_ele *ntuple_filter_ptr;
-	struct ixgbe_eth_l2_tunnel_conf_ele *l2_tn_filter_ptr;
 	struct ixgbe_fdir_rule_ele *fdir_rule_ptr;
 	struct ixgbe_rss_conf_ele *rss_filter_ptr;
 	struct ixgbe_flow_mem *ixgbe_flow_mem_ptr;
@@ -2566,29 +2405,6 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 		return flow;
 	}
 
-	memset(&l2_tn_filter, 0, sizeof(struct ixgbe_l2_tunnel_conf));
-	ret = ixgbe_parse_l2_tn_filter(dev, attr, pattern,
-					actions, &l2_tn_filter, error);
-	if (!ret) {
-		l2_tn_filter_ptr = rte_zmalloc("ixgbe_l2_tn_filter",
-			sizeof(struct ixgbe_eth_l2_tunnel_conf_ele), 0);
-		if (!l2_tn_filter_ptr) {
-			PMD_DRV_LOG(ERR, "failed to allocate memory");
-			ret = -ENOMEM;
-			goto out;
-		}
-		l2_tn_filter_ptr->filter_info = l2_tn_filter;
-		ret = ixgbe_dev_l2_tunnel_filter_add(adapter, &l2_tn_filter,
-						     FALSE);
-		if (ret) {
-			rte_free(l2_tn_filter_ptr);
-			goto out;
-		}
-		flow->rule = l2_tn_filter_ptr;
-		flow->filter_type = RTE_ETH_FILTER_L2_TUNNEL;
-		return flow;
-	}
-
 	memset(&rss_conf, 0, sizeof(struct ixgbe_rte_flow_rss_conf));
 	ret = ixgbe_parse_rss_filter(dev, attr,
 					actions, &rss_conf, error);
@@ -2637,7 +2453,6 @@ ixgbe_flow_validate(struct rte_eth_dev *dev,
 {
 	struct ixgbe_adapter *ad = IXGBE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct rte_eth_ntuple_filter ntuple_filter;
-	struct ixgbe_l2_tunnel_conf l2_tn_filter;
 	struct ixgbe_fdir_rule fdir_rule;
 	struct ixgbe_rte_flow_rss_conf rss_conf;
 	int ret;
@@ -2668,12 +2483,6 @@ ixgbe_flow_validate(struct rte_eth_dev *dev,
 	if (!ret)
 		return 0;
 
-	memset(&l2_tn_filter, 0, sizeof(struct ixgbe_l2_tunnel_conf));
-	ret = ixgbe_parse_l2_tn_filter(dev, attr, pattern,
-				actions, &l2_tn_filter, error);
-	if (!ret)
-		return 0;
-
 	memset(&rss_conf, 0, sizeof(struct ixgbe_rte_flow_rss_conf));
 	ret = ixgbe_parse_rss_filter(dev, attr,
 					actions, &rss_conf, error);
@@ -2694,9 +2503,7 @@ ixgbe_flow_destroy(struct rte_eth_dev *dev,
 	enum rte_filter_type filter_type = pmd_flow->filter_type;
 	struct rte_eth_ntuple_filter ntuple_filter;
 	struct ixgbe_fdir_rule fdir_rule;
-	struct ixgbe_l2_tunnel_conf l2_tn_filter;
 	struct ixgbe_ntuple_filter_ele *ntuple_filter_ptr;
-	struct ixgbe_eth_l2_tunnel_conf_ele *l2_tn_filter_ptr;
 	struct ixgbe_fdir_rule_ele *fdir_rule_ptr;
 	struct ixgbe_filter_ele_base *flow_mem_base;
 	struct ixgbe_hw_fdir_info *fdir_info =
@@ -2754,14 +2561,6 @@ ixgbe_flow_destroy(struct rte_eth_dev *dev,
 		if (!ret)
 			rte_free(fdir_rule_ptr);
 		break;
-	case RTE_ETH_FILTER_L2_TUNNEL:
-		l2_tn_filter_ptr = (struct ixgbe_eth_l2_tunnel_conf_ele *)
-				pmd_flow->rule;
-		l2_tn_filter = l2_tn_filter_ptr->filter_info;
-		ret = ixgbe_dev_l2_tunnel_filter_del(adapter, &l2_tn_filter);
-		if (!ret)
-			rte_free(l2_tn_filter_ptr);
-		break;
 	case RTE_ETH_FILTER_HASH:
 		rss_filter_ptr = (struct ixgbe_rss_conf_ele *)
 				pmd_flow->rule;
@@ -2810,13 +2609,6 @@ ixgbe_flow_flush(struct rte_eth_dev *dev,
 	ixgbe_clear_all_ntuple_filter(dev);
 
 	ret = ixgbe_clear_all_fdir_filter(dev);
-	if (ret < 0) {
-		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_HANDLE,
-					NULL, "Failed to flush rule");
-		return ret;
-	}
-
-	ret = ixgbe_clear_all_l2_tn_filter(dev);
 	if (ret < 0) {
 		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_HANDLE,
 					NULL, "Failed to flush rule");
