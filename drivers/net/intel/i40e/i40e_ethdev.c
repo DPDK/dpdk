@@ -392,12 +392,6 @@ static int i40e_set_default_mac_addr(struct rte_eth_dev *dev,
 
 static int i40e_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 
-static int i40e_ethertype_filter_convert(
-	const struct rte_eth_ethertype_filter *input,
-	struct i40e_ethertype_filter *filter);
-static int i40e_sw_ethertype_filter_insert(struct i40e_pf *pf,
-				   struct i40e_ethertype_filter *filter);
-
 static int i40e_tunnel_filter_convert(
 	struct i40e_aqc_cloud_filters_element_bb *cld_filter,
 	struct i40e_tunnel_filter *tunnel_filter);
@@ -405,7 +399,6 @@ static int i40e_sw_tunnel_filter_insert(struct i40e_pf *pf,
 				struct i40e_tunnel_filter *tunnel_filter);
 static int i40e_cloud_filter_qinq_create(struct i40e_pf *pf);
 
-static void i40e_ethertype_filter_restore(struct i40e_pf *pf);
 static void i40e_tunnel_filter_restore(struct i40e_pf *pf);
 static void i40e_filter_restore(struct i40e_pf *pf);
 static void i40e_notify_all_vfs_link_status(struct rte_eth_dev *dev);
@@ -1002,51 +995,6 @@ config_floating_veb(struct rte_eth_dev *dev)
 
 #define I40E_L2_TAGS_S_TAG_SHIFT 1
 #define I40E_L2_TAGS_S_TAG_MASK I40E_MASK(0x1, I40E_L2_TAGS_S_TAG_SHIFT)
-
-static int
-i40e_init_ethtype_filter_list(struct rte_eth_dev *dev)
-{
-	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
-	struct i40e_ethertype_rule *ethertype_rule = &pf->ethertype;
-	char ethertype_hash_name[RTE_HASH_NAMESIZE];
-	int ret;
-
-	struct rte_hash_parameters ethertype_hash_params = {
-		.name = ethertype_hash_name,
-		.entries = I40E_MAX_ETHERTYPE_FILTER_NUM,
-		.key_len = sizeof(struct i40e_ethertype_filter_input),
-		.hash_func = rte_hash_crc,
-		.hash_func_init_val = 0,
-		.socket_id = rte_socket_id(),
-	};
-
-	/* Initialize ethertype filter rule list and hash */
-	TAILQ_INIT(&ethertype_rule->ethertype_list);
-	snprintf(ethertype_hash_name, RTE_HASH_NAMESIZE,
-		 "ethertype_%s", dev->device->name);
-	ethertype_rule->hash_table = rte_hash_create(&ethertype_hash_params);
-	if (!ethertype_rule->hash_table) {
-		PMD_INIT_LOG(ERR, "Failed to create ethertype hash table!");
-		return -EINVAL;
-	}
-	ethertype_rule->hash_map = rte_zmalloc("i40e_ethertype_hash_map",
-				       sizeof(struct i40e_ethertype_filter *) *
-				       I40E_MAX_ETHERTYPE_FILTER_NUM,
-				       0);
-	if (!ethertype_rule->hash_map) {
-		PMD_INIT_LOG(ERR,
-			     "Failed to allocate memory for ethertype hash map!");
-		ret = -ENOMEM;
-		goto err_ethertype_hash_map_alloc;
-	}
-
-	return 0;
-
-err_ethertype_hash_map_alloc:
-	rte_hash_free(ethertype_rule->hash_table);
-
-	return ret;
-}
 
 static int
 i40e_init_tunnel_filter_list(struct rte_eth_dev *dev)
@@ -1831,9 +1779,6 @@ eth_i40e_dev_init(struct rte_eth_dev *dev, void *init_params __rte_unused)
 	/* Initialize the filter invalidation configuration */
 	i40e_init_filter_invalidation(pf);
 
-	ret = i40e_init_ethtype_filter_list(dev);
-	if (ret < 0)
-		goto err_init_ethtype_filter_list;
 	ret = i40e_init_tunnel_filter_list(dev);
 	if (ret < 0)
 		goto err_init_tunnel_filter_list;
@@ -1865,9 +1810,6 @@ err_init_fdir_filter_list:
 	rte_hash_free(pf->tunnel.hash_table);
 	rte_free(pf->tunnel.hash_map);
 err_init_tunnel_filter_list:
-	rte_hash_free(pf->ethertype.hash_table);
-	rte_free(pf->ethertype.hash_map);
-err_init_ethtype_filter_list:
 	rte_intr_callback_unregister(intr_handle,
 		i40e_dev_interrupt_handler, dev);
 	rte_free(dev->data->mac_addrs);
@@ -1888,24 +1830,6 @@ err_get_capabilities:
 	(void)i40e_shutdown_adminq(hw);
 
 	return ret;
-}
-
-static void
-i40e_rm_ethtype_filter_list(struct i40e_pf *pf)
-{
-	struct i40e_ethertype_filter *p_ethertype;
-	struct i40e_ethertype_rule *ethertype_rule;
-
-	ethertype_rule = &pf->ethertype;
-	/* Remove all ethertype filter rules and hash */
-	rte_free(ethertype_rule->hash_map);
-	rte_hash_free(ethertype_rule->hash_table);
-
-	while ((p_ethertype = TAILQ_FIRST(&ethertype_rule->ethertype_list))) {
-		TAILQ_REMOVE(&ethertype_rule->ethertype_list,
-			     p_ethertype, rules);
-		rte_free(p_ethertype);
-	}
 }
 
 static void
@@ -2805,7 +2729,6 @@ i40e_dev_close(struct rte_eth_dev *dev)
 		i40e_msec_delay(500);
 	} while (retries++ < 5);
 
-	i40e_rm_ethtype_filter_list(pf);
 	i40e_rm_tunnel_filter_list(pf);
 	i40e_rm_fdir_filter_list(pf);
 
@@ -9891,129 +9814,15 @@ i40e_set_hash_inset(struct i40e_hw *hw, uint64_t input_set,
 	return 0;
 }
 
-/* Convert ethertype filter structure */
-static int
-i40e_ethertype_filter_convert(const struct rte_eth_ethertype_filter *input,
-			      struct i40e_ethertype_filter *filter)
-{
-	memcpy(&filter->input.mac_addr, &input->mac_addr,
-		RTE_ETHER_ADDR_LEN);
-	filter->input.ether_type = input->ether_type;
-	filter->flags = input->flags;
-	filter->queue = input->queue;
-
-	return 0;
-}
-
-/* Check if there exists the ethertype filter */
-struct i40e_ethertype_filter *
-i40e_sw_ethertype_filter_lookup(struct i40e_ethertype_rule *ethertype_rule,
-				const struct i40e_ethertype_filter_input *input)
-{
-	int ret;
-
-	ret = rte_hash_lookup(ethertype_rule->hash_table, (const void *)input);
-	if (ret < 0)
-		return NULL;
-
-	return ethertype_rule->hash_map[ret];
-}
-
-/* Add ethertype filter in SW list */
-static int
-i40e_sw_ethertype_filter_insert(struct i40e_pf *pf,
-				struct i40e_ethertype_filter *filter)
-{
-	struct i40e_ethertype_rule *rule = &pf->ethertype;
-	int ret;
-
-	ret = rte_hash_add_key(rule->hash_table, &filter->input);
-	if (ret < 0) {
-		PMD_DRV_LOG(ERR,
-			    "Failed to insert ethertype filter"
-			    " to hash table %d!",
-			    ret);
-		return ret;
-	}
-	rule->hash_map[ret] = filter;
-
-	TAILQ_INSERT_TAIL(&rule->ethertype_list, filter, rules);
-
-	return 0;
-}
-
-/* Delete ethertype filter in SW list */
 int
-i40e_sw_ethertype_filter_del(struct i40e_pf *pf,
-			     struct i40e_ethertype_filter_input *input)
-{
-	struct i40e_ethertype_rule *rule = &pf->ethertype;
-	struct i40e_ethertype_filter *filter;
-	int ret;
-
-	ret = rte_hash_del_key(rule->hash_table, input);
-	if (ret < 0) {
-		PMD_DRV_LOG(ERR,
-			    "Failed to delete ethertype filter"
-			    " to hash table %d!",
-			    ret);
-		return ret;
-	}
-	filter = rule->hash_map[ret];
-	rule->hash_map[ret] = NULL;
-
-	TAILQ_REMOVE(&rule->ethertype_list, filter, rules);
-	rte_free(filter);
-
-	return 0;
-}
-
-/*
- * Configure ethertype filter, which can director packet by filtering
- * with mac address and ether_type or only ether_type
- */
-int
-i40e_ethertype_filter_set(struct i40e_pf *pf,
+i40e_ethertype_filter_program(struct i40e_pf *pf,
 			struct rte_eth_ethertype_filter *filter,
 			bool add)
 {
 	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
-	struct i40e_ethertype_rule *ethertype_rule = &pf->ethertype;
-	struct i40e_ethertype_filter *ethertype_filter, *node;
-	struct i40e_ethertype_filter check_filter;
 	struct i40e_control_filter_stats stats;
 	uint16_t flags = 0;
 	int ret;
-
-	if (filter->queue >= pf->dev_data->nb_rx_queues) {
-		PMD_DRV_LOG(ERR, "Invalid queue ID");
-		return -EINVAL;
-	}
-	if (filter->ether_type == RTE_ETHER_TYPE_IPV4 ||
-		filter->ether_type == RTE_ETHER_TYPE_IPV6) {
-		PMD_DRV_LOG(ERR,
-			"unsupported ether_type(0x%04x) in control packet filter.",
-			filter->ether_type);
-		return -EINVAL;
-	}
-	if (filter->ether_type == RTE_ETHER_TYPE_VLAN)
-		PMD_DRV_LOG(WARNING,
-			"filter vlan ether_type in first tag is not supported.");
-
-	/* Check if there is the filter in SW list */
-	memset(&check_filter, 0, sizeof(check_filter));
-	i40e_ethertype_filter_convert(filter, &check_filter);
-	node = i40e_sw_ethertype_filter_lookup(ethertype_rule,
-					       &check_filter.input);
-	if (add && node) {
-		PMD_DRV_LOG(ERR, "Conflict with existing ethertype rules!");
-		return -EINVAL;
-	}
-
-	if (!add && !node) {
-		PMD_DRV_LOG(ERR, "There's no corresponding ethertype filter!");
-		return -EINVAL;
-	}
 
 	if (!(filter->flags & RTE_ETHTYPE_FLAGS_MAC))
 		flags |= I40E_AQC_ADD_CONTROL_PACKET_FLAGS_IGNORE_MAC;
@@ -10035,25 +9844,7 @@ i40e_ethertype_filter_set(struct i40e_pf *pf,
 	if (ret < 0)
 		return -ENOSYS;
 
-	/* Add or delete a filter in SW list */
-	if (add) {
-		ethertype_filter = rte_zmalloc("ethertype_filter",
-				       sizeof(*ethertype_filter), 0);
-		if (ethertype_filter == NULL) {
-			PMD_DRV_LOG(ERR, "Failed to alloc memory.");
-			return -ENOMEM;
-		}
-
-		memcpy(ethertype_filter, &check_filter,
-			   sizeof(check_filter));
-		ret = i40e_sw_ethertype_filter_insert(pf, ethertype_filter);
-		if (ret < 0)
-			rte_free(ethertype_filter);
-	} else {
-		ret = i40e_sw_ethertype_filter_del(pf, &node->input);
-	}
-
-	return ret;
+	return 0;
 }
 
 static int
@@ -11624,52 +11415,6 @@ i40e_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu __rte_unused)
 	return 0;
 }
 
-/* Restore ethertype filter */
-static void
-i40e_ethertype_filter_restore(struct i40e_pf *pf)
-{
-	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
-	struct i40e_ethertype_filter_list
-		*ethertype_list = &pf->ethertype.ethertype_list;
-	struct i40e_ethertype_filter *f;
-	struct i40e_control_filter_stats stats;
-	enum i40e_status_code ret;
-	uint16_t flags;
-	bool stats_valid = false;
-
-	TAILQ_FOREACH(f, ethertype_list, rules) {
-		flags = 0;
-		if (!(f->flags & RTE_ETHTYPE_FLAGS_MAC))
-			flags |= I40E_AQC_ADD_CONTROL_PACKET_FLAGS_IGNORE_MAC;
-		if (f->flags & RTE_ETHTYPE_FLAGS_DROP)
-			flags |= I40E_AQC_ADD_CONTROL_PACKET_FLAGS_DROP;
-		flags |= I40E_AQC_ADD_CONTROL_PACKET_FLAGS_TO_QUEUE;
-
-		ret = i40e_aq_add_rem_control_packet_filter(hw,
-					    f->input.mac_addr.addr_bytes,
-					    f->input.ether_type,
-					    flags, pf->main_vsi->seid,
-					    f->queue, 1, &stats, NULL);
-		if (ret != I40E_SUCCESS) {
-			PMD_DRV_LOG(ERR,
-				    "Failed to restore ethertype filter, ether_type=0x%04x, queue=%u, vsi_seid=%u, err %d",
-				    f->input.ether_type, f->queue,
-				    pf->main_vsi->seid, ret);
-			continue;
-		}
-
-		stats_valid = true;
-	}
-
-	if (stats_valid) {
-		PMD_DRV_LOG(INFO, "Ethertype filter:"
-			    " mac_etype_used = %u, etype_used = %u,"
-			    " mac_etype_free = %u, etype_free = %u",
-			    stats.mac_etype_used, stats.etype_used,
-			    stats.mac_etype_free, stats.etype_free);
-	}
-}
-
 /* Restore tunnel filter */
 static void
 i40e_tunnel_filter_restore(struct i40e_pf *pf)
@@ -11728,7 +11473,6 @@ i40e_tunnel_filter_restore(struct i40e_pf *pf)
 static void
 i40e_filter_restore(struct i40e_pf *pf)
 {
-	i40e_ethertype_filter_restore(pf);
 	i40e_tunnel_filter_restore(pf);
 	i40e_fdir_filter_restore(pf);
 	(void)i40e_hash_filter_restore(pf);

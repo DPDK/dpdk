@@ -805,27 +805,6 @@ struct i40e_fdir_info {
 /* Ethertype filter number HW supports */
 #define I40E_MAX_ETHERTYPE_FILTER_NUM 768
 
-/* Ethertype filter struct */
-struct i40e_ethertype_filter_input {
-	struct rte_ether_addr mac_addr;   /* Mac address to match */
-	uint16_t ether_type;          /* Ether type to match */
-};
-
-struct i40e_ethertype_filter {
-	TAILQ_ENTRY(i40e_ethertype_filter) rules;
-	struct i40e_ethertype_filter_input input;
-	uint16_t flags;              /* Flags from RTE_ETHTYPE_FLAGS_* */
-	uint16_t queue;              /* Queue assigned to when match */
-};
-
-TAILQ_HEAD(i40e_ethertype_filter_list, i40e_ethertype_filter);
-
-struct i40e_ethertype_rule {
-	struct i40e_ethertype_filter_list ethertype_list;
-	struct i40e_ethertype_filter  **hash_map;
-	struct rte_hash *hash_table;
-};
-
 /* queue region info */
 struct i40e_queue_region_info {
 	/* the region id for this configuration */
@@ -1176,7 +1155,6 @@ struct i40e_pf {
 	struct i40e_vmdq_info *vmdq;
 
 	struct i40e_fdir_info fdir; /* flow director info */
-	struct i40e_ethertype_rule ethertype; /* Ethertype filter rule */
 	struct i40e_tunnel_rule tunnel; /* Tunnel filter rule */
 	struct i40e_rss_conf_list rss_config_list; /* RSS rule list */
 	struct i40e_queue_regions queue_region; /* queue region info */
@@ -1325,7 +1303,6 @@ extern const struct rte_flow_ops i40e_flow_ops;
 
 struct i40e_filter_ctx {
 	union {
-		struct rte_eth_ethertype_filter ethertype_filter;
 		struct i40e_fdir_filter_conf fdir_filter;
 		struct i40e_tunnel_filter_conf consistent_tunnel_filter;
 		struct i40e_rte_flow_rss_conf rss_conf;
@@ -1407,11 +1384,6 @@ int i40e_rx_burst_mode_get(struct rte_eth_dev *dev, uint16_t queue_id,
 			   struct rte_eth_burst_mode *mode);
 int i40e_tx_burst_mode_get(struct rte_eth_dev *dev, uint16_t queue_id,
 			   struct rte_eth_burst_mode *mode);
-struct i40e_ethertype_filter *
-i40e_sw_ethertype_filter_lookup(struct i40e_ethertype_rule *ethertype_rule,
-			const struct i40e_ethertype_filter_input *input);
-int i40e_sw_ethertype_filter_del(struct i40e_pf *pf,
-				 struct i40e_ethertype_filter_input *input);
 int i40e_sw_fdir_filter_del(struct i40e_pf *pf,
 			    struct i40e_fdir_input *input);
 struct i40e_tunnel_filter *
@@ -1420,7 +1392,7 @@ i40e_sw_tunnel_filter_lookup(struct i40e_tunnel_rule *tunnel_rule,
 int i40e_sw_tunnel_filter_del(struct i40e_pf *pf,
 			      struct i40e_tunnel_filter_input *input);
 uint64_t i40e_get_default_input_set(uint16_t pctype);
-int i40e_ethertype_filter_set(struct i40e_pf *pf,
+int i40e_ethertype_filter_program(struct i40e_pf *pf,
 			      struct rte_eth_ethertype_filter *filter,
 			      bool add);
 struct rte_flow *
