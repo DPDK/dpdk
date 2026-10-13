@@ -8,11 +8,7 @@
 #if !(defined(RTE_ARCH_X86_64) || defined(RTE_ARCH_ARM64))
 #include "rte_stack_lf_stubs.h"
 #else
-#ifdef RTE_USE_C11_MEM_MODEL
 #include "rte_stack_lf_c11.h"
-#else
-#include "rte_stack_lf_generic.h"
-#endif
 
 /**
  * Indicates that RTE_STACK_F_LF is supported.
