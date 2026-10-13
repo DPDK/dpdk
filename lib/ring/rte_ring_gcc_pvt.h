@@ -55,10 +55,10 @@ __rte_ring_headtail_move_head_st(struct rte_ring_headtail *d,
 
 	*old_head = d->head;
 
-	/* add rmb barrier to avoid load/load reorder in weak
-	 * memory model. It is noop on x86
+	/* Acquire fence to avoid load/load reorder in weak
+	 * memory model. It is noop on x86.
 	 */
-	rte_smp_rmb();
+	rte_atomic_thread_fence(rte_memory_order_acquire);
 
 	/*
 	 *  The subtraction is done between two unsigned 32bits value
