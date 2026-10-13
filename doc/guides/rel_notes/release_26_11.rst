@@ -286,6 +286,11 @@ New Features
 
   * Added support for Gen 6 QAT devices.
 
+* **Updated AESNI_MB crypto driver.**
+
+  * Added support for SHA3-224, SHA3-256, SHA3-384, and SHA3-512 hash
+    algorithms and their HMAC variants.
+
 * **Added AMD AE4DMA DMA PMD.**
 
   Added a new dmadev driver for the AMD AE4DMA hardware DMA engine.

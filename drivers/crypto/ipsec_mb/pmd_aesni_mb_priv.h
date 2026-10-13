@@ -768,6 +768,176 @@ static const struct rte_cryptodev_capabilities aesni_mb_capabilities[] = {
 			}, }
 		}, }
 	},
+#if IMB_VERSION(3, 0, 0) <= IMB_VERSION_NUM
+	{	/* SHA3-224 */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_SHA3_224,
+				.block_size = 144,
+				.key_size = {
+					.min = 0,
+					.max = 0,
+					.increment = 0
+				},
+				.digest_size = {
+					.min = 1,
+					.max = 28,
+					.increment = 1
+				},
+				.iv_size = { 0 }
+			}, }
+		}, }
+	},
+	{	/* HMAC SHA3-224 */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_SHA3_224_HMAC,
+				.block_size = 144,
+				.key_size = {
+					.min = 1,
+					.max = 65535,
+					.increment = 1
+				},
+				.digest_size = {
+					.min = 1,
+					.max = 28,
+					.increment = 1
+				},
+				.iv_size = { 0 }
+			}, }
+		}, }
+	},
+	{	/* SHA3-256 */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_SHA3_256,
+				.block_size = 136,
+				.key_size = {
+					.min = 0,
+					.max = 0,
+					.increment = 0
+				},
+				.digest_size = {
+					.min = 1,
+					.max = 32,
+					.increment = 1
+				},
+				.iv_size = { 0 }
+			}, }
+		}, }
+	},
+	{	/* HMAC SHA3-256 */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_SHA3_256_HMAC,
+				.block_size = 136,
+				.key_size = {
+					.min = 1,
+					.max = 65535,
+					.increment = 1
+				},
+				.digest_size = {
+					.min = 1,
+					.max = 32,
+					.increment = 1
+				},
+				.iv_size = { 0 }
+			}, }
+		}, }
+	},
+	{	/* SHA3-384 */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_SHA3_384,
+				.block_size = 104,
+				.key_size = {
+					.min = 0,
+					.max = 0,
+					.increment = 0
+				},
+				.digest_size = {
+					.min = 1,
+					.max = 48,
+					.increment = 1
+				},
+				.iv_size = { 0 }
+			}, }
+		}, }
+	},
+	{	/* HMAC SHA3-384 */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_SHA3_384_HMAC,
+				.block_size = 104,
+				.key_size = {
+					.min = 1,
+					.max = 65535,
+					.increment = 1
+				},
+				.digest_size = {
+					.min = 1,
+					.max = 48,
+					.increment = 1
+				},
+				.iv_size = { 0 }
+			}, }
+		}, }
+	},
+	{	/* SHA3-512 */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_SHA3_512,
+				.block_size = 72,
+				.key_size = {
+					.min = 0,
+					.max = 0,
+					.increment = 0
+				},
+				.digest_size = {
+					.min = 1,
+					.max = 64,
+					.increment = 1
+				},
+				.iv_size = { 0 }
+			}, }
+		}, }
+	},
+	{	/* HMAC SHA3-512 */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_SHA3_512_HMAC,
+				.block_size = 72,
+				.key_size = {
+					.min = 1,
+					.max = 65535,
+					.increment = 1
+				},
+				.digest_size = {
+					.min = 1,
+					.max = 64,
+					.increment = 1
+				},
+				.iv_size = { 0 }
+			}, }
+		}, }
+	},
+#endif
 	{	/* SM4 CBC */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
 		{.sym = {
@@ -894,7 +1064,17 @@ static const unsigned int auth_blocksize[] = {
 		[IMB_AUTH_SHA_512]		= 128,
 		[IMB_AUTH_ZUC_EIA3_BITLEN]	= 16,
 		[IMB_AUTH_SNOW3G_UIA2_BITLEN]	= 16,
-		[IMB_AUTH_KASUMI_UIA1]		= 16
+		[IMB_AUTH_KASUMI_UIA1]		= 16,
+#if IMB_VERSION(3, 0, 0) <= IMB_VERSION_NUM
+		[IMB_AUTH_SHA3_224]		= 144,
+		[IMB_AUTH_SHA3_256]		= 136,
+		[IMB_AUTH_SHA3_384]		= 104,
+		[IMB_AUTH_SHA3_512]		= 72,
+		[IMB_AUTH_HMAC_SHA3_224]	= 144,
+		[IMB_AUTH_HMAC_SHA3_256]	= 136,
+		[IMB_AUTH_HMAC_SHA3_384]	= 104,
+		[IMB_AUTH_HMAC_SHA3_512]	= 72
+#endif
 };
 
 /**
@@ -928,7 +1108,17 @@ static const unsigned int auth_truncated_digest_byte_lengths[] = {
 		[IMB_AUTH_SHA_512]		= 64,
 		[IMB_AUTH_ZUC_EIA3_BITLEN]	= 4,
 		[IMB_AUTH_SNOW3G_UIA2_BITLEN]	= 4,
-		[IMB_AUTH_KASUMI_UIA1]		= 4
+		[IMB_AUTH_KASUMI_UIA1]		= 4,
+#if IMB_VERSION(3, 0, 0) <= IMB_VERSION_NUM
+		[IMB_AUTH_SHA3_224]		= 28,
+		[IMB_AUTH_SHA3_256]		= 32,
+		[IMB_AUTH_SHA3_384]		= 48,
+		[IMB_AUTH_SHA3_512]		= 64,
+		[IMB_AUTH_HMAC_SHA3_224]	= 28,
+		[IMB_AUTH_HMAC_SHA3_256]	= 32,
+		[IMB_AUTH_HMAC_SHA3_384]	= 48,
+		[IMB_AUTH_HMAC_SHA3_512]	= 64
+#endif
 };
 
 /**
@@ -967,6 +1157,16 @@ static const unsigned int auth_digest_byte_lengths[] = {
 #if IMB_VERSION(1, 5, 0) <= IMB_VERSION_NUM
 		[IMB_AUTH_SM3]			= 32,
 		[IMB_AUTH_HMAC_SM3]		= 32,
+#endif
+#if IMB_VERSION(3, 0, 0) <= IMB_VERSION_NUM
+		[IMB_AUTH_SHA3_224]		= 28,
+		[IMB_AUTH_SHA3_256]		= 32,
+		[IMB_AUTH_SHA3_384]		= 48,
+		[IMB_AUTH_SHA3_512]		= 64,
+		[IMB_AUTH_HMAC_SHA3_224]	= 28,
+		[IMB_AUTH_HMAC_SHA3_256]	= 32,
+		[IMB_AUTH_HMAC_SHA3_384]	= 48,
+		[IMB_AUTH_HMAC_SHA3_512]	= 64
 #endif
 	/**< Vector mode dependent pointer table of the multi-buffer APIs */
 
@@ -1049,15 +1249,15 @@ struct __rte_cache_aligned aesni_mb_session {
 		/* *< auth operation generate or verify */
 		union {
 			struct {
-				alignas(16) uint8_t inner[128];
+				alignas(16) uint8_t inner[144];
 				/* *< inner pad */
-				alignas(16) uint8_t outer[128];
+				alignas(16) uint8_t outer[144];
 				/* *< outer pad */
 			} pads;
 			/* *< HMAC Authentication pads -
 			 * allocating space for the maximum pad
-			 * size supported which is 128 bytes for
-			 * SHA512
+			 * size supported which is 144 bytes for
+			 * SHA3-224
 			 */
 
 			struct {
