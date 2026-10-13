@@ -339,7 +339,7 @@ dsw_port_handle_pause_flows(struct dsw_evdev *dsw, struct dsw_port *port,
 	/* Make sure any stores to the original port's in_ring is seen
 	 * before the ctl message.
 	 */
-	rte_smp_wmb();
+	rte_atomic_thread_fence(rte_memory_order_release);
 
 	dsw_port_ctl_enqueue(&dsw->ports[originating_port_id], &cfm);
 }
@@ -821,7 +821,7 @@ dsw_port_move_parallel_flows(struct dsw_evdev *dsw,
 		}
 	}
 
-	rte_smp_wmb();
+	rte_atomic_thread_fence(rte_memory_order_release);
 
 	dsw_port_end_emigration(dsw, source_port, RTE_SCHED_TYPE_PARALLEL);
 }
@@ -1190,7 +1190,7 @@ dsw_port_move_emigrating_flows(struct dsw_evdev *dsw,
 		    dest_port_id;
 	}
 
-	rte_smp_wmb();
+	rte_atomic_thread_fence(rte_memory_order_release);
 
 	dsw_port_drain_in_ring(source_port);
 	dsw_port_forward_emigrated_flows(dsw, source_port);
@@ -1213,7 +1213,7 @@ dsw_port_move_emigrating_flows(struct dsw_evdev *dsw,
 	/* Flow table update and migration destination port's enqueues
 	 * must be seen before the control message.
 	 */
-	rte_smp_wmb();
+	rte_atomic_thread_fence(rte_memory_order_release);
 
 	dsw_port_ctl_broadcast(dsw, source_port, DSW_CTL_UNPAUSE_REQ,
 			       source_port->emigration_target_qfs,
