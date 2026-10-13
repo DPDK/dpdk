@@ -47,6 +47,7 @@
 #include "base/ixgbe_phy.h"
 #include "ixgbe_osdep.h"
 #include "ixgbe_regs.h"
+#include "ixgbe_flow.h"
 
 /*
  * High threshold controlling when to start sending XOFF frames. Must be at
@@ -1279,6 +1280,12 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	if (ret)
 		goto err_l2_tn_filter_init;
 
+	/* initialize flow engine configuration */
+	ret = ci_flow_engine_conf_init(&ad->flow_engine_conf,
+			&ixgbe_flow_engine_list, eth_dev->data);
+	if (ret)
+		goto err_flow_engine_conf_init;
+
 	/* initialize flow filter lists */
 	ixgbe_filterlist_init(eth_dev);
 
@@ -1290,6 +1297,8 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 
 	return 0;
 
+err_flow_engine_conf_init:
+	ixgbe_l2_tn_filter_uninit(eth_dev);
 err_l2_tn_filter_init:
 	ixgbe_fdir_filter_uninit(eth_dev);
 err_fdir_filter_init:
@@ -2859,6 +2868,9 @@ skip_link_setup:
 	if (macsec_setting->offload_en)
 		ixgbe_dev_macsec_register_enable(dev, macsec_setting);
 
+	/* re-install kept flows to hardware */
+	ci_flow_engine_conf_replay(&adapter->flow_engine_conf);
+
 	return 0;
 
 error:
@@ -3038,8 +3050,8 @@ ixgbe_dev_set_link_down(struct rte_eth_dev *dev)
 static int
 ixgbe_dev_close(struct rte_eth_dev *dev)
 {
-	struct ixgbe_hw *hw =
-		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_adapter *ad = dev->data->dev_private;
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(ad);
 	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	int retries = 0;
@@ -3105,6 +3117,12 @@ ixgbe_dev_close(struct rte_eth_dev *dev)
 
 	rte_free(dev->security_ctx);
 	dev->security_ctx = NULL;
+
+	/* drop all flows */
+	ci_flow_engine_conf_cleanup(&ad->flow_engine_conf);
+
+	/* reset flow engines */
+	ci_flow_engine_conf_reset(&ad->flow_engine_conf);
 
 	return ret;
 }
