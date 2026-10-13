@@ -27,6 +27,7 @@ sources += files(
         'ixgbe_fdir.c',
         'ixgbe_flow.c',
         'ixgbe_flow_ethertype.c',
+        'ixgbe_flow_syn.c',
         'ixgbe_ipsec.c',
         'ixgbe_pf.c',
         'ixgbe_rxtx.c',
