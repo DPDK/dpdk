@@ -86,17 +86,10 @@
 	(1ULL << RTE_ETH_FLOW_NONFRAG_IPV6_OTHER) | \
 	(1ULL << RTE_ETH_FLOW_L2_PAYLOAD))
 
-static int i40e_fdir_filter_convert(const struct i40e_fdir_filter_conf *input,
-			 struct i40e_fdir_filter *filter);
-static struct i40e_fdir_filter *
-i40e_sw_fdir_filter_lookup(struct i40e_fdir_info *fdir_info,
-			const struct i40e_fdir_input *input);
-static int i40e_sw_fdir_filter_insert(struct i40e_pf *pf,
-				   struct i40e_fdir_filter *filter);
 static int
 i40e_flow_fdir_filter_programming(struct i40e_pf *pf,
 				  enum i40e_filter_pctype pctype,
-				  const struct i40e_fdir_filter_conf *filter,
+				  const struct i40e_fdir_filter *filter,
 				  bool add, bool wait_status);
 
 static int
@@ -211,21 +204,21 @@ i40e_fdir_setup(struct i40e_pf *pf)
 	err = i40e_switch_tx_queue(hw, vsi->base_queue, TRUE);
 	if (err) {
 		PMD_DRV_LOG(ERR, "Failed to do fdir TX switch on.");
-		goto fail_mem;
+		goto fail_tx_queue;
 	}
 
 	/* Init the rx queue in hardware */
 	err = i40e_fdir_rx_queue_init(pf->fdir.rxq);
 	if (err) {
 		PMD_DRV_LOG(ERR, "Failed to do FDIR RX initialization.");
-		goto fail_mem;
+		goto fail_tx_queue;
 	}
 
 	/* switch on rx queue */
 	err = i40e_switch_rx_queue(hw, vsi->base_queue, TRUE);
 	if (err) {
 		PMD_DRV_LOG(ERR, "Failed to do FDIR RX switch on.");
-		goto fail_mem;
+		goto fail_rx_queue;
 	}
 
 	/* enable FDIR MSIX interrupt */
@@ -244,7 +237,7 @@ i40e_fdir_setup(struct i40e_pf *pf)
 		PMD_DRV_LOG(ERR, "Cannot init memzone for "
 				 "flow director program packet.");
 		err = I40E_ERR_NO_MEMORY;
-		goto fail_mem;
+		goto fail_intr;
 	}
 
 	for (i = 0; i < I40E_FDIR_PRG_PKT_CNT; i++) {
@@ -255,14 +248,20 @@ i40e_fdir_setup(struct i40e_pf *pf)
 	}
 
 	pf->fdir.match_counter_index = I40E_COUNTER_INDEX_FDIR(hw->pf_id);
-	pf->fdir.fdir_actual_cnt = 0;
-	pf->fdir.fdir_guarantee_free_space =
-		pf->fdir.fdir_guarantee_total_space;
 
 	PMD_DRV_LOG(INFO, "FDIR setup successfully, with programming queue %u.",
 		    vsi->base_queue);
 	return I40E_SUCCESS;
 
+fail_intr:
+	i40e_vsi_queues_unbind_intr(vsi);
+	i40e_vsi_disable_queues_intr(vsi);
+fail_rx_queue:
+	if (i40e_switch_rx_queue(hw, vsi->base_queue, FALSE) != I40E_SUCCESS)
+		PMD_DRV_LOG(DEBUG, "Failed to do FDIR RX switch off");
+fail_tx_queue:
+	if (i40e_switch_tx_queue(hw, vsi->base_queue, FALSE) != I40E_SUCCESS)
+		PMD_DRV_LOG(DEBUG, "Failed to do FDIR TX switch off");
 fail_mem:
 	i40e_rx_queue_release(pf->fdir.rxq);
 	pf->fdir.rxq = NULL;
@@ -344,46 +343,52 @@ i40e_init_flx_pld(struct i40e_pf *pf)
 	 * of payload as flexible payload.
 	 */
 	for (i = I40E_FLXPLD_L2_IDX; i < I40E_MAX_FLXPLD_LAYER; i++) {
+		struct i40e_fdir_layer_state *layer = &pf->fdir.flows.layer[i];
+		struct i40e_fdir_flex_pit *flex_set = &layer->flex_set[0];
 		index = i * I40E_MAX_FLXPLD_FIED;
-		pf->fdir.flex_set[index].src_offset = 0;
-		pf->fdir.flex_set[index].size = I40E_FDIR_MAX_FLEXWORD_NUM;
-		pf->fdir.flex_set[index].dst_offset = 0;
+		flex_set->src_offset = 0;
+		flex_set->size = I40E_FDIR_MAX_FLEXWORD_NUM;
+		flex_set->dst_offset = 0;
 		I40E_WRITE_REG(hw, I40E_PRTQF_FLX_PIT(index), 0x0000C900);
 		I40E_WRITE_REG(hw,
 			I40E_PRTQF_FLX_PIT(index + 1), 0x0000FC29);/*non-used*/
 		I40E_WRITE_REG(hw,
 			I40E_PRTQF_FLX_PIT(index + 2), 0x0000FC2A);/*non-used*/
-		pf->fdir.flex_pit_flag[i] = 0;
+		layer->flex_pit_flag = false;
 	}
 
 	/* initialize the masks */
 	for (pctype = I40E_FILTER_PCTYPE_NONF_IPV4_UDP;
 	     pctype <= I40E_FILTER_PCTYPE_L2_PAYLOAD; pctype++) {
+		struct i40e_fdir_pctype_state *state = &pf->fdir.flows.pctype[pctype];
 		flow_type = i40e_pctype_to_flowtype(pf->adapter, pctype);
 
 		if (flow_type == RTE_ETH_FLOW_UNKNOWN)
 			continue;
-		pf->fdir.flex_mask[pctype].word_mask = 0;
+		state->flex_mask.word_mask = 0;
 		i40e_write_rx_ctl(hw, I40E_PRTQF_FD_FLXINSET(pctype), 0);
 		for (i = 0; i < I40E_FDIR_BITMASK_NUM_WORD; i++) {
-			pf->fdir.flex_mask[pctype].bitmask[i].offset = 0;
-			pf->fdir.flex_mask[pctype].bitmask[i].mask = 0;
+			state->flex_mask.bitmask[i].offset = 0;
+			state->flex_mask.bitmask[i].mask = 0;
 			i40e_write_rx_ctl(hw, I40E_PRTQF_FD_MSK(pctype, i), 0);
 		}
 	}
 }
 
 /*
- * Enable/disable flow director RX processing in vector routines.
+ * Match flow director RX processing to whether any filter is registered.
  */
 void
-i40e_fdir_rx_proc_enable(struct rte_eth_dev *dev, bool on)
+i40e_fdir_rx_proc_sync(struct rte_eth_dev *dev)
 {
-	int32_t i;
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	bool on = pf->fdir.fdir_actual_cnt > 0;
+	uint16_t i;
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		struct ci_rx_queue *rxq = dev->data->rx_queues[i];
-		if (!rxq)
+
+		if (rxq == NULL)
 			continue;
 		rxq->fdir_enabled = on;
 	}
@@ -421,10 +426,35 @@ i40e_fdir_configure(struct rte_eth_dev *dev)
 
 	i40e_init_flx_pld(pf); /* set flex config to default value */
 
-	/* Enable FDIR processing in RX routines */
-	i40e_fdir_rx_proc_enable(dev, 1);
-
 	return ret;
+}
+
+/*
+ * Bring up the flow director engine on first use.
+ */
+int
+i40e_fdir_engine_init(struct rte_eth_dev *dev)
+{
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	int ret;
+
+	if (pf->fdir.fdir_vsi != NULL)
+		return 0;
+
+	ret = i40e_fdir_setup(pf);
+	if (ret != I40E_SUCCESS) {
+		PMD_DRV_LOG(ERR, "Failed to setup fdir.");
+		return -ENOTSUP;
+	}
+
+	ret = i40e_fdir_configure(dev);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to configure fdir.");
+		i40e_fdir_teardown(pf);
+		return ret;
+	}
+
+	return 0;
 }
 
 
@@ -642,7 +672,7 @@ i40e_flow_fdir_construct_pkt(struct i40e_pf *pf,
 	struct rte_ipv6_hdr *esp_ipv6;
 
 	uint8_t size, dst = 0;
-	uint8_t i, pit_idx, set_idx = I40E_FLXPLD_L4_IDX; /* use l4 by default*/
+	uint8_t i, set_idx = I40E_FLXPLD_L4_IDX; /* use l4 by default*/
 	int len;
 	uint8_t pctype = fdir_input->pctype;
 	struct i40e_customized_pctype *cus_pctype;
@@ -894,13 +924,15 @@ i40e_flow_fdir_construct_pkt(struct i40e_pf *pf,
 
 	/* fill the flexbytes to payload */
 	for (i = 0; i < I40E_MAX_FLXPLD_FIED; i++) {
-		pit_idx = set_idx * I40E_MAX_FLXPLD_FIED + i;
-		size = pf->fdir.flex_set[pit_idx].size;
+		const struct i40e_fdir_flex_pit *pit;
+		struct i40e_fdir_layer_state *layer = &pf->fdir.flows.layer[set_idx];
+
+		pit = &layer->flex_set[i];
+		size = pit->size;
 		if (size == 0)
 			continue;
-		dst = pf->fdir.flex_set[pit_idx].dst_offset * sizeof(uint16_t);
-		ptr = payload +
-		      pf->fdir.flex_set[pit_idx].src_offset * sizeof(uint16_t);
+		dst = pit->dst_offset * sizeof(uint16_t);
+		ptr = payload + pit->src_offset * sizeof(uint16_t);
 		(void)memcpy(ptr,
 				 &fdir_input->flow_ext.flexbytes[dst],
 				 size * sizeof(uint16_t));
@@ -997,56 +1029,23 @@ i40e_fdir_programming_status_cleanup(struct ci_rx_queue *rxq)
 		PMD_DRV_LOG(INFO, "error report captured.");
 }
 
+/* Add a flow director filter into the SW hash table */
 static int
-i40e_fdir_filter_convert(const struct i40e_fdir_filter_conf *input,
-			 struct i40e_fdir_filter *filter)
+i40e_fdir_filter_hash_add(struct i40e_pf *pf,
+			  const struct i40e_fdir_filter *filter,
+			  struct i40e_fdir_filter **node)
 {
-	memcpy(&filter->fdir, input, sizeof(struct i40e_fdir_filter_conf));
-	if (input->input.flow_ext.pkt_template) {
-		filter->fdir.input.flow.raw_flow.packet = NULL;
-		filter->fdir.input.flow.raw_flow.length =
-			rte_hash_crc(input->input.flow.raw_flow.packet,
-				     input->input.flow.raw_flow.length,
-				     input->input.flow.raw_flow.pctype);
+	struct i40e_fdir_flow_store *flows = &pf->fdir.flows;
+	int ret;
+
+	ret = rte_hash_lookup(flows->hash_table, &filter->input);
+	if (ret >= 0) {
+		PMD_DRV_LOG(ERR, "Failed to add fdir filter to hash table %d!",
+			    ret);
+		return -EEXIST;
 	}
-	return 0;
-}
 
-/* Check if there exists the flow director filter */
-static struct i40e_fdir_filter *
-i40e_sw_fdir_filter_lookup(struct i40e_fdir_info *fdir_info,
-			const struct i40e_fdir_input *input)
-{
-	int ret;
-
-	if (input->flow_ext.pkt_template)
-		ret = rte_hash_lookup_with_hash(fdir_info->hash_table,
-						(const void *)input,
-						input->flow.raw_flow.length);
-	else
-		ret = rte_hash_lookup(fdir_info->hash_table,
-				      (const void *)input);
-	if (ret < 0)
-		return NULL;
-
-	return fdir_info->hash_map[ret];
-}
-
-/* Add a flow director filter into the SW list */
-static int
-i40e_sw_fdir_filter_insert(struct i40e_pf *pf, struct i40e_fdir_filter *filter)
-{
-	struct i40e_fdir_info *fdir_info = &pf->fdir;
-	struct i40e_fdir_filter *hash_filter;
-	int ret;
-
-	if (filter->fdir.input.flow_ext.pkt_template)
-		ret = rte_hash_add_key_with_hash(fdir_info->hash_table,
-				 &filter->fdir.input,
-				 filter->fdir.input.flow.raw_flow.length);
-	else
-		ret = rte_hash_add_key(fdir_info->hash_table,
-				       &filter->fdir.input);
+	ret = rte_hash_add_key(flows->hash_table, &filter->input);
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR,
 			    "Failed to insert fdir filter to hash table %d!",
@@ -1054,48 +1053,247 @@ i40e_sw_fdir_filter_insert(struct i40e_pf *pf, struct i40e_fdir_filter *filter)
 		return ret;
 	}
 
-	if (fdir_info->hash_map[ret])
-		return -1;
-
-	hash_filter = &fdir_info->fdir_filter_array[ret];
-	memcpy(hash_filter, filter, sizeof(*filter));
-	fdir_info->hash_map[ret] = hash_filter;
-	TAILQ_INSERT_TAIL(&fdir_info->fdir_list, hash_filter, rules);
+	**node = *filter;
 
 	return 0;
 }
 
-/* Delete a flow director filter from the SW list */
-int
-i40e_sw_fdir_filter_del(struct i40e_pf *pf, struct i40e_fdir_input *input)
+/* Delete a flow director filter from the SW hash table */
+static int
+i40e_fdir_filter_hash_del(struct i40e_pf *pf,
+			  const struct i40e_fdir_filter *node)
 {
-	struct i40e_fdir_info *fdir_info = &pf->fdir;
-	struct i40e_fdir_filter *filter;
 	int ret;
 
-	if (input->flow_ext.pkt_template)
-		ret = rte_hash_del_key_with_hash(fdir_info->hash_table,
-						 input,
-						 input->flow.raw_flow.length);
-	else
-		ret = rte_hash_del_key(fdir_info->hash_table, input);
+	ret = rte_hash_del_key(pf->fdir.flows.hash_table, &node->input);
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR,
-			    "Failed to delete fdir filter to hash table %d!",
+			    "Failed to delete fdir filter from hash table %d!",
 			    ret);
 		return ret;
 	}
-	filter = fdir_info->hash_map[ret];
-	fdir_info->hash_map[ret] = NULL;
-
-	TAILQ_REMOVE(&fdir_info->fdir_list, filter, rules);
 
 	return 0;
+}
+
+int
+i40e_fdir_flow_store_init(struct rte_eth_dev *dev)
+{
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	struct i40e_fdir_info *fdir_info = &pf->fdir;
+	struct i40e_fdir_flow_store *flows = &fdir_info->flows;
+	char fdir_hash_name[RTE_HASH_NAMESIZE];
+	uint32_t alloc = hw->func_caps.fd_filters_guaranteed;
+	uint32_t best = hw->func_caps.fd_filters_best_effort;
+	struct rte_bitmap *bmp = NULL;
+	uint32_t bmp_size;
+	void *mem = NULL;
+	uint32_t i = 0;
+	int ret;
+
+	struct rte_hash_parameters fdir_hash_params = {
+		.name = fdir_hash_name,
+		.entries = I40E_MAX_FDIR_FILTER_NUM,
+		.key_len = sizeof(struct i40e_fdir_input),
+		.hash_func = rte_hash_crc,
+		.hash_func_init_val = 0,
+		.socket_id = rte_socket_id(),
+	};
+
+	snprintf(fdir_hash_name, RTE_HASH_NAMESIZE,
+		 "fdir_%s", dev->device->name);
+	flows->hash_table = rte_hash_create(&fdir_hash_params);
+	if (!flows->hash_table) {
+		PMD_INIT_LOG(ERR, "Failed to create fdir hash table!");
+		return -EINVAL;
+	}
+
+	fdir_info->fdir_space_size = alloc + best;
+	fdir_info->fdir_actual_cnt = 0;
+	fdir_info->fdir_guarantee_total_space = alloc;
+
+	PMD_DRV_LOG(INFO, "FDIR guarantee space: %u, best_effort space %u.", alloc, best);
+
+	flows->flow_pool.pool =
+			rte_zmalloc("i40e_fdir_entry",
+				sizeof(struct i40e_fdir_entry) *
+				fdir_info->fdir_space_size,
+				0);
+
+	if (!flows->flow_pool.pool) {
+		PMD_INIT_LOG(ERR,
+			     "Failed to allocate memory for bitmap flow!");
+		ret = -ENOMEM;
+		goto err_fdir_bitmap_flow_alloc;
+	}
+
+	for (i = 0; i < fdir_info->fdir_space_size; i++)
+		flows->flow_pool.pool[i].idx = i;
+
+	bmp_size =
+		rte_bitmap_get_memory_footprint(fdir_info->fdir_space_size);
+	mem = rte_zmalloc("fdir_bmap", bmp_size, RTE_CACHE_LINE_SIZE);
+	if (mem == NULL) {
+		PMD_INIT_LOG(ERR,
+			     "Failed to allocate memory for fdir bitmap!");
+		ret = -ENOMEM;
+		goto err_fdir_mem_alloc;
+	}
+	bmp = rte_bitmap_init(fdir_info->fdir_space_size, mem, bmp_size);
+	if (bmp == NULL) {
+		PMD_INIT_LOG(ERR,
+			     "Failed to initialization fdir bitmap!");
+		ret = -ENOMEM;
+		goto err_fdir_bmp_alloc;
+	}
+	for (i = 0; i < fdir_info->fdir_space_size; i++)
+		rte_bitmap_set(bmp, i);
+
+	flows->flow_pool.bitmap = bmp;
+
+	return 0;
+
+err_fdir_bmp_alloc:
+	rte_free(mem);
+err_fdir_mem_alloc:
+	rte_free(flows->flow_pool.pool);
+err_fdir_bitmap_flow_alloc:
+	rte_hash_free(flows->hash_table);
+
+	return ret;
+}
+
+void
+i40e_fdir_flow_store_free(struct i40e_fdir_info *fdir_info)
+{
+	struct i40e_fdir_flow_store *flows = &fdir_info->flows;
+
+	rte_free(flows->flow_pool.bitmap);
+	rte_free(flows->flow_pool.pool);
+	rte_hash_free(flows->hash_table);
+}
+
+static uint32_t
+i40e_fdir_tmpl_sig(const struct i40e_raw_flow *raw)
+{
+	return rte_hash_crc(raw->packet, raw->length, raw->pctype);
+}
+
+static int
+i40e_fdir_tmpl_cmp(const void *key1, const void *key2,
+		   size_t key_len __rte_unused)
+{
+	const struct i40e_fdir_tmpl_key *k1 = key1;
+	const struct i40e_fdir_tmpl_key *k2 = key2;
+
+	if (k1->pctype != k2->pctype || k1->length != k2->length)
+		return 1;
+
+	return memcmp(k1->packet, k2->packet, k1->length);
+}
+
+static void
+i40e_fdir_tmpl_key_fill(struct i40e_fdir_tmpl_key *key,
+			const struct i40e_raw_flow *raw,
+			const uint8_t *packet)
+{
+	memset(key, 0, sizeof(*key));
+	key->pctype = raw->pctype;
+	key->length = raw->length;
+	key->packet = packet;
+}
+
+/* The template store is only worth its memory once the API is actually used */
+static int
+i40e_fdir_tmpl_store_init(struct rte_eth_dev *dev)
+{
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct i40e_fdir_tmpl_store *tmpls = &pf->fdir.tmpls;
+	char name[RTE_HASH_NAMESIZE];
+	struct rte_hash_parameters params = {
+		.name = name,
+		.entries = I40E_MAX_FDIR_FILTER_NUM,
+		.key_len = sizeof(struct i40e_fdir_tmpl_key),
+		.hash_func = rte_hash_crc,
+		.hash_func_init_val = 0,
+		.socket_id = rte_socket_id(),
+	};
+
+	if (tmpls->hash_table != NULL)
+		return 0;
+
+	/* the packet template store is created on first use */
+	TAILQ_INIT(&tmpls->list);
+
+	snprintf(name, sizeof(name), "fdir_tmpl_%s", dev->data->name);
+	tmpls->hash_table = rte_hash_create(&params);
+	if (tmpls->hash_table == NULL) {
+		PMD_DRV_LOG(ERR, "Failed to create fdir template hash table.");
+		return -ENOMEM;
+	}
+	/* the key only borrows the packet, so contents drive the comparison */
+	rte_hash_set_cmp_func(tmpls->hash_table, i40e_fdir_tmpl_cmp);
+
+	tmpls->filter_array = rte_zmalloc("fdir_tmpl_filter",
+			sizeof(*tmpls->filter_array) * I40E_MAX_FDIR_FILTER_NUM,
+			0);
+	if (tmpls->filter_array == NULL) {
+		PMD_DRV_LOG(ERR,
+			     "Failed to allocate fdir template filter array.");
+		rte_hash_free(tmpls->hash_table);
+		tmpls->hash_table = NULL;
+		return -ENOMEM;
+	}
+
+	return 0;
+}
+
+void
+i40e_fdir_tmpl_store_free(struct i40e_fdir_info *fdir_info)
+{
+	struct i40e_fdir_tmpl_store *tmpls = &fdir_info->tmpls;
+	struct i40e_fdir_tmpl_filter *tmpl, *tmp;
+	uint32_t i;
+
+	/* rules in this list point into filter array so no free() needed */
+	RTE_TAILQ_FOREACH_SAFE(tmpl, &tmpls->list, rules, tmp)
+		TAILQ_REMOVE(&tmpls->list, tmpl, rules);
+
+	if (tmpls->filter_array != NULL) {
+		for (i = 0; i < I40E_MAX_FDIR_FILTER_NUM; i++)
+			rte_free(tmpls->filter_array[i].packet);
+		rte_free(tmpls->filter_array);
+		tmpls->filter_array = NULL;
+	}
+	rte_hash_free(tmpls->hash_table);
+	tmpls->hash_table = NULL;
+}
+
+static struct i40e_fdir_tmpl_filter *
+i40e_fdir_tmpl_lookup(struct i40e_fdir_info *fdir_info,
+		      const struct i40e_raw_flow *raw)
+{
+	struct i40e_fdir_tmpl_key key;
+	int ret;
+
+	if (fdir_info->tmpls.hash_table == NULL)
+		return NULL;
+
+	i40e_fdir_tmpl_key_fill(&key, raw, raw->packet);
+
+	ret = rte_hash_lookup_with_hash(fdir_info->tmpls.hash_table, &key,
+					i40e_fdir_tmpl_sig(raw));
+	if (ret < 0)
+		return NULL;
+
+	return &fdir_info->tmpls.filter_array[ret];
 }
 
 struct rte_flow *
 i40e_fdir_entry_pool_get(struct i40e_fdir_info *fdir_info)
 {
+	struct i40e_fdir_flow_pool *pool = &fdir_info->flows.flow_pool;
 	struct rte_flow *flow = NULL;
 	uint64_t slab = 0;
 	uint32_t pos = 0;
@@ -1108,8 +1306,7 @@ i40e_fdir_entry_pool_get(struct i40e_fdir_info *fdir_info)
 		return NULL;
 	}
 
-	ret = rte_bitmap_scan(fdir_info->fdir_flow_pool.bitmap, &pos,
-			&slab);
+	ret = rte_bitmap_scan(pool->bitmap, &pos, &slab);
 
 	/* normally this won't happen as the fdir_actual_cnt should be
 	 * same with the number of the set bits in fdir_flow_pool,
@@ -1122,8 +1319,8 @@ i40e_fdir_entry_pool_get(struct i40e_fdir_info *fdir_info)
 
 	i = rte_bsf64(slab);
 	pos += i;
-	rte_bitmap_clear(fdir_info->fdir_flow_pool.bitmap, pos);
-	flow = &fdir_info->fdir_flow_pool.pool[pos].flow;
+	rte_bitmap_clear(pool->bitmap, pos);
+	flow = &pool->pool[pos].flow;
 
 	memset(flow, 0, sizeof(struct rte_flow));
 
@@ -1137,48 +1334,35 @@ i40e_fdir_entry_pool_put(struct i40e_fdir_info *fdir_info,
 	struct i40e_fdir_entry *f;
 
 	f = FLOW_TO_FLOW_BITMAP(flow);
-	rte_bitmap_set(fdir_info->fdir_flow_pool.bitmap, f->idx);
+	rte_bitmap_set(fdir_info->flows.flow_pool.bitmap, f->idx);
 }
 
 static int
-i40e_flow_store_flex_pit(struct i40e_pf *pf,
-			 struct i40e_fdir_flex_pit *flex_pit,
+i40e_fdir_check_flex_pit(struct i40e_pf *pf,
+			 const struct i40e_fdir_flex_pit *flex_pit,
 			 enum i40e_flxpld_layer_idx layer_idx,
 			 uint8_t raw_id)
 {
-	uint8_t field_idx;
+	struct i40e_fdir_flow_store *flows = &pf->fdir.flows;
+	struct i40e_fdir_layer_state *layer = &flows->layer[layer_idx];
 
-	field_idx = layer_idx * I40E_MAX_FLXPLD_FIED + raw_id;
-	/* Check if the configuration is conflicted */
-	if (pf->fdir.flex_pit_flag[layer_idx] &&
-	    (pf->fdir.flex_set[field_idx].src_offset != flex_pit->src_offset ||
-	     pf->fdir.flex_set[field_idx].size != flex_pit->size ||
-	     pf->fdir.flex_set[field_idx].dst_offset != flex_pit->dst_offset))
+	if (!layer->flex_pit_flag)
+		return 0;
+
+	if (memcmp(&layer->flex_set[raw_id], flex_pit, sizeof(*flex_pit)) != 0)
 		return -1;
 
-	/* Check if the configuration exists. */
-	if (pf->fdir.flex_pit_flag[layer_idx] &&
-	    (pf->fdir.flex_set[field_idx].src_offset == flex_pit->src_offset &&
-	     pf->fdir.flex_set[field_idx].size == flex_pit->size &&
-	     pf->fdir.flex_set[field_idx].dst_offset == flex_pit->dst_offset))
-		return 1;
-
-	pf->fdir.flex_set[field_idx].src_offset =
-		flex_pit->src_offset;
-	pf->fdir.flex_set[field_idx].size =
-		flex_pit->size;
-	pf->fdir.flex_set[field_idx].dst_offset =
-		flex_pit->dst_offset;
-
-	return 0;
+	return 1;
 }
 
 static void
-i40e_flow_set_fdir_flex_pit(struct i40e_pf *pf,
-			    enum i40e_flxpld_layer_idx layer_idx,
-			    uint8_t raw_id)
+i40e_fdir_flex_pit_program(struct i40e_pf *pf,
+			   const struct i40e_fdir_filter *filter)
 {
+	enum i40e_flxpld_layer_idx layer_idx = filter->input.flow_ext.layer_idx;
+	uint8_t raw_id = filter->input.flow_ext.raw_id;
 	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	const struct i40e_fdir_flex_pit *pit;
 	uint32_t flx_pit, flx_ort;
 	uint16_t min_next_off = 0;
 	uint8_t field_idx;
@@ -1189,18 +1373,19 @@ i40e_flow_set_fdir_flex_pit(struct i40e_pf *pf,
 			  (raw_id << I40E_GLQF_ORT_FIELD_CNT_SHIFT) |
 			  (layer_idx * I40E_MAX_FLXPLD_FIED);
 		I40E_WRITE_GLB_REG(hw, I40E_GLQF_ORT(33 + layer_idx), flx_ort);
+	} else {
+		I40E_WRITE_GLB_REG(hw, I40E_GLQF_ORT(33 + layer_idx), 0);
 	}
 
 	/* Set flex pit */
 	for (i = 0; i < raw_id; i++) {
 		field_idx = layer_idx * I40E_MAX_FLXPLD_FIED + i;
-		flx_pit = MK_FLX_PIT(pf->fdir.flex_set[field_idx].src_offset,
-				     pf->fdir.flex_set[field_idx].size,
-				     pf->fdir.flex_set[field_idx].dst_offset);
+		pit = &filter->input.flow_ext.flex_pit[field_idx];
+		flx_pit = MK_FLX_PIT(pit->src_offset, pit->size,
+				     pit->dst_offset);
 
 		I40E_WRITE_REG(hw, I40E_PRTQF_FLX_PIT(field_idx), flx_pit);
-		min_next_off = pf->fdir.flex_set[field_idx].src_offset +
-			pf->fdir.flex_set[field_idx].size;
+		min_next_off = pit->src_offset + pit->size;
 	}
 
 	for (; i < I40E_MAX_FLXPLD_FIED; i++) {
@@ -1213,104 +1398,189 @@ i40e_flow_set_fdir_flex_pit(struct i40e_pf *pf,
 	}
 }
 
+/* Translate the byte-granular mask supplied by the caller into register form */
 static int
-i40e_flow_store_flex_mask(struct i40e_pf *pf,
-			  enum i40e_filter_pctype pctype,
-			  uint8_t *mask)
+i40e_fdir_flex_mask_convert(const uint8_t *mask,
+			    struct i40e_fdir_flex_mask *flex_mask)
 {
-	struct i40e_fdir_flex_mask flex_mask;
 	uint8_t nb_bitmask = 0;
 	uint16_t mask_tmp;
 	uint8_t i;
 
-	memset(&flex_mask, 0, sizeof(struct i40e_fdir_flex_mask));
+	memset(flex_mask, 0, sizeof(*flex_mask));
 	for (i = 0; i < I40E_FDIR_MAX_FLEX_LEN; i += sizeof(uint16_t)) {
 		mask_tmp = I40E_WORD(mask[i], mask[i + 1]);
 		if (mask_tmp) {
-			flex_mask.word_mask |=
+			flex_mask->word_mask |=
 				I40E_FLEX_WORD_MASK(i / sizeof(uint16_t));
 			if (mask_tmp != UINT16_MAX) {
 				if (nb_bitmask >= I40E_FDIR_BITMASK_NUM_WORD)
 					return -1;
-				flex_mask.bitmask[nb_bitmask].mask = ~mask_tmp;
-				flex_mask.bitmask[nb_bitmask].offset =
+				flex_mask->bitmask[nb_bitmask].mask = ~mask_tmp;
+				flex_mask->bitmask[nb_bitmask].offset =
 					i / sizeof(uint16_t);
 				nb_bitmask++;
 			}
 		}
 	}
-	flex_mask.nb_bitmask = nb_bitmask;
+	flex_mask->nb_bitmask = nb_bitmask;
 
-	if (pf->fdir.flex_mask_flag[pctype] &&
-	    (memcmp(&flex_mask, &pf->fdir.flex_mask[pctype],
-		    sizeof(struct i40e_fdir_flex_mask))))
-		return -2;
-	else if (pf->fdir.flex_mask_flag[pctype] &&
-		 !(memcmp(&flex_mask, &pf->fdir.flex_mask[pctype],
-			  sizeof(struct i40e_fdir_flex_mask))))
-		return 1;
-
-	pf->fdir.flex_mask[pctype] = flex_mask;
 	return 0;
 }
 
-static void
-i40e_flow_set_fdir_flex_msk(struct i40e_pf *pf,
-			    enum i40e_filter_pctype pctype)
+static int
+i40e_fdir_check_flex_mask(struct i40e_pf *pf,
+			  enum i40e_filter_pctype pctype,
+			  const uint8_t *mask,
+			  struct i40e_fdir_flex_mask *flex_mask)
+{
+	struct i40e_fdir_flow_store *flows = &pf->fdir.flows;
+	struct i40e_fdir_pctype_state *state = &flows->pctype[pctype];
+
+	if (i40e_fdir_flex_mask_convert(mask, flex_mask) < 0)
+		return -1;
+
+	if (!state->flex_mask_flag)
+		return 0;
+
+	if (memcmp(flex_mask, &state->flex_mask, sizeof(*flex_mask)) != 0)
+		return -2;
+
+	return 0;
+}
+
+static int
+i40e_fdir_flex_msk_program(struct i40e_pf *pf,
+			   enum i40e_filter_pctype pctype,
+			   const struct i40e_fdir_filter *filter)
 {
 	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
-	struct i40e_fdir_flex_mask *flex_mask;
+	struct i40e_fdir_flex_mask flex_mask;
 	uint32_t flxinset, fd_mask;
 	uint8_t i;
 
-	/* Set flex mask */
-	flex_mask = &pf->fdir.flex_mask[pctype];
-	flxinset = (flex_mask->word_mask <<
+	if (i40e_fdir_flex_mask_convert(filter->input.flow_ext.flex_mask,
+					&flex_mask) < 0)
+		return -EINVAL;
+
+	flxinset = (flex_mask.word_mask <<
 		    I40E_PRTQF_FD_FLXINSET_INSET_SHIFT) &
 		I40E_PRTQF_FD_FLXINSET_INSET_MASK;
 	i40e_write_rx_ctl(hw, I40E_PRTQF_FD_FLXINSET(pctype), flxinset);
 
-	for (i = 0; i < flex_mask->nb_bitmask; i++) {
-		fd_mask = (flex_mask->bitmask[i].mask <<
+	for (i = 0; i < flex_mask.nb_bitmask; i++) {
+		fd_mask = (flex_mask.bitmask[i].mask <<
 			   I40E_PRTQF_FD_MSK_MASK_SHIFT) &
 			   I40E_PRTQF_FD_MSK_MASK_MASK;
-		fd_mask |= ((flex_mask->bitmask[i].offset +
+		fd_mask |= ((flex_mask.bitmask[i].offset +
 			     I40E_FLX_OFFSET_IN_FIELD_VECTOR) <<
 			    I40E_PRTQF_FD_MSK_OFFSET_SHIFT) &
 				I40E_PRTQF_FD_MSK_OFFSET_MASK;
 		i40e_write_rx_ctl(hw, I40E_PRTQF_FD_MSK(pctype, i), fd_mask);
 	}
 
-	pf->fdir.flex_mask_flag[pctype] = 1;
+	/* zero out remaining fields */
+	for (; i < I40E_FDIR_BITMASK_NUM_WORD; i++)
+		i40e_write_rx_ctl(hw, I40E_PRTQF_FD_MSK(pctype, i), 0);
+
+	return 0;
 }
 
 static int
-i40e_flow_set_fdir_inset(struct i40e_pf *pf,
-			 enum i40e_filter_pctype pctype,
-			 uint64_t input_set)
+i40e_fdir_flex_check(struct i40e_pf *pf,
+		     const struct i40e_fdir_filter *filter,
+		     enum i40e_filter_pctype pctype,
+		     struct i40e_fdir_flex_mask *flex_mask)
 {
-	uint32_t mask_reg[I40E_INSET_MASK_NUM_REG] = {0};
-	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
-	uint64_t inset_reg = 0;
-	int i, num;
+	enum i40e_flxpld_layer_idx layer_idx = filter->input.flow_ext.layer_idx;
+	int ret;
+	int i;
 
-	/* Check if the input set is valid */
+	for (i = 0; i < filter->input.flow_ext.raw_id; i++) {
+		uint8_t field_idx;
+
+		field_idx = layer_idx * I40E_MAX_FLXPLD_FIED + i;
+		ret = i40e_fdir_check_flex_pit(pf,
+				&filter->input.flow_ext.flex_pit[field_idx],
+				layer_idx, i);
+		if (ret < 0) {
+			PMD_DRV_LOG(ERR,
+				    "Conflict with the first flexible rule.");
+			return -EINVAL;
+		}
+	}
+
+	ret = i40e_fdir_check_flex_mask(pf, pctype,
+					filter->input.flow_ext.flex_mask,
+					flex_mask);
+	if (ret == -1) {
+		PMD_DRV_LOG(ERR, "Exceed maximal number of bitmasks");
+		return -EINVAL;
+	} else if (ret == -2) {
+		PMD_DRV_LOG(ERR, "Conflict with the first flexible rule");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static void
+i40e_fdir_flex_store(struct i40e_pf *pf,
+		      const struct i40e_fdir_filter *filter,
+		      enum i40e_filter_pctype pctype,
+		      const struct i40e_fdir_flex_mask *flex_mask)
+{
+	enum i40e_flxpld_layer_idx layer_idx = filter->input.flow_ext.layer_idx;
+	struct i40e_fdir_flow_store *flows = &pf->fdir.flows;
+	struct i40e_fdir_pctype_state *state = &flows->pctype[pctype];
+	struct i40e_fdir_layer_state *layer = &flows->layer[layer_idx];
+	int i;
+
+	for (i = 0; i < filter->input.flow_ext.raw_id; i++) {
+		uint8_t field_idx;
+
+		field_idx = layer_idx * I40E_MAX_FLXPLD_FIED + i;
+		layer->flex_set[i] = filter->input.flow_ext.flex_pit[field_idx];
+	}
+
+	state->flex_mask = *flex_mask;
+}
+
+/* Validate an input set against what earlier filters on this pctype established */
+static int
+i40e_fdir_inset_check(struct i40e_pf *pf,
+		      enum i40e_filter_pctype pctype,
+		      uint64_t input_set)
+{
+	struct i40e_fdir_flow_store *flows = &pf->fdir.flows;
+	struct i40e_fdir_pctype_state *state = &flows->pctype[pctype];
+
 	if (i40e_validate_input_set(pctype, RTE_ETH_FILTER_FDIR,
 				    input_set) != 0) {
 		PMD_DRV_LOG(ERR, "Invalid input set");
 		return -EINVAL;
 	}
 
-	/* Check if the configuration is conflicted */
-	if (pf->fdir.flow_count[pctype] &&
-	    memcmp(&pf->fdir.input_set[pctype], &input_set, sizeof(uint64_t))) {
+	if (state->flow_count == 0)
+		return 0;
+
+	if (state->input_set != input_set) {
 		PMD_DRV_LOG(ERR, "Conflict with the first rule's input set.");
 		return -EINVAL;
 	}
 
-	if (pf->fdir.flow_count[pctype] &&
-	    !memcmp(&pf->fdir.input_set[pctype], &input_set, sizeof(uint64_t)))
-		return 0;
+	return 0;
+}
+
+static int
+i40e_fdir_inset_program(struct i40e_pf *pf,
+			enum i40e_filter_pctype pctype,
+			uint64_t input_set)
+{
+	uint32_t mask_reg[I40E_INSET_MASK_NUM_REG] = {0};
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	uint64_t inset_reg = 0;
+	int i, num;
 
 	num = i40e_generate_inset_mask_reg(hw, input_set, mask_reg,
 						 I40E_INSET_MASK_NUM_REG);
@@ -1360,7 +1630,6 @@ i40e_flow_set_fdir_inset(struct i40e_pf *pf,
 
 	I40E_WRITE_FLUSH(hw);
 
-	pf->fdir.input_set[pctype] = input_set;
 	return 0;
 }
 
@@ -1403,166 +1672,294 @@ i40e_find_available_buffer(struct rte_eth_dev *dev)
 	return (unsigned char *)fdir_info->prg_pkt[txq->tx_tail >> 1];
 }
 
+static enum i40e_filter_pctype
+i40e_fdir_filter_pctype(const struct i40e_fdir_filter *filter)
+{
+	if (filter->input.flow_ext.pkt_template)
+		return filter->input.flow.raw_flow.pctype;
+
+	return filter->input.pctype;
+}
+
+bool
+i40e_fdir_filter_needs_status_wait(const struct i40e_pf *pf,
+				   uint32_t filter_count)
+{
+	if (pf->fdir.fdir_invalprio != 1)
+		return true;
+
+	return filter_count >= pf->fdir.fdir_guarantee_total_space;
+}
+
 /**
- * i40e_flow_add_del_fdir_filter - add or remove a flow director filter.
- * @pf: board private structure
- * @filter: fdir filter entry
- * @add: 0 - delete, 1 - add
+ * i40e_fdir_filter_validate - check whether a filter can be accepted at all.
+ *
+ * Only inspects the filter itself; conflicts against already registered
+ * filters are detected by i40e_fdir_filter_register().
  */
 int
-i40e_flow_add_del_fdir_filter(struct rte_eth_dev *dev,
-			      const struct i40e_fdir_filter_conf *filter,
-			      bool add)
+i40e_fdir_filter_validate(struct rte_eth_dev *dev,
+			  const struct i40e_fdir_filter *filter)
+{
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+
+	if (filter->action.rx_queue >= pf->dev_data->nb_rx_queues) {
+		PMD_DRV_LOG(ERR, "Invalid queue ID");
+		return -EINVAL;
+	}
+
+	if (filter->input.flow_ext.is_vf &&
+	    filter->input.flow_ext.dst_id >= pf->vf_num) {
+		PMD_DRV_LOG(ERR, "Invalid VF ID");
+		return -EINVAL;
+	}
+
+	if (filter->input.flow_ext.pkt_template &&
+	    (filter->input.flow.raw_flow.length > I40E_FDIR_PKT_LEN ||
+	     filter->input.flow.raw_flow.packet == NULL)) {
+		PMD_DRV_LOG(ERR,
+			    "Invalid raw packet template flow filter parameters!");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+/**
+ * Records the filter and everything derived from it.
+ */
+int
+i40e_fdir_filter_register(struct rte_eth_dev *dev,
+			  const struct i40e_fdir_filter *filter,
+			  struct i40e_fdir_filter **node)
+{
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	enum i40e_filter_pctype pctype = i40e_fdir_filter_pctype(filter);
+	uint64_t input_set = filter->input.flow_ext.input_set;
+	struct i40e_fdir_flow_store *flows = &pf->fdir.flows;
+	struct i40e_fdir_pctype_state *state = &flows->pctype[pctype];
+	struct i40e_fdir_layer_state *layer = NULL;
+	struct i40e_fdir_flex_mask flex_mask;
+	bool common_pctype;
+	int ret;
+
+	/* check input set if the packet type is common */
+	common_pctype = !filter->input.flow_ext.customized_pctype;
+
+	if (common_pctype) {
+		ret = i40e_fdir_inset_check(pf, pctype, input_set);
+		if (ret < 0)
+			return ret;
+	}
+
+	/* check if flex flow configuration is valid */
+	if (filter->input.flow_ext.is_flex_flow) {
+		ret = i40e_fdir_flex_check(pf, filter, pctype, &flex_mask);
+		if (ret < 0)
+			return ret;
+	}
+
+	/* register the flow with the hash table */
+	ret = i40e_fdir_filter_hash_add(pf, filter, node);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Conflict with existing flow director rules!");
+		return ret;
+	}
+
+	/* save additional configuration */
+	if (common_pctype)
+		state->input_set = input_set;
+
+	if (filter->input.flow_ext.is_flex_flow) {
+		i40e_fdir_flex_store(pf, filter, pctype, &flex_mask);
+		layer = &flows->layer[filter->input.flow_ext.layer_idx];
+		layer->flex_flow_count++;
+		layer->flex_pit_flag = true;
+		state->flex_mask_flag = true;
+	}
+
+	state->flow_count++;
+	pf->fdir.fdir_actual_cnt++;
+
+	i40e_fdir_rx_proc_sync(dev);
+
+	return 0;
+}
+
+/**
+ * i40e_fdir_filter_unregister - drop software ownership of a filter.
+ */
+int
+i40e_fdir_filter_unregister(struct rte_eth_dev *dev,
+			    struct i40e_fdir_filter *node)
+{
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	enum i40e_filter_pctype pctype = i40e_fdir_filter_pctype(node);
+	enum i40e_flxpld_layer_idx layer_idx = node->input.flow_ext.layer_idx;
+	bool is_flex_flow = node->input.flow_ext.is_flex_flow;
+	struct i40e_fdir_flow_store *flows = &pf->fdir.flows;
+	struct i40e_fdir_pctype_state *state = &flows->pctype[pctype];
+	struct i40e_fdir_layer_state *layer = &flows->layer[layer_idx];
+	int ret;
+
+	ret = i40e_fdir_filter_hash_del(pf, node);
+	if (ret < 0)
+		return ret;
+
+	if (is_flex_flow && --layer->flex_flow_count == 0)
+		layer->flex_pit_flag = false;
+
+	if (--state->flow_count == 0)
+		state->flex_mask_flag = false;
+
+	pf->fdir.fdir_actual_cnt--;
+
+	i40e_fdir_rx_proc_sync(dev);
+	if (pf->fdir.fdir_actual_cnt == 0)
+		i40e_fdir_teardown(pf);
+
+	return 0;
+}
+
+/* Take software ownership of a packet template filter, owning its packet */
+static int
+i40e_fdir_tmpl_register(struct rte_eth_dev *dev,
+			const struct i40e_fdir_filter *filter,
+			struct i40e_fdir_tmpl_filter **node)
+{
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	const struct i40e_raw_flow *raw = &filter->input.flow.raw_flow;
+	struct i40e_fdir_info *fdir_info = &pf->fdir;
+	struct i40e_fdir_tmpl_filter *tmpl;
+	struct i40e_fdir_tmpl_key key;
+	uint8_t *packet;
+	int ret;
+
+	ret = i40e_fdir_tmpl_store_init(dev);
+	if (ret < 0)
+		return ret;
+
+	if (i40e_fdir_tmpl_lookup(fdir_info, raw) != NULL) {
+		PMD_DRV_LOG(ERR, "Conflict with existing flow director rules!");
+		return -EEXIST;
+	}
+
+	packet = rte_malloc("fdir_tmpl_packet", raw->length, 0);
+	if (packet == NULL)
+		return -ENOMEM;
+	memcpy(packet, raw->packet, raw->length);
+
+	/* the stored key borrows the packet, so it must point at our copy */
+	i40e_fdir_tmpl_key_fill(&key, raw, packet);
+
+	ret = rte_hash_add_key_with_hash(fdir_info->tmpls.hash_table, &key,
+					 i40e_fdir_tmpl_sig(raw));
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to insert fdir template to hash table %d!",
+			    ret);
+		rte_free(packet);
+		return ret;
+	}
+
+	tmpl = &fdir_info->tmpls.filter_array[ret];
+	tmpl->fdir = *filter;
+	tmpl->packet = packet;
+	tmpl->fdir.input.flow.raw_flow.packet = packet;
+
+	fdir_info->fdir_actual_cnt++;
+
+	i40e_fdir_rx_proc_sync(dev);
+
+	*node = tmpl;
+
+	return 0;
+}
+
+static int
+i40e_fdir_tmpl_unregister(struct rte_eth_dev *dev,
+			  struct i40e_fdir_tmpl_filter *node)
+{
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	const struct i40e_raw_flow *raw = &node->fdir.input.flow.raw_flow;
+	struct i40e_fdir_info *fdir_info = &pf->fdir;
+	struct i40e_fdir_tmpl_key key;
+	int ret;
+
+	i40e_fdir_tmpl_key_fill(&key, raw, raw->packet);
+
+	ret = rte_hash_del_key_with_hash(fdir_info->tmpls.hash_table, &key,
+					 i40e_fdir_tmpl_sig(raw));
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to delete fdir template from hash table %d!",
+			    ret);
+		return ret;
+	}
+
+	rte_free(node->packet);
+	node->packet = NULL;
+
+	fdir_info->fdir_actual_cnt--;
+
+	i40e_fdir_rx_proc_sync(dev);
+	if (fdir_info->fdir_actual_cnt == 0)
+		i40e_fdir_teardown(pf);
+
+	return 0;
+}
+
+/**
+ * i40e_fdir_filter_program - apply a filter to the hardware.
+ *
+ * Derives everything it needs from the filter itself and touches no software
+ * bookkeeping, so it may be called repeatedly to reapply an already registered
+ * filter. The caller is responsible for having validated and registered it.
+ */
+int
+i40e_fdir_filter_program(struct rte_eth_dev *dev,
+			 const struct i40e_fdir_filter *filter,
+			 bool add, bool wait_status)
 {
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
-	enum i40e_flxpld_layer_idx layer_idx = I40E_FLXPLD_L2_IDX;
-	struct i40e_fdir_info *fdir_info = &pf->fdir;
-	uint8_t flex_mask[I40E_FDIR_MAX_FLEX_LEN];
-	struct i40e_fdir_filter check_filter; /* Check if the filter exists */
-	struct i40e_fdir_flex_pit flex_pit;
-	enum i40e_filter_pctype pctype;
-	struct i40e_fdir_filter *node;
-	unsigned char *pkt = NULL;
-	bool cfg_flex_pit = true;
-	bool wait_status = true;
-	uint8_t field_idx;
-	int ret = 0;
-	int i;
+	enum i40e_filter_pctype pctype = i40e_fdir_filter_pctype(filter);
+	unsigned char *pkt;
+	int ret;
 
 	if (pf->fdir.fdir_vsi == NULL) {
 		PMD_DRV_LOG(ERR, "FDIR is not enabled");
 		return -ENOTSUP;
 	}
 
-	if (filter->action.rx_queue >= pf->dev_data->nb_rx_queues) {
-		PMD_DRV_LOG(ERR, "Invalid queue ID");
-		return -EINVAL;
-	}
-	if (filter->input.flow_ext.is_vf &&
-	    filter->input.flow_ext.dst_id >= pf->vf_num) {
-		PMD_DRV_LOG(ERR, "Invalid VF ID");
-		return -EINVAL;
-	}
-	if (filter->input.flow_ext.pkt_template) {
-		if (filter->input.flow.raw_flow.length > I40E_FDIR_PKT_LEN ||
-		    !filter->input.flow.raw_flow.packet) {
-			PMD_DRV_LOG(ERR, "Invalid raw packet template"
-				" flow filter parameters!");
-			return -EINVAL;
-		}
-		pctype = filter->input.flow.raw_flow.pctype;
-	} else {
-		pctype = filter->input.pctype;
-	}
-
-	/* Check if there is the filter in SW list */
-	memset(&check_filter, 0, sizeof(check_filter));
-	i40e_fdir_filter_convert(filter, &check_filter);
-
 	if (add) {
-		/* configure the input set for common PCTYPEs*/
 		if (!filter->input.flow_ext.customized_pctype &&
 		    !filter->input.flow_ext.pkt_template) {
-			ret = i40e_flow_set_fdir_inset(pf, pctype,
+			ret = i40e_fdir_inset_program(pf, pctype,
 					filter->input.flow_ext.input_set);
 			if (ret < 0)
 				return ret;
 		}
 
 		if (filter->input.flow_ext.is_flex_flow) {
-			for (i = 0; i < filter->input.flow_ext.raw_id; i++) {
-				layer_idx = filter->input.flow_ext.layer_idx;
-				field_idx = layer_idx * I40E_MAX_FLXPLD_FIED + i;
-				flex_pit = filter->input.flow_ext.flex_pit[field_idx];
-
-				/* Store flex pit to SW */
-				ret = i40e_flow_store_flex_pit(pf, &flex_pit,
-							       layer_idx, i);
-				if (ret < 0) {
-					PMD_DRV_LOG(ERR, "Conflict with the"
-						    " first flexible rule.");
-					return -EINVAL;
-				} else if (ret > 0) {
-					cfg_flex_pit = false;
-				}
-			}
-
-			/* Store flex mask to SW */
-			for (i = 0; i < I40E_FDIR_MAX_FLEX_LEN; i++)
-				flex_mask[i] =
-					filter->input.flow_ext.flex_mask[i];
-
-			/* Validate the flex mask before writing any hardware
-			 * register. i40e_flow_set_fdir_flex_pit() below programs
-			 * the global GLQF_ORT register, which is shared by all
-			 * PFs on the NIC, so it must not be touched for a rule
-			 * that is going to be rejected.
-			 */
-			ret = i40e_flow_store_flex_mask(pf, pctype, flex_mask);
-			if (ret == -1) {
-				PMD_DRV_LOG(ERR, "Exceed maximal"
-					    " number of bitmasks");
-				return -EINVAL;
-			} else if (ret == -2) {
-				PMD_DRV_LOG(ERR, "Conflict with the"
-					    " first flexible rule");
-				return -EINVAL;
-			}
-
-			if (cfg_flex_pit)
-				i40e_flow_set_fdir_flex_pit(pf, layer_idx,
-						filter->input.flow_ext.raw_id);
-
-			if (ret == 0)
-				i40e_flow_set_fdir_flex_msk(pf, pctype);
+			i40e_fdir_flex_pit_program(pf, filter);
+			ret = i40e_fdir_flex_msk_program(pf, pctype, filter);
+			if (ret < 0)
+				return ret;
 		}
-
-		ret = i40e_sw_fdir_filter_insert(pf, &check_filter);
-		if (ret < 0) {
-			PMD_DRV_LOG(ERR,
-				    "Conflict with existing flow director rules!");
-			return -EINVAL;
-		}
-
-		if (fdir_info->fdir_invalprio == 1 &&
-				fdir_info->fdir_guarantee_free_space > 0)
-			wait_status = false;
-	} else {
-		if (filter->input.flow_ext.is_flex_flow)
-			layer_idx = filter->input.flow_ext.layer_idx;
-
-		node = i40e_sw_fdir_filter_lookup(fdir_info,
-				&check_filter.fdir.input);
-		if (!node) {
-			PMD_DRV_LOG(ERR,
-				    "There's no corresponding flow director filter!");
-			return -EINVAL;
-		}
-
-		ret = i40e_sw_fdir_filter_del(pf, &node->fdir.input);
-		if (ret < 0) {
-			PMD_DRV_LOG(ERR,
-					"Error deleting fdir rule from hash table!");
-			return -EINVAL;
-		}
-
-		pf->fdir.flex_mask_flag[pctype] = 0;
-
-		if (fdir_info->fdir_invalprio == 1)
-			wait_status = false;
 	}
 
-	/* find a buffer to store the pkt */
 	pkt = i40e_find_available_buffer(dev);
-	if (pkt == NULL)
-		goto error_op;
+	if (pkt == NULL) {
+		PMD_DRV_LOG(ERR, "No buffer available to program fdir filter.");
+		return -ENOSPC;
+	}
 
 	memset(pkt, 0, I40E_FDIR_PKT_LEN);
 	ret = i40e_flow_fdir_construct_pkt(pf, &filter->input, pkt);
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR, "construct packet for fdir fails.");
-		goto error_op;
+		return ret;
 	}
 
 	if (hw->mac.type == I40E_MAC_X722) {
@@ -1576,45 +1973,87 @@ i40e_flow_add_del_fdir_filter(struct rte_eth_dev *dev,
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR, "fdir programming fails for PCTYPE(%u).",
 			    pctype);
-		goto error_op;
+		return ret;
 	}
 
-	if (filter->input.flow_ext.is_flex_flow) {
-		if (add) {
-			fdir_info->flex_flow_count[layer_idx]++;
-			pf->fdir.flex_pit_flag[layer_idx] = 1;
-		} else {
-			fdir_info->flex_flow_count[layer_idx]--;
-			if (!fdir_info->flex_flow_count[layer_idx])
-				pf->fdir.flex_pit_flag[layer_idx] = 0;
-		}
+	return 0;
+}
+
+/**
+ * i40e_fdir_tmpl_add - add a packet template filter.
+ * @dev: ethernet device
+ * @filter: fdir filter entry
+ *
+ * Entry point for the PMD packet template API, whose filters have no rte_flow
+ * handle and so are tracked entirely here.
+ */
+int
+i40e_fdir_tmpl_add(struct rte_eth_dev *dev,
+			   const struct i40e_fdir_filter *filter)
+{
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct i40e_fdir_tmpl_filter *node;
+	int ret;
+
+	ret = i40e_fdir_filter_validate(dev, filter);
+	if (ret < 0)
+		return ret;
+
+	/* register updates count, so store it */
+	uint32_t cnt = pf->fdir.fdir_actual_cnt;
+
+	ret = i40e_fdir_tmpl_register(dev, filter, &node);
+	if (ret < 0)
+		return ret;
+
+	ret = i40e_fdir_engine_init(dev);
+	if (ret < 0) {
+		i40e_fdir_tmpl_unregister(dev, node);
+		return ret;
 	}
 
-	if (add) {
-		fdir_info->flow_count[pctype]++;
-		fdir_info->fdir_actual_cnt++;
-		if (fdir_info->fdir_invalprio == 1 &&
-				fdir_info->fdir_guarantee_free_space > 0)
-			fdir_info->fdir_guarantee_free_space--;
-	} else {
-		fdir_info->flow_count[pctype]--;
-		fdir_info->fdir_actual_cnt--;
-		if (fdir_info->fdir_invalprio == 1 &&
-				fdir_info->fdir_guarantee_free_space <
-				fdir_info->fdir_guarantee_total_space)
-			fdir_info->fdir_guarantee_free_space++;
+	ret = i40e_fdir_filter_program(dev, &node->fdir, true,
+			i40e_fdir_filter_needs_status_wait(pf, cnt));
+	if (ret < 0) {
+		i40e_fdir_tmpl_unregister(dev, node);
+		return ret;
 	}
 
-	return ret;
+	TAILQ_INSERT_TAIL(&pf->fdir.tmpls.list, node, rules);
 
-error_op:
-	/* roll back */
-	if (add)
-		i40e_sw_fdir_filter_del(pf, &check_filter.fdir.input);
-	else
-		i40e_sw_fdir_filter_insert(pf, &check_filter);
+	return 0;
+}
 
-	return ret;
+int
+i40e_fdir_tmpl_del(struct rte_eth_dev *dev,
+			   const struct i40e_fdir_filter *filter)
+{
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct i40e_fdir_tmpl_filter *node;
+	int ret;
+
+	ret = i40e_fdir_filter_validate(dev, filter);
+	if (ret < 0)
+		return ret;
+
+	node = i40e_fdir_tmpl_lookup(&pf->fdir, &filter->input.flow.raw_flow);
+	if (node == NULL) {
+		PMD_DRV_LOG(ERR,
+			    "There's no corresponding flow director filter!");
+		return -EINVAL;
+	}
+
+	ret = i40e_fdir_filter_program(dev, &node->fdir, false, false);
+	if (ret < 0)
+		return ret;
+
+	ret = i40e_fdir_tmpl_unregister(dev, node);
+	if (ret < 0)
+		return ret;
+
+	TAILQ_REMOVE(&pf->fdir.tmpls.list, node, rules);
+
+	return 0;
 }
 
 /*
@@ -1629,7 +2068,7 @@ error_op:
 static int
 i40e_flow_fdir_filter_programming(struct i40e_pf *pf,
 				  enum i40e_filter_pctype pctype,
-				  const struct i40e_fdir_filter_conf *filter,
+				  const struct i40e_fdir_filter *filter,
 				  bool add, bool wait_status)
 {
 	struct ci_tx_queue *txq = pf->fdir.txq;
@@ -1813,6 +2252,9 @@ i40e_fdir_info_get_flex_set(struct i40e_pf *pf,
 	for (layer_idx = I40E_FLXPLD_L2_IDX;
 	     layer_idx <= I40E_FLXPLD_L4_IDX;
 	     layer_idx++) {
+		struct i40e_fdir_layer_state *layer =
+			&pf->fdir.flows.layer[layer_idx];
+
 		if (layer_idx == I40E_FLXPLD_L2_IDX)
 			ptr->type = RTE_ETH_L2_PAYLOAD;
 		else if (layer_idx == I40E_FLXPLD_L3_IDX)
@@ -1821,8 +2263,7 @@ i40e_fdir_info_get_flex_set(struct i40e_pf *pf,
 			ptr->type = RTE_ETH_L4_PAYLOAD;
 
 		for (i = 0; i < I40E_MAX_FLXPLD_FIED; i++) {
-			flex_pit = &pf->fdir.flex_set[layer_idx *
-				I40E_MAX_FLXPLD_FIED + i];
+			flex_pit = &layer->flex_set[i];
 			if (flex_pit->size == 0)
 				continue;
 			src = flex_pit->src_offset * sizeof(uint16_t);
@@ -1850,7 +2291,9 @@ i40e_fdir_info_get_flex_mask(struct i40e_pf *pf,
 	for (i = I40E_FILTER_PCTYPE_NONF_IPV4_UDP;
 	     i <= I40E_FILTER_PCTYPE_L2_PAYLOAD;
 	     i++) {
-		mask =  &pf->fdir.flex_mask[i];
+		struct i40e_fdir_pctype_state *state = &pf->fdir.flows.pctype[i];
+
+		mask = &state->flex_mask;
 		flow_type = i40e_pctype_to_flowtype(pf->adapter,
 						    (enum i40e_filter_pctype)i);
 		if (flow_type == RTE_ETH_FLOW_UNKNOWN)
@@ -1941,29 +2384,35 @@ i40e_fdir_stats_get(struct rte_eth_dev *dev, struct rte_eth_fdir_stats *stat)
 			    I40E_PFQF_FDSTAT_BEST_CNT_SHIFT);
 }
 
-/* Restore flow director filter */
 void
 i40e_fdir_filter_restore(struct i40e_pf *pf)
 {
 	struct rte_eth_dev *dev = I40E_VSI_TO_ETH_DEV(pf->main_vsi);
-	struct i40e_fdir_filter_list *fdir_list = &pf->fdir.fdir_list;
-	struct i40e_fdir_filter *f;
-	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
-	uint32_t fdstat;
-	uint32_t guarant_cnt;  /**< Number of filters in guaranteed spaces. */
-	uint32_t best_cnt;     /**< Number of filters in best effort spaces. */
+	struct i40e_fdir_tmpl_filter *tmpl;
+	struct rte_flow *flow;
+	int ret;
 
-	TAILQ_FOREACH(f, fdir_list, rules)
-		i40e_flow_add_del_fdir_filter(dev, &f->fdir, TRUE);
+	i40e_fdir_rx_proc_sync(dev);
 
-	fdstat = I40E_READ_REG(hw, I40E_PFQF_FDSTAT);
-	guarant_cnt =
-		(uint32_t)((fdstat & I40E_PFQF_FDSTAT_GUARANT_CNT_MASK) >>
-			   I40E_PFQF_FDSTAT_GUARANT_CNT_SHIFT);
-	best_cnt =
-		(uint32_t)((fdstat & I40E_PFQF_FDSTAT_BEST_CNT_MASK) >>
-			   I40E_PFQF_FDSTAT_BEST_CNT_SHIFT);
+	if (pf->fdir.fdir_vsi == NULL)
+		return;
 
-	PMD_DRV_LOG(INFO, "FDIR: Guarant count: %d,  Best count: %d",
-		    guarant_cnt, best_cnt);
+	TAILQ_FOREACH(flow, &pf->flow_list, node) {
+		struct i40e_fdir_filter *node = flow->rule;
+
+		if (flow->filter_type != RTE_ETH_FILTER_FDIR)
+			continue;
+
+		ret = i40e_fdir_filter_program(dev, node, true, false);
+		if (ret < 0)
+			PMD_DRV_LOG(ERR,
+				    "Failed to restore flow director filter: %d", ret);
+	}
+
+	TAILQ_FOREACH(tmpl, &pf->fdir.tmpls.list, rules) {
+		ret = i40e_fdir_filter_program(dev, &tmpl->fdir, true, false);
+		if (ret < 0)
+			PMD_DRV_LOG(ERR,
+				    "Failed to restore flow director template: %d", ret);
+	}
 }
