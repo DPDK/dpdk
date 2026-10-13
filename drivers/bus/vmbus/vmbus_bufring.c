@@ -160,11 +160,8 @@ vmbus_txbr_write(struct vmbus_br *tbr, const struct iovec iov[], int iovlen,
 	/* Wait for previous producer to publish their windex update */
 	rte_wait_until_equal_32(&vbr->windex, old_windex, rte_memory_order_acquire);
 
-	/* Publish our windex update; prior data writes ordered via release.
-	 * windex is 4-byte aligned in practice (struct is page-aligned, windex
-	 * at offset 0); cast launders the packed-struct alignment-1 attribute.
-	 */
-	rte_atomic_store_explicit((volatile __rte_atomic uint32_t *)(uintptr_t)&vbr->windex,
+	/* Publish our windex update; prior data writes ordered via release. */
+	rte_atomic_store_explicit((volatile uint32_t __rte_atomic *)&vbr->windex,
 				  next_windex, rte_memory_order_release);
 
 	/* If host had read all data before this, then need to signal */

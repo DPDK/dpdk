@@ -69,7 +69,7 @@ struct __rte_packed_begin vmbus_mon_page {
  * Buffer ring
  */
 
-struct __rte_packed_begin vmbus_bufring {
+struct vmbus_bufring {
 	volatile uint32_t windex;
 	volatile uint32_t rindex;
 
@@ -111,7 +111,7 @@ struct __rte_packed_begin vmbus_bufring {
 	 * page aligned and starts at rte_mem_page_size() from the beginning
 	 * of this structure
 	 */
-} __rte_packed_end;
+};
 
 /*
  * Channel packets
