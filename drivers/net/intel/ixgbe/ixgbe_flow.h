@@ -20,5 +20,7 @@ extern const struct ci_flow_engine ixgbe_syn_flow_engine;
 extern const struct ci_flow_engine ixgbe_l2_tunnel_flow_engine;
 extern const struct ci_flow_engine ixgbe_ntuple_flow_engine;
 extern const struct ci_flow_engine ixgbe_security_flow_engine;
+extern const struct ci_flow_engine ixgbe_fdir_flow_engine;
+extern const struct ci_flow_engine ixgbe_fdir_tunnel_flow_engine;
 
 #endif /*  _IXGBE_FLOW_H_ */

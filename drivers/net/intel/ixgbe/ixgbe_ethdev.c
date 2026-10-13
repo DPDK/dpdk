@@ -147,8 +147,6 @@ static const char * const ixgbevf_valid_arguments[] = {
 
 static int eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params);
 static int eth_ixgbe_dev_uninit(struct rte_eth_dev *eth_dev);
-static int ixgbe_fdir_filter_init(struct rte_eth_dev *eth_dev);
-static int ixgbe_fdir_filter_uninit(struct rte_eth_dev *eth_dev);
 static int ixgbe_l2_tn_filter_init(struct rte_eth_dev *eth_dev);
 static int ixgbe_dev_configure(struct rte_eth_dev *dev);
 static int ixgbe_dev_start(struct rte_eth_dev *dev);
@@ -1008,7 +1006,7 @@ ixgbe_parse_devargs(struct ixgbe_adapter *adapter,
 				       &pballoc) != 0)
 			ret = -EINVAL;
 		else
-			adapter->fdir_conf.pballoc = pballoc;
+			adapter->fdir_hw_config.pballoc = pballoc;
 	}
 
 	rte_kvargs_free(kvlist);
@@ -1261,11 +1259,6 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	memset(filter_info, 0,
 	       sizeof(struct ixgbe_filter_info));
 
-	/* initialize flow director filter list & hash */
-	ret = ixgbe_fdir_filter_init(eth_dev);
-	if (ret)
-		goto err_fdir_filter_init;
-
 	/* initialize l2 tunnel filter list & hash */
 	ret = ixgbe_l2_tn_filter_init(eth_dev);
 	if (ret)
@@ -1289,8 +1282,6 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	return 0;
 
 err_l2_tn_filter_init:
-	ixgbe_fdir_filter_uninit(eth_dev);
-err_fdir_filter_init:
 	ixgbe_disable_intr(hw);
 	rte_intr_disable(intr_handle);
 	rte_intr_callback_unregister(intr_handle,
@@ -1320,31 +1311,24 @@ eth_ixgbe_dev_uninit(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
-static int ixgbe_fdir_filter_uninit(struct rte_eth_dev *eth_dev)
+void
+ixgbe_fdir_state_detach(struct ixgbe_fdir_state *state)
 {
-	struct ixgbe_hw_fdir_info *fdir_info =
-		IXGBE_DEV_PRIVATE_TO_FDIR_INFO(eth_dev->data->dev_private);
-	struct ixgbe_fdir_filter *fdir_filter;
+	if (!ci_usage_count_release(&state->engine_use_count))
+		return;
 
-	rte_free(fdir_info->hash_map);
-	rte_hash_free(fdir_info->hash_handle);
+	rte_hash_free(state->hash_handle);
 
-	while ((fdir_filter = TAILQ_FIRST(&fdir_info->fdir_list))) {
-		TAILQ_REMOVE(&fdir_info->fdir_list,
-			     fdir_filter,
-			     entries);
-		rte_free(fdir_filter);
-	}
-
-	return 0;
+	*state = (struct ixgbe_fdir_state){0};
 }
 
-static int ixgbe_fdir_filter_init(struct rte_eth_dev *eth_dev)
+struct ixgbe_fdir_state *
+ixgbe_fdir_state_attach(struct rte_eth_dev_data *dev_data)
 {
-	struct ixgbe_hw_fdir_info *fdir_info =
-		IXGBE_DEV_PRIVATE_TO_FDIR_INFO(eth_dev->data->dev_private);
+	struct ixgbe_adapter *adapter = IXGBE_DEV_PRIVATE_TO_ADAPTER(dev_data->dev_private);
+	struct ixgbe_fdir_state *state = &adapter->fdir_state;
 	char fdir_hash_name[RTE_HASH_NAMESIZE];
-	struct rte_hash_parameters fdir_hash_params = {
+	struct rte_hash_parameters hash_params = {
 		.name = fdir_hash_name,
 		.entries = IXGBE_MAX_FDIR_FILTER_NUM,
 		.key_len = sizeof(union ixgbe_atr_input),
@@ -1353,31 +1337,28 @@ static int ixgbe_fdir_filter_init(struct rte_eth_dev *eth_dev)
 		.socket_id = rte_socket_id(),
 	};
 
-	TAILQ_INIT(&fdir_info->fdir_list);
-	snprintf(fdir_hash_name, RTE_HASH_NAMESIZE,
-		 "fdir_%s", eth_dev->device->name);
-	fdir_info->hash_handle = rte_hash_create(&fdir_hash_params);
-	if (!fdir_info->hash_handle) {
-		PMD_INIT_LOG(ERR, "Failed to create fdir hash table!");
-		return -EINVAL;
-	}
-	fdir_info->hash_map = rte_zmalloc("ixgbe",
-					  sizeof(struct ixgbe_fdir_filter *) *
-					  IXGBE_MAX_FDIR_FILTER_NUM,
-					  0);
-	if (!fdir_info->hash_map) {
-		PMD_INIT_LOG(ERR,
-			     "Failed to allocate memory for fdir hash map!");
-		rte_hash_free(fdir_info->hash_handle);
-		return -ENOMEM;
-	}
-	fdir_info->n_flows = 0;
-	fdir_info->mask_added = FALSE;
+	snprintf(fdir_hash_name, RTE_HASH_NAMESIZE, "fdir_%s",
+			dev_data->name);
 
-	/* drop queue is always fixed */
-	IXGBE_DEV_FDIR_CONF(eth_dev)->drop_queue = IXGBE_FDIR_DROP_QUEUE;
+	if (ci_usage_count_claim(&state->engine_use_count)) {
+		struct rte_hash *hash_handle;
 
-	return 0;
+		hash_handle = rte_hash_create(&hash_params);
+
+		if (hash_handle == NULL) {
+			PMD_INIT_LOG(ERR, "Failed to create fdir hash table!");
+			ci_usage_count_release(&state->engine_use_count);
+			return NULL;
+		}
+
+		state->hash_handle = hash_handle;
+		state->config.mode = RTE_FDIR_MODE_NONE;
+
+		/* set up default values for the mask */
+		ixgbe_fdir_mask_set_default(&state->mask_conf.mask);
+	}
+
+	return state;
 }
 
 static int ixgbe_l2_tn_filter_init(struct rte_eth_dev *eth_dev)
@@ -2177,8 +2158,26 @@ ixgbe_check_mq_mode(struct rte_eth_dev *dev)
 {
 	struct rte_eth_conf *dev_conf = &dev->data->dev_conf;
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_adapter *adapter = IXGBE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	uint16_t nb_rx_q = dev->data->nb_rx_queues;
 	uint16_t nb_tx_q = dev->data->nb_tx_queues;
+
+	/* DCB-family modes reprogram RXPBSIZE and clash with FDIR's own use of it */
+	switch (dev_conf->rxmode.mq_mode) {
+	case RTE_ETH_MQ_RX_VMDQ_DCB:
+	case RTE_ETH_MQ_RX_DCB:
+	case RTE_ETH_MQ_RX_DCB_RSS:
+	case RTE_ETH_MQ_RX_VMDQ_DCB_RSS:
+		if (adapter->fdir_state.config.mode != RTE_FDIR_MODE_NONE) {
+			PMD_INIT_LOG(ERR, "Cannot use DCB mq_mode %d while "
+					"flow director rules are active.",
+					dev_conf->rxmode.mq_mode);
+			return -EINVAL;
+		}
+		break;
+	default:
+		break;
+	}
 
 	if (RTE_ETH_DEV_SRIOV(dev).active != 0) {
 		/* check multi-queue mode */
@@ -2500,7 +2499,6 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 	struct ixgbe_adapter *adapter =
 		IXGBE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(adapter);
-	struct rte_eth_fdir_conf *fdir_conf = IXGBE_DEV_FDIR_CONF(dev);
 	struct ixgbe_vf_info *vfinfo =
 		*IXGBE_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private);
 	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
@@ -2604,14 +2602,6 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 
 	/* Configure DCB hw */
 	ixgbe_configure_dcb(dev);
-
-	if (fdir_conf->mode != RTE_FDIR_MODE_NONE) {
-		struct ixgbe_hw_fdir_info *info =
-			IXGBE_DEV_PRIVATE_TO_FDIR_INFO(adapter);
-		err = ixgbe_fdir_configure(dev, fdir_conf, &info->mask);
-		if (err)
-			goto error;
-	}
 
 	/* Restore vf rate limit */
 	if (vfinfo != NULL) {
@@ -2881,6 +2871,9 @@ ixgbe_dev_stop(struct rte_eth_dev *dev)
 	/* reset hierarchy commit */
 	tm_conf->committed = false;
 
+	/* reinit fdir on next flow replay */
+	ixgbe_fdir_hw_invalidate(dev);
+
 	adapter->rss_reta_updated = 0;
 
 	hw->adapter_stopped = true;
@@ -3024,9 +3017,6 @@ ixgbe_dev_close(struct rte_eth_dev *dev)
 
 	/* uninitialize PF if max_vfs not zero */
 	ixgbe_pf_host_uninit(dev);
-
-	/* remove all the fdir filters & hash */
-	ixgbe_fdir_filter_uninit(dev);
 
 	/* clear all the filters list */
 	ixgbe_filterlist_flush(dev);
@@ -7862,7 +7852,6 @@ ixgbe_rss_filter_restore(struct rte_eth_dev *dev)
 static int
 ixgbe_filter_restore(struct rte_eth_dev *dev)
 {
-	ixgbe_fdir_filter_restore(dev);
 	ixgbe_rss_filter_restore(dev);
 
 	return 0;
