@@ -57,7 +57,7 @@ struct ixgbe_filter_ele_base {
 /* rss filter list structure */
 struct ixgbe_rss_conf_ele {
 	struct ixgbe_filter_ele_base base;
-	struct ixgbe_rte_flow_rss_conf filter_info;
+	struct ixgbe_rss_conf filter_info;
 };
 /* ixgbe_flow memory list structure */
 struct ixgbe_flow_mem {
@@ -140,7 +140,8 @@ ixgbe_flow_actions_check_rss(const struct ci_flow_actions *parsed_actions,
 	const struct rte_flow_action *action = parsed_actions->actions[0];
 	const struct rte_flow_action_rss *rss_act = action->conf;
 	struct rte_eth_dev_data *dev_data = param->driver_ctx;
-	const size_t rss_key_len = sizeof(((struct ixgbe_rte_flow_rss_conf *)0)->key);
+	const size_t rss_key_len = sizeof(((struct ixgbe_rss_conf *)0)->key);
+	const size_t rss_queue_max = RTE_DIM(((struct ixgbe_rss_conf *)0)->queue);
 	size_t q_idx, q;
 
 	/* check if queue list is not empty */
@@ -148,6 +149,11 @@ ixgbe_flow_actions_check_rss(const struct ci_flow_actions *parsed_actions,
 		return rte_flow_error_set(error, ENOTSUP,
 			RTE_FLOW_ERROR_TYPE_ACTION_CONF, rss_act,
 			"RSS queue list is empty");
+	}
+	if (rss_act->queue_num > rss_queue_max) {
+		return rte_flow_error_set(error, ENOTSUP,
+			RTE_FLOW_ERROR_TYPE_ACTION_CONF, rss_act,
+			"RSS queue list is too long");
 	}
 
 	/* check if each RSS queue is valid */
@@ -185,7 +191,7 @@ static int
 ixgbe_parse_rss_filter(struct rte_eth_dev *dev,
 			const struct rte_flow_attr *attr,
 			const struct rte_flow_action actions[],
-			struct ixgbe_rte_flow_rss_conf *rss_conf,
+			struct ixgbe_rss_conf *rss_conf,
 			struct rte_flow_error *error)
 {
 	struct ci_flow_actions parsed_actions;
@@ -199,8 +205,8 @@ ixgbe_parse_rss_filter(struct rte_eth_dev *dev,
 		.check = ixgbe_flow_actions_check_rss,
 		.max_actions = 1,
 	};
+	const struct rte_flow_action_rss *rss_act;
 	int ret;
-	const struct rte_flow_action *action;
 
 	/* validate attributes */
 	ret = ci_flow_check_attr(attr, NULL, error);
@@ -211,12 +217,14 @@ ixgbe_parse_rss_filter(struct rte_eth_dev *dev,
 	ret = ci_flow_check_actions(actions, &ap_param, &parsed_actions, error);
 	if (ret)
 		return ret;
-	action = parsed_actions.actions[0];
+	rss_act = parsed_actions.actions[0]->conf;
 
-	if (ixgbe_rss_conf_init(rss_conf, action->conf))
-		return rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ACTION, NULL,
+	ret = ixgbe_rss_conf_init(rss_conf, rss_act);
+	if (ret) {
+		return rte_flow_error_set(error, -ret,
+				RTE_FLOW_ERROR_TYPE_ACTION_CONF, rss_act,
 				"RSS context initialization failure");
+	}
 
 	return 0;
 }
@@ -230,7 +238,7 @@ ixgbe_clear_rss_filter(struct rte_eth_dev *dev)
 	struct ixgbe_filter_info *filter_info =
 		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
 
-	if (filter_info->rss_info.conf.queue_num)
+	if (filter_info->rss_info.queue_num)
 		ixgbe_config_rss_filter(adapter, &filter_info->rss_info, FALSE);
 }
 
@@ -275,7 +283,7 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 {
 	int ret;
 	struct ixgbe_adapter *adapter = IXGBE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
-	struct ixgbe_rte_flow_rss_conf rss_conf;
+	struct ixgbe_rss_conf rss_conf = {0};
 	struct rte_flow *flow = NULL;
 	struct ixgbe_rss_conf_ele *rss_filter_ptr;
 	struct ixgbe_flow_mem *ixgbe_flow_mem_ptr;
@@ -303,7 +311,6 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 	TAILQ_INSERT_TAIL(&adapter->flow_list,
 				&ixgbe_flow_mem_ptr->base, entries);
 
-	memset(&rss_conf, 0, sizeof(struct ixgbe_rte_flow_rss_conf));
 	ret = ixgbe_parse_rss_filter(dev, attr,
 					actions, &rss_conf, error);
 	if (!ret) {
@@ -319,8 +326,7 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 			rte_free(rss_filter_ptr);
 			goto out;
 		}
-		ixgbe_rss_conf_init(&rss_filter_ptr->filter_info,
-				    &rss_conf.conf);
+		rss_filter_ptr->filter_info = rss_conf;
 		flow->rule = rss_filter_ptr;
 		flow->filter_type = RTE_ETH_FILTER_HASH;
 		return flow;
@@ -350,7 +356,7 @@ ixgbe_flow_validate(struct rte_eth_dev *dev,
 		struct rte_flow_error *error)
 {
 	struct ixgbe_adapter *ad = IXGBE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
-	struct ixgbe_rte_flow_rss_conf rss_conf;
+	struct ixgbe_rss_conf rss_conf = {0};
 	int ret;
 
 	/* try the new flow engine first */
@@ -360,7 +366,6 @@ ixgbe_flow_validate(struct rte_eth_dev *dev,
 
 	/* fall back to legacy engines */
 
-	memset(&rss_conf, 0, sizeof(struct ixgbe_rte_flow_rss_conf));
 	ret = ixgbe_parse_rss_filter(dev, attr,
 					actions, &rss_conf, error);
 
@@ -488,7 +493,7 @@ ixgbe_flow_rule_size(const struct rte_flow *flow)
 	case RTE_ETH_FILTER_L2_TUNNEL:
 		return sizeof(struct ixgbe_l2_tunnel_conf);
 	case RTE_ETH_FILTER_HASH:
-		return sizeof(struct ixgbe_rte_flow_rss_conf);
+		return sizeof(struct ixgbe_rss_conf);
 	default:
 		return 0;
 	}
