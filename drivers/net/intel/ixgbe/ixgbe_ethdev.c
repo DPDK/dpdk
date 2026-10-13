@@ -150,7 +150,6 @@ static int eth_ixgbe_dev_uninit(struct rte_eth_dev *eth_dev);
 static int ixgbe_fdir_filter_init(struct rte_eth_dev *eth_dev);
 static int ixgbe_fdir_filter_uninit(struct rte_eth_dev *eth_dev);
 static int ixgbe_l2_tn_filter_init(struct rte_eth_dev *eth_dev);
-static int ixgbe_l2_tn_filter_uninit(struct rte_eth_dev *eth_dev);
 static int ixgbe_ntuple_filter_uninit(struct rte_eth_dev *eth_dev);
 static int ixgbe_dev_configure(struct rte_eth_dev *dev);
 static int ixgbe_dev_start(struct rte_eth_dev *dev);
@@ -1284,7 +1283,7 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	ret = ci_flow_engine_conf_init(&ad->flow_engine_conf,
 			&ixgbe_flow_engine_list, eth_dev->data);
 	if (ret)
-		goto err_flow_engine_conf_init;
+		goto err_l2_tn_filter_init;
 
 	/* initialize flow filter lists */
 	ixgbe_filterlist_init(eth_dev);
@@ -1297,8 +1296,6 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 
 	return 0;
 
-err_flow_engine_conf_init:
-	ixgbe_l2_tn_filter_uninit(eth_dev);
 err_l2_tn_filter_init:
 	ixgbe_fdir_filter_uninit(eth_dev);
 err_fdir_filter_init:
@@ -1368,25 +1365,6 @@ static int ixgbe_fdir_filter_uninit(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
-static int ixgbe_l2_tn_filter_uninit(struct rte_eth_dev *eth_dev)
-{
-	struct ixgbe_l2_tn_info *l2_tn_info =
-		IXGBE_DEV_PRIVATE_TO_L2_TN_INFO(eth_dev->data->dev_private);
-	struct ixgbe_l2_tn_filter *l2_tn_filter;
-
-	rte_free(l2_tn_info->hash_map);
-	rte_hash_free(l2_tn_info->hash_handle);
-
-	while ((l2_tn_filter = TAILQ_FIRST(&l2_tn_info->l2_tn_list))) {
-		TAILQ_REMOVE(&l2_tn_info->l2_tn_list,
-			     l2_tn_filter,
-			     entries);
-		rte_free(l2_tn_filter);
-	}
-
-	return 0;
-}
-
 static int ixgbe_fdir_filter_init(struct rte_eth_dev *eth_dev)
 {
 	struct ixgbe_hw_fdir_info *fdir_info =
@@ -1432,34 +1410,7 @@ static int ixgbe_l2_tn_filter_init(struct rte_eth_dev *eth_dev)
 {
 	struct ixgbe_l2_tn_info *l2_tn_info =
 		IXGBE_DEV_PRIVATE_TO_L2_TN_INFO(eth_dev->data->dev_private);
-	char l2_tn_hash_name[RTE_HASH_NAMESIZE];
-	struct rte_hash_parameters l2_tn_hash_params = {
-		.name = l2_tn_hash_name,
-		.entries = IXGBE_MAX_L2_TN_FILTER_NUM,
-		.key_len = sizeof(struct ixgbe_l2_tn_key),
-		.hash_func = rte_hash_crc,
-		.hash_func_init_val = 0,
-		.socket_id = rte_socket_id(),
-	};
 
-	TAILQ_INIT(&l2_tn_info->l2_tn_list);
-	snprintf(l2_tn_hash_name, RTE_HASH_NAMESIZE,
-		 "l2_tn_%s", eth_dev->device->name);
-	l2_tn_info->hash_handle = rte_hash_create(&l2_tn_hash_params);
-	if (!l2_tn_info->hash_handle) {
-		PMD_INIT_LOG(ERR, "Failed to create L2 TN hash table!");
-		return -EINVAL;
-	}
-	l2_tn_info->hash_map = rte_zmalloc("ixgbe",
-				   sizeof(struct ixgbe_l2_tn_filter *) *
-				   IXGBE_MAX_L2_TN_FILTER_NUM,
-				   0);
-	if (!l2_tn_info->hash_map) {
-		PMD_INIT_LOG(ERR,
-			"Failed to allocate memory for L2 TN hash map!");
-		rte_hash_free(l2_tn_info->hash_handle);
-		return -ENOMEM;
-	}
 	l2_tn_info->e_tag_en = FALSE;
 	l2_tn_info->e_tag_fwd_en = FALSE;
 	l2_tn_info->e_tag_ether_type = RTE_ETHER_TYPE_ETAG;
@@ -3102,9 +3053,6 @@ ixgbe_dev_close(struct rte_eth_dev *dev)
 
 	/* remove all the fdir filters & hash */
 	ixgbe_fdir_filter_uninit(dev);
-
-	/* remove all the L2 tunnel filters & hash */
-	ixgbe_l2_tn_filter_uninit(dev);
 
 	/* Remove all ntuple filters of the device */
 	ixgbe_ntuple_filter_uninit(dev);
@@ -7708,7 +7656,7 @@ ixgbe_e_tag_enable(struct ixgbe_hw *hw)
 	return 0;
 }
 
-static int
+int
 ixgbe_e_tag_filter_del(struct ixgbe_adapter *adapter,
 		       struct ixgbe_l2_tunnel_conf *l2_tunnel)
 {
@@ -7745,7 +7693,7 @@ ixgbe_e_tag_filter_del(struct ixgbe_adapter *adapter,
 	return ret;
 }
 
-static int
+int
 ixgbe_e_tag_filter_add(struct ixgbe_adapter *adapter,
 		       struct ixgbe_l2_tunnel_conf *l2_tunnel)
 {
@@ -7785,154 +7733,6 @@ ixgbe_e_tag_filter_add(struct ixgbe_adapter *adapter,
 	PMD_INIT_LOG(NOTICE, "The table of E-tag forwarding rule is full."
 		     " Please remove a rule before adding a new one.");
 	return -EINVAL;
-}
-
-static inline struct ixgbe_l2_tn_filter *
-ixgbe_l2_tn_filter_lookup(struct ixgbe_l2_tn_info *l2_tn_info,
-			  struct ixgbe_l2_tn_key *key)
-{
-	int ret;
-
-	ret = rte_hash_lookup(l2_tn_info->hash_handle, (const void *)key);
-	if (ret < 0)
-		return NULL;
-
-	return l2_tn_info->hash_map[ret];
-}
-
-static inline int
-ixgbe_insert_l2_tn_filter(struct ixgbe_l2_tn_info *l2_tn_info,
-			  struct ixgbe_l2_tn_filter *l2_tn_filter)
-{
-	int ret;
-
-	ret = rte_hash_add_key(l2_tn_info->hash_handle,
-			       &l2_tn_filter->key);
-
-	if (ret < 0) {
-		PMD_DRV_LOG(ERR,
-			    "Failed to insert L2 tunnel filter"
-			    " to hash table %d!",
-			    ret);
-		return ret;
-	}
-
-	l2_tn_info->hash_map[ret] = l2_tn_filter;
-
-	TAILQ_INSERT_TAIL(&l2_tn_info->l2_tn_list, l2_tn_filter, entries);
-
-	return 0;
-}
-
-static inline int
-ixgbe_remove_l2_tn_filter(struct ixgbe_l2_tn_info *l2_tn_info,
-			  struct ixgbe_l2_tn_key *key)
-{
-	int ret;
-	struct ixgbe_l2_tn_filter *l2_tn_filter;
-
-	ret = rte_hash_del_key(l2_tn_info->hash_handle, key);
-
-	if (ret < 0) {
-		PMD_DRV_LOG(ERR,
-			    "No such L2 tunnel filter to delete %d!",
-			    ret);
-		return ret;
-	}
-
-	l2_tn_filter = l2_tn_info->hash_map[ret];
-	l2_tn_info->hash_map[ret] = NULL;
-
-	TAILQ_REMOVE(&l2_tn_info->l2_tn_list, l2_tn_filter, entries);
-	rte_free(l2_tn_filter);
-
-	return 0;
-}
-
-/* Add l2 tunnel filter */
-int
-ixgbe_dev_l2_tunnel_filter_add(struct ixgbe_adapter *adapter,
-			       struct ixgbe_l2_tunnel_conf *l2_tunnel,
-			       bool restore)
-{
-	int ret;
-	struct ixgbe_l2_tn_info *l2_tn_info =
-		IXGBE_DEV_PRIVATE_TO_L2_TN_INFO(adapter);
-	struct ixgbe_l2_tn_key key;
-	struct ixgbe_l2_tn_filter *node;
-
-	if (!restore) {
-		key.l2_tn_type = l2_tunnel->l2_tunnel_type;
-		key.tn_id = l2_tunnel->tunnel_id;
-
-		node = ixgbe_l2_tn_filter_lookup(l2_tn_info, &key);
-
-		if (node) {
-			PMD_DRV_LOG(ERR,
-				    "The L2 tunnel filter already exists!");
-			return -EINVAL;
-		}
-
-		node = rte_zmalloc("ixgbe_l2_tn",
-				   sizeof(struct ixgbe_l2_tn_filter),
-				   0);
-		if (!node)
-			return -ENOMEM;
-
-		memcpy(&node->key,
-				 &key,
-				 sizeof(struct ixgbe_l2_tn_key));
-		node->pool = l2_tunnel->pool;
-		ret = ixgbe_insert_l2_tn_filter(l2_tn_info, node);
-		if (ret < 0) {
-			rte_free(node);
-			return ret;
-		}
-	}
-
-	switch (l2_tunnel->l2_tunnel_type) {
-	case RTE_ETH_L2_TUNNEL_TYPE_E_TAG:
-		ret = ixgbe_e_tag_filter_add(adapter, l2_tunnel);
-		break;
-	default:
-		PMD_DRV_LOG(ERR, "Invalid tunnel type");
-		ret = -EINVAL;
-		break;
-	}
-
-	if ((!restore) && (ret < 0))
-		(void)ixgbe_remove_l2_tn_filter(l2_tn_info, &key);
-
-	return ret;
-}
-
-/* Delete l2 tunnel filter */
-int
-ixgbe_dev_l2_tunnel_filter_del(struct ixgbe_adapter *adapter,
-			       struct ixgbe_l2_tunnel_conf *l2_tunnel)
-{
-	int ret;
-	struct ixgbe_l2_tn_info *l2_tn_info =
-		IXGBE_DEV_PRIVATE_TO_L2_TN_INFO(adapter);
-	struct ixgbe_l2_tn_key key;
-
-	key.l2_tn_type = l2_tunnel->l2_tunnel_type;
-	key.tn_id = l2_tunnel->tunnel_id;
-	ret = ixgbe_remove_l2_tn_filter(l2_tn_info, &key);
-	if (ret < 0)
-		return ret;
-
-	switch (l2_tunnel->l2_tunnel_type) {
-	case RTE_ETH_L2_TUNNEL_TYPE_E_TAG:
-		ret = ixgbe_e_tag_filter_del(adapter, l2_tunnel);
-		break;
-	default:
-		PMD_DRV_LOG(ERR, "Invalid tunnel type");
-		ret = -EINVAL;
-		break;
-	}
-
-	return ret;
 }
 
 static int
@@ -8332,26 +8132,6 @@ ixgbe_ntuple_filter_restore(struct rte_eth_dev *dev)
 	}
 }
 
-/* restore L2 tunnel filter */
-static inline void
-ixgbe_l2_tn_filter_restore(struct rte_eth_dev *dev)
-{
-	struct ixgbe_adapter *adapter =
-		IXGBE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
-	struct ixgbe_l2_tn_info *l2_tn_info =
-		IXGBE_DEV_PRIVATE_TO_L2_TN_INFO(adapter);
-	struct ixgbe_l2_tn_filter *node;
-	struct ixgbe_l2_tunnel_conf l2_tn_conf;
-
-	TAILQ_FOREACH(node, &l2_tn_info->l2_tn_list, entries) {
-		l2_tn_conf.l2_tunnel_type = node->key.l2_tn_type;
-		l2_tn_conf.tunnel_id      = node->key.tn_id;
-		l2_tn_conf.pool           = node->pool;
-		(void)ixgbe_dev_l2_tunnel_filter_add(adapter,
-						     &l2_tn_conf, TRUE);
-	}
-}
-
 /* restore rss filter */
 static inline void
 ixgbe_rss_filter_restore(struct rte_eth_dev *dev)
@@ -8371,7 +8151,6 @@ ixgbe_filter_restore(struct rte_eth_dev *dev)
 {
 	ixgbe_ntuple_filter_restore(dev);
 	ixgbe_fdir_filter_restore(dev);
-	ixgbe_l2_tn_filter_restore(dev);
 	ixgbe_rss_filter_restore(dev);
 
 	return 0;
@@ -8405,30 +8184,6 @@ ixgbe_clear_all_ntuple_filter(struct rte_eth_dev *dev)
 
 	while ((p_5tuple = TAILQ_FIRST(&filter_info->fivetuple_list)))
 		ixgbe_remove_5tuple_filter(adapter, p_5tuple);
-}
-
-/* remove all the L2 tunnel filters */
-int
-ixgbe_clear_all_l2_tn_filter(struct rte_eth_dev *dev)
-{
-	struct ixgbe_adapter *adapter =
-			IXGBE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
-	struct ixgbe_l2_tn_info *l2_tn_info =
-		IXGBE_DEV_PRIVATE_TO_L2_TN_INFO(dev->data->dev_private);
-	struct ixgbe_l2_tn_filter *l2_tn_filter;
-	struct ixgbe_l2_tunnel_conf l2_tn_conf;
-	int ret = 0;
-
-	while ((l2_tn_filter = TAILQ_FIRST(&l2_tn_info->l2_tn_list))) {
-		l2_tn_conf.l2_tunnel_type = l2_tn_filter->key.l2_tn_type;
-		l2_tn_conf.tunnel_id      = l2_tn_filter->key.tn_id;
-		l2_tn_conf.pool           = l2_tn_filter->pool;
-		ret = ixgbe_dev_l2_tunnel_filter_del(adapter, &l2_tn_conf);
-		if (ret < 0)
-			return ret;
-	}
-
-	return 0;
 }
 
 void
