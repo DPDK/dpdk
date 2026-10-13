@@ -2093,7 +2093,7 @@ dequeue_enc_one_op_cb(struct fpga_queue *q, struct rte_bbdev_enc_op **op,
 		return -1;
 
 	/* make sure the response is read atomically */
-	rte_smp_rmb();
+	rte_atomic_thread_fence(rte_memory_order_acquire);
 
 	rte_bbdev_log_debug("DMA response desc %p", desc);
 
@@ -2123,7 +2123,7 @@ dequeue_enc_one_op_tb(struct fpga_queue *q, struct rte_bbdev_enc_op **op,
 		return -1;
 
 	/* Make sure the response is read atomically */
-	rte_smp_rmb();
+	rte_atomic_thread_fence(rte_memory_order_acquire);
 
 	/* Verify if done bit in all CBs is set */
 	cbs_in_op = desc->enc_req.cbs_in_op;
@@ -2135,7 +2135,7 @@ dequeue_enc_one_op_tb(struct fpga_queue *q, struct rte_bbdev_enc_op **op,
 	}
 
 	/* Make sure the response is read atomically */
-	rte_smp_rmb();
+	rte_atomic_thread_fence(rte_memory_order_acquire);
 
 	for (cb_idx = 0; cb_idx < cbs_in_op; ++cb_idx) {
 		desc = q->ring_addr + ((q->head_free_desc + desc_offset +
@@ -2166,7 +2166,7 @@ dequeue_dec_one_op_cb(struct fpga_queue *q, struct rte_bbdev_dec_op **op,
 		return -1;
 
 	/* make sure the response is read atomically */
-	rte_smp_rmb();
+	rte_atomic_thread_fence(rte_memory_order_acquire);
 
 #ifdef RTE_LIBRTE_BBDEV_DEBUG
 	print_dma_dec_desc_debug_info(desc);
@@ -2201,7 +2201,7 @@ dequeue_dec_one_op_tb(struct fpga_queue *q, struct rte_bbdev_dec_op **op,
 		return -1;
 
 	/* Make sure the response is read atomically */
-	rte_smp_rmb();
+	rte_atomic_thread_fence(rte_memory_order_acquire);
 
 	/* Verify if done bit in all CBs is set */
 	cbs_in_op = desc->dec_req.cbs_in_op;
@@ -2213,7 +2213,7 @@ dequeue_dec_one_op_tb(struct fpga_queue *q, struct rte_bbdev_dec_op **op,
 	}
 
 	/* Make sure the response is read atomically */
-	rte_smp_rmb();
+	rte_atomic_thread_fence(rte_memory_order_acquire);
 
 	for (cb_idx = 0; cb_idx < cbs_in_op; ++cb_idx) {
 		desc = q->ring_addr + ((q->head_free_desc + desc_offset +
