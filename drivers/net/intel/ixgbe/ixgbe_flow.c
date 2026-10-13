@@ -50,19 +50,12 @@
 #include "../common/flow_engine.h"
 #include "ixgbe_flow.h"
 
-#define IXGBE_MIN_N_TUPLE_PRIO 1
-#define IXGBE_MAX_N_TUPLE_PRIO 7
 #define IXGBE_MAX_FLX_SOURCE_OFF 62
 
 struct ixgbe_filter_ele_base {
 	TAILQ_ENTRY(ixgbe_filter_ele_base) entries;
 };
 
-/* ntuple filter list structure */
-struct ixgbe_ntuple_filter_ele {
-	struct ixgbe_filter_ele_base base;
-	struct rte_eth_ntuple_filter filter_info;
-};
 /* fdir filter list structure */
 struct ixgbe_fdir_rule_ele {
 	struct ixgbe_filter_ele_base base;
@@ -84,6 +77,7 @@ const struct ci_flow_engine_list ixgbe_flow_engine_list = {
 		&ixgbe_ethertype_flow_engine,
 		&ixgbe_syn_flow_engine,
 		&ixgbe_l2_tunnel_flow_engine,
+		&ixgbe_ntuple_flow_engine,
 	},
 };
 
@@ -160,389 +154,6 @@ ixgbe_flow_actions_check(const struct ci_flow_actions *actions,
  * Because the pattern is used to describe the packets,
  * normally the packets should use network order.
  */
-
-/**
- * Parse the rule to see if it is a n-tuple rule.
- * And get the n-tuple filter info BTW.
- * pattern:
- * The first not void item can be ETH or IPV4.
- * The second not void item must be IPV4 if the first one is ETH.
- * The third not void item must be UDP or TCP.
- * The next not void item must be END.
- * action:
- * The first not void action should be QUEUE.
- * The next not void action should be END.
- * pattern example:
- * ITEM		Spec			Mask
- * ETH		NULL			NULL
- * IPV4		src_addr 192.168.1.20	0xFFFFFFFF
- *		dst_addr 192.167.3.50	0xFFFFFFFF
- *		next_proto_id	17	0xFF
- * UDP/TCP/	src_port	80	0xFFFF
- * SCTP		dst_port	80	0xFFFF
- * END
- * other members in mask and spec should set to 0x00.
- * item->last should be NULL.
- *
- * Special case for flow action type RTE_FLOW_ACTION_TYPE_SECURITY.
- *
- */
-static int
-cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
-			 const struct rte_flow_item pattern[],
-			 const struct rte_flow_action_queue *q_act,
-			 struct rte_eth_ntuple_filter *filter,
-			 struct rte_flow_error *error)
-{
-	const struct rte_flow_item *item;
-	const struct rte_flow_item_ipv4 *ipv4_spec;
-	const struct rte_flow_item_ipv4 *ipv4_mask;
-	const struct rte_flow_item_tcp *tcp_spec;
-	const struct rte_flow_item_tcp *tcp_mask;
-	const struct rte_flow_item_udp *udp_spec;
-	const struct rte_flow_item_udp *udp_mask;
-	const struct rte_flow_item_sctp *sctp_spec;
-	const struct rte_flow_item_sctp *sctp_mask;
-	const struct rte_flow_item_eth *eth_spec;
-	const struct rte_flow_item_eth *eth_mask;
-	const struct rte_flow_item_vlan *vlan_spec;
-	const struct rte_flow_item_vlan *vlan_mask;
-	struct rte_flow_item_eth eth_null;
-	struct rte_flow_item_vlan vlan_null;
-	uint16_t priority;
-
-	/* Priority must be 16-bit */
-	if (attr->priority > UINT16_MAX) {
-		return rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY, attr,
-				"Priority must be 16-bit");
-	}
-
-	memset(&eth_null, 0, sizeof(struct rte_flow_item_eth));
-	memset(&vlan_null, 0, sizeof(struct rte_flow_item_vlan));
-
-	/* the first not void item can be MAC or IPv4 */
-	item = next_no_void_pattern(pattern, NULL);
-
-	if (item->type != RTE_FLOW_ITEM_TYPE_ETH &&
-	    item->type != RTE_FLOW_ITEM_TYPE_IPV4) {
-		rte_flow_error_set(error, EINVAL,
-			RTE_FLOW_ERROR_TYPE_ITEM,
-			item, "Not supported by ntuple filter");
-		return -rte_errno;
-	}
-	/* Skip Ethernet */
-	if (item->type == RTE_FLOW_ITEM_TYPE_ETH) {
-		eth_spec = item->spec;
-		eth_mask = item->mask;
-		/*Not supported last point for range*/
-		if (item->last) {
-			rte_flow_error_set(error,
-			  EINVAL,
-			  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-			  item, "Not supported last point for range");
-			return -rte_errno;
-
-		}
-		/* if the first item is MAC, the content should be NULL */
-		if ((item->spec != NULL && memcmp(eth_spec, &eth_null, sizeof(eth_null)) != 0) ||
-		    (item->mask != NULL && memcmp(eth_mask, &eth_null, sizeof(eth_null)) != 0)) {
-			rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, item,
-					"Not supported by ntuple filter");
-			return -rte_errno;
-		}
-		/* check if the next not void item is IPv4 or Vlan */
-		item = next_no_void_pattern(pattern, item);
-		if (item->type != RTE_FLOW_ITEM_TYPE_IPV4 &&
-			item->type != RTE_FLOW_ITEM_TYPE_VLAN) {
-			rte_flow_error_set(error,
-			  EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
-			  item, "Not supported by ntuple filter");
-			  return -rte_errno;
-		}
-	}
-
-	if (item->type == RTE_FLOW_ITEM_TYPE_VLAN) {
-		vlan_spec = item->spec;
-		vlan_mask = item->mask;
-		/*Not supported last point for range*/
-		if (item->last) {
-			rte_flow_error_set(error,
-			  EINVAL,
-			  RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-			  item, "Not supported last point for range");
-			return -rte_errno;
-		}
-		/* the content should be NULL */
-		if ((item->spec != NULL && memcmp(vlan_spec, &vlan_null, sizeof(vlan_null)) != 0) ||
-		    (item->mask != NULL && memcmp(vlan_mask, &vlan_null, sizeof(vlan_null)) != 0)) {
-			rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM, item,
-					"Not supported by ntuple filter");
-			return -rte_errno;
-		}
-		/* check if the next not void item is IPv4 */
-		item = next_no_void_pattern(pattern, item);
-		if (item->type != RTE_FLOW_ITEM_TYPE_IPV4) {
-			rte_flow_error_set(error,
-			  EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
-			  item, "Not supported by ntuple filter");
-			return -rte_errno;
-		}
-	}
-
-	if (item->mask) {
-		/* get the IPv4 info */
-		if (!item->spec || !item->mask) {
-			rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ITEM,
-				item, "Invalid ntuple mask");
-			return -rte_errno;
-		}
-		/*Not supported last point for range*/
-		if (item->last) {
-			rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				item, "Not supported last point for range");
-			return -rte_errno;
-		}
-
-		ipv4_mask = item->mask;
-		/**
-		 * Only support src & dst addresses, protocol,
-		 * others should be masked.
-		 */
-		if (ipv4_mask->hdr.version_ihl ||
-		    ipv4_mask->hdr.type_of_service ||
-		    ipv4_mask->hdr.total_length ||
-		    ipv4_mask->hdr.packet_id ||
-		    ipv4_mask->hdr.fragment_offset ||
-		    ipv4_mask->hdr.time_to_live ||
-		    ipv4_mask->hdr.hdr_checksum) {
-			rte_flow_error_set(error,
-				EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
-				item, "Not supported by ntuple filter");
-			return -rte_errno;
-		}
-		if ((ipv4_mask->hdr.src_addr != 0 &&
-			ipv4_mask->hdr.src_addr != UINT32_MAX) ||
-			(ipv4_mask->hdr.dst_addr != 0 &&
-			ipv4_mask->hdr.dst_addr != UINT32_MAX) ||
-			(ipv4_mask->hdr.next_proto_id != UINT8_MAX &&
-			ipv4_mask->hdr.next_proto_id != 0)) {
-			rte_flow_error_set(error,
-				EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
-				item, "Not supported by ntuple filter");
-			return -rte_errno;
-		}
-
-		filter->dst_ip_mask = ipv4_mask->hdr.dst_addr;
-		filter->src_ip_mask = ipv4_mask->hdr.src_addr;
-		filter->proto_mask  = ipv4_mask->hdr.next_proto_id;
-
-		ipv4_spec = item->spec;
-		filter->dst_ip = ipv4_spec->hdr.dst_addr;
-		filter->src_ip = ipv4_spec->hdr.src_addr;
-		filter->proto  = ipv4_spec->hdr.next_proto_id;
-	}
-
-	/* check if the next not void item is TCP or UDP */
-	item = next_no_void_pattern(pattern, item);
-	if (item->type != RTE_FLOW_ITEM_TYPE_TCP &&
-	    item->type != RTE_FLOW_ITEM_TYPE_UDP &&
-	    item->type != RTE_FLOW_ITEM_TYPE_SCTP &&
-	    item->type != RTE_FLOW_ITEM_TYPE_END) {
-		memset(filter, 0, sizeof(struct rte_eth_ntuple_filter));
-		rte_flow_error_set(error, EINVAL,
-			RTE_FLOW_ERROR_TYPE_ITEM,
-			item, "Not supported by ntuple filter");
-		return -rte_errno;
-	}
-
-	/* an L4 item always implies its protocol, even when empty */
-	if (item->type != RTE_FLOW_ITEM_TYPE_END) {
-		uint8_t proto;
-
-		if (item->type == RTE_FLOW_ITEM_TYPE_TCP)
-			proto = IPPROTO_TCP;
-		else if (item->type == RTE_FLOW_ITEM_TYPE_UDP)
-			proto = IPPROTO_UDP;
-		else
-			proto = IPPROTO_SCTP;
-
-		if (filter->proto_mask != 0 && filter->proto != proto) {
-			*filter = (struct rte_eth_ntuple_filter){0};
-			rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ITEM,
-				item, "L4 item conflicts with IPv4 protocol");
-			return -rte_errno;
-		}
-		filter->proto = proto;
-		filter->proto_mask = UINT8_MAX;
-
-		if (item->spec == NULL && item->mask == NULL)
-			goto check_end;
-	}
-
-	/* get the TCP/UDP/SCTP info */
-	if (item->type != RTE_FLOW_ITEM_TYPE_END &&
-		(!item->spec || !item->mask)) {
-		memset(filter, 0, sizeof(struct rte_eth_ntuple_filter));
-		rte_flow_error_set(error, EINVAL,
-			RTE_FLOW_ERROR_TYPE_ITEM,
-			item, "Invalid ntuple mask");
-		return -rte_errno;
-	}
-
-	/*Not supported last point for range*/
-	if (item->last) {
-		memset(filter, 0, sizeof(struct rte_eth_ntuple_filter));
-		rte_flow_error_set(error, EINVAL,
-			RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-			item, "Not supported last point for range");
-		return -rte_errno;
-
-	}
-
-	if (item->type == RTE_FLOW_ITEM_TYPE_TCP) {
-		tcp_mask = item->mask;
-
-		/**
-		 * Only support src & dst ports, tcp flags,
-		 * others should be masked.
-		 */
-		if (tcp_mask->hdr.sent_seq ||
-		    tcp_mask->hdr.recv_ack ||
-		    tcp_mask->hdr.data_off ||
-		    tcp_mask->hdr.rx_win ||
-		    tcp_mask->hdr.cksum ||
-		    tcp_mask->hdr.tcp_urp) {
-			memset(filter, 0,
-				sizeof(struct rte_eth_ntuple_filter));
-			rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ITEM,
-				item, "Not supported by ntuple filter");
-			return -rte_errno;
-		}
-		if ((tcp_mask->hdr.src_port != 0 &&
-			tcp_mask->hdr.src_port != UINT16_MAX) ||
-			(tcp_mask->hdr.dst_port != 0 &&
-			tcp_mask->hdr.dst_port != UINT16_MAX)) {
-			rte_flow_error_set(error,
-				EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
-				item, "Not supported by ntuple filter");
-			return -rte_errno;
-		}
-
-		filter->dst_port_mask  = tcp_mask->hdr.dst_port;
-		filter->src_port_mask  = tcp_mask->hdr.src_port;
-		if (tcp_mask->hdr.tcp_flags == 0xFF) {
-			filter->flags |= RTE_NTUPLE_FLAGS_TCP_FLAG;
-		} else if (!tcp_mask->hdr.tcp_flags) {
-			filter->flags &= ~RTE_NTUPLE_FLAGS_TCP_FLAG;
-		} else {
-			memset(filter, 0, sizeof(struct rte_eth_ntuple_filter));
-			rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ITEM,
-				item, "Not supported by ntuple filter");
-			return -rte_errno;
-		}
-
-		tcp_spec = item->spec;
-		filter->dst_port  = tcp_spec->hdr.dst_port;
-		filter->src_port  = tcp_spec->hdr.src_port;
-		filter->tcp_flags = tcp_spec->hdr.tcp_flags;
-	} else if (item->type == RTE_FLOW_ITEM_TYPE_UDP) {
-		udp_mask = item->mask;
-
-		/**
-		 * Only support src & dst ports,
-		 * others should be masked.
-		 */
-		if (udp_mask->hdr.dgram_len ||
-		    udp_mask->hdr.dgram_cksum) {
-			memset(filter, 0,
-				sizeof(struct rte_eth_ntuple_filter));
-			rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ITEM,
-				item, "Not supported by ntuple filter");
-			return -rte_errno;
-		}
-		if ((udp_mask->hdr.src_port != 0 &&
-			udp_mask->hdr.src_port != UINT16_MAX) ||
-			(udp_mask->hdr.dst_port != 0 &&
-			udp_mask->hdr.dst_port != UINT16_MAX)) {
-			rte_flow_error_set(error,
-				EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
-				item, "Not supported by ntuple filter");
-			return -rte_errno;
-		}
-
-		filter->dst_port_mask = udp_mask->hdr.dst_port;
-		filter->src_port_mask = udp_mask->hdr.src_port;
-
-		udp_spec = item->spec;
-		filter->dst_port = udp_spec->hdr.dst_port;
-		filter->src_port = udp_spec->hdr.src_port;
-	} else if (item->type == RTE_FLOW_ITEM_TYPE_SCTP) {
-		sctp_mask = item->mask;
-
-		/**
-		 * Only support src & dst ports,
-		 * others should be masked.
-		 */
-		if (sctp_mask->hdr.tag ||
-		    sctp_mask->hdr.cksum) {
-			memset(filter, 0,
-				sizeof(struct rte_eth_ntuple_filter));
-			rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ITEM,
-				item, "Not supported by ntuple filter");
-			return -rte_errno;
-		}
-
-		filter->dst_port_mask = sctp_mask->hdr.dst_port;
-		filter->src_port_mask = sctp_mask->hdr.src_port;
-
-		sctp_spec = item->spec;
-		filter->dst_port = sctp_spec->hdr.dst_port;
-		filter->src_port = sctp_spec->hdr.src_port;
-	} else {
-		goto action;
-	}
-
-check_end:
-	/* check if the next not void item is END */
-	item = next_no_void_pattern(pattern, item);
-	if (item->type != RTE_FLOW_ITEM_TYPE_END) {
-		memset(filter, 0, sizeof(struct rte_eth_ntuple_filter));
-		rte_flow_error_set(error, EINVAL,
-			RTE_FLOW_ERROR_TYPE_ITEM,
-			item, "Not supported by ntuple filter");
-		return -rte_errno;
-	}
-
-action:
-
-	filter->queue = q_act->index;
-
-	/*
-	 * rte_flow priority: 0 through UINT32_MAX, 0 is highest
-	 *
-	 * ntuple priority: 001b through 111b, 111b is highest
-	 *
-	 * which means we need to transform priority from rte_flow to ntuple:
-	 *
-	 * 1) clamp max value
-	 * 2) reverse
-	 * 3) add min value
-	 */
-	priority = RTE_MIN(IXGBE_MAX_N_TUPLE_PRIO - 1, (uint16_t)attr->priority);
-	priority = IXGBE_MAX_N_TUPLE_PRIO - 1 - priority;
-	priority += IXGBE_MIN_N_TUPLE_PRIO;
-	filter->priority = priority;
-
-	return 0;
-}
 
 static int
 ixgbe_parse_security_filter(struct rte_eth_dev *dev, const struct rte_flow_attr *attr,
@@ -629,66 +240,6 @@ ixgbe_parse_security_filter(struct rte_eth_dev *dev, const struct rte_flow_attr 
 				"Failed to add security session.");
 		return -rte_errno;
 	}
-	return 0;
-}
-
-/* a specific function for ixgbe because the flags is specific */
-static int
-ixgbe_parse_ntuple_filter(struct rte_eth_dev *dev,
-			  const struct rte_flow_attr *attr,
-			  const struct rte_flow_item pattern[],
-			  const struct rte_flow_action actions[],
-			  struct rte_eth_ntuple_filter *filter,
-			  struct rte_flow_error *error)
-{
-	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct ci_flow_attr_check_param attr_param = {
-		.allow_priority = true,
-	};
-	struct ci_flow_actions parsed_actions;
-	struct ci_flow_actions_check_param ap_param = {
-		.allowed_types = (const enum rte_flow_action_type[]){
-			/* only queue is allowed here */
-			RTE_FLOW_ACTION_TYPE_QUEUE,
-			RTE_FLOW_ACTION_TYPE_END
-		},
-		.driver_ctx = dev->data,
-		.check = ixgbe_flow_actions_check,
-		.max_actions = 1,
-	};
-	const struct rte_flow_action *action;
-	int ret;
-
-	if (hw->mac.type != ixgbe_mac_82599EB &&
-			hw->mac.type != ixgbe_mac_X540)
-		return -ENOTSUP;
-
-	/* validate attributes */
-	ret = ci_flow_check_attr(attr, &attr_param, error);
-	if (ret)
-		return ret;
-
-	/* parse requested actions */
-	ret = ci_flow_check_actions(actions, &ap_param, &parsed_actions, error);
-	if (ret)
-		return ret;
-	action = parsed_actions.actions[0];
-
-	ret = cons_parse_ntuple_filter(attr, pattern, action->conf, filter, error);
-	if (ret)
-		return ret;
-
-	/* Ixgbe doesn't support tcp flags. */
-	if (filter->flags & RTE_NTUPLE_FLAGS_TCP_FLAG) {
-		memset(filter, 0, sizeof(struct rte_eth_ntuple_filter));
-		rte_flow_error_set(error, EINVAL,
-				   RTE_FLOW_ERROR_TYPE_ITEM,
-				   NULL, "Not supported by ntuple filter");
-		return -rte_errno;
-	}
-
-	/* fixed value for ixgbe */
-	filter->flags = RTE_5TUPLE_FLAGS;
 	return 0;
 }
 
@@ -2336,13 +1887,11 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 	int ret;
 	struct ixgbe_adapter *adapter =
 		IXGBE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
-	struct rte_eth_ntuple_filter ntuple_filter;
 	struct ixgbe_fdir_rule fdir_rule;
 	struct ixgbe_hw_fdir_info *fdir_info =
 		IXGBE_DEV_PRIVATE_TO_FDIR_INFO(adapter);
 	struct ixgbe_rte_flow_rss_conf rss_conf;
 	struct rte_flow *flow = NULL;
-	struct ixgbe_ntuple_filter_ele *ntuple_filter_ptr;
 	struct ixgbe_fdir_rule_ele *fdir_rule_ptr;
 	struct ixgbe_rss_conf_ele *rss_filter_ptr;
 	struct ixgbe_flow_mem *ixgbe_flow_mem_ptr;
@@ -2376,29 +1925,6 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 	ret = ixgbe_parse_security_filter(dev, attr, pattern, actions, error);
 	if (!ret) {
 		flow->is_security = true;
-		return flow;
-	}
-
-	memset(&ntuple_filter, 0, sizeof(struct rte_eth_ntuple_filter));
-	ret = ixgbe_parse_ntuple_filter(dev, attr, pattern,
-			actions, &ntuple_filter, error);
-
-	if (!ret) {
-		ntuple_filter_ptr = rte_zmalloc("ixgbe_ntuple_filter",
-			sizeof(struct ixgbe_ntuple_filter_ele), 0);
-		if (!ntuple_filter_ptr) {
-			PMD_DRV_LOG(ERR, "failed to allocate memory");
-			ret = -ENOMEM;
-			goto out;
-		}
-		ntuple_filter_ptr->filter_info = ntuple_filter;
-		ret = ixgbe_add_del_ntuple_filter(adapter, &ntuple_filter, TRUE);
-		if (ret) {
-			rte_free(ntuple_filter_ptr);
-			goto out;
-		}
-		flow->rule = ntuple_filter_ptr;
-		flow->filter_type = RTE_ETH_FILTER_NTUPLE;
 		return flow;
 	}
 
@@ -2486,7 +2012,6 @@ ixgbe_flow_validate(struct rte_eth_dev *dev,
 		struct rte_flow_error *error)
 {
 	struct ixgbe_adapter *ad = IXGBE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
-	struct rte_eth_ntuple_filter ntuple_filter;
 	struct ixgbe_fdir_rule fdir_rule;
 	struct ixgbe_rte_flow_rss_conf rss_conf;
 	int ret;
@@ -2502,12 +2027,6 @@ ixgbe_flow_validate(struct rte_eth_dev *dev,
 	 *  Special case for flow action type RTE_FLOW_ACTION_TYPE_SECURITY
 	 */
 	ret = ixgbe_parse_security_filter(dev, attr, pattern, actions, error);
-	if (!ret)
-		return 0;
-
-	memset(&ntuple_filter, 0, sizeof(struct rte_eth_ntuple_filter));
-	ret = ixgbe_parse_ntuple_filter(dev, attr, pattern,
-				actions, &ntuple_filter, error);
 	if (!ret)
 		return 0;
 
@@ -2535,9 +2054,7 @@ ixgbe_flow_destroy(struct rte_eth_dev *dev,
 		IXGBE_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct rte_flow *pmd_flow = flow;
 	enum rte_filter_type filter_type = pmd_flow->filter_type;
-	struct rte_eth_ntuple_filter ntuple_filter;
 	struct ixgbe_fdir_rule fdir_rule;
-	struct ixgbe_ntuple_filter_ele *ntuple_filter_ptr;
 	struct ixgbe_fdir_rule_ele *fdir_rule_ptr;
 	struct ixgbe_filter_ele_base *flow_mem_base;
 	struct ixgbe_hw_fdir_info *fdir_info =
@@ -2573,14 +2090,6 @@ ixgbe_flow_destroy(struct rte_eth_dev *dev,
 	}
 
 	switch (filter_type) {
-	case RTE_ETH_FILTER_NTUPLE:
-		ntuple_filter_ptr = (struct ixgbe_ntuple_filter_ele *)
-					pmd_flow->rule;
-		ntuple_filter = ntuple_filter_ptr->filter_info;
-		ret = ixgbe_add_del_ntuple_filter(adapter, &ntuple_filter, FALSE);
-		if (!ret)
-			rte_free(ntuple_filter_ptr);
-		break;
 	case RTE_ETH_FILTER_FDIR:
 		fdir_rule_ptr = (struct ixgbe_fdir_rule_ele *)pmd_flow->rule;
 		fdir_rule = fdir_rule_ptr->filter_info;
@@ -2640,8 +2149,6 @@ ixgbe_flow_flush(struct rte_eth_dev *dev,
 		return ret;
 	}
 
-	ixgbe_clear_all_ntuple_filter(dev);
-
 	ret = ixgbe_clear_all_fdir_filter(dev);
 	if (ret < 0) {
 		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_HANDLE,
@@ -2665,8 +2172,6 @@ ixgbe_flow_rule_engine_name(const struct rte_flow *flow)
 		return "security";
 
 	switch (flow->filter_type) {
-	case RTE_ETH_FILTER_NTUPLE:
-		return "ntuple";
 	case RTE_ETH_FILTER_ETHERTYPE:
 		return "ethertype";
 	case RTE_ETH_FILTER_SYN:
@@ -2689,8 +2194,6 @@ ixgbe_flow_rule_size(const struct rte_flow *flow)
 		return 0;
 
 	switch (flow->filter_type) {
-	case RTE_ETH_FILTER_NTUPLE:
-		return sizeof(struct rte_eth_ntuple_filter);
 	case RTE_ETH_FILTER_ETHERTYPE:
 		return sizeof(struct rte_eth_ethertype_filter);
 	case RTE_ETH_FILTER_SYN:
