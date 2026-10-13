@@ -36,6 +36,7 @@ sources += files(
         'i40e_flow_ethertype.c',
         'i40e_flow_fdir.c',
         'i40e_flow_tunnel.c',
+        'i40e_flow_hash.c',
         'i40e_tm.c',
         'i40e_hash.c',
         'i40e_vf_representor.c',
