@@ -4411,6 +4411,21 @@ enum rte_flow_conv_op {
 	 *   @code const char ** @endcode
 	 */
 	RTE_FLOW_CONV_OP_ACTION_NAME_PTR,
+
+	/**
+	 * Convert item type to pointer to its default mask.
+	 *
+	 * Writes a pointer to rte_flow_item_{name}_mask to @p dst,
+	 * or NULL if the item type has no default mask. The mask itself is not
+	 * copied; instead, a unique pointer to an internal static constant
+	 * storage is written to @p dst.
+	 *
+	 * - @p src type:
+	 *   @code (const void *)enum rte_flow_item_type @endcode
+	 * - @p dst type:
+	 *   @code const void ** @endcode
+	 */
+	RTE_FLOW_CONV_OP_ITEM_DEFAULT_MASK_PTR,
 };
 
 /**
