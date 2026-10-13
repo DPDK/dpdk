@@ -8,6 +8,7 @@
 #include <ethdev_driver.h>
 #include <rte_security.h>
 #include <rte_security_driver.h>
+#include <rte_stdatomic.h>
 
 #include <rte_flow.h>
 
@@ -33,6 +34,9 @@
 
 #define IPSEC_MAX_RX_IP_COUNT           128
 #define IPSEC_MAX_SA_COUNT              1024
+#define IXGBE_SECURITY_SESSION_UNBOUND  0
+#define IXGBE_SECURITY_SESSION_REFCNT_MAX IPSEC_MAX_SA_COUNT
+#define IXGBE_SECURITY_SESSION_DESTROYING UINT16_MAX
 
 #define ESP_ICV_SIZE 16
 #define ESP_TRAILER_SIZE 2
@@ -67,30 +71,28 @@ struct ipaddr {
 /** inline crypto crypto private session structure */
 struct __rte_cache_aligned ixgbe_crypto_session {
 	enum ixgbe_operation op;
-	const uint8_t *key;
+	RTE_ATOMIC(uint16_t) refcnt;
+	uint8_t key[16];
 	uint32_t key_len;
 	uint32_t salt;
 	uint32_t sa_index;
 	uint32_t spi;
-	struct ipaddr src_ip;
-	struct ipaddr dst_ip;
 	struct rte_eth_dev_data *dev_data;
-};
-
-struct ixgbe_crypto_rx_ip_table {
-	struct ipaddr ip;
-	uint16_t ref_count;
-};
-struct ixgbe_crypto_rx_sa_table {
-	uint32_t spi;
-	uint32_t ip_index;
-	uint8_t  mode;
-	uint8_t  used;
 };
 
 struct ixgbe_crypto_tx_sa_table {
 	uint32_t spi;
 	uint8_t  used;
+};
+
+struct ixgbe_crypto_rx_sa {
+	struct ipaddr dst_ip;
+	const uint8_t *key;
+	uint32_t salt;
+	uint32_t spi;
+	uint32_t mode;
+	uint32_t ip_idx;
+	uint32_t sa_idx;
 };
 
 union ixgbe_crypto_tx_desc_md {
@@ -106,25 +108,17 @@ union ixgbe_crypto_tx_desc_md {
 };
 
 struct ixgbe_ipsec {
-	struct ixgbe_crypto_rx_ip_table rx_ip_tbl[IPSEC_MAX_RX_IP_COUNT];
-	struct ixgbe_crypto_rx_sa_table rx_sa_tbl[IPSEC_MAX_SA_COUNT];
 	struct ixgbe_crypto_tx_sa_table tx_sa_tbl[IPSEC_MAX_SA_COUNT];
 };
 
 
 int ixgbe_ipsec_ctx_create(struct rte_eth_dev *dev);
 int ixgbe_crypto_enable_ipsec(struct rte_eth_dev *dev);
-
-struct ip_spec {
-	bool is_ipv6;
-	union {
-		struct rte_flow_item_ipv4 ipv4;
-		struct rte_flow_item_ipv6 ipv6;
-	} spec;
-};
-int ixgbe_crypto_add_ingress_sa_from_flow(struct rte_security_session *sess,
-		const struct ip_spec *ip_spec);
-
-
+void ixgbe_crypto_install_rx_sa(struct rte_eth_dev_data *dev_data,
+		const struct ixgbe_crypto_rx_sa *sa);
+void ixgbe_crypto_uninstall_rx_sa(struct rte_eth_dev_data *dev_data,
+		const struct ixgbe_crypto_rx_sa *sa, bool clear_ip);
+int ixgbe_crypto_session_acquire(struct rte_security_session *session);
+int ixgbe_crypto_session_release(struct rte_security_session *session);
 
 #endif /*IXGBE_IPSEC_H_*/

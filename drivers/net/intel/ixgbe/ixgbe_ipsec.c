@@ -30,12 +30,6 @@
 	IXGBE_WRITE_REG_THEN_POLL_MASK(hw, IXGBE_IPSTXIDX, reg_val, \
 	IPSRXIDX_WRITE, IXGBE_REGISTER_POLL_WAIT_5_MS)
 
-#define CMP_IP(a, b) (\
-	(a).ipv6[0] == (b).ipv6[0] && \
-	(a).ipv6[1] == (b).ipv6[1] && \
-	(a).ipv6[2] == (b).ipv6[2] && \
-	(a).ipv6[3] == (b).ipv6[3])
-
 static inline void
 ixgbe_crypto_write_rx_ip(struct ixgbe_hw *hw, uint32_t idx,
 		const struct ipaddr *ip, bool enable)
@@ -135,197 +129,167 @@ ixgbe_crypto_clear_ipsec_tables(struct rte_eth_dev *dev)
 		ixgbe_crypto_write_rx_spi(hw, i, 0, 0, false);
 		ixgbe_crypto_write_rx_key(hw, i, key, 0, 0, false);
 		ixgbe_crypto_write_tx_key(hw, i, key, 0, false);
-	}
 
-	memset(priv->rx_ip_tbl, 0, sizeof(priv->rx_ip_tbl));
-	memset(priv->rx_sa_tbl, 0, sizeof(priv->rx_sa_tbl));
-	memset(priv->tx_sa_tbl, 0, sizeof(priv->tx_sa_tbl));
+		priv->tx_sa_tbl[i] = (struct ixgbe_crypto_tx_sa_table){0};
+	}
+}
+
+void
+ixgbe_crypto_install_rx_sa(struct rte_eth_dev_data *dev_data,
+		const struct ixgbe_crypto_rx_sa *sa)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev_data->dev_private);
+	uint8_t key[16];
+
+	ixgbe_crypto_write_rx_ip(hw, sa->ip_idx, &sa->dst_ip, true);
+	ixgbe_crypto_write_rx_spi(hw, sa->sa_idx, sa->spi, sa->ip_idx, true);
+	memcpy(key, sa->key, sizeof(key));
+	ixgbe_crypto_write_rx_key(hw, sa->sa_idx, (const uint8_t *)key,
+			sa->salt, sa->mode, true);
+	rte_memzero_explicit(key, sizeof(key));
+}
+
+void
+ixgbe_crypto_uninstall_rx_sa(struct rte_eth_dev_data *dev_data,
+		const struct ixgbe_crypto_rx_sa *sa, bool clear_ip)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev_data->dev_private);
+	const uint8_t key[16] = {0};
+
+	ixgbe_crypto_write_rx_spi(hw, sa->sa_idx, 0, 0, false);
+	ixgbe_crypto_write_rx_key(hw, sa->sa_idx, key, 0, 0, false);
+	if (clear_ip) {
+		const struct ipaddr ip = {0};
+
+		ixgbe_crypto_write_rx_ip(hw, sa->ip_idx, &ip, false);
+	}
 }
 
 static int
-ixgbe_crypto_add_sa(struct ixgbe_crypto_session *ic_session)
+ixgbe_crypto_add_tx_sa(struct ixgbe_crypto_session *ic_session)
 {
 	struct rte_eth_dev_data *dev_data = ic_session->dev_data;
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev_data->dev_private);
 	struct ixgbe_ipsec *priv = IXGBE_DEV_PRIVATE_TO_IPSEC(dev_data->dev_private);
-	int i, sa_index = -1;
-	uint8_t key[16] = {0};
+	struct ixgbe_crypto_tx_sa_table *txsa;
+	uint8_t key[16];
+	int sa_index = -1;
+	int i;
 
-	if (ic_session->op == IXGBE_OP_AUTHENTICATED_DECRYPTION) {
-		struct ixgbe_crypto_rx_ip_table *rxip;
-		struct ixgbe_crypto_rx_sa_table *rxsa;
-		int ip_index = -1, free_index = -1;
-
-		/* Find a match in the IP table*/
-		for (i = 0; i < IPSEC_MAX_RX_IP_COUNT; i++) {
-			if (CMP_IP(priv->rx_ip_tbl[i].ip,
-				   ic_session->dst_ip)) {
-				ip_index = i;
-				break;
-			}
-			if (free_index == -1 && priv->rx_ip_tbl[i].ref_count == 0)
-				free_index = i;
+	for (i = 0; i < IPSEC_MAX_SA_COUNT; i++) {
+		if (priv->tx_sa_tbl[i].used == 0) {
+			sa_index = i;
+			break;
 		}
-		/* If no match, find a free entry in the IP table*/
-		if (ip_index < 0)
-			ip_index = free_index;
-
-		/* Fail if no match and no free entries*/
-		if (ip_index < 0) {
-			PMD_DRV_LOG(ERR, "No free entry left in the Rx IP table");
-			return -ENOSPC;
-		}
-		rxip = &priv->rx_ip_tbl[ip_index];
-
-		/* Find a free entry in the SA table*/
-		for (i = 0; i < IPSEC_MAX_SA_COUNT; i++) {
-			if (priv->rx_sa_tbl[i].used == 0) {
-				sa_index = i;
-				break;
-			}
-		}
-		/* Fail if no free entries*/
-		if (sa_index < 0) {
-			PMD_DRV_LOG(ERR, "No free entry left in the Rx SA table");
-			return -ENOSPC;
-		}
-		rxsa = &priv->rx_sa_tbl[sa_index];
-
-		rxip->ref_count++;
-		memcpy(&rxip->ip, &ic_session->dst_ip, sizeof(rxip->ip));
-
-		rxsa->spi = ic_session->spi;
-		rxsa->ip_index = ip_index;
-		rxsa->mode = IPSRXMOD_VALID | IPSRXMOD_PROTO | IPSRXMOD_DECRYPT;
-		if (ic_session->dst_ip.type == IPv6)
-			rxsa->mode |= IPSRXMOD_IPV6;
-
-		rxsa->used = 1;
-
-		/* write IP table entry*/
-		ixgbe_crypto_write_rx_ip(hw, ip_index, &rxip->ip, true);
-
-		/* write SPI table entry*/
-		ixgbe_crypto_write_rx_spi(hw, sa_index, rxsa->spi, ip_index, true);
-
-		/* write Key table entry*/
-		memcpy(key, ic_session->key, ic_session->key_len);
-
-		ixgbe_crypto_write_rx_key(hw, sa_index, key,
-				ic_session->salt, rxsa->mode, true);
-
-		rte_memzero_explicit(key, sizeof(key));
-
-	} else { /* sess->dir == RTE_CRYPTO_OUTBOUND */
-		struct ixgbe_crypto_tx_sa_table *txsa;
-
-		/* Find a free entry in the SA table*/
-		for (i = 0; i < IPSEC_MAX_SA_COUNT; i++) {
-			if (priv->tx_sa_tbl[i].used == 0) {
-				sa_index = i;
-				break;
-			}
-		}
-		/* Fail if no free entries*/
-		if (sa_index < 0) {
-			PMD_DRV_LOG(ERR, "No free entry left in the Tx SA table");
-			return -ENOSPC;
-		}
-		txsa = &priv->tx_sa_tbl[sa_index];
-
-		txsa->spi = ic_session->spi;
-		txsa->used = 1;
-		ic_session->sa_index = sa_index;
-
-		memcpy(key, ic_session->key, ic_session->key_len);
-
-		/* write Key table entry*/
-		ixgbe_crypto_write_tx_key(hw, sa_index, key, ic_session->salt, true);
-
-		rte_memzero_explicit(key, sizeof(key));
 	}
+	if (sa_index < 0) {
+		PMD_DRV_LOG(ERR, "No free entry left in the Tx SA table");
+		return -ENOSPC;
+	}
+	txsa = &priv->tx_sa_tbl[sa_index];
+	txsa->spi = ic_session->spi;
+	txsa->used = 1;
+	ic_session->sa_index = sa_index;
+
+	memcpy(key, ic_session->key, ic_session->key_len);
+	ixgbe_crypto_write_tx_key(hw, sa_index, (const uint8_t *)key,
+			ic_session->salt, true);
+	rte_memzero_explicit(key, sizeof(key));
 
 	return 0;
 }
 
 static int
-ixgbe_crypto_remove_sa(struct ixgbe_crypto_session *ic_session)
+ixgbe_crypto_remove_tx_sa(struct ixgbe_crypto_session *ic_session)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(ic_session->dev_data->dev_private);
 	struct ixgbe_ipsec *priv =
 			IXGBE_DEV_PRIVATE_TO_IPSEC(ic_session->dev_data->dev_private);
+	struct ixgbe_crypto_tx_sa_table *txsa;
 	const uint8_t key[16] = {0};
-	int i, sa_index = -1;
 
-	if (ic_session->op == IXGBE_OP_AUTHENTICATED_DECRYPTION) {
-		struct ixgbe_crypto_rx_ip_table *rxip;
-		struct ixgbe_crypto_rx_sa_table *rxsa;
-		int ip_index = -1;
+	if (ic_session->sa_index >= IPSEC_MAX_SA_COUNT)
+		return -ENOENT;
+	txsa = &priv->tx_sa_tbl[ic_session->sa_index];
+	if (txsa->used == 0 || txsa->spi != ic_session->spi)
+		return -ENOENT;
 
-		/* Find a match in the IP table*/
-		for (i = 0; i < IPSEC_MAX_RX_IP_COUNT; i++) {
-			if (CMP_IP(priv->rx_ip_tbl[i].ip, ic_session->dst_ip)) {
-				ip_index = i;
-				break;
-			}
-		}
+	ixgbe_crypto_write_tx_key(hw, ic_session->sa_index, key, 0, false);
+	*txsa = (struct ixgbe_crypto_tx_sa_table){0};
 
-		/* Fail if no match*/
-		if (ip_index < 0) {
-			PMD_DRV_LOG(ERR, "Entry not found in the Rx IP table");
-			return -ENOENT;
-		}
-		rxip = &priv->rx_ip_tbl[ip_index];
+	return 0;
+}
 
-		/* Find a free entry in the SA table*/
-		for (i = 0; i < IPSEC_MAX_SA_COUNT; i++) {
-			if (priv->rx_sa_tbl[i].spi == ic_session->spi) {
-				sa_index = i;
-				break;
-			}
-		}
-		/* Fail if no match*/
-		if (sa_index < 0) {
-			PMD_DRV_LOG(ERR, "Entry not found in the Rx SA table");
-			return -ENOENT;
-		}
-		rxsa = &priv->rx_sa_tbl[sa_index];
+static int
+ixgbe_crypto_session_state_acquire(struct ixgbe_crypto_session *ic_session)
+{
+	uint16_t expected;
 
-		/* Disable and clear Rx SPI and key table entries*/
-		ixgbe_crypto_write_rx_spi(hw, sa_index, 0, 0, false);
-		ixgbe_crypto_write_rx_key(hw, sa_index, key, 0, 0, false);
-
-		/* Clear the SA table entry*/
-		*rxsa = (struct ixgbe_crypto_rx_sa_table){0};
-
-		/* If last used then clear the IP table entry*/
-		rxip->ref_count--;
-		if (rxip->ref_count == 0) {
-			const struct ipaddr ip = {0};
-			ixgbe_crypto_write_rx_ip(hw, ip_index, &ip, false);
-			*rxip = (struct ixgbe_crypto_rx_ip_table){0};
-		}
-	} else { /* session->dir == RTE_CRYPTO_OUTBOUND */
-		struct ixgbe_crypto_tx_sa_table *txsa;
-
-		/* Find a match in the SA table*/
-		for (i = 0; i < IPSEC_MAX_SA_COUNT; i++) {
-			if (priv->tx_sa_tbl[i].spi == ic_session->spi) {
-				sa_index = i;
-				break;
-			}
-		}
-		/* Fail if no match entries*/
-		if (sa_index < 0) {
-			PMD_DRV_LOG(ERR, "Entry not found in the Tx SA table");
-			return -ENOENT;
-		}
-		txsa = &priv->tx_sa_tbl[sa_index];
-
-		ixgbe_crypto_write_tx_key(hw, sa_index, key, 0, false);
-		*txsa = (struct ixgbe_crypto_tx_sa_table){0};
+	expected = rte_atomic_load_explicit(&ic_session->refcnt,
+			rte_memory_order_acquire);
+	while (expected != IXGBE_SECURITY_SESSION_DESTROYING) {
+		if (expected >= IXGBE_SECURITY_SESSION_REFCNT_MAX)
+			return -ENOSPC;
+		if (rte_atomic_compare_exchange_strong_explicit(&ic_session->refcnt,
+				&expected, expected + 1,
+				rte_memory_order_acq_rel, rte_memory_order_acquire))
+			return 0;
 	}
 
+	return -EBUSY;
+}
+
+static int
+ixgbe_crypto_session_state_release(struct ixgbe_crypto_session *ic_session)
+{
+	uint16_t expected;
+
+	expected = rte_atomic_load_explicit(&ic_session->refcnt,
+			rte_memory_order_acquire);
+	while (expected != IXGBE_SECURITY_SESSION_DESTROYING) {
+		if (expected == IXGBE_SECURITY_SESSION_UNBOUND)
+			return -EINVAL;
+		if (rte_atomic_compare_exchange_strong_explicit(&ic_session->refcnt,
+				&expected, expected - 1,
+				rte_memory_order_release, rte_memory_order_relaxed))
+			return 0;
+	}
+
+	return -EINVAL;
+}
+
+int
+ixgbe_crypto_session_acquire(struct rte_security_session *session)
+{
+	struct ixgbe_crypto_session *ic_session = SECURITY_GET_SESS_PRIV(session);
+
+	return ixgbe_crypto_session_state_acquire(ic_session);
+}
+
+int
+ixgbe_crypto_session_release(struct rte_security_session *session)
+{
+	struct ixgbe_crypto_session *ic_session = SECURITY_GET_SESS_PRIV(session);
+
+	return ixgbe_crypto_session_state_release(ic_session);
+}
+
+static int
+ixgbe_crypto_session_disable(struct rte_security_session *session)
+{
+	struct ixgbe_crypto_session *ic_session = SECURITY_GET_SESS_PRIV(session);
+	uint16_t expected;
+
+	/*
+	 * Rx sessions must have no flow references before removal. Tx sessions
+	 * retain the reference acquired when their SA was allocated.
+	 */
+	expected = ic_session->op == IXGBE_OP_AUTHENTICATED_DECRYPTION ?
+			IXGBE_SECURITY_SESSION_UNBOUND : 1;
+	if (!rte_atomic_compare_exchange_strong_explicit(&ic_session->refcnt,
+			&expected, IXGBE_SECURITY_SESSION_DESTROYING,
+			rte_memory_order_acq_rel, rte_memory_order_acquire))
+		return -EBUSY;
 	return 0;
 }
 
@@ -338,6 +302,7 @@ ixgbe_crypto_create_session(void *device,
 	struct ixgbe_crypto_session *ic_session = SECURITY_GET_SESS_PRIV(session);
 	struct rte_crypto_aead_xform *aead_xform;
 	struct rte_eth_conf *dev_conf = &eth_dev->data->dev_conf;
+	int ret;
 
 	if (conf->crypto_xform->type != RTE_CRYPTO_SYM_XFORM_AEAD ||
 			conf->crypto_xform->aead.algo !=
@@ -369,17 +334,29 @@ ixgbe_crypto_create_session(void *device,
 		}
 	}
 
-	ic_session->key = aead_xform->key.data;
+	memcpy(ic_session->key, aead_xform->key.data, sizeof(ic_session->key));
 	ic_session->key_len = aead_xform->key.length;
 	memcpy(&ic_session->salt,
 	       &aead_xform->key.data[aead_xform->key.length], 4);
 	ic_session->spi = conf->ipsec.spi;
 	ic_session->dev_data = eth_dev->data;
 
+	rte_atomic_store_explicit(&ic_session->refcnt,
+			IXGBE_SECURITY_SESSION_UNBOUND,
+			rte_memory_order_relaxed);
+
+	/* only handle tx, as rx sessions are created by rte_flow */
 	if (ic_session->op == IXGBE_OP_AUTHENTICATED_ENCRYPTION) {
-		if (ixgbe_crypto_add_sa(ic_session)) {
+		if (ixgbe_crypto_add_tx_sa(ic_session)) {
 			PMD_DRV_LOG(ERR, "Failed to add SA");
+			rte_memzero_explicit(ic_session, sizeof(*ic_session));
 			return -EPERM;
+		}
+		ret = ixgbe_crypto_session_state_acquire(ic_session);
+		if (ret != 0) {
+			ixgbe_crypto_remove_tx_sa(ic_session);
+			rte_memzero_explicit(ic_session, sizeof(*ic_session));
+			return ret;
 		}
 	}
 
@@ -398,18 +375,30 @@ ixgbe_crypto_remove_session(void *device,
 {
 	struct rte_eth_dev *eth_dev = device;
 	struct ixgbe_crypto_session *ic_session = SECURITY_GET_SESS_PRIV(session);
+	int ret;
 
 	if (eth_dev->data != ic_session->dev_data) {
 		PMD_DRV_LOG(ERR, "Session not bound to this device");
 		return -ENODEV;
 	}
 
-	if (ixgbe_crypto_remove_sa(ic_session)) {
-		PMD_DRV_LOG(ERR, "Failed to remove session");
-		return -EFAULT;
+	if (ixgbe_crypto_session_disable(session) < 0) {
+		PMD_DRV_LOG(ERR, "Session is still in use");
+		return -EBUSY;
 	}
 
-	memset(ic_session, 0, sizeof(struct ixgbe_crypto_session));
+	if (ic_session->op == IXGBE_OP_AUTHENTICATED_ENCRYPTION) {
+		ret = ixgbe_crypto_remove_tx_sa(ic_session);
+		if (ret != 0) {
+			PMD_DRV_LOG(ERR, "Failed to remove session");
+			/* set refcnt back to 1 to re-enable the session */
+			rte_atomic_store_explicit(&ic_session->refcnt, 1,
+					rte_memory_order_release);
+			return ret;
+		}
+	}
+
+	rte_memzero_explicit(ic_session, sizeof(*ic_session));
 	return 0;
 }
 
@@ -628,34 +617,6 @@ ixgbe_crypto_enable_ipsec(struct rte_eth_dev *dev)
 	}
 
 	ixgbe_crypto_clear_ipsec_tables(dev);
-
-	return 0;
-}
-
-int
-ixgbe_crypto_add_ingress_sa_from_flow(struct rte_security_session *sess,
-		const struct ip_spec *spec)
-{
-	struct ixgbe_crypto_session *ic_session = SECURITY_GET_SESS_PRIV(sess);
-
-	if (ic_session->op == IXGBE_OP_AUTHENTICATED_DECRYPTION) {
-		if (spec->is_ipv6) {
-			const struct rte_flow_item_ipv6 *ipv6 = &spec->spec.ipv6;
-			ic_session->src_ip.type = IPv6;
-			ic_session->dst_ip.type = IPv6;
-			memcpy(ic_session->src_ip.ipv6,
-				   &ipv6->hdr.src_addr, 16);
-			memcpy(ic_session->dst_ip.ipv6,
-				   &ipv6->hdr.dst_addr, 16);
-		} else {
-			const struct rte_flow_item_ipv4 *ipv4 = &spec->spec.ipv4;
-			ic_session->src_ip.type = IPv4;
-			ic_session->dst_ip.type = IPv4;
-			ic_session->src_ip.ipv4 = ipv4->hdr.src_addr;
-			ic_session->dst_ip.ipv4 = ipv4->hdr.dst_addr;
-		}
-		return ixgbe_crypto_add_sa(ic_session);
-	}
 
 	return 0;
 }
