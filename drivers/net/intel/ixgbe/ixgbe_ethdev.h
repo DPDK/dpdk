@@ -294,24 +294,20 @@ struct ixgbe_5tuple_filter {
 	(RTE_ALIGN(IXGBE_MAX_FTQF_FILTERS, (sizeof(uint32_t) * NBBY)) / \
 	 (sizeof(uint32_t) * NBBY))
 
-struct ixgbe_ethertype_filter {
-	uint16_t ethertype;
-	uint32_t etqf;
-	uint32_t etqs;
-	/**
-	 * If this filter is added by configuration,
-	 * it should not be removed.
-	 */
-	bool     conf;
+/* Shared EtherType (ETQF) filter table. */
+struct ixgbe_ethertype_table {
+	struct ixgbe_ethertype_entry {
+		bool used; /* slot is allocated */
+		uint16_t ethertype; /* ethertype, for dedup */
+		uint32_t etqf; /* ETQF register value */
+		uint32_t etqs; /* ETQS register value */
+	} entries[IXGBE_MAX_ETQF_FILTERS];
 };
 
 /*
  * Structure to store filters' info.
  */
 struct ixgbe_filter_info {
-	uint8_t ethertype_mask;  /* Bit mask for every used ethertype filter */
-	/* store used ethertype filters*/
-	struct ixgbe_ethertype_filter ethertype_filters[IXGBE_MAX_ETQF_FILTERS];
 	/* Bit mask for every used 5tuple filter */
 	uint32_t fivetuple_mask[IXGBE_5TUPLE_ARRAY_SIZE];
 	struct ixgbe_5tuple_filter_list fivetuple_list;
@@ -319,6 +315,14 @@ struct ixgbe_filter_info {
 	uint32_t syn_info;
 	/* store the rss filter info */
 	struct ixgbe_rte_flow_rss_conf rss_info;
+	/* shared EtherType (ETQF) slot table */
+	struct ixgbe_ethertype_table ethertype_table;
+	/* 1588 timestamping ETQF slot (valid when timesync_installed) */
+	bool timesync_installed;
+	uint8_t timesync_idx;
+	/* Tx anti-spoof ETQF slot (valid when antispoof_installed) */
+	bool antispoof_installed;
+	uint8_t antispoof_idx;
 };
 
 struct ixgbe_l2_tn_key {
@@ -679,6 +683,12 @@ int ixgbe_syn_filter_set(struct ixgbe_adapter *adapter,
 			struct rte_eth_syn_filter *filter,
 			bool add);
 
+void ixgbe_ethertype_filter_program(struct ixgbe_hw *hw, uint8_t idx,
+			uint32_t etqf, uint32_t etqs);
+int ixgbe_ethertype_table_add(struct ixgbe_ethertype_table *table,
+			uint16_t ethertype, uint32_t etqf, uint32_t etqs);
+int ixgbe_ethertype_table_del(struct ixgbe_ethertype_table *table, uint8_t idx);
+
 /**
  * l2 tunnel configuration.
  */
@@ -784,56 +794,5 @@ void ixgbe_dev_macsec_setting_save(struct rte_eth_dev *dev,
 		struct ixgbe_macsec_setting *macsec_setting);
 
 void ixgbe_dev_macsec_setting_reset(struct rte_eth_dev *dev);
-
-static inline int
-ixgbe_ethertype_filter_lookup(struct ixgbe_filter_info *filter_info,
-			      uint16_t ethertype)
-{
-	int i;
-
-	for (i = 0; i < IXGBE_MAX_ETQF_FILTERS; i++) {
-		if (filter_info->ethertype_filters[i].ethertype == ethertype &&
-		    (filter_info->ethertype_mask & (1 << i)))
-			return i;
-	}
-	return -1;
-}
-
-static inline int
-ixgbe_ethertype_filter_insert(struct ixgbe_filter_info *filter_info,
-			      struct ixgbe_ethertype_filter *ethertype_filter)
-{
-	int i;
-
-	for (i = 0; i < IXGBE_MAX_ETQF_FILTERS; i++) {
-		if (!(filter_info->ethertype_mask & (1 << i))) {
-			filter_info->ethertype_mask |= 1 << i;
-			filter_info->ethertype_filters[i].ethertype =
-				ethertype_filter->ethertype;
-			filter_info->ethertype_filters[i].etqf =
-				ethertype_filter->etqf;
-			filter_info->ethertype_filters[i].etqs =
-				ethertype_filter->etqs;
-			filter_info->ethertype_filters[i].conf =
-				ethertype_filter->conf;
-			return i;
-		}
-	}
-	return -1;
-}
-
-static inline int
-ixgbe_ethertype_filter_remove(struct ixgbe_filter_info *filter_info,
-			      uint8_t idx)
-{
-	if (idx >= IXGBE_MAX_ETQF_FILTERS)
-		return -1;
-	filter_info->ethertype_mask &= ~(1 << idx);
-	filter_info->ethertype_filters[idx].ethertype = 0;
-	filter_info->ethertype_filters[idx].etqf = 0;
-	filter_info->ethertype_filters[idx].etqs = 0;
-	filter_info->ethertype_filters[idx].etqs = FALSE;
-	return idx;
-}
 
 #endif /* _IXGBE_ETHDEV_H_ */
