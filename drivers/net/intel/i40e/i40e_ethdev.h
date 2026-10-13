@@ -22,6 +22,7 @@
 #include "base/virtchnl.h"
 
 #include "../common/flow_engine.h"
+#include "../common/flow_util.h"
 
 #define I40E_AQ_LEN               32
 #define I40E_AQ_BUF_SZ            4096
@@ -522,6 +523,9 @@ struct i40e_vmdq_info {
 #define I40E_WORD(hi, lo) (uint16_t)((((hi) << 8) & 0xFF00) | ((lo) & 0xFF))
 #define I40E_FLEX_WORD_MASK(off) (0x80 >> (off))
 #define I40E_FDIR_IPv6_TC_OFFSET	20
+#define I40E_IPV6_TC_MASK	(0xFF << I40E_FDIR_IPv6_TC_OFFSET)
+#define I40E_IPV6_FRAG_HEADER	44
+#define I40E_VLAN_TCI_MASK	(RTE_VLAN_PRI_MASK | RTE_VLAN_DEI_MASK | RTE_VLAN_ID_MASK)
 
 /* A structure used to define the input for GTP flow */
 struct i40e_gtp_flow {
@@ -648,7 +652,7 @@ struct i40e_fdir_flow_ext {
 	bool pkt_template; /* If raw packet template is used */
 	bool is_udp; /* ipv4|ipv6 udp flow */
 	enum i40e_flxpld_layer_idx layer_idx;
-	struct i40e_fdir_flex_pit flex_pit[I40E_MAX_FLXPLD_LAYER * I40E_MAX_FLXPLD_FIED];
+	struct i40e_fdir_flex_pit flex_pit[I40E_MAX_FLXPLD_LAYER][I40E_MAX_FLXPLD_FIED];
 	bool is_flex_flow;
 };
 
@@ -735,52 +739,39 @@ struct i40e_fdir_tmpl_key {
 	const uint8_t *packet;
 };
 
-/* fdir memory pool entry */
-struct i40e_fdir_entry {
-	struct rte_flow flow;
-	uint32_t idx;
-};
-
-/* pre-allocated fdir memory pool */
-struct i40e_fdir_flow_pool {
-	/* a bitmap to manage the fdir pool */
-	struct rte_bitmap *bitmap;
-	/* the size the pool is pf->fdir->fdir_space_size */
-	struct i40e_fdir_entry *pool;
-};
-
-#define FLOW_TO_FLOW_BITMAP(f) \
-	container_of((f), struct i40e_fdir_entry, flow)
-
 TAILQ_HEAD(i40e_fdir_tmpl_list, i40e_fdir_tmpl_filter);
+
+struct i40e_fdir_flex_mask_state {
+	/* how many flows reference this flex mask */
+	ci_usage_count_t use_count;
+	bool installed;
+	/* mask configuration */
+	struct i40e_fdir_flex_mask mask;
+};
 
 /* tracking for rte_flow-backed filters */
 struct i40e_fdir_pctype_state {
+	/* how many flows reference this pctype */
+	ci_usage_count_t use_count;
 	/* input set bits for this pctype */
 	uint64_t input_set;
-	uint32_t flow_count;
-	struct i40e_fdir_flex_mask flex_mask;
-	bool flex_mask_flag;
+	bool installed;
+	/* flex mask for this pctype */
+	struct i40e_fdir_flex_mask_state flex;
 };
 
-struct i40e_fdir_layer_state {
-	/*
-	 * The rule for extracting a byte stream as flexible payload. Each layer
-	 * can have up to three elements, and all filters sharing the same layer
-	 * reuse the same programmed layout.
-	 */
+struct i40e_fdir_flex_layer_state {
+	/* how many flows reference this flex PIT layer */
+	ci_usage_count_t use_count;
+	bool installed;
+	/* flex fields for this layer */
 	struct i40e_fdir_flex_pit flex_set[I40E_MAX_FLXPLD_FIED];
-	bool flex_pit_flag;
-	uint32_t flex_flow_count;
 };
 
-struct i40e_fdir_flow_store {
-	struct rte_hash *hash_table;
-	/* the pre-allocated pool of the rte_flow */
-	struct i40e_fdir_flow_pool flow_pool;
-
+/* FDIR configuration state */
+struct i40e_fdir_state {
 	struct i40e_fdir_pctype_state pctype[I40E_FILTER_PCTYPE_MAX];
-	struct i40e_fdir_layer_state layer[I40E_MAX_FLXPLD_LAYER];
+	struct i40e_fdir_flex_layer_state flex_layer[I40E_MAX_FLXPLD_LAYER];
 };
 
 /* tracking for packet template filters; allocated on first use */
@@ -808,7 +799,7 @@ struct i40e_fdir_info {
 	 */
 	int txq_available_buf_count;
 
-	struct i40e_fdir_flow_store flows;
+	struct i40e_fdir_state fdir_state;
 	struct i40e_fdir_tmpl_store tmpls;
 
 	/*
@@ -828,8 +819,10 @@ struct i40e_fdir_info {
 	 * shared space
 	 */
 	uint32_t fdir_space_size;
-	/* number of filters in hardware, across both stores */
-	uint32_t fdir_actual_cnt;
+	/* number of registered filters, across both stores */
+	ci_usage_count_t fdir_rule_count;
+	/* whether the shared hardware state has been configured */
+	bool hw_configured;
 	/* the fdir total guaranteed space */
 	uint32_t fdir_guarantee_total_space;
 };
@@ -1335,7 +1328,6 @@ extern const struct rte_flow_ops i40e_flow_ops;
 
 struct i40e_filter_ctx {
 	union {
-		struct i40e_fdir_filter fdir_filter;
 		struct i40e_tunnel_filter_conf consistent_tunnel_filter;
 		struct i40e_rte_flow_rss_conf rss_conf;
 	};
@@ -1384,10 +1376,10 @@ void i40e_vsi_enable_queues_intr(struct i40e_vsi *vsi);
 const struct rte_memzone *i40e_memzone_reserve(const char *name,
 					uint32_t len,
 					int socket_id);
-int i40e_fdir_configure(struct rte_eth_dev *dev);
-void i40e_fdir_rx_proc_sync(struct rte_eth_dev *dev);
+void i40e_fdir_rx_proc_sync(struct rte_eth_dev_data *dev_data);
 void i40e_fdir_teardown(struct i40e_pf *pf);
-int i40e_fdir_engine_init(struct rte_eth_dev *dev);
+int i40e_fdir_engine_init(struct i40e_pf *pf);
+void i40e_fdir_cleanup(struct rte_eth_dev *dev);
 enum i40e_filter_pctype
 	i40e_flowtype_to_pctype(const struct i40e_adapter *adapter,
 				uint16_t flow_type);
@@ -1426,39 +1418,51 @@ uint64_t i40e_get_default_input_set(uint16_t pctype);
 int i40e_ethertype_filter_program(struct i40e_pf *pf,
 			      struct rte_eth_ethertype_filter *filter,
 			      bool add);
-struct rte_flow *
-i40e_fdir_entry_pool_get(struct i40e_fdir_info *fdir_info);
-void i40e_fdir_entry_pool_put(struct i40e_fdir_info *fdir_info,
-		struct rte_flow *flow);
-int i40e_fdir_tmpl_add(struct rte_eth_dev *dev,
-				 const struct i40e_fdir_filter *filter);
-int i40e_fdir_tmpl_del(struct rte_eth_dev *dev,
-				 const struct i40e_fdir_filter *filter);
-struct i40e_fdir_filter *
-i40e_fdir_filter_lookup(struct i40e_fdir_info *fdir_info,
-			const struct i40e_fdir_input *input);
 int i40e_fdir_filter_validate(struct rte_eth_dev *dev,
 			      const struct i40e_fdir_filter *filter);
-int i40e_fdir_filter_register(struct rte_eth_dev *dev,
-			      const struct i40e_fdir_filter *filter,
-			      struct i40e_fdir_filter **node);
-int i40e_fdir_filter_unregister(struct rte_eth_dev *dev,
-				struct i40e_fdir_filter *node);
-int i40e_fdir_filter_program(struct rte_eth_dev *dev,
+int i40e_fdir_tmpl_add(struct rte_eth_dev *dev,
+			       const struct i40e_fdir_filter *filter);
+int i40e_fdir_tmpl_del(struct rte_eth_dev *dev,
+			       const struct i40e_fdir_filter *filter);
+int i40e_fdir_filter_program(struct i40e_pf *pf,
 			     const struct i40e_fdir_filter *filter,
 			     bool add, bool wait_status);
 bool i40e_fdir_filter_needs_status_wait(const struct i40e_pf *pf,
 					uint32_t filter_count);
+enum i40e_filter_pctype i40e_fdir_filter_pctype(const struct i40e_fdir_filter *filter);
 void i40e_fdir_tmpl_store_free(struct i40e_fdir_info *fdir_info);
-int i40e_fdir_flow_store_init(struct rte_eth_dev *dev);
-void i40e_fdir_flow_store_free(struct i40e_fdir_info *fdir_info);
+void i40e_fdir_flow_store_init(struct rte_eth_dev *dev);
+int i40e_fdir_inset_check(struct i40e_pf *pf,
+		enum i40e_filter_pctype pctype,
+		uint64_t input_set);
+int i40e_fdir_inset_program(struct i40e_pf *pf,
+		enum i40e_filter_pctype pctype,
+		uint64_t input_set);
+int i40e_fdir_flex_prepare(struct i40e_pf *pf,
+		const struct i40e_fdir_filter *filter,
+		enum i40e_filter_pctype pctype,
+		struct i40e_fdir_flex_mask *flex_mask);
+void i40e_fdir_flex_pit_set_default(struct i40e_fdir_flex_pit flex_set[I40E_MAX_FLXPLD_FIED]);
+void i40e_fdir_flex_mask_set_default(struct i40e_fdir_flex_mask *flex_mask);
+void i40e_fdir_flex_pit_program(struct i40e_pf *pf,
+		enum i40e_flxpld_layer_idx layer_idx,
+		const struct i40e_fdir_flex_layer_state *layer);
+void i40e_fdir_flex_ort_program(struct i40e_pf *pf,
+		enum i40e_flxpld_layer_idx layer_idx,
+		const struct i40e_fdir_flex_layer_state *layer);
+void i40e_fdir_flex_mask_program(struct i40e_pf *pf,
+		enum i40e_filter_pctype pctype,
+		const struct i40e_fdir_flex_mask *flex_mask);
+void i40e_fdir_flex_store(struct i40e_fdir_state *dst_state,
+		const struct i40e_fdir_filter *src_filter,
+		const struct i40e_fdir_flex_mask *src_mask);
 int i40e_dev_tunnel_filter_set(struct i40e_pf *pf,
 			       struct rte_eth_tunnel_filter_conf *tunnel_filter,
 			       uint8_t add);
 int i40e_dev_consistent_tunnel_filter_set(struct i40e_pf *pf,
 				  struct i40e_tunnel_filter_conf *tunnel_filter,
 				  uint8_t add);
-int i40e_fdir_flush(struct rte_eth_dev *dev);
+int i40e_fdir_flush(struct i40e_pf *pf);
 int i40e_find_all_vlan_for_mac(struct i40e_vsi *vsi,
 			       struct i40e_macvlan_filter *mv_f,
 			       int num, struct rte_ether_addr *addr);
