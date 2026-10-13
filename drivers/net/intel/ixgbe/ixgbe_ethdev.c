@@ -6856,77 +6856,99 @@ ixgbe_add_del_ntuple_filter(struct ixgbe_adapter *adapter,
 	return 0;
 }
 
+void
+ixgbe_ethertype_filter_program(struct ixgbe_hw *hw, uint8_t idx,
+			uint32_t etqf, uint32_t etqs)
+{
+	IXGBE_WRITE_REG(hw, IXGBE_ETQF(idx), etqf);
+	IXGBE_WRITE_REG(hw, IXGBE_ETQS(idx), etqs);
+	IXGBE_WRITE_FLUSH(hw);
+}
+
+static int
+ixgbe_ethertype_table_lookup(const struct ixgbe_ethertype_table *table,
+			uint16_t ethertype)
+{
+	int idx;
+
+	for (idx = 0; idx < IXGBE_MAX_ETQF_FILTERS; idx++) {
+		if (table->entries[idx].used &&
+				table->entries[idx].ethertype == ethertype)
+			return idx;
+	}
+	return -ENOENT;
+}
+
+int
+ixgbe_ethertype_table_add(struct ixgbe_ethertype_table *table,
+			uint16_t ethertype, uint32_t etqf, uint32_t etqs)
+{
+	int free_idx = -1;
+	int i;
+
+	for (i = 0; i < IXGBE_MAX_ETQF_FILTERS; i++) {
+		if (table->entries[i].used) {
+			if (table->entries[i].ethertype == ethertype)
+				return -EEXIST;
+		} else if (free_idx < 0) {
+			free_idx = i;
+		}
+	}
+	if (free_idx < 0)
+		return -ENOSPC;
+
+	table->entries[free_idx].ethertype = ethertype;
+	table->entries[free_idx].etqf = etqf;
+	table->entries[free_idx].etqs = etqs;
+	table->entries[free_idx].used = true;
+
+	return free_idx;
+}
+
+int
+ixgbe_ethertype_table_del(struct ixgbe_ethertype_table *table, uint8_t idx)
+{
+	if (idx >= IXGBE_MAX_ETQF_FILTERS || !table->entries[idx].used)
+		return -ENOENT;
+
+	table->entries[idx] = (struct ixgbe_ethertype_entry){0};
+
+	return 0;
+}
+
 int
 ixgbe_add_del_ethertype_filter(struct ixgbe_adapter *adapter,
-			struct rte_eth_ethertype_filter *filter,
-			bool add)
+			struct rte_eth_ethertype_filter *filter, bool add)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(adapter);
-	struct ixgbe_filter_info *filter_info =
-		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(adapter);
-	uint32_t etqf = 0;
-	uint32_t etqs = 0;
-	int ret;
-	struct ixgbe_ethertype_filter ethertype_filter;
+	struct ixgbe_ethertype_table *table =
+		&IXGBE_DEV_PRIVATE_TO_FILTER_INFO(adapter)->ethertype_table;
+	uint32_t etqf, etqs;
+	int idx;
 
-	if (filter->queue >= IXGBE_MAX_RX_QUEUE_NUM)
+	if (filter->queue >= IXGBE_MAX_RX_QUEUE_NUM ||
+		filter->ether_type == RTE_ETHER_TYPE_IPV4 ||
+		filter->ether_type == RTE_ETHER_TYPE_IPV6 ||
+		filter->flags & (RTE_ETHTYPE_FLAGS_MAC | RTE_ETHTYPE_FLAGS_DROP))
 		return -EINVAL;
-
-	if (filter->ether_type == RTE_ETHER_TYPE_IPV4 ||
-		filter->ether_type == RTE_ETHER_TYPE_IPV6) {
-		PMD_DRV_LOG(ERR, "unsupported ether_type(0x%04x) in"
-			" ethertype filter.", filter->ether_type);
-		return -EINVAL;
-	}
-
-	if (filter->flags & RTE_ETHTYPE_FLAGS_MAC) {
-		PMD_DRV_LOG(ERR, "mac compare is unsupported.");
-		return -EINVAL;
-	}
-	if (filter->flags & RTE_ETHTYPE_FLAGS_DROP) {
-		PMD_DRV_LOG(ERR, "drop option is unsupported.");
-		return -EINVAL;
-	}
-
-	ret = ixgbe_ethertype_filter_lookup(filter_info, filter->ether_type);
-	if (ret >= 0 && add) {
-		PMD_DRV_LOG(ERR, "ethertype (0x%04x) filter exists.",
-			    filter->ether_type);
-		return -EEXIST;
-	}
-	if (ret < 0 && !add) {
-		PMD_DRV_LOG(ERR, "ethertype (0x%04x) filter doesn't exist.",
-			    filter->ether_type);
-		return -ENOENT;
-	}
 
 	if (add) {
-		etqf = IXGBE_ETQF_FILTER_EN;
-		etqf |= (uint32_t)filter->ether_type;
-		etqs |= (uint32_t)((filter->queue <<
-				    IXGBE_ETQS_RX_QUEUE_SHIFT) &
-				    IXGBE_ETQS_RX_QUEUE);
-		etqs |= IXGBE_ETQS_QUEUE_EN;
-
-		ethertype_filter.ethertype = filter->ether_type;
-		ethertype_filter.etqf = etqf;
-		ethertype_filter.etqs = etqs;
-		ethertype_filter.conf = FALSE;
-		ret = ixgbe_ethertype_filter_insert(filter_info,
-						    &ethertype_filter);
-		if (ret < 0) {
-			PMD_DRV_LOG(ERR, "ethertype filters are full.");
-			return -ENOSPC;
-		}
+		etqf = IXGBE_ETQF_FILTER_EN | filter->ether_type;
+		etqs = IXGBE_ETQS_QUEUE_EN |
+			(((uint32_t)filter->queue << IXGBE_ETQS_RX_QUEUE_SHIFT) &
+			IXGBE_ETQS_RX_QUEUE);
+		idx = ixgbe_ethertype_table_add(table, filter->ether_type, etqf, etqs);
+		if (idx < 0)
+			return idx;
 	} else {
-		ret = ixgbe_ethertype_filter_remove(filter_info, (uint8_t)ret);
-		if (ret < 0)
-			return -ENOSYS;
+		idx = ixgbe_ethertype_table_lookup(table, filter->ether_type);
+		if (idx < 0)
+			return idx;
+		ixgbe_ethertype_table_del(table, idx);
+		etqf = 0;
+		etqs = 0;
 	}
-	IXGBE_WRITE_REG(hw, IXGBE_ETQF(ret), etqf);
-	IXGBE_WRITE_REG(hw, IXGBE_ETQS(ret), etqs);
-	IXGBE_WRITE_FLUSH(hw);
-
+	ixgbe_ethertype_filter_program(hw, idx, etqf, etqs);
 	return 0;
 }
 
@@ -7163,11 +7185,28 @@ static int
 ixgbe_timesync_enable(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_filter_info *filter_info =
+		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
 	uint32_t tsync_ctl;
 	uint32_t tsauxc;
+	uint32_t etqf;
 	struct timespec ts;
+	int idx;
 
 	memset(&ts, 0, sizeof(struct timespec));
+
+	/* Reserve the shared ETQF slot before changing timestamp hardware. */
+	etqf = RTE_ETHER_TYPE_1588 | IXGBE_ETQF_FILTER_EN | IXGBE_ETQF_1588;
+	if (!filter_info->timesync_installed) {
+		idx = ixgbe_ethertype_table_add(&filter_info->ethertype_table,
+				RTE_ETHER_TYPE_1588, etqf, 0);
+		if (idx < 0) {
+			PMD_DRV_LOG(ERR, "no free ETQF slot for 1588 timestamping");
+			return idx;
+		}
+		filter_info->timesync_idx = idx;
+		filter_info->timesync_installed = true;
+	}
 
 	/* get current system time */
 	clock_gettime(CLOCK_REALTIME, &ts);
@@ -7186,10 +7225,7 @@ ixgbe_timesync_enable(struct rte_eth_dev *dev)
 	ixgbe_start_timecounters(dev);
 
 	/* Enable L2 filtering of IEEE1588/802.1AS Ethernet frame types. */
-	IXGBE_WRITE_REG(hw, IXGBE_ETQF(IXGBE_ETQF_FILTER_1588),
-			(RTE_ETHER_TYPE_1588 |
-			 IXGBE_ETQF_FILTER_EN |
-			 IXGBE_ETQF_1588));
+	ixgbe_ethertype_filter_program(hw, filter_info->timesync_idx, etqf, 0);
 
 	/* Enable timestamping of received PTP packets. */
 	tsync_ctl = IXGBE_READ_REG(hw, IXGBE_TSYNCRXCTL);
@@ -7213,6 +7249,8 @@ static int
 ixgbe_timesync_disable(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_filter_info *filter_info =
+		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
 	uint32_t tsync_ctl;
 
 	/* Disable timestamping of transmitted PTP packets. */
@@ -7226,7 +7264,12 @@ ixgbe_timesync_disable(struct rte_eth_dev *dev)
 	IXGBE_WRITE_REG(hw, IXGBE_TSYNCRXCTL, tsync_ctl);
 
 	/* Disable L2 filtering of IEEE1588/802.1AS Ethernet frame types. */
-	IXGBE_WRITE_REG(hw, IXGBE_ETQF(IXGBE_ETQF_FILTER_1588), 0);
+	if (filter_info->timesync_installed) {
+		ixgbe_ethertype_filter_program(hw, filter_info->timesync_idx, 0, 0);
+		ixgbe_ethertype_table_del(&filter_info->ethertype_table,
+				filter_info->timesync_idx);
+		filter_info->timesync_installed = false;
+	}
 
 	/* Stop incrementing the System Time registers. */
 	IXGBE_WRITE_REG(hw, IXGBE_TIMINCA, 0);
@@ -8381,13 +8424,14 @@ ixgbe_ethertype_filter_restore(struct rte_eth_dev *dev)
 	int i;
 
 	for (i = 0; i < IXGBE_MAX_ETQF_FILTERS; i++) {
-		if (filter_info->ethertype_mask & (1 << i)) {
-			IXGBE_WRITE_REG(hw, IXGBE_ETQF(i),
-					filter_info->ethertype_filters[i].etqf);
-			IXGBE_WRITE_REG(hw, IXGBE_ETQS(i),
-					filter_info->ethertype_filters[i].etqs);
-			IXGBE_WRITE_FLUSH(hw);
-		}
+		/* skip over entries not managed by rte_flow */
+		if (!filter_info->ethertype_table.entries[i].used ||
+			(filter_info->timesync_installed && i == filter_info->timesync_idx) ||
+			(filter_info->antispoof_installed && i == filter_info->antispoof_idx))
+			continue;
+		ixgbe_ethertype_filter_program(hw, i,
+			filter_info->ethertype_table.entries[i].etqf,
+			filter_info->ethertype_table.entries[i].etqs);
 	}
 }
 
@@ -8495,14 +8539,13 @@ ixgbe_clear_all_ethertype_filter(struct rte_eth_dev *dev)
 	int i;
 
 	for (i = 0; i < IXGBE_MAX_ETQF_FILTERS; i++) {
-		if (filter_info->ethertype_mask & (1 << i) &&
-		    !filter_info->ethertype_filters[i].conf) {
-			(void)ixgbe_ethertype_filter_remove(filter_info,
-							    (uint8_t)i);
-			IXGBE_WRITE_REG(hw, IXGBE_ETQF(i), 0);
-			IXGBE_WRITE_REG(hw, IXGBE_ETQS(i), 0);
-			IXGBE_WRITE_FLUSH(hw);
-		}
+		/* only clear rte_flow filters */
+		if (!filter_info->ethertype_table.entries[i].used ||
+			(filter_info->timesync_installed && i == filter_info->timesync_idx) ||
+			(filter_info->antispoof_installed && i == filter_info->antispoof_idx))
+			continue;
+		ixgbe_ethertype_table_del(&filter_info->ethertype_table, i);
+		ixgbe_ethertype_filter_program(hw, i, 0, 0);
 	}
 }
 
