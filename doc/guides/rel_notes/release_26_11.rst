@@ -541,6 +541,11 @@ API Changes
   ``rte_reorder_seqn``, ``rte_reorder_drain_up_to_seqn``,
   ``rte_reorder_min_seqn_set`` and ``rte_reorder_memory_footprint_get``.
 
+* vhost: Introduced ``RTE_VHOST_USER_MAP_POPULATE``
+  as a replacement of ``RTE_VHOST_USER_ASYNC_COPY``
+  for users that did not rely on the vhost async copy feature
+  but expected guest pages to be prefaulted.
+
 * vhost: Removed ``get_vfio_group_fd`` from ``struct rte_vdpa_dev_ops``.
   vDPA drivers should now use the VFIO container device assignment API.
 

@@ -623,7 +623,7 @@ main(int argc, char *argv[])
 
 		for (j = 0; j < lo->nb_sockets; j++) {
 			ret = rte_vhost_driver_register(lo->socket_files[j],
-				RTE_VHOST_USER_ASYNC_COPY);
+				RTE_VHOST_USER_MAP_POPULATE);
 			if (ret < 0) {
 				RTE_LOG(ERR, USER1, "socket %s already exists\n",
 					lo->socket_files[j]);
