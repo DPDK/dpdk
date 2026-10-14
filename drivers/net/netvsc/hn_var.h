@@ -144,6 +144,10 @@ struct hn_data {
 	uint32_t	link_status;
 	uint32_t	link_speed;
 
+	/* Pending host link indication, applied by the link alarm */
+	RTE_ATOMIC(uint32_t) link_ind_status;	/* RNDIS_STATUS_MEDIA_* or 0 */
+	RTE_ATOMIC(uint32_t) link_ind_speed;	/* in 100 bps, or 0 */
+
 	struct rte_mem_resource rxbuf_res;	/* UIO resource for Rx */
 	uint32_t	rxbuf_section_cnt;	/* # of Rx sections */
 	uint32_t	rx_copybreak;

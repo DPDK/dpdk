@@ -774,7 +774,7 @@ hn_rndis_receive(struct rte_eth_dev *dev, struct hn_rx_queue *rxq,
 		break;
 
 	case RNDIS_INDICATE_STATUS_MSG:
-		hn_rndis_link_status(dev, buf);
+		hn_rndis_link_status(dev, buf, len);
 		break;
 
 	case RNDIS_INITIALIZE_CMPLT:
