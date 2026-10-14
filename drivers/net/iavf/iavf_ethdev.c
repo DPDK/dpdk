@@ -2945,8 +2945,8 @@ flow_init_err:
 		rte_intr_disable(pci_dev->intr_handle);
 
 		/* unregister callback func from eal lib */
-		rte_intr_callback_unregister(pci_dev->intr_handle,
-					     iavf_dev_interrupt_handler, eth_dev);
+		rte_intr_callback_unregister_sync(pci_dev->intr_handle,
+						  iavf_dev_interrupt_handler, eth_dev);
 	} else {
 		rte_eal_alarm_cancel(iavf_dev_alarm_handler, eth_dev);
 	}
@@ -3036,8 +3036,8 @@ iavf_dev_close(struct rte_eth_dev *dev)
 		rte_intr_disable(intr_handle);
 
 		/* unregister callback func from eal lib */
-		rte_intr_callback_unregister(intr_handle,
-					     iavf_dev_interrupt_handler, dev);
+		rte_intr_callback_unregister_sync(intr_handle,
+						  iavf_dev_interrupt_handler, dev);
 	} else {
 		rte_eal_alarm_cancel(iavf_dev_alarm_handler, dev);
 	}
