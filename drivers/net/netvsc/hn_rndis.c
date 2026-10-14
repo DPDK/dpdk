@@ -294,12 +294,76 @@ static int hn_nvs_send_rndis_ctrl(struct hn_data *hv,
  */
 static void hn_rndis_link_alarm(void *arg)
 {
-	rte_eth_dev_callback_process(arg, RTE_ETH_EVENT_INTR_LSC, NULL);
+	struct rte_eth_dev *dev = arg;
+	struct hn_data *hv = dev->data->dev_private;
+	struct rte_eth_link link, old;
+	uint32_t status, speed;
+
+	status = rte_atomic_exchange_explicit(&hv->link_ind_status, 0,
+					      rte_memory_order_relaxed);
+	speed = rte_atomic_exchange_explicit(&hv->link_ind_speed, 0,
+					     rte_memory_order_relaxed);
+
+	/* If stopped, the link is queried when the port starts. */
+	if ((status == 0 && speed == 0) || !dev->data->dev_started)
+		return;
+
+	rte_eth_linkstatus_get(dev, &old);
+	link = old;
+	if (status == RNDIS_STATUS_MEDIA_CONNECT)
+		link.link_status = RTE_ETH_LINK_UP;
+	else if (status == RNDIS_STATUS_MEDIA_DISCONNECT)
+		link.link_status = RTE_ETH_LINK_DOWN;
+	if (speed != 0)
+		link.link_speed = speed / 10000;
+	if (link.link_status == old.link_status &&
+	    link.link_speed == old.link_speed)
+		return;
+
+	rte_eth_linkstatus_set(dev, &link);
+	rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 }
 
-void hn_rndis_link_status(struct rte_eth_dev *dev, const void *msg)
+static void
+hn_rndis_link_alarm_set(struct rte_eth_dev *dev)
+{
+	if (rte_eal_alarm_set(10, hn_rndis_link_alarm, dev) != 0)
+		PMD_DRV_LOG(ERR, "port %u: cannot schedule link update",
+			    dev->data->port_id);
+}
+
+/*
+ * Get the link speed, in 100 bps units, from the status buffer.
+ * Use the received length, as older hosts do not count the status
+ * buffer in the message length.
+ */
+static int
+hn_rndis_link_speed_get(const struct rndis_status_msg *indicate,
+			uint32_t len, uint32_t *speed)
+{
+	uint32_t ofs;
+
+	ofs = RNDIS_STBUFOFFSET_ABS(indicate->stbufoffset);
+	if (indicate->stbuflen < sizeof(*speed) ||
+	    ofs < sizeof(*indicate) || ofs > len ||
+	    len - ofs < indicate->stbuflen)
+		return -EINVAL;
+
+	memcpy(speed, (const uint8_t *)indicate + ofs, sizeof(*speed));
+	return 0;
+}
+
+void hn_rndis_link_status(struct rte_eth_dev *dev, const void *msg,
+			  uint32_t len)
 {
 	const struct rndis_status_msg *indicate = msg;
+	struct hn_data *hv = dev->data->dev_private;
+	uint32_t speed;
+
+	if (len < sizeof(*indicate)) {
+		PMD_DRV_LOG(ERR, "truncated RNDIS status message: len %u", len);
+		return;
+	}
 
 	hn_rndis_dump(msg);
 
@@ -312,10 +376,28 @@ void hn_rndis_link_status(struct rte_eth_dev *dev, const void *msg)
 		break;
 
 	case RNDIS_STATUS_LINK_SPEED_CHANGE:
+		if (!dev->data->dev_conf.intr_conf.lsc)
+			break;
+		if (hn_rndis_link_speed_get(indicate, len, &speed) != 0) {
+			PMD_DRV_LOG(ERR,
+				    "invalid link speed indication: len %u buf %u:%u",
+				    len, indicate->stbufoffset,
+				    indicate->stbuflen);
+			break;
+		}
+		rte_atomic_store_explicit(&hv->link_ind_speed, speed,
+					  rte_memory_order_relaxed);
+		hn_rndis_link_alarm_set(dev);
+		break;
+
 	case RNDIS_STATUS_MEDIA_CONNECT:
 	case RNDIS_STATUS_MEDIA_DISCONNECT:
-		if (dev->data->dev_conf.intr_conf.lsc)
-			rte_eal_alarm_set(10, hn_rndis_link_alarm, dev);
+		if (!dev->data->dev_conf.intr_conf.lsc)
+			break;
+		rte_atomic_store_explicit(&hv->link_ind_status,
+					  indicate->status,
+					  rte_memory_order_relaxed);
+		hn_rndis_link_alarm_set(dev);
 		break;
 	default:
 		PMD_DRV_LOG(NOTICE, "unknown RNDIS indication: %#x",
