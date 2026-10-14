@@ -500,6 +500,7 @@ struct __rte_cache_aligned virtio_net {
 	uint32_t		nr_vring;
 	int			async_copy;
 	bool			dma_map_available;
+	int			map_populate;
 
 	int			extbuf;
 	int			linearbuf;

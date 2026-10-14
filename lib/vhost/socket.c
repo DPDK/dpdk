@@ -45,6 +45,7 @@ struct vhost_user_socket {
 	bool extbuf;
 	bool linearbuf;
 	bool async_copy;
+	bool map_populate;
 	bool net_compliant_ol_flags;
 	bool stats_enabled;
 	bool async_connect;
@@ -247,6 +248,13 @@ vhost_user_add_connection(int fd, struct vhost_user_socket *vsocket)
 			dev->async_copy = 1;
 			dev->dma_map_available = dev_vfio_is_enabled();
 		}
+	}
+
+	if (vsocket->map_populate) {
+		dev = get_device(vid);
+
+		if (dev)
+			dev->map_populate = 1;
 	}
 
 	VHOST_CONFIG_LOG(vsocket->path, INFO, "new device, handle is %d", vid);
@@ -940,6 +948,7 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 	vsocket->extbuf = flags & RTE_VHOST_USER_EXTBUF_SUPPORT;
 	vsocket->linearbuf = flags & RTE_VHOST_USER_LINEARBUF_SUPPORT;
 	vsocket->async_copy = flags & RTE_VHOST_USER_ASYNC_COPY;
+	vsocket->map_populate = flags & RTE_VHOST_USER_MAP_POPULATE;
 	vsocket->net_compliant_ol_flags = flags & RTE_VHOST_USER_NET_COMPLIANT_OL_FLAGS;
 	vsocket->stats_enabled = flags & RTE_VHOST_USER_NET_STATS_ENABLE;
 	vsocket->async_connect = flags & RTE_VHOST_USER_ASYNC_CONNECT;
@@ -948,9 +957,10 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 	else
 		vsocket->iommu_support = flags & RTE_VHOST_USER_IOMMU_SUPPORT;
 
-	if (vsocket->async_copy && (vsocket->iommu_support ||
+	if (vsocket->map_populate && (vsocket->iommu_support ||
 				(flags & RTE_VHOST_USER_POSTCOPY_SUPPORT))) {
-		VHOST_CONFIG_LOG(path, ERR, "async copy with IOMMU or post-copy not supported");
+		VHOST_CONFIG_LOG(path, ERR,
+			"guest pages prefaulting not supported with IOMMU or post-copy");
 		goto out_mutex;
 	}
 
@@ -976,10 +986,11 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 		vsocket->protocol_features  = VHOST_USER_PROTOCOL_FEATURES;
 	}
 
-	if (vsocket->async_copy) {
+	if (vsocket->map_populate) {
 		vsocket->supported_features &= ~(1ULL << VHOST_F_LOG_ALL);
 		vsocket->features &= ~(1ULL << VHOST_F_LOG_ALL);
-		VHOST_CONFIG_LOG(path, INFO, "logging feature is disabled in async copy mode");
+		VHOST_CONFIG_LOG(path, INFO,
+			"logging feature is disabled with guest pages prefaulting");
 	}
 
 	/*
