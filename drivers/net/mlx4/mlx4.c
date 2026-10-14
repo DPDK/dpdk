@@ -1062,9 +1062,6 @@ err_secondary:
 			goto port_error;
 		}
 
-		if (rte_intr_fd_set(priv->intr_handle, -1))
-			goto port_error;
-
 		if (rte_intr_type_set(priv->intr_handle, RTE_INTR_HANDLE_EXT))
 			goto port_error;
 

@@ -101,12 +101,6 @@ pci_uio_map_resource(struct rte_pci_device *dev)
 	struct mapped_pci_res_list *uio_res_list =
 		RTE_TAILQ_CAST(rte_uio_tailq.head, mapped_pci_res_list);
 
-	if (rte_intr_fd_set(dev->intr_handle, -1))
-		return -1;
-
-	if (rte_intr_dev_fd_set(dev->intr_handle, -1))
-		return -1;
-
 	/* allocate uio resource */
 	ret = pci_uio_alloc_resource(dev, &uio_res);
 	if (ret)

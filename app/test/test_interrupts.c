@@ -2,6 +2,8 @@
  * Copyright(c) 2010-2014 Intel Corporation
  */
 
+#define ALLOW_INTERNAL_API
+
 #include <stdio.h>
 #include <stdint.h>
 #include <unistd.h>
@@ -73,11 +75,13 @@ test_interrupt_init(void)
 			rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_PRIVATE);
 		if (!intr_handles[i])
 			return -1;
+		if (rte_intr_fd_get(intr_handles[i]) != -1)
+			return -1;
+		if (rte_intr_dev_fd_get(intr_handles[i]) != -1)
+			return -1;
 	}
 
 	test_intr_handle = intr_handles[TEST_INTERRUPT_HANDLE_INVALID];
-	if (rte_intr_fd_set(test_intr_handle, -1))
-		return -1;
 	if (rte_intr_type_set(test_intr_handle, RTE_INTR_HANDLE_UNKNOWN))
 		return -1;
 
@@ -89,6 +93,9 @@ test_interrupt_init(void)
 
 	test_intr_handle = intr_handles[TEST_INTERRUPT_HANDLE_VALID_UIO];
 	if (rte_intr_fd_set(test_intr_handle, pfds.readfd))
+		return -1;
+	/* HACK: UIO type does not require a device FD, but a valid handle should contain one */
+	if (rte_intr_dev_fd_set(test_intr_handle, INT_MAX))
 		return -1;
 	if (rte_intr_type_set(test_intr_handle, RTE_INTR_HANDLE_UIO))
 		return -1;
@@ -107,6 +114,9 @@ test_interrupt_init(void)
 
 	test_intr_handle = intr_handles[TEST_INTERRUPT_HANDLE_CASE1];
 	if (rte_intr_fd_set(test_intr_handle, pfds.writefd))
+		return -1;
+	/* HACK: UIO type does not require a device FD, but a valid handle should contain one */
+	if (rte_intr_dev_fd_set(test_intr_handle, INT_MAX))
 		return -1;
 	if (rte_intr_type_set(test_intr_handle, RTE_INTR_HANDLE_UIO))
 		return -1;

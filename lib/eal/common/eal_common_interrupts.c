@@ -68,6 +68,8 @@ struct rte_intr_handle *rte_intr_instance_alloc(uint32_t flags)
 		rte_errno = ENOMEM;
 		goto fail;
 	}
+	for (int i = 0; i < RTE_MAX_RXTX_INTR_VEC_ID; i++)
+		intr_handle->efds[i] = -1;
 
 	if (uses_rte_memory) {
 		intr_handle->elist = rte_zmalloc(NULL,
@@ -83,6 +85,8 @@ struct rte_intr_handle *rte_intr_instance_alloc(uint32_t flags)
 		goto fail;
 	}
 
+	intr_handle->fd = -1;
+	intr_handle->dev_fd = -1;
 	intr_handle->alloc_flags = flags;
 	intr_handle->nb_intr = RTE_MAX_RXTX_INTR_VEC_ID;
 
@@ -153,6 +157,8 @@ int rte_intr_event_list_update(struct rte_intr_handle *intr_handle, int size)
 		goto fail;
 	}
 	intr_handle->efds = tmp_efds;
+	for (int i = intr_handle->nb_intr; i < size; i++)
+		intr_handle->efds[i] = -1;
 
 	if (uses_rte_memory) {
 		tmp_elist = rte_realloc(intr_handle->elist,

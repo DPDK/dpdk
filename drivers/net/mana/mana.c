@@ -1946,10 +1946,6 @@ mana_intr_install(struct rte_eth_dev *eth_dev, struct mana_priv *priv)
 		return -ENOMEM;
 	}
 
-	ret = rte_intr_fd_set(priv->intr_handle, -1);
-	if (ret)
-		goto free_intr;
-
 	ret = mana_fd_set_non_blocking(ctx->async_fd);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to change async_fd to NONBLOCK");

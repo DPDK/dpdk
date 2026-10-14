@@ -76,9 +76,6 @@ rte_eal_alarm_init(void)
 	if (rte_intr_type_set(intr_handle, RTE_INTR_HANDLE_ALARM))
 		goto error;
 
-	if (rte_intr_fd_set(intr_handle, -1))
-		goto error;
-
 	/* on FreeBSD, timers don't use fd's, and their identifiers are stored
 	 * in separate namespace from fd's, so using any value is OK. however,
 	 * EAL interrupts handler expects fd's to be unique, so use an actual fd

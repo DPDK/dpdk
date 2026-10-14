@@ -225,6 +225,8 @@ uint32_t rte_intr_active_events_flags(void);
  * can be realloced later based on size of MSIX interrupts supported by a PCI
  * device.
  *
+ * All file descriptors (fd, dev_fd, efds) are initialized to -1.
+ *
  * This function should be called from application or driver, before calling
  * any of the interrupt APIs.
  *

@@ -360,10 +360,6 @@ rte_dev_event_monitor_start(void)
 	if (ret)
 		goto exit;
 
-	ret = rte_intr_fd_set(intr_handle, -1);
-	if (ret)
-		goto exit;
-
 	ret = dev_uev_socket_fd_create();
 	if (ret) {
 		EAL_LOG(ERR, "error create device event fd.");

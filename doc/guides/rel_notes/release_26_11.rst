@@ -364,6 +364,11 @@ API Changes
   These functions are now available only to EAL and drivers,
   and are no longer part of the public API.
 
+* interrupts: Updated interrupt handle file descriptor management.
+
+  * ``rte_intr_instance_alloc()`` now initializes file descriptors
+    to invalid values instead of zero.
+
 * mempool: When creating a mempool, the cache size can be freely specified
   (although still not exceed the number of elements),
   and is no longer limited by the ``RTE_MEMPOOL_CACHE_MAX_SIZE``

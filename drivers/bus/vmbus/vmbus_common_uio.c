@@ -173,12 +173,6 @@ vmbus_uio_map_resource(struct rte_vmbus_device *dev)
 	int ret;
 
 	/* TODO: handle rescind */
-	if (rte_intr_fd_set(dev->intr_handle, -1))
-		return -1;
-
-	if (rte_intr_dev_fd_set(dev->intr_handle, -1))
-		return -1;
-
 	if (rte_intr_type_set(dev->intr_handle, RTE_INTR_HANDLE_UNKNOWN))
 		return -1;
 

@@ -1780,9 +1780,6 @@ memif_tx_queue_setup(struct rte_eth_dev *dev,
 	mq->n_pkts = 0;
 	mq->n_bytes = 0;
 
-	if (rte_intr_fd_set(mq->intr_handle, -1))
-		return -rte_errno;
-
 	if (rte_intr_type_set(mq->intr_handle, RTE_INTR_HANDLE_EXT))
 		return -rte_errno;
 
@@ -1819,9 +1816,6 @@ memif_rx_queue_setup(struct rte_eth_dev *dev,
 	mq->type = (pmd->role == MEMIF_ROLE_CLIENT) ? MEMIF_RING_S2C : MEMIF_RING_C2S;
 	mq->n_pkts = 0;
 	mq->n_bytes = 0;
-
-	if (rte_intr_fd_set(mq->intr_handle, -1))
-		return -rte_errno;
 
 	if (rte_intr_type_set(mq->intr_handle, RTE_INTR_HANDLE_EXT))
 		return -rte_errno;

@@ -279,9 +279,6 @@ fs_eth_dev_create(struct rte_vdev_device *vdev)
 		goto cancel_alarm;
 	}
 
-	if (rte_intr_fd_set(PRIV(dev)->intr_handle, -1))
-		goto cancel_alarm;
-
 	if (rte_intr_type_set(PRIV(dev)->intr_handle, RTE_INTR_HANDLE_EXT))
 		goto cancel_alarm;
 

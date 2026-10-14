@@ -2214,7 +2214,6 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, const char *tap_name,
 	dev->tx_pkt_burst = pmd_tx_burst;
 
 	rte_intr_type_set(pmd->intr_handle, RTE_INTR_HANDLE_EXT);
-	rte_intr_fd_set(pmd->intr_handle, -1);
 	dev->intr_handle = pmd->intr_handle;
 
 	/* Presetup the fds to -1 as being not valid */
