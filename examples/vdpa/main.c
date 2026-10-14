@@ -13,7 +13,6 @@
 #include <rte_malloc.h>
 #include <rte_vhost.h>
 #include <rte_vdpa.h>
-#include <rte_pci.h>
 #include <rte_string_fns.h>
 
 #include <cmdline_socket.h>
