@@ -12,6 +12,7 @@
 #include <rte_byteorder.h>
 #include <rte_common.h>
 #include <rte_dmadev.h>
+#include <rte_eal.h>
 #include <rte_io.h>
 #include <rte_memory.h>
 
@@ -158,6 +159,7 @@ struct imx_edma5_vchan {
 	uint64_t completed_count;
 	uint64_t errors_count;
 
+	bool iova_is_va;
 	bool configured;
 };
 
@@ -215,6 +217,19 @@ imx_edma5_write64(uint8_t *base, uint32_t off, uint64_t val)
 	/* Write the 64-bit field as two 32-bit accesses (order not significant). */
 	imx_edma5_write32(base, off, (uint32_t)(val & 0xFFFFFFFFu));
 	imx_edma5_write32(base, off + 4, (uint32_t)(val >> 32));
+}
+
+/*
+ * Resolve an IOVA to a CPU virtual address for cache maintenance.
+ * In IOVA=VA mode the IOVA is the VA directly; otherwise walk the memseg
+ * table. Avoids the memseg list walk on the common IOVA=VA fast path.
+ */
+static inline void *
+imx_edma5_iova_to_virt(rte_iova_t iova, bool iova_is_va)
+{
+	if (iova_is_va)
+		return (void *)(uintptr_t)iova;
+	return rte_mem_iova2virt(iova);
 }
 
 #endif /* IMX_EDMA5_DMADEV_H */

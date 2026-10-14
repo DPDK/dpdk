@@ -13,4 +13,10 @@ extern int imx_edma5_logtype;
 #define IMX_EDMA5_LOG(level, ...) \
 	RTE_LOG_LINE_PREFIX(level, IMX_EDMA5, "%s(): ", __func__, __VA_ARGS__)
 
+extern int imx_edma5_dp_logtype;
+#define RTE_LOGTYPE_IMX_EDMA5_DP imx_edma5_dp_logtype
+
+#define IMX_EDMA5_DP_LOG(level, ...) \
+	RTE_LOG_LINE_PREFIX(level, IMX_EDMA5_DP, "%s(): ", __func__, __VA_ARGS__)
+
 #endif /* IMX_EDMA5_LOGS_H */

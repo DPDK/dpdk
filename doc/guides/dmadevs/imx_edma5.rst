@@ -56,3 +56,12 @@ Limitations
   programs one hardware transfer per consumed segment;
   full TCD scatter-gather linking is not yet implemented.
 - The driver operates in poll mode only; completion interrupts are not used.
+- Each operation executes synchronously: the driver programs the TCD,
+  starts the channel and busy-waits for completion inside the enqueue or submit call.
+  No transfer-offload benefit over memcpy is provided by this first revision;
+  the synchronous model is documented rather than implied.
+- Cache maintenance (source clean, destination clean+invalidate) is skipped for any address
+  that cannot be resolved to a CPU virtual address via ``rte_mem_iova2virt()``.
+  This affects externally-allocated memory not registered with DPDK.
+  Applications using such memory must ensure cache coherency independently or
+  register the memory with DPDK.
