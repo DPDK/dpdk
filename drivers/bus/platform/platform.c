@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright(C) 2023 Marvell.
+ * Copyright 2026 NXP
  */
 
 #include <uapi/linux/vfio.h>
@@ -230,6 +231,41 @@ of_resource_name(const char *dev_name, int index)
 	return NULL;
 }
 
+/*
+ * Check whether any of the NUL-separated device-tree "compatible" strings
+ * exposed by the platform device matches the given string.
+ */
+static bool
+of_device_is_compatible(const char *dev_name, const char *compat)
+{
+	char path[PATH_MAX], buf[BUFSIZ] = { };
+	const char *s;
+	FILE *f;
+	size_t len;
+
+	if (compat == NULL)
+		return false;
+
+	snprintf(path, sizeof(path), PLATFORM_BUS_DEVICES_PATH "/%s/of_node/compatible", dev_name);
+	f = fopen(path, "r");
+	if (f == NULL)
+		return false;
+
+	/* Read the raw contents, preserving embedded NULL separators. */
+	len = fread(buf, 1, sizeof(buf) - 1, f);
+	fclose(f);
+	if (len == 0)
+		return false;
+
+	/* Bound the walk by the read length: some kernels omit the trailing NULL. */
+	for (s = buf; s < buf + len; s += strlen(s) + 1) {
+		if (!strcmp(s, compat))
+			return true;
+	}
+
+	return false;
+}
+
 static int
 device_map_resources(struct rte_platform_device *pdev, unsigned int num)
 {
@@ -393,7 +429,18 @@ platform_bus_match(const struct rte_driver *drv, const struct rte_device *dev)
 	}
 
 	/* match by device name */
-	if (!strcmp(pdev->name, pdrv->driver.name))
+	if (!strcmp(pdev->name, pdrv->driver.name)) {
+		match = true;
+		goto out;
+	}
+
+	/*
+	 * The generic vfio-platform kernel driver name carries no device
+	 * identity, so fall back to matching the device-tree "compatible"
+	 * strings against the DPDK driver name or alias.
+	 */
+	if (of_device_is_compatible(pdev->name, pdrv->driver.name) ||
+			of_device_is_compatible(pdev->name, pdrv->driver.alias))
 		match = true;
 
 out:
