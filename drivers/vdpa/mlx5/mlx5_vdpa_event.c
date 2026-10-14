@@ -452,7 +452,7 @@ mlx5_vdpa_err_event_setup(struct mlx5_vdpa_priv *priv)
 					 mlx5_vdpa_err_interrupt_handler,
 					 priv);
 	if (ret != 0) {
-		rte_intr_fd_set(priv->err_intr_handle, 0);
+		rte_intr_fd_set(priv->err_intr_handle, -1);
 		DRV_LOG(ERR, "Failed to register error interrupt for device %d.",
 			priv->vid);
 		rte_errno = -ret;
@@ -473,7 +473,7 @@ mlx5_vdpa_err_event_unset(struct mlx5_vdpa_priv *priv)
 	int retries = MLX5_VDPA_INTR_RETRIES;
 	int ret = -EAGAIN;
 
-	if (!rte_intr_fd_get(priv->err_intr_handle))
+	if (rte_intr_fd_get(priv->err_intr_handle) < 0)
 		return;
 	while (retries-- && ret == -EAGAIN) {
 		ret = rte_intr_callback_unregister(priv->err_intr_handle,
@@ -487,6 +487,7 @@ mlx5_vdpa_err_event_unset(struct mlx5_vdpa_priv *priv)
 			rte_pause();
 		}
 	}
+	rte_intr_fd_set(priv->err_intr_handle, -1);
 	if (priv->err_chnl) {
 #ifdef HAVE_IBV_DEVX_EVENT
 		union {
