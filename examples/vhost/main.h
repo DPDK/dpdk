@@ -8,7 +8,6 @@
 #include <sys/queue.h>
 
 #include <rte_ether.h>
-#include <rte_pci.h>
 
 /* Macros for printing using RTE_LOG */
 #define RTE_LOGTYPE_VHOST_CONFIG RTE_LOGTYPE_USER1
@@ -92,17 +91,6 @@ struct lcore_info {
 	struct vhost_dev_tailq_list vdev_list;
 };
 
-struct dma_info {
-	struct rte_pci_addr addr;
-	int16_t dev_id;
-	bool async_enabled;
-};
-
-struct dma_for_vhost {
-	struct dma_info dmas[RTE_MAX_QUEUES_PER_PORT * 2];
-	uint32_t async_flag;
-};
-
 /* we implement non-extra virtio net features */
 #define VIRTIO_NET_FEATURES	0
 
@@ -116,14 +104,9 @@ uint16_t builtin_enqueue_pkts(struct vhost_dev *dev, uint16_t queue_id,
 uint16_t builtin_dequeue_pkts(struct vhost_dev *dev, uint16_t queue_id,
 			struct rte_mempool *mbuf_pool,
 			struct rte_mbuf **pkts, uint16_t count);
-uint16_t sync_enqueue_pkts(struct vhost_dev *dev, uint16_t queue_id,
+uint16_t enqueue_pkts(struct vhost_dev *dev, uint16_t queue_id,
 			 struct rte_mbuf **pkts, uint32_t count);
-uint16_t sync_dequeue_pkts(struct vhost_dev *dev, uint16_t queue_id,
-			struct rte_mempool *mbuf_pool,
-			struct rte_mbuf **pkts, uint16_t count);
-uint16_t async_enqueue_pkts(struct vhost_dev *dev, uint16_t queue_id,
-			 struct rte_mbuf **pkts, uint32_t count);
-uint16_t async_dequeue_pkts(struct vhost_dev *dev, uint16_t queue_id,
+uint16_t dequeue_pkts(struct vhost_dev *dev, uint16_t queue_id,
 			struct rte_mempool *mbuf_pool,
 			struct rte_mbuf **pkts, uint16_t count);
 #endif /* _MAIN_H_ */
