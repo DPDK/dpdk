@@ -2491,6 +2491,11 @@ s32 txgbe_init_shared_code(struct txgbe_hw *hw)
 	return status;
 }
 
+bool txgbe_is_pf(struct txgbe_hw *hw)
+{
+	return hw->mac.type == txgbe_mac_raptor;
+}
+
 /**
  *  txgbe_set_mac_type - Sets MAC type
  *  @hw: pointer to the HW structure
@@ -3837,4 +3842,3 @@ s32 txgbe_reset_pipeline_raptor(struct txgbe_hw *hw)
 
 	return err;
 }
-
