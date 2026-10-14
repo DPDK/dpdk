@@ -84,7 +84,6 @@ always_enable = [
         'pci',
         'rcu',
         'ring',
-        'stack',
         'telemetry',
 ]
 
