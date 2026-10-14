@@ -118,6 +118,15 @@ The following is an overview of some key Vhost API functions:
 
     It is disabled by default.
 
+  - ``RTE_VHOST_USER_MAP_POPULATE``
+
+    Guest memory regions will be mapped with ``MAP_POPULATE`` when this flag
+    is set, pre-faulting pages into memory. This is useful for applications
+    requiring direct access to guest memory, such as vhost-crypto zero-copy
+    operations.
+
+    It is disabled by default.
+
   - ``RTE_VHOST_USER_NET_COMPLIANT_OL_FLAGS``
 
     Since v16.04, the vhost library forwards checksum and gso requests for

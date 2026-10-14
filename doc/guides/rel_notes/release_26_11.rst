@@ -479,6 +479,10 @@ API Changes
     ``rte_event_port_profile_links_get`` and
     ``rte_event_port_profile_unlink``
 
+* vhost: Introduced ``RTE_VHOST_USER_MAP_POPULATE`` as a replacement of
+  ``RTE_VHOST_USER_ASYNC_COPY`` for users that did not rely on the vhost
+  async copy feature but expected guest pages to be prefaulted.
+
 * reorder: Promoted the following API from experimental to stable:
   ``rte_reorder_seqn``, ``rte_reorder_drain_up_to_seqn``,
   ``rte_reorder_min_seqn_set`` and ``rte_reorder_memory_footprint_get``.

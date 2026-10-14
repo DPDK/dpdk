@@ -1406,7 +1406,7 @@ vhost_user_mmap_region(struct virtio_net *dev,
 		return -1;
 	}
 
-	populate = dev->async_copy ? MAP_POPULATE : 0;
+	populate = dev->map_populate ? MAP_POPULATE : 0;
 	mmap_addr = mmap(NULL, mmap_size, PROT_READ | PROT_WRITE,
 			MAP_SHARED | populate, region->fd, 0);
 
@@ -1420,7 +1420,7 @@ vhost_user_mmap_region(struct virtio_net *dev,
 	region->host_user_addr = (uint64_t)(uintptr_t)mmap_addr + mmap_offset;
 	mem_set_dump(dev, mmap_addr, mmap_size, false, alignment);
 
-	if (dev->async_copy) {
+	if (dev->map_populate) {
 		if (add_guest_pages(dev, region, alignment) < 0) {
 			VHOST_CONFIG_LOG(dev->ifname, ERR,
 				"adding guest pages to region failed.");
