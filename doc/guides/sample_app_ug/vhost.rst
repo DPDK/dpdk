@@ -149,16 +149,6 @@ default value is 15.
 A very simple vhost-user net driver which demonstrates how to use the generic
 vhost APIs will be used when this option is given. It is disabled by default.
 
-**--dmas**
-This parameter is used to specify the assigned DMA device of a vhost device.
-Async vhost-user net driver will be used if --dmas is set. For example
---dmas [txd0@00:04.0,txd1@00:04.1,rxd0@00:04.2,rxd1@00:04.3] means use
-DMA channel 00:04.0/00:04.2 for vhost device 0 enqueue/dequeue operation
-and use DMA channel 00:04.1/00:04.3 for vhost device 1 enqueue/dequeue
-operation. The index of the device corresponds to the socket file in order,
-that means vhost device 0 is created through the first socket file, vhost
-device 1 is created through the second socket file, and so on.
-
 **--total-num-mbufs 0-N**
 This parameter sets the number of mbufs to be allocated in mbuf pools,
 the default value is 147456. This is can be used if launch of a port fails
