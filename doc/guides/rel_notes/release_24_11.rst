@@ -2356,3 +2356,25 @@ Tested Platforms
     * Cryptodev Latency
     * PF/VF NIC single core
     * XXV710/E810 NIC Performance
+
+24.11.8 Release Notes
+---------------------
+
+
+24.11.8 Fixes
+~~~~~~~~~~~~~
+
+* gso: fix overflow when writing to very small buffers (CVE-2026-100236)
+* vhost: check number of queues for VDPA (CVE-2026-86856)
+* vhost/crypto: catch incorrect request length (CVE-2026-86849)
+* vhost/crypto: drop crypto session cache (CVE-2026-86845)
+* vhost/crypto: fix TOCTOU OOB write in finalize path (CVE-2026-86846, CVE-2026-86848)
+* vhost/crypto: fix write back chains termination (CVE-2026-86847)
+* vhost: fix double-fetch vulnerability in control queue (CVE-2026-86562)
+* vhost: fix header copy to multiple descriptors (CVE-2026-86566)
+* vhost: fix indirect descriptor table double fetch (CVE-2026-93683)
+* vhost: fix inflight descriptor table overflow (CVE-2026-86565)
+* vhost: fix log base address mapping offset (CVE-2026-86563)
+* vhost: fix missing memory size validation before mmap (CVE-2026-86561)
+* vhost: fix out-of-bounds read in control virtqueue handler (CVE-2026-86562)
+* vhost: fix VDUSE stale vring pointers after IOTLB invalidation (CVE-2026-86567)
