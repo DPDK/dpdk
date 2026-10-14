@@ -390,11 +390,10 @@ txgbe_fdir_configure(struct rte_eth_dev *dev)
 
 	/*
 	 * Before enabling Flow Director, the Rx Packet Buffer size
-	 * must be reduced.  The new value is the current size minus
+	 * must be reduced.  The new value is the default size minus
 	 * flow director memory usage size.
 	 */
-	pbsize = rd32(hw, TXGBE_PBRXSIZE(0));
-	pbsize -= TXGBD_FDIRCTL_BUF_BYTE(fdirctrl);
+	pbsize = (hw->mac.rx_pb_size << 10) - TXGBD_FDIRCTL_BUF_BYTE(fdirctrl);
 	wr32(hw, TXGBE_PBRXSIZE(0), pbsize);
 
 	/*
