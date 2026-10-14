@@ -2966,16 +2966,13 @@ step_next:
 	if (!txgbe_is_pf(TXGBE_DEV_HW(dev)))
 		return ret;
 
-	if (fdir_conf->mode == RTE_FDIR_MODE_NONE) {
-		fdir_conf->mode = rule->mode;
-		ret = txgbe_fdir_configure(dev);
-		if (ret) {
-			fdir_conf->mode = RTE_FDIR_MODE_NONE;
-			return ret;
-		}
-	} else if (fdir_conf->mode != rule->mode) {
+	if (rule->mode != RTE_FDIR_MODE_SIGNATURE &&
+	    rule->mode != RTE_FDIR_MODE_PERFECT)
 		return -ENOTSUP;
-	}
+
+	if (fdir_conf->mode != RTE_FDIR_MODE_NONE &&
+	    fdir_conf->mode != rule->mode)
+		return -ENOTSUP;
 
 	if (rule->queue >= dev->data->nb_rx_queues)
 		return -ENOTSUP;
@@ -3208,17 +3205,19 @@ txgbe_flow_create(struct rte_eth_dev *dev,
 	struct txgbe_fdir_rule fdir_rule;
 	struct txgbe_l2_tunnel_conf l2_tn_filter;
 	struct txgbe_hw_fdir_info *fdir_info = TXGBE_DEV_FDIR(dev);
+	struct rte_eth_fdir_conf *fdir_conf = TXGBE_DEV_FDIR_CONF(dev);
 	struct txgbe_rte_flow_rss_conf rss_conf;
 	struct rte_flow *flow = NULL;
 	struct txgbe_ntuple_filter_ele *ntuple_filter_ptr;
 	struct txgbe_ethertype_filter_ele *ethertype_filter_ptr;
 	struct txgbe_eth_syn_filter_ele *syn_filter_ptr;
 	struct txgbe_eth_l2_tunnel_conf_ele *l2_tn_filter_ptr;
-	struct txgbe_fdir_rule_ele *fdir_rule_ptr;
+	struct txgbe_fdir_rule_ele *fdir_rule_ptr = NULL;
 	struct txgbe_rss_conf_ele *rss_filter_ptr;
 	struct txgbe_flow_mem *txgbe_flow_mem_ptr;
 	struct txgbe_filter_info *filter_info = TXGBE_DEV_FILTER(dev);
 	uint8_t first_mask = FALSE;
+	bool fdir_configured = false;
 
 	flow = rte_zmalloc("txgbe_rte_flow", sizeof(struct rte_flow), 0);
 	if (!flow) {
@@ -3360,6 +3359,16 @@ next:
 			goto out;
 		}
 
+		if (fdir_conf->mode == RTE_FDIR_MODE_NONE) {
+			fdir_conf->mode = fdir_rule.mode;
+			ret = txgbe_fdir_configure(dev);
+			if (ret) {
+				fdir_conf->mode = RTE_FDIR_MODE_NONE;
+				goto fdir_out;
+			}
+			fdir_configured = true;
+		}
+
 		/* A mask cannot be deleted. */
 		if (fdir_rule.b_mask) {
 			if (!fdir_info->mask_added) {
@@ -3381,10 +3390,8 @@ next:
 				fdir_info->mask.pkt_type_mask =
 					fdir_rule.mask.pkt_type_mask;
 				ret = txgbe_fdir_set_input_mask(dev);
-				if (ret) {
-					rte_free(fdir_rule_ptr);
-					goto out;
-				}
+				if (ret)
+					goto fdir_out;
 
 				fdir_info->mask_added = TRUE;
 				first_mask = TRUE;
@@ -3397,9 +3404,8 @@ next:
 					&fdir_rule.mask,
 					sizeof(struct txgbe_hw_fdir_mask)) != 0) {
 					PMD_DRV_LOG(ERR, "only support one global mask");
-					rte_free(fdir_rule_ptr);
 					ret = -EINVAL;
-					goto out;
+					goto fdir_out;
 				}
 
 				if (fdir_info->flex_bytes_offset !=
@@ -3408,25 +3414,16 @@ next:
 				    fdir_rule.flex_relative) {
 					PMD_DRV_LOG(ERR,
 						"flex bytes offset mismatch");
-					rte_free(fdir_rule_ptr);
 					ret = -EINVAL;
-					goto out;
+					goto fdir_out;
 				}
 			}
 		}
 
 		ret = txgbe_fdir_filter_program(dev, &fdir_rule,
 				FALSE, FALSE);
-		if (ret) {
-			rte_free(fdir_rule_ptr);
-			/**
-			 * clean the mask_added flag if fail to
-			 * program
-			 **/
-			if (first_mask)
-				fdir_info->mask_added = FALSE;
-			goto out;
-		}
+		if (ret)
+			goto fdir_out;
 
 		fdir_rule_ptr->filter_info = fdir_rule;
 		TAILQ_INSERT_TAIL(&filter_fdir_list,
@@ -3486,6 +3483,12 @@ next:
 		return flow;
 	}
 
+fdir_out:
+	rte_free(fdir_rule_ptr);
+	if (first_mask)
+		fdir_info->mask_added = FALSE;
+	if (fdir_configured)
+		fdir_conf->mode = RTE_FDIR_MODE_NONE;
 out:
 	TAILQ_REMOVE(&txgbe_flow_list,
 		txgbe_flow_mem_ptr, entries);
