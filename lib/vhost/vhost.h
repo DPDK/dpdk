@@ -18,12 +18,9 @@
 #include <rte_log.h>
 #include <rte_ether.h>
 #include <rte_malloc.h>
-#include <rte_dmadev.h>
 
 #include "rte_vhost.h"
 #include "vdpa_driver.h"
-
-#include "rte_vhost_async.h"
 
 /* Used to indicate that the device is running on a data core */
 #define VIRTIO_DEV_RUNNING ((uint32_t)1 << 0)
@@ -51,11 +48,7 @@
 
 #define MAX_PKT_BURST 32
 
-#define VHOST_MAX_ASYNC_IT (MAX_PKT_BURST)
-#define VHOST_MAX_ASYNC_VEC 2048
 #define VIRTIO_MAX_RX_PKTLEN 9728U
-#define VHOST_DMA_MAX_COPY_COMPLETE ((VIRTIO_MAX_RX_PKTLEN / RTE_MBUF_DEFAULT_DATAROOM) \
-		* MAX_PKT_BURST)
 
 #define PACKED_DESC_ENQUEUE_USED_FLAG(w)	\
 	((w) ? (VRING_DESC_F_AVAIL | VRING_DESC_F_USED | VRING_DESC_F_WRITE) : \
@@ -145,119 +138,12 @@ struct virtqueue_stats {
 	uint64_t size_bins[8];
 	uint64_t iotlb_hits;
 	uint64_t iotlb_misses;
-	uint64_t inflight_submitted;
-	uint64_t inflight_completed;
 	uint64_t mbuf_alloc_failed;
 	uint64_t guest_notifications_suppressed;
 	/* Counters below are atomic, and should be incremented as such. */
 	RTE_ATOMIC(uint64_t) guest_notifications;
 	RTE_ATOMIC(uint64_t) guest_notifications_offloaded;
 	RTE_ATOMIC(uint64_t) guest_notifications_error;
-};
-
-/**
- * iovec
- */
-struct vhost_iovec {
-	void *src_addr;
-	void *dst_addr;
-	size_t len;
-};
-
-/**
- * iovec iterator
- */
-struct vhost_iov_iter {
-	/** pointer to the iovec array */
-	struct vhost_iovec *iov;
-	/** number of iovec in this iterator */
-	unsigned long nr_segs;
-};
-
-struct async_dma_vchan_info {
-	/* circular array to track if packet copy completes */
-	bool **pkts_cmpl_flag_addr;
-
-	/* max elements in 'pkts_cmpl_flag_addr' */
-	uint16_t ring_size;
-	/* ring index mask for 'pkts_cmpl_flag_addr' */
-	uint16_t ring_mask;
-
-	/**
-	 * DMA virtual channel lock. Although it is able to bind DMA
-	 * virtual channels to data plane threads, vhost control plane
-	 * thread could call data plane functions too, thus causing
-	 * DMA device contention.
-	 *
-	 * For example, in VM exit case, vhost control plane thread needs
-	 * to clear in-flight packets before disable vring, but there could
-	 * be anotther data plane thread is enqueuing packets to the same
-	 * vring with the same DMA virtual channel. As dmadev PMD functions
-	 * are lock-free, the control plane and data plane threads could
-	 * operate the same DMA virtual channel at the same time.
-	 */
-	rte_spinlock_t dma_lock;
-};
-
-struct async_dma_info {
-	struct async_dma_vchan_info *vchans;
-	/* number of registered virtual channels */
-	uint16_t nr_vchans;
-};
-
-extern struct async_dma_info dma_copy_track[RTE_DMADEV_DEFAULT_MAX];
-
-/**
- * inflight async packet information
- */
-struct async_inflight_info {
-	struct rte_mbuf *mbuf;
-	uint16_t descs; /* num of descs inflight */
-	uint16_t nr_buffers; /* num of buffers inflight for packed ring */
-	struct virtio_net_hdr nethdr;
-};
-
-struct vhost_async {
-	struct vhost_iov_iter iov_iter[VHOST_MAX_ASYNC_IT];
-	struct vhost_iovec iovec[VHOST_MAX_ASYNC_VEC];
-	uint16_t iter_idx;
-	uint16_t iovec_idx;
-
-	/* data transfer status */
-	struct async_inflight_info *pkts_info;
-	/**
-	 * Packet reorder array. "true" indicates that DMA device
-	 * completes all copies for the packet.
-	 *
-	 * Note that this array could be written by multiple threads
-	 * simultaneously. For example, in the case of thread0 and
-	 * thread1 RX packets from NIC and then enqueue packets to
-	 * vring0 and vring1 with own DMA device DMA0 and DMA1, it's
-	 * possible for thread0 to get completed copies belonging to
-	 * vring1 from DMA0, while thread0 is calling rte_vhost_poll
-	 * _enqueue_completed() for vring0 and thread1 is calling
-	 * rte_vhost_submit_enqueue_burst() for vring1. In this case,
-	 * vq->access_lock cannot protect pkts_cmpl_flag of vring1.
-	 *
-	 * However, since offloading is per-packet basis, each packet
-	 * flag will only be written by one thread. And single byte
-	 * write is atomic, so no lock for pkts_cmpl_flag is needed.
-	 */
-	bool *pkts_cmpl_flag;
-	uint16_t pkts_idx;
-	uint16_t pkts_inflight_n;
-	union {
-		struct vring_used_elem  *descs_split;
-		struct vring_used_elem_packed *buffers_packed;
-	};
-	union {
-		uint16_t desc_idx_split;
-		uint16_t buffer_idx_packed;
-	};
-	union {
-		uint16_t last_desc_idx_split;
-		uint16_t last_buffer_idx_packed;
-	};
 };
 
 #define VHOST_RECONNECT_VERSION		0x0
@@ -351,8 +237,6 @@ struct __rte_cache_aligned vhost_virtqueue {
 	};
 	struct rte_vhost_resubmit_info *resubmit_inflight;
 	uint64_t		global_counter;
-
-	struct vhost_async	*async __rte_guarded_var;
 
 	int			notif_enable;
 #define VIRTIO_UNINITIALIZED_NOTIF	(-1)
@@ -498,8 +382,6 @@ struct __rte_cache_aligned virtio_net {
 	/* to tell if we need broadcast rarp packet */
 	RTE_ATOMIC(int16_t)	broadcast_rarp;
 	uint32_t		nr_vring;
-	int			async_copy;
-	bool			dma_map_available;
 	int			map_populate;
 
 	int			extbuf;

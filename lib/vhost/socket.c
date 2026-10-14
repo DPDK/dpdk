@@ -17,7 +17,6 @@
 #include <eal_export.h>
 #include <rte_thread.h>
 #include <rte_log.h>
-#include <dev_vfio.h>
 
 #include "fd_man.h"
 #include "vduse.h"
@@ -44,7 +43,6 @@ struct vhost_user_socket {
 	bool use_builtin_virtio_net;
 	bool extbuf;
 	bool linearbuf;
-	bool async_copy;
 	bool map_populate;
 	bool net_compliant_ol_flags;
 	bool stats_enabled;
@@ -240,15 +238,6 @@ vhost_user_add_connection(int fd, struct vhost_user_socket *vsocket)
 
 	if (vsocket->linearbuf)
 		vhost_enable_linearbuf(vid);
-
-	if (vsocket->async_copy) {
-		dev = get_device(vid);
-
-		if (dev != NULL) {
-			dev->async_copy = 1;
-			dev->dma_map_available = dev_vfio_is_enabled();
-		}
-	}
 
 	if (vsocket->map_populate) {
 		dev = get_device(vid);
@@ -947,7 +936,6 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 	vsocket->max_queue_pairs = VHOST_MAX_QUEUE_PAIRS;
 	vsocket->extbuf = flags & RTE_VHOST_USER_EXTBUF_SUPPORT;
 	vsocket->linearbuf = flags & RTE_VHOST_USER_LINEARBUF_SUPPORT;
-	vsocket->async_copy = flags & RTE_VHOST_USER_ASYNC_COPY;
 	vsocket->map_populate = flags & RTE_VHOST_USER_MAP_POPULATE;
 	vsocket->net_compliant_ol_flags = flags & RTE_VHOST_USER_NET_COMPLIANT_OL_FLAGS;
 	vsocket->stats_enabled = flags & RTE_VHOST_USER_NET_STATS_ENABLE;
