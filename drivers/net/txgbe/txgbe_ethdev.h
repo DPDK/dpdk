@@ -552,6 +552,7 @@ void txgbe_set_ivar_map(struct txgbe_hw *hw, int8_t direction,
  * Flow director function prototypes
  */
 int txgbe_fdir_configure(struct rte_eth_dev *dev);
+void txgbe_fdir_disable(struct txgbe_hw *hw);
 int txgbe_fdir_set_input_mask(struct rte_eth_dev *dev);
 uint16_t txgbe_fdir_get_flex_base(struct txgbe_fdir_rule *rule);
 int txgbe_fdir_set_flexbytes_offset(struct rte_eth_dev *dev,

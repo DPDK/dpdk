@@ -3487,8 +3487,10 @@ fdir_out:
 	rte_free(fdir_rule_ptr);
 	if (first_mask)
 		fdir_info->mask_added = FALSE;
-	if (fdir_configured)
+	if (fdir_configured) {
+		txgbe_fdir_disable(TXGBE_DEV_HW(dev));
 		fdir_conf->mode = RTE_FDIR_MODE_NONE;
+	}
 out:
 	TAILQ_REMOVE(&txgbe_flow_list,
 		txgbe_flow_mem_ptr, entries);
@@ -3641,6 +3643,9 @@ txgbe_flow_destroy(struct rte_eth_dev *dev,
 				fdir_info->mask_added = false;
 				fdir_info->flex_relative = false;
 				fdir_info->flex_bytes_offset = 0;
+				if (fdir_conf->mode != RTE_FDIR_MODE_NONE &&
+				    txgbe_is_pf(TXGBE_DEV_HW(dev)))
+					txgbe_fdir_disable(TXGBE_DEV_HW(dev));
 				fdir_conf->mode = RTE_FDIR_MODE_NONE;
 			}
 		}
