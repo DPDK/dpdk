@@ -42,7 +42,6 @@
 #include <rte_common.h>
 #include <rte_malloc.h>
 #include <rte_log.h>
-#include <dev_vfio.h>
 #include <rte_errno.h>
 
 #include "iotlb.h"
@@ -174,80 +173,6 @@ get_blk_size(int fd)
 	return ret == -1 ? (uint64_t)-1 : (uint64_t)stat.st_blksize;
 }
 
-static int
-async_dma_map_region(struct virtio_net *dev, struct rte_vhost_mem_region *reg, bool do_map)
-{
-	uint32_t i;
-	int ret;
-	uint64_t reg_start = reg->host_user_addr;
-	uint64_t reg_end = reg_start + reg->size;
-
-	for (i = 0; i < dev->nr_guest_pages; i++) {
-		struct guest_page *page = &dev->guest_pages[i];
-
-		/* Only process pages belonging to this region */
-		if (page->host_user_addr < reg_start ||
-		    page->host_user_addr >= reg_end)
-			continue;
-
-		if (do_map) {
-			ret = dev_vfio_container_dma_map(DEV_VFIO_DEFAULT_CONTAINER_FD,
-					page->host_user_addr,
-					page->host_iova,
-					page->size);
-			if (ret) {
-				/*
-				 * DMA device may bind with kernel driver, in this case,
-				 * we don't need to program IOMMU manually. However, if no
-				 * device is bound with vfio/uio in DPDK, and vfio kernel
-				 * module is loaded, the API will still be called and return
-				 * with ENODEV.
-				 *
-				 * DPDK vfio only returns ENODEV in very similar situations
-				 * (vfio either unsupported, or supported but no devices found).
-				 * Either way, no mappings could be performed. We treat it as
-				 * normal case in async path. This is a workaround.
-				 */
-				if (rte_errno == ENODEV)
-					return 0;
-
-				/* DMA mapping errors won't stop VHOST_USER_SET_MEM_TABLE. */
-				VHOST_CONFIG_LOG(dev->ifname, ERR, "DMA engine map failed");
-				return -1;
-			}
-		} else {
-			ret = dev_vfio_container_dma_unmap(DEV_VFIO_DEFAULT_CONTAINER_FD,
-					page->host_user_addr,
-					page->host_iova,
-					page->size);
-			if (ret) {
-				/* like DMA map, ignore the kernel driver case when unmap. */
-				if (rte_errno == EINVAL)
-					return 0;
-
-				VHOST_CONFIG_LOG(dev->ifname, ERR, "DMA engine unmap failed");
-				return -1;
-			}
-		}
-	}
-
-	return 0;
-}
-
-static void
-async_dma_map(struct virtio_net *dev, bool do_map)
-{
-	uint32_t i;
-	struct rte_vhost_mem_region *reg;
-
-	for (i = 0; i < VHOST_MEMORY_MAX_NREGIONS; i++) {
-		reg = &dev->mem->regions[i];
-		if (reg->host_user_addr == 0)
-			continue;
-		async_dma_map_region(dev, reg, do_map);
-	}
-}
-
 static void
 free_mem_region(struct rte_vhost_mem_region *reg)
 {
@@ -266,9 +191,6 @@ free_all_mem_regions(struct virtio_net *dev)
 
 	if (!dev || !dev->mem)
 		return;
-
-	if (dev->async_copy && dev->dma_map_available)
-		async_dma_map(dev, false);
 
 	for (i = 0; i < VHOST_MEMORY_MAX_NREGIONS; i++) {
 		reg = &dev->mem->regions[i];
@@ -1512,7 +1434,6 @@ vhost_user_set_mem_table(struct virtio_net **pdev,
 	struct rte_vhost_mem_region *reg;
 	uint64_t mmap_offset;
 	uint32_t i;
-	bool async_notify = false;
 
 	if (validate_msg_fds(dev, ctx, memory->nregions) != 0)
 		return RTE_VHOST_MSG_RESULT_ERR;
@@ -1539,15 +1460,6 @@ vhost_user_set_mem_table(struct virtio_net **pdev,
 			if (vdpa_dev && vdpa_dev->ops->dev_close)
 				vdpa_dev->ops->dev_close(dev->vid);
 			dev->flags &= ~VIRTIO_DEV_VDPA_CONFIGURED;
-		}
-
-		/* notify the vhost application to stop DMA transfers */
-		if (dev->async_copy && dev->notify_ops->vring_state_changed) {
-			for (i = 0; i < dev->nr_vring; i++) {
-				dev->notify_ops->vring_state_changed(dev->vid,
-						i, 0);
-			}
-			async_notify = true;
 		}
 
 		/* Flush IOTLB cache as previous HVAs are now invalid */
@@ -1586,9 +1498,6 @@ vhost_user_set_mem_table(struct virtio_net **pdev,
 		dev->mem->nregions++;
 	}
 
-	if (dev->async_copy && dev->dma_map_available)
-		async_dma_map(dev, true);
-
 	if (vhost_user_postcopy_register(dev, main_fd, ctx) < 0)
 		goto free_mem_table;
 
@@ -1615,11 +1524,6 @@ vhost_user_set_mem_table(struct virtio_net **pdev,
 	}
 
 	dump_guest_pages(dev);
-
-	if (async_notify) {
-		for (i = 0; i < dev->nr_vring; i++)
-			dev->notify_ops->vring_state_changed(dev->vid, i, 1);
-	}
 
 	return RTE_VHOST_MSG_RESULT_OK;
 
@@ -1772,11 +1676,6 @@ vhost_user_add_mem_reg(struct virtio_net **pdev,
 
 	dev->mem->nregions++;
 
-	if (dev->async_copy && dev->dma_map_available) {
-		if (async_dma_map_region(dev, reg, true) < 0)
-			goto free_new_region_no_dma;
-	}
-
 	if (dev->postcopy_listening) {
 		/*
 		 * Cannot use vhost_user_postcopy_register() here because it
@@ -1813,9 +1712,6 @@ vhost_user_add_mem_reg(struct virtio_net **pdev,
 	return RTE_VHOST_MSG_RESULT_OK;
 
 free_new_region:
-	if (dev->async_copy && dev->dma_map_available)
-		async_dma_map_region(dev, reg, false);
-free_new_region_no_dma:
 	remove_guest_pages(dev, reg);
 	free_mem_region(reg);
 	dev->mem->nregions--;
@@ -1849,8 +1745,6 @@ vhost_user_rem_mem_reg(struct virtio_net **pdev,
 		if (region->userspace_addr == current_region->guest_user_addr
 			&& region->guest_phys_addr == current_region->guest_phys_addr
 			&& region->memory_size == current_region->size) {
-			if (dev->async_copy && dev->dma_map_available)
-				async_dma_map_region(dev, current_region, false);
 			if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
 				vhost_user_iotlb_cache_remove(dev,
 					current_region->guest_phys_addr,
@@ -2635,11 +2529,6 @@ vhost_user_set_vring_enable(struct virtio_net **pdev,
 	if (!(dev->flags & VIRTIO_DEV_VDPA_CONFIGURED)) {
 		/* vhost_user_lock_all_queue_pairs locked all qps */
 		VHOST_USER_ASSERT_LOCK(dev, vq, VHOST_USER_SET_VRING_ENABLE);
-		if (enable && vq->async && vq->async->pkts_inflight_n) {
-			VHOST_CONFIG_LOG(dev->ifname, ERR,
-				"failed to enable vring. Inflight packets must be completed first");
-			return RTE_VHOST_MSG_RESULT_ERR;
-		}
 	}
 
 	vq->enabled = enable;

@@ -38,10 +38,9 @@ sources = files(
 headers = files(
         'rte_vdpa.h',
         'rte_vhost.h',
-        'rte_vhost_async.h',
         'rte_vhost_crypto.h',
 )
 driver_sdk_headers = files(
         'vdpa_driver.h',
 )
-deps += ['ethdev', 'cryptodev', 'hash', 'pci', 'dmadev']
+deps += ['ethdev', 'cryptodev', 'hash']

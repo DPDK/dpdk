@@ -359,6 +359,26 @@ Removed Items
   Applications configuring VMDq pools on bnxt now get zero pools reported,
   matching no VMDq hardware support.
 
+* Removed vhost async (DMA-accelerated) data path.
+
+  The experimental async data path APIs have been removed from the vhost library.
+  The following functions and flag are no longer available:
+
+  - ``rte_vhost_async_channel_register``
+  - ``rte_vhost_async_channel_register_thread_unsafe``
+  - ``rte_vhost_async_channel_unregister``
+  - ``rte_vhost_async_channel_unregister_thread_unsafe``
+  - ``rte_vhost_async_dma_configure``
+  - ``rte_vhost_async_dma_unconfigure``
+  - ``rte_vhost_submit_enqueue_burst``
+  - ``rte_vhost_poll_enqueue_completed``
+  - ``rte_vhost_async_try_dequeue_burst``
+  - ``rte_vhost_async_get_inflight``
+  - ``rte_vhost_async_get_inflight_thread_unsafe``
+  - ``rte_vhost_clear_queue``
+  - ``rte_vhost_clear_queue_thread_unsafe``
+  - ``RTE_VHOST_USER_ASYNC_COPY``
+
 
 API Changes
 -----------
