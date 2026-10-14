@@ -1118,11 +1118,8 @@ virtio_dev_rx_split(struct virtio_net *dev, struct vhost_virtqueue *vq,
 }
 
 static __rte_always_inline int
-virtio_dev_rx_sync_batch_check(struct virtio_net *dev,
-			   struct vhost_virtqueue *vq,
-			   struct rte_mbuf **pkts,
-			   uint64_t *desc_addrs,
-			   uint64_t *lens)
+virtio_dev_rx_batch_check(struct virtio_net *dev, struct vhost_virtqueue *vq,
+		struct rte_mbuf **pkts, uint64_t *desc_addrs, uint64_t *lens)
 	__rte_requires_shared_capability(&vq->iotlb_lock)
 {
 	bool wrap_counter = vq->avail_wrap_counter;
@@ -1220,15 +1217,14 @@ virtio_dev_rx_batch_packed_copy(struct virtio_net *dev,
 }
 
 static __rte_always_inline int
-virtio_dev_rx_sync_batch_packed(struct virtio_net *dev,
-			   struct vhost_virtqueue *vq,
-			   struct rte_mbuf **pkts)
+virtio_dev_rx_batch_packed(struct virtio_net *dev, struct vhost_virtqueue *vq,
+		struct rte_mbuf **pkts)
 	__rte_requires_shared_capability(&vq->iotlb_lock)
 {
 	uint64_t desc_addrs[PACKED_BATCH_SIZE];
 	uint64_t lens[PACKED_BATCH_SIZE];
 
-	if (virtio_dev_rx_sync_batch_check(dev, vq, pkts, desc_addrs, lens) == -1)
+	if (virtio_dev_rx_batch_check(dev, vq, pkts, desc_addrs, lens) == -1)
 		return -1;
 
 	if (vq->shadow_used_idx) {
@@ -1280,8 +1276,7 @@ virtio_dev_rx_packed(struct virtio_net *dev,
 		rte_prefetch0(&vq->desc_packed[vq->last_avail_idx]);
 
 		if (count - pkt_idx >= PACKED_BATCH_SIZE) {
-			if (!virtio_dev_rx_sync_batch_packed(dev, vq,
-							&pkts[pkt_idx])) {
+			if (!virtio_dev_rx_batch_packed(dev, vq, &pkts[pkt_idx])) {
 				pkt_idx += PACKED_BATCH_SIZE;
 				continue;
 			}
@@ -1978,12 +1973,8 @@ virtio_dev_tx_split_compliant(struct virtio_net *dev,
 }
 
 static __rte_always_inline int
-vhost_reserve_avail_batch_packed(struct virtio_net *dev,
-				 struct vhost_virtqueue *vq,
-				 struct rte_mbuf **pkts,
-				 uint16_t avail_idx,
-				 uintptr_t *desc_addrs,
-				 uint16_t *ids)
+virtio_dev_tx_batch_packed_check(struct virtio_net *dev, struct vhost_virtqueue *vq,
+		struct rte_mbuf **pkts, uint16_t avail_idx, uintptr_t *desc_addrs, uint16_t *ids)
 	__rte_requires_shared_capability(&vq->iotlb_lock)
 {
 	bool wrap = vq->avail_wrap_counter;
@@ -2062,8 +2053,7 @@ virtio_dev_tx_batch_packed(struct virtio_net *dev,
 	uint16_t ids[PACKED_BATCH_SIZE];
 	uint16_t i;
 
-	if (vhost_reserve_avail_batch_packed(dev, vq, pkts, avail_idx,
-					     desc_addrs, ids))
+	if (virtio_dev_tx_batch_packed_check(dev, vq, pkts, avail_idx, desc_addrs, ids))
 		return -1;
 
 	vhost_for_each_try_unroll(i, 0, PACKED_BATCH_SIZE)
