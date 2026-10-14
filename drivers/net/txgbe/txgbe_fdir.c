@@ -368,6 +368,18 @@ txgbe_set_fdir_flex_conf(struct rte_eth_dev *dev, uint32_t flex)
 	return 0;
 }
 
+void
+txgbe_fdir_disable(struct txgbe_hw *hw)
+{
+	int i;
+
+	wr32(hw, TXGBE_FDIRCTL, 0);
+	wr32(hw, TXGBE_PBRXSIZE(0), hw->mac.rx_pb_size << 10);
+	for (i = 1; i < 8; i++)
+		wr32(hw, TXGBE_PBRXSIZE(i), 0);
+	txgbe_flush(hw);
+}
+
 int
 txgbe_fdir_configure(struct rte_eth_dev *dev)
 {
@@ -408,27 +420,31 @@ txgbe_fdir_configure(struct rte_eth_dev *dev)
 	err = txgbe_fdir_store_input_mask(dev);
 	if (err < 0) {
 		PMD_INIT_LOG(ERR, " Error on setting FD mask");
-		return err;
+		goto error;
 	}
 
 	err = txgbe_fdir_set_input_mask(dev);
 	if (err < 0) {
 		PMD_INIT_LOG(ERR, " Error on setting FD mask");
-		return err;
+		goto error;
 	}
 
 	err = txgbe_set_fdir_flex_conf(dev, flex);
 	if (err < 0) {
 		PMD_INIT_LOG(ERR, " Error on setting FD flexible arguments.");
-		return err;
+		goto error;
 	}
 
 	err = txgbe_fdir_enable(hw, fdirctrl);
 	if (err < 0) {
 		PMD_INIT_LOG(ERR, " Error on enabling FD.");
-		return err;
+		goto error;
 	}
 	return 0;
+
+error:
+	txgbe_fdir_disable(hw);
+	return err;
 }
 
 /*
@@ -1138,11 +1154,15 @@ txgbe_fdir_filter_restore(struct rte_eth_dev *dev)
 int
 txgbe_clear_all_fdir_filter(struct rte_eth_dev *dev)
 {
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
 	struct rte_eth_fdir_conf *fdir_conf = TXGBE_DEV_FDIR_CONF(dev);
 	struct txgbe_hw_fdir_info *fdir_info = TXGBE_DEV_FDIR(dev);
 	struct txgbe_fdir_filter *fdir_filter;
 	struct txgbe_fdir_filter *filter_flag;
+	bool fdir_enabled;
 	int ret = 0;
+
+	fdir_enabled = fdir_conf->mode != RTE_FDIR_MODE_NONE;
 
 	/* flush flow director */
 	rte_hash_reset(fdir_info->hash_handle);
@@ -1160,6 +1180,9 @@ txgbe_clear_all_fdir_filter(struct rte_eth_dev *dev)
 
 	if (filter_flag != NULL)
 		ret = txgbe_fdir_flush(dev);
+
+	if (fdir_enabled && txgbe_is_pf(hw))
+		txgbe_fdir_disable(hw);
 
 	return ret;
 }
