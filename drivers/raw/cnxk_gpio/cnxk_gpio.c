@@ -442,6 +442,8 @@ cnxk_gpio_unregister_irq(struct cnxk_gpio *gpio)
 	if (ret)
 		return ret;
 
+	/* fd is owned by gpio, only clear reference here. */
+	rte_intr_fd_set(gpio->intr.intr_handle, -1);
 	rte_intr_instance_free(gpio->intr.intr_handle);
 	gpio->intr.intr_handle = NULL;
 
@@ -635,6 +637,7 @@ cnxk_gpio_register_irq_compat(struct cnxk_gpio *gpio, struct cnxk_gpio_irq *irq,
 
 	return 0;
 out:
+	rte_intr_fd_set(intr_handle, -1);
 	rte_intr_instance_free(intr_handle);
 
 	return ret;

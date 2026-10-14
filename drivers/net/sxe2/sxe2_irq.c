@@ -397,8 +397,11 @@ static void sxe2_intr_handler_destroy(struct rte_intr_handle *intr_handle,
 	if (!intr_handle)
 		return;
 
-	if (rte_intr_fd_get(intr_handle) >= 0)
+	if (rte_intr_fd_get(intr_handle) >= 0) {
 		(void)rte_intr_callback_unregister(intr_handle, cb, cb_arg);
+		/* fd is not owned by the driver, only clear reference here. */
+		rte_intr_fd_set(intr_handle, -1);
+	}
 	rte_intr_instance_free(intr_handle);
 }
 

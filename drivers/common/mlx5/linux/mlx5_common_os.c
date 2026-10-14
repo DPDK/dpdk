@@ -1108,6 +1108,7 @@ mlx5_os_interrupt_handler_create(int mode, bool set_fd_nonblock, int fd,
 	}
 	return tmp_intr_handle;
 err:
+	rte_intr_fd_set(tmp_intr_handle, -1);
 	rte_intr_instance_free(tmp_intr_handle);
 	return NULL;
 }
@@ -1181,8 +1182,11 @@ void
 mlx5_os_interrupt_handler_destroy(struct rte_intr_handle *intr_handle,
 				  rte_intr_callback_fn cb, void *cb_arg)
 {
-	if (rte_intr_fd_get(intr_handle) >= 0)
+	if (rte_intr_fd_get(intr_handle) >= 0) {
 		mlx5_intr_callback_unregister(intr_handle, cb, cb_arg);
+		/* fd is not owned by the driver, only clear reference here. */
+		rte_intr_fd_set(intr_handle, -1);
+	}
 	rte_intr_instance_free(intr_handle);
 }
 

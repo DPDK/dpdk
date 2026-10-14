@@ -117,6 +117,8 @@ cdx_vfio_unmap_resource_primary(struct rte_cdx_device *dev)
 	vfio_dev_fd = rte_intr_dev_fd_get(dev->intr_handle);
 	if (vfio_dev_fd < 0)
 		return -1;
+	/* vfio_dev_fd is owned by VFIO, only clear reference here. */
+	rte_intr_dev_fd_set(dev->intr_handle, -1);
 
 	ret = dev_vfio_release_device(RTE_CDX_BUS_DEVICES_PATH, dev->device.name,
 				      vfio_dev_fd);
@@ -151,6 +153,8 @@ cdx_vfio_unmap_resource_secondary(struct rte_cdx_device *dev)
 	vfio_dev_fd = rte_intr_dev_fd_get(dev->intr_handle);
 	if (vfio_dev_fd < 0)
 		return -1;
+	/* vfio_dev_fd is owned by VFIO, only clear reference here. */
+	rte_intr_dev_fd_set(dev->intr_handle, -1);
 
 	ret = dev_vfio_release_device(RTE_CDX_BUS_DEVICES_PATH, dev->device.name,
 				      vfio_dev_fd);

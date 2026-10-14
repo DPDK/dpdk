@@ -96,6 +96,7 @@ mlx5_vdpa_virtq_unregister_intr_handle(struct mlx5_vdpa_virtq *virtq)
 				pthread_mutex_lock(&virtq->virtq_lock);
 			}
 		}
+		/* fd is owned by vhost, only clear reference here. */
 		(void)rte_intr_fd_set(virtq->intr_handle, -1);
 	}
 	rte_intr_instance_free(virtq->intr_handle);

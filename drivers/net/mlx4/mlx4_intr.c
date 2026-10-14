@@ -265,6 +265,7 @@ mlx4_intr_uninstall(struct mlx4_priv *priv)
 					     (void (*)(void *))
 					     mlx4_interrupt_handler,
 					     priv);
+		/* fd is owned by ibverbs, only clear reference here. */
 		if (rte_intr_fd_set(priv->intr_handle, -1))
 			return -rte_errno;
 	}

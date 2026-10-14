@@ -357,6 +357,7 @@ pci_vfio_enable_notifier(struct rte_pci_device *dev, int vfio_dev_fd)
 error:
 	rte_intr_fd_close(dev->vfio_req_intr_handle);
 	rte_intr_type_set(dev->vfio_req_intr_handle, RTE_INTR_HANDLE_UNKNOWN);
+	/* vfio_dev_fd is managed by VFIO layer, only clear reference here. */
 	rte_intr_dev_fd_set(dev->vfio_req_intr_handle, -1);
 
 	return -1;
@@ -384,6 +385,7 @@ pci_vfio_disable_notifier(struct rte_pci_device *dev)
 
 	rte_intr_fd_close(dev->vfio_req_intr_handle);
 	rte_intr_type_set(dev->vfio_req_intr_handle, RTE_INTR_HANDLE_UNKNOWN);
+	/* vfio_dev_fd is managed by VFIO layer, only clear reference here. */
 	rte_intr_dev_fd_set(dev->vfio_req_intr_handle, -1);
 
 	return 0;

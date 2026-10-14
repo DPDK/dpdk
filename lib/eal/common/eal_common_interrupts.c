@@ -187,6 +187,12 @@ void rte_intr_instance_free(struct rte_intr_handle *intr_handle)
 {
 	if (intr_handle == NULL)
 		return;
+	if (rte_intr_fd_get(intr_handle) >= 0)
+		EAL_LOG(NOTICE, "Some interrupt handle is leaking a FD: %d",
+			rte_intr_fd_get(intr_handle));
+	if (rte_intr_dev_fd_get(intr_handle) >= 0)
+		EAL_LOG(NOTICE, "Some interrupt handle is leaking a device FD: %d",
+			rte_intr_dev_fd_get(intr_handle));
 	if (RTE_INTR_INSTANCE_USES_RTE_MEMORY(intr_handle->alloc_flags)) {
 		rte_free(intr_handle->efds);
 		rte_free(intr_handle->elist);

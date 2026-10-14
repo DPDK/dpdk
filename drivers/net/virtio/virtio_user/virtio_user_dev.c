@@ -858,6 +858,8 @@ virtio_user_dev_uninit(struct virtio_user_dev *dev)
 {
 	struct rte_eth_dev *eth_dev = &rte_eth_devices[dev->hw.port_id];
 
+	/* fd is not owned by the driver, only clear reference here. */
+	rte_intr_fd_set(eth_dev->intr_handle, -1);
 	rte_intr_instance_free(eth_dev->intr_handle);
 	eth_dev->intr_handle = NULL;
 

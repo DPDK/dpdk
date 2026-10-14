@@ -1964,6 +1964,7 @@ mana_intr_install(struct rte_eth_dev *eth_dev, struct mana_priv *priv)
 					 mana_intr_handler, priv);
 	if (ret) {
 		DRV_LOG(ERR, "Failed to register intr callback");
+		/* fd is owned by ibverbs, only clear reference here. */
 		rte_intr_fd_set(priv->intr_handle, -1);
 		goto free_intr;
 	}

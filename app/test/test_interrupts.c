@@ -132,8 +132,11 @@ test_interrupt_deinit(void)
 {
 	int i;
 
-	for (i = 0; i < TEST_INTERRUPT_HANDLE_MAX; i++)
+	for (i = 0; i < TEST_INTERRUPT_HANDLE_MAX; i++) {
+		rte_intr_fd_set(intr_handles[i], -1);
+		rte_intr_dev_fd_set(intr_handles[i], -1);
 		rte_intr_instance_free(intr_handles[i]);
+	}
 	close(pfds.pipefd[0]);
 	close(pfds.pipefd[1]);
 
