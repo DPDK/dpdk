@@ -875,6 +875,125 @@ imx_edma5_burst_capacity(const void *dev_private, uint16_t vchan)
 	return vc->nb_desc - 1 - vc->nb_enqueued;
 }
 
+static int
+imx_edma5_vchan_status(const struct rte_dma_dev *dev, uint16_t vchan,
+		enum rte_dma_vchan_status *status)
+{
+	const struct imx_edma5_dev *ed = dev->data->dev_private;
+	const struct imx_edma5_vchan *vc = &ed->vchans[vchan];
+	uint16_t idx;
+
+	/*
+	 * HALTED_ERROR if an errored job is still unreaped, ACTIVE while any job
+	 * is outstanding (not done, or enqueued but not submitted), else IDLE.
+	 */
+	*status = RTE_DMA_VCHAN_IDLE;
+
+	for (idx = vc->tail; idx != vc->head; idx = (idx + 1) & vc->desc_mask) {
+		const struct imx_edma5_job *job = &vc->jobs[idx];
+
+		if (job->submitted && job->done && job->error) {
+			*status = RTE_DMA_VCHAN_HALTED_ERROR;
+			break;
+		}
+
+		if (!job->submitted || !job->done) {
+			*status = RTE_DMA_VCHAN_ACTIVE;
+			break;
+		}
+	}
+
+	return 0;
+}
+
+static int
+imx_edma5_stats_get(const struct rte_dma_dev *dev, uint16_t vchan, struct rte_dma_stats *stats,
+		uint32_t stats_sz)
+{
+	const struct imx_edma5_dev *ed = dev->data->dev_private;
+
+	RTE_SET_USED(stats_sz);
+
+	stats->submitted = 0;
+	stats->completed = 0;
+	stats->errors = 0;
+
+	/* RTE_DMA_ALL_VCHAN requests the aggregate across every vchan. */
+	if (vchan == RTE_DMA_ALL_VCHAN) {
+		uint16_t i;
+
+		for (i = 0; i < ed->nb_vchans; i++) {
+			const struct imx_edma5_vchan *vc = &ed->vchans[i];
+
+			stats->submitted += vc->submitted_count;
+			stats->completed += vc->completed_count;
+			stats->errors += vc->errors_count;
+		}
+	} else if (vchan < ed->nb_vchans) {
+		const struct imx_edma5_vchan *vc = &ed->vchans[vchan];
+
+		stats->submitted = vc->submitted_count;
+		stats->completed = vc->completed_count;
+		stats->errors = vc->errors_count;
+	}
+
+	return 0;
+}
+
+static int
+imx_edma5_stats_reset(struct rte_dma_dev *dev, uint16_t vchan)
+{
+	struct imx_edma5_dev *ed = dev->data->dev_private;
+
+	/* RTE_DMA_ALL_VCHAN requests a reset of every vchan. */
+	if (vchan == RTE_DMA_ALL_VCHAN) {
+		uint16_t i;
+
+		for (i = 0; i < ed->nb_vchans; i++) {
+			struct imx_edma5_vchan *vc = &ed->vchans[i];
+
+			vc->submitted_count = 0;
+			vc->completed_count = 0;
+			vc->errors_count = 0;
+		}
+	} else if (vchan < ed->nb_vchans) {
+		struct imx_edma5_vchan *vc = &ed->vchans[vchan];
+
+		vc->submitted_count = 0;
+		vc->completed_count = 0;
+		vc->errors_count = 0;
+	}
+
+	return 0;
+}
+
+static int
+imx_edma5_dump(const struct rte_dma_dev *dev, FILE *f)
+{
+	const struct imx_edma5_dev *ed = dev->data->dev_private;
+	uint16_t i;
+
+	fprintf(f, "  imx_edma5 nb_channels=%u nb_vchans=%u\n", ed->nb_channels, ed->nb_vchans);
+	for (i = 0; i < ed->nb_vchans; i++) {
+		const struct imx_edma5_vchan *vc = &ed->vchans[i];
+
+		fprintf(f,
+			"    vchan %u: hw_chan=%u nb_desc=%u enqueued=%u "
+			"submitted=%" PRIu64 " completed=%" PRIu64
+			" errors=%" PRIu64 "\n",
+			i, vc->hw_chan, vc->nb_desc, vc->nb_enqueued,
+			vc->submitted_count, vc->completed_count,
+			vc->errors_count);
+		/* Hardware register snapshot for debug (CH_CSR, CH_ES). */
+		fprintf(f,
+			"      hw: CH_CSR=0x%08x CH_ES=0x%08x\n",
+			imx_edma5_read32(vc->ch_regs, IMX_EDMA5_CH_CSR),
+			imx_edma5_read32(vc->ch_regs, IMX_EDMA5_CH_ES));
+	}
+
+	return 0;
+}
+
 static const struct rte_dma_dev_ops imx_edma5_ops = {
 	.dev_info_get	= imx_edma5_info_get,
 	.dev_configure	= imx_edma5_configure,
@@ -883,6 +1002,12 @@ static const struct rte_dma_dev_ops imx_edma5_ops = {
 	.dev_close	= imx_edma5_close,
 
 	.vchan_setup	= imx_edma5_vchan_setup,
+	.vchan_status	= imx_edma5_vchan_status,
+
+	.stats_get	= imx_edma5_stats_get,
+	.stats_reset	= imx_edma5_stats_reset,
+
+	.dev_dump	= imx_edma5_dump,
 };
 
 static int
