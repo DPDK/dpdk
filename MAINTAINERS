@@ -1418,6 +1418,12 @@ M: Hemant Agrawal <hemant.agrawal@nxp.com>
 F: drivers/dma/dpaa2/
 F: doc/guides/dmadevs/dpaa2.rst
 
+NXP i.MX95 eDMA5
+M: Gagandeep Singh <g.singh@nxp.com>
+M: Prashant Gupta <prashant.gupta_3@nxp.com>
+F: drivers/dma/imx_edma5/
+F: doc/guides/dmadevs/imx_edma5.rst
+
 
 RegEx Drivers
 -------------

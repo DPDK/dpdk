@@ -176,6 +176,12 @@ New Features
   dmadev per channel with a single virtual channel and supports
   memory-to-memory copy operations.
 
+* **Added NXP i.MX95 eDMA5 DMA driver.**
+
+  Added a DMA driver for the NXP i.MX95 eDMA5 controller.
+  The driver exposes each eDMA5 instance as a DPDK dmadev device and
+  supports memory-to-memory copy and scatter-gather copy operations.
+
 * **Added per-queue statistics API in bbdev.**
 
   Added ``rte_bbdev_queue_stats_get()`` function to retrieve statistics
