@@ -4,6 +4,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <rte_errno.h>
 #include <rte_interrupts.h>
@@ -219,6 +220,17 @@ fail:
 	return -1;
 }
 
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_intr_fd_close, 26.11)
+void rte_intr_fd_close(struct rte_intr_handle *intr_handle)
+{
+	int fd = rte_intr_fd_get(intr_handle);
+
+	if (fd >= 0) {
+		close(fd);
+		rte_intr_fd_set(intr_handle, -1);
+	}
+}
+
 RTE_EXPORT_SYMBOL(rte_intr_type_set)
 int rte_intr_type_set(struct rte_intr_handle *intr_handle,
 	enum rte_intr_handle_type type)
@@ -263,6 +275,17 @@ int rte_intr_dev_fd_get(const struct rte_intr_handle *intr_handle)
 	return intr_handle->dev_fd;
 fail:
 	return -1;
+}
+
+RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_dev_fd_close)
+void rte_intr_dev_fd_close(struct rte_intr_handle *intr_handle)
+{
+	int fd = rte_intr_dev_fd_get(intr_handle);
+
+	if (fd >= 0) {
+		close(fd);
+		rte_intr_dev_fd_set(intr_handle, -1);
+	}
 }
 
 RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_max_intr_set)

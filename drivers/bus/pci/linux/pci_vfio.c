@@ -355,9 +355,7 @@ pci_vfio_enable_notifier(struct rte_pci_device *dev, int vfio_dev_fd)
 
 	return 0;
 error:
-	close(fd);
-
-	rte_intr_fd_set(dev->vfio_req_intr_handle, -1);
+	rte_intr_fd_close(dev->vfio_req_intr_handle);
 	rte_intr_type_set(dev->vfio_req_intr_handle, RTE_INTR_HANDLE_UNKNOWN);
 	rte_intr_dev_fd_set(dev->vfio_req_intr_handle, -1);
 
@@ -384,9 +382,7 @@ pci_vfio_disable_notifier(struct rte_pci_device *dev)
 		return -1;
 	}
 
-	close(rte_intr_fd_get(dev->vfio_req_intr_handle));
-
-	rte_intr_fd_set(dev->vfio_req_intr_handle, -1);
+	rte_intr_fd_close(dev->vfio_req_intr_handle);
 	rte_intr_type_set(dev->vfio_req_intr_handle, RTE_INTR_HANDLE_UNKNOWN);
 	rte_intr_dev_fd_set(dev->vfio_req_intr_handle, -1);
 
@@ -1088,13 +1084,7 @@ pci_vfio_unmap_resource_primary(struct rte_pci_device *dev)
 		return -1;
 	}
 
-	if (rte_intr_fd_get(dev->intr_handle) < 0)
-		return -1;
-
-	if (close(rte_intr_fd_get(dev->intr_handle)) < 0) {
-		PCI_LOG(INFO, "Error when closing eventfd file descriptor for %s", pci_addr);
-		return -1;
-	}
+	rte_intr_fd_close(dev->intr_handle);
 
 	vfio_dev_fd = rte_intr_dev_fd_get(dev->intr_handle);
 	if (vfio_dev_fd < 0)

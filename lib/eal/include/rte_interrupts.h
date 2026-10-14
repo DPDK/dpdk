@@ -280,6 +280,19 @@ int
 rte_intr_fd_get(const struct rte_intr_handle *intr_handle);
 
 /**
+ * Close the FD of the given interrupt handle instance,
+ * and set FD to -1.
+ *
+ * If FD is not valid (< 0), nothing is done.
+ *
+ * @param intr_handle
+ *  pointer to the interrupt handle.
+ */
+__rte_experimental
+void
+rte_intr_fd_close(struct rte_intr_handle *intr_handle);
+
+/**
  * Set the type field of interrupt handle with user provided
  * interrupt type.
  *
@@ -466,6 +479,20 @@ rte_intr_dev_fd_set(struct rte_intr_handle *intr_handle, int fd);
 __rte_internal
 int
 rte_intr_dev_fd_get(const struct rte_intr_handle *intr_handle);
+
+/**
+ * @internal
+ * Close the device FD of the given interrupt handle instance,
+ * and set device FD to -1.
+ *
+ * If device FD is not valid (< 0), nothing is done.
+ *
+ * @param intr_handle
+ *  pointer to the interrupt handle.
+ */
+__rte_internal
+void
+rte_intr_dev_fd_close(struct rte_intr_handle *intr_handle);
 
 /**
  * @internal

@@ -171,8 +171,10 @@ plt_thread_is_valid(plt_thread_t thr)
 #define plt_intr_vec_list_free		rte_intr_vec_list_free
 #define plt_intr_fd_set			rte_intr_fd_set
 #define plt_intr_fd_get			rte_intr_fd_get
+#define plt_intr_fd_close		rte_intr_fd_close
 #define plt_intr_dev_fd_get		rte_intr_dev_fd_get
 #define plt_intr_dev_fd_set		rte_intr_dev_fd_set
+#define plt_intr_dev_fd_close		rte_intr_dev_fd_close
 #define plt_intr_type_get		rte_intr_type_get
 #define plt_intr_type_set		rte_intr_type_set
 #define plt_intr_instance_alloc		rte_intr_instance_alloc

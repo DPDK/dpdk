@@ -242,10 +242,7 @@ static void
 dev_delayed_unregister(void *param)
 {
 	rte_intr_callback_unregister(intr_handle, dev_uev_handler, param);
-	if (rte_intr_fd_get(intr_handle) >= 0) {
-		close(rte_intr_fd_get(intr_handle));
-		rte_intr_fd_set(intr_handle, -1);
-	}
+	rte_intr_fd_close(intr_handle);
 }
 
 static void

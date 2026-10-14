@@ -171,6 +171,65 @@ test_interrupt_handle_compare(struct rte_intr_handle *intr_handle_l,
 	return 0;
 }
 
+/**
+ * Tests for rte_intr_fd_close() and rte_intr_dev_fd_close().
+ */
+static int
+test_interrupt_close(void)
+{
+	struct rte_intr_handle *intr_handle;
+	int pipefd[2];
+
+	/* check with null intr_handle */
+	rte_intr_fd_close(NULL);
+	rte_intr_dev_fd_close(NULL);
+
+	intr_handle = rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_PRIVATE);
+	if (!intr_handle)
+		return -1;
+
+	if (pipe(pipefd) < 0) {
+		rte_intr_instance_free(intr_handle);
+		return -1;
+	}
+
+	if (rte_intr_fd_set(intr_handle, pipefd[0]) < 0 ||
+			rte_intr_dev_fd_set(intr_handle, pipefd[1]) < 0) {
+		close(pipefd[0]);
+		close(pipefd[1]);
+		rte_intr_instance_free(intr_handle);
+		return -1;
+	}
+
+	/* check rte_intr_fd_close */
+	rte_intr_fd_close(intr_handle);
+
+	if (rte_intr_fd_get(intr_handle) != -1) {
+		printf("fd not set to -1 after close\n");
+		close(pipefd[1]);
+		rte_intr_instance_free(intr_handle);
+		return -1;
+	}
+
+	/* calling again should be a noop */
+	rte_intr_fd_close(intr_handle);
+
+	/* check rte_intr_dev_fd_close */
+	rte_intr_dev_fd_close(intr_handle);
+
+	if (rte_intr_dev_fd_get(intr_handle) != -1) {
+		printf("dev_fd not set to -1 after close\n");
+		rte_intr_instance_free(intr_handle);
+		return -1;
+	}
+
+	/* calling again should be a noop */
+	rte_intr_dev_fd_close(intr_handle);
+
+	rte_intr_instance_free(intr_handle);
+	return 0;
+}
+
 #else
 /* to be implemented for bsd later */
 static inline int
@@ -206,6 +265,12 @@ test_interrupt_handle_compare(struct rte_intr_handle *intr_handle_l,
 	(void)intr_handle_l;
 	(void)intr_handle_r;
 
+	return 0;
+}
+
+static int
+test_interrupt_close(void)
+{
 	return 0;
 }
 #endif /* RTE_EXEC_ENV_LINUX */
@@ -564,6 +629,13 @@ test_interrupt(void)
 
 	if (test_interrupt_disable() < 0) {
 		printf("fail to check interrupt disabling\n");
+		goto out;
+	}
+	rte_delay_ms(TEST_INTERRUPT_CHECK_INTERVAL);
+
+	printf("start interrupt close test\n");
+	if (test_interrupt_close() < 0) {
+		printf("fail to check interrupt close\n");
 		goto out;
 	}
 	rte_delay_ms(TEST_INTERRUPT_CHECK_INTERVAL);

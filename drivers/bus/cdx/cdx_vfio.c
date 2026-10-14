@@ -111,11 +111,7 @@ cdx_vfio_unmap_resource_primary(struct rte_cdx_device *dev)
 			CDX_BUS_ERR("Error when disabling bus master for %s",
 				    dev->device.name);
 
-		if (close(rte_intr_fd_get(dev->intr_handle)) < 0) {
-			CDX_BUS_ERR("Error when closing eventfd file descriptor for %s",
-				dev->device.name);
-			return -1;
-		}
+		rte_intr_fd_close(dev->intr_handle);
 	}
 
 	vfio_dev_fd = rte_intr_dev_fd_get(dev->intr_handle);

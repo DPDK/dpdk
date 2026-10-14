@@ -578,8 +578,7 @@ memif_intr_unregister_handler(struct rte_intr_handle *intr_handle, void *arg)
 	struct memif_control_channel *cc = arg;
 
 	/* close control channel fd */
-	if (rte_intr_fd_get(intr_handle) >= 0)
-		close(rte_intr_fd_get(intr_handle));
+	rte_intr_fd_close(intr_handle);
 	/* clear message queue */
 	while ((elt = TAILQ_FIRST(&cc->msg_queue)) != NULL) {
 		TAILQ_REMOVE(&cc->msg_queue, elt, next);
@@ -664,10 +663,7 @@ memif_disconnect(struct rte_eth_dev *dev)
 				continue;
 		}
 
-		if (rte_intr_fd_get(mq->intr_handle) > 0) {
-			close(rte_intr_fd_get(mq->intr_handle));
-			rte_intr_fd_set(mq->intr_handle, -1);
-		}
+		rte_intr_fd_close(mq->intr_handle);
 	}
 	for (i = 0; i < pmd->cfg.num_s2c_rings; i++) {
 		if (pmd->role == MEMIF_ROLE_SERVER) {
@@ -682,10 +678,7 @@ memif_disconnect(struct rte_eth_dev *dev)
 				continue;
 		}
 
-		if (rte_intr_fd_get(mq->intr_handle) > 0) {
-			close(rte_intr_fd_get(mq->intr_handle));
-			rte_intr_fd_set(mq->intr_handle, -1);
-		}
+		rte_intr_fd_close(mq->intr_handle);
 	}
 
 	memif_free_regions(dev);

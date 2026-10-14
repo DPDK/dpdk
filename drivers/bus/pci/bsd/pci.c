@@ -93,11 +93,8 @@ pci_uio_free_resource(struct rte_pci_device *dev,
 {
 	rte_free(uio_res);
 
-	if (rte_intr_fd_get(dev->intr_handle) >= 0) {
-		close(rte_intr_fd_get(dev->intr_handle));
-		rte_intr_fd_set(dev->intr_handle, -1);
-		rte_intr_type_set(dev->intr_handle, RTE_INTR_HANDLE_UNKNOWN);
-	}
+	rte_intr_fd_close(dev->intr_handle);
+	rte_intr_type_set(dev->intr_handle, RTE_INTR_HANDLE_UNKNOWN);
 }
 
 int

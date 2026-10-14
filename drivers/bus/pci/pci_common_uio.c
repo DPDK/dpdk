@@ -211,7 +211,6 @@ pci_uio_unmap_resource(struct rte_pci_device *dev)
 	struct mapped_pci_resource *uio_res;
 	struct mapped_pci_res_list *uio_res_list =
 			RTE_TAILQ_CAST(rte_uio_tailq.head, mapped_pci_res_list);
-	int uio_cfg_fd;
 
 	if (dev == NULL)
 		return;
@@ -222,15 +221,8 @@ pci_uio_unmap_resource(struct rte_pci_device *dev)
 		return;
 
 	/* close fd */
-	if (rte_intr_fd_get(dev->intr_handle) >= 0)
-		close(rte_intr_fd_get(dev->intr_handle));
-	uio_cfg_fd = rte_intr_dev_fd_get(dev->intr_handle);
-	if (uio_cfg_fd >= 0) {
-		close(uio_cfg_fd);
-		rte_intr_dev_fd_set(dev->intr_handle, -1);
-	}
-
-	rte_intr_fd_set(dev->intr_handle, -1);
+	rte_intr_fd_close(dev->intr_handle);
+	rte_intr_dev_fd_close(dev->intr_handle);
 	rte_intr_type_set(dev->intr_handle, RTE_INTR_HANDLE_UNKNOWN);
 
 	/* secondary processes - just free maps */
