@@ -298,11 +298,9 @@ hn_dev_link_update(struct rte_eth_dev *dev,
 	else
 		link.link_status = RTE_ETH_LINK_DOWN;
 
-	if (old.link_status == link.link_status)
-		return 0;
-
-	PMD_INIT_LOG(DEBUG, "Port %d is %s", dev->data->port_id,
-		     (link.link_status == RTE_ETH_LINK_UP) ? "up" : "down");
+	if (old.link_status != link.link_status)
+		PMD_INIT_LOG(DEBUG, "Port %d is %s", dev->data->port_id,
+			     (link.link_status == RTE_ETH_LINK_UP) ? "up" : "down");
 
 	return rte_eth_linkstatus_set(dev, &link);
 }
