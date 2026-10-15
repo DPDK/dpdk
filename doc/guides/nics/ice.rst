@@ -1021,6 +1021,9 @@ To start ``testpmd``, and add vlan 10 to port 0:
 Diagnostic Utilities
 --------------------
 
+The diagnostic dump functions are also available to applications through
+the public ``rte_pmd_ice.h`` header.
+
 Dump DDP Package
 ~~~~~~~~~~~~~~~~
 
