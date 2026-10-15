@@ -49,15 +49,14 @@ SLIST_HEAD(rte_graph_rq_head, rte_graph);
  */
 struct __rte_cache_aligned rte_graph {
 	/* Fast path area. */
-	uint32_t tail;		     /**< Tail of circular buffer. */
-	uint32_t head;		     /**< Head of circular buffer. */
-	uint32_t cir_mask;	     /**< Circular buffer wrap around mask. */
 	rte_node_t nb_nodes;	     /**< Number of nodes in the graph. */
-	rte_graph_off_t *cir_start;  /**< Pointer to circular buffer. */
 	rte_graph_off_t nodes_start; /**< Offset at which node memory starts. */
+	rte_graph_off_t *sched_table; /**< Node offset indexed by sched_idx. */
+	uint64_t *pending;	     /**< Bitmap of pending nodes. */
+	uint64_t *src_pending;	     /**< Bitmap of source nodes (constant). */
+	uint16_t nb_sched_words;     /**< Number of uint64_t words in pending bitmaps. */
 	uint8_t model;		     /**< graph model */
-	uint8_t reserved1;	     /**< Reserved for future use. */
-	uint16_t reserved2;	     /**< Reserved for future use. */
+	/* 26 bytes padding */
 	union {
 		/* Fast schedule area for mcore dispatch model */
 		struct {
@@ -98,6 +97,7 @@ struct __rte_cache_aligned rte_node {
 	rte_node_t id;		/**< Node identifier. */
 	rte_node_t parent_id;	/**< Parent Node identifier. */
 	rte_edge_t nb_edges;	/**< Number of edges from this node. */
+	uint16_t sched_idx;	/**< Bit position in pending bitmap. */
 	uint32_t realloc_count;	/**< Number of times realloced. */
 
 	char parent[RTE_NODE_NAMESIZE];	/**< Parent node name. */
@@ -153,7 +153,7 @@ struct __rte_cache_aligned rte_node {
 		}; /**< Node Context. */
 		uint16_t size;		/**< Total number of objects available. */
 		uint16_t idx;		/**< Number of objects used. */
-		rte_graph_off_t off;	/**< Offset of node in the graph reel. */
+		rte_graph_off_t off;	/**< Offset of node in the graph memory. */
 		uint64_t total_cycles;	/**< Cycles spent in this node. */
 		uint64_t total_calls;	/**< Calls done to this node. */
 		uint64_t total_objs;	/**< Objects processed by this node. */
@@ -210,12 +210,12 @@ void __rte_node_stream_alloc_size(struct rte_graph *graph,
 /**
  * @internal
  *
- * Enqueue a given node to the tail of the graph reel.
+ * Process a node's pending objects and collect stats.
  *
  * @param graph
  *   Pointer Graph object.
  * @param node
- *   Pointer to node object to be enqueued.
+ *   Pointer to node object to be processed.
  */
 static __rte_always_inline void
 __rte_node_process(struct rte_graph *graph, struct rte_node *node)
@@ -271,21 +271,42 @@ __rte_node_process(struct rte_graph *graph, struct rte_node *node)
 /**
  * @internal
  *
- * Enqueue a given node to the tail of the graph reel.
+ * Get a pointer to a node from the scheduling table.
  *
  * @param graph
  *   Pointer Graph object.
- * @param node
- *   Pointer to node object to be enqueued.
+ * @param word
+ *   Offset in the pending bitmap.
+ * @param bit
+ *   Bit number.
+ *
+ * @return
+ *   Pointer to the node.
  */
-static __rte_always_inline void
-__rte_node_enqueue_tail_update(struct rte_graph *graph, struct rte_node *node)
+static inline struct rte_node *
+__rte_graph_pending_node(struct rte_graph *graph, uint16_t word, uint16_t bit)
 {
-	uint32_t tail;
+	const uint16_t index = (word * sizeof(*graph->pending) * CHAR_BIT) + bit;
+	const rte_graph_off_t node_offset = graph->sched_table[index];
+	return (struct rte_node *)RTE_PTR_ADD(graph, node_offset);
+}
 
-	tail = graph->tail;
-	graph->cir_start[tail++] = node->off;
-	graph->tail = tail & graph->cir_mask;
+/**
+ * @internal
+ *
+ * Mark a node as pending in the graph scheduling bitmap.
+ *
+ * @param bitmap
+ *   Either graph->pending or graph->src_pending.
+ * @param node
+ *   Pointer to node object to be marked pending.
+ */
+static inline void
+__rte_node_pending_set(uint64_t *bitmap, struct rte_node *node)
+{
+	const uint16_t word = node->sched_idx / (sizeof(*bitmap) * CHAR_BIT);
+	const uint16_t bit = node->sched_idx % (sizeof(*bitmap) * CHAR_BIT);
+	bitmap[word] |= 1ULL << bit;
 }
 
 /**
@@ -293,8 +314,8 @@ __rte_node_enqueue_tail_update(struct rte_graph *graph, struct rte_node *node)
  *
  * Enqueue sequence prologue function.
  *
- * Updates the node to tail of graph reel and resizes the number of objects
- * available in the stream as needed.
+ * Marks the node as pending in the scheduling bitmap and resizes the number
+ * of objects available in the stream as needed.
  *
  * @param graph
  *   Pointer to the graph object.
@@ -310,9 +331,8 @@ __rte_node_enqueue_prologue(struct rte_graph *graph, struct rte_node *node,
 			    const uint16_t idx, const uint16_t space)
 {
 
-	/* Add to the pending stream list if the node is new */
 	if (idx == 0)
-		__rte_node_enqueue_tail_update(graph, node);
+		__rte_node_pending_set(graph->pending, node);
 
 	if (unlikely(node->size < (idx + space)))
 		__rte_node_stream_alloc_size(graph, node, node->size + space);
@@ -344,7 +364,7 @@ __rte_node_next_node_get(struct rte_node *node, rte_edge_t next)
 
 /**
  * Enqueue the objs to next node for further processing and set
- * the next node to pending state in the circular buffer.
+ * the next node to pending state in the scheduling bitmap.
  *
  * @param graph
  *   Graph pointer returned from rte_graph_lookup().
@@ -372,7 +392,7 @@ rte_node_enqueue(struct rte_graph *graph, struct rte_node *node,
 
 /**
  * Enqueue only one obj to next node for further processing and
- * set the next node to pending state in the circular buffer.
+ * set the next node to pending state in the scheduling bitmap.
  *
  * @param graph
  *   Graph pointer returned from rte_graph_lookup().
@@ -398,7 +418,7 @@ rte_node_enqueue_x1(struct rte_graph *graph, struct rte_node *node,
 
 /**
  * Enqueue only two objs to next node for further processing and
- * set the next node to pending state in the circular buffer.
+ * set the next node to pending state in the scheduling bitmap.
  * Same as rte_node_enqueue_x1 but enqueue two objs.
  *
  * @param graph
@@ -428,7 +448,7 @@ rte_node_enqueue_x2(struct rte_graph *graph, struct rte_node *node,
 
 /**
  * Enqueue only four objs to next node for further processing and
- * set the next node to pending state in the circular buffer.
+ * set the next node to pending state in the scheduling bitmap.
  * Same as rte_node_enqueue_x1 but enqueue four objs.
  *
  * @param graph
@@ -465,7 +485,7 @@ rte_node_enqueue_x4(struct rte_graph *graph, struct rte_node *node,
 
 /**
  * Enqueue objs to multiple next nodes for further processing and
- * set the next nodes to pending state in the circular buffer.
+ * set the next nodes to pending state in the scheduling bitmap.
  * objs[i] will be enqueued to nexts[i].
  *
  * @param graph
@@ -523,7 +543,7 @@ rte_node_next_stream_get(struct rte_graph *graph, struct rte_node *node,
 }
 
 /**
- * Put the next stream to pending state in the circular buffer
+ * Put the next stream to pending state in the scheduling bitmap
  * for further processing. Should be invoked after rte_node_next_stream_get().
  *
  * @param graph
@@ -547,7 +567,7 @@ rte_node_next_stream_put(struct rte_graph *graph, struct rte_node *node,
 
 	node = __rte_node_next_node_get(node, next);
 	if (node->idx == 0)
-		__rte_node_enqueue_tail_update(graph, node);
+		__rte_node_pending_set(graph->pending, node);
 
 	node->idx += idx;
 }
@@ -581,7 +601,7 @@ rte_node_next_stream_move(struct rte_graph *graph, struct rte_node *src,
 		src->objs = dobjs;
 		src->size = dsz;
 		dst->idx = src->idx;
-		__rte_node_enqueue_tail_update(graph, dst);
+		__rte_node_pending_set(graph->pending, dst);
 	} else { /* Move the objects from src node to dst node */
 		rte_node_enqueue(graph, src, next, src->objs, src->idx);
 	}

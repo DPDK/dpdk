@@ -109,14 +109,6 @@ Deprecation Notices
   will take a size parameter as well as the string buffer.
   This will detect and prevent accidental overwriting of caller provided buffer.
 
-* graph: The internal scheduling mechanism of ``struct rte_graph``
-  will change in DPDK 26.11.
-  The circular buffer fields (``head``, ``tail``, ``cir_mask``, ``cir_start``)
-  will be replaced with a topological bitmap scheduler.
-  A new field will be added to ``struct rte_node`` for the scheduling order.
-  The graph walk functions will process nodes in topological order
-  using bitmap scanning instead of the circular buffer.
-
 * bus/vmbus: Starting DPDK 25.11, all the vmbus API defined in
   ``drivers/bus/vmbus/rte_bus_vmbus.h`` will become internal to DPDK.
   Those API functions are used internally by DPDK core and netvsc PMD.

@@ -167,3 +167,49 @@ graph_has_isolated_node(struct graph *graph)
 fail:
 	return 1;
 }
+
+int
+graph_topo_order_compute(struct graph *graph)
+{
+	struct graph_node **queue, *v;
+	uint16_t head = 0, tail = 0;
+	struct graph_node *graph_node;
+	rte_node_t nb_nodes;
+	rte_edge_t i;
+	size_t sz;
+
+	nb_nodes = graph_nodes_count(graph);
+	/* Queue may contain duplicates in diamond-shaped graphs */
+	sz = sizeof(struct graph_node *) * nb_nodes * nb_nodes;
+	queue = malloc(sz);
+	if (queue == NULL)
+		SET_ERR_JMP(ENOMEM, fail, "Failed to alloc topo queue");
+
+	STAILQ_FOREACH(graph_node, &graph->node_list, next)
+		graph_node->topo_order = 0;
+
+	STAILQ_FOREACH(graph_node, &graph->node_list, next) {
+		if (graph_node->node->flags & RTE_NODE_SOURCE_F)
+			queue[tail++] = graph_node;
+	}
+
+	while (head != tail) {
+		v = queue[head++];
+		for (i = 0; i < v->node->nb_edges; i++) {
+			struct graph_node *child = v->adjacency_list[i];
+			uint32_t depth = v->topo_order + 1;
+
+			/* Cap depth at nb_nodes to handle cycles */
+			if (depth > child->topo_order && depth <= nb_nodes) {
+				child->topo_order = depth;
+				queue[tail++] = child;
+			}
+		}
+	}
+
+	free(queue);
+	return 0;
+
+fail:
+	return -rte_errno;
+}

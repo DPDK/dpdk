@@ -77,8 +77,12 @@ int rte_graph_model_mcore_dispatch_node_lcore_affinity_set(const char *name,
 							   unsigned int lcore_id);
 
 /**
- * Perform graph walk on the circular buffer and invoke the process function
+ * Perform graph walk on the pending bitmap and invoke the process function
  * of the nodes and collect the stats.
+ *
+ * Nodes are visited in topological order (upstream before downstream).
+ * Source nodes are seeded into the pending bitmap at the start of each walk.
+ * Nodes with different lcore affinity are dispatched to their target lcore.
  *
  * @param graph
  *   Graph pointer returned from rte_graph_lookup function.
@@ -88,20 +92,28 @@ int rte_graph_model_mcore_dispatch_node_lcore_affinity_set(const char *name,
 static inline void
 rte_graph_walk_mcore_dispatch(struct rte_graph *graph)
 {
-	const rte_graph_off_t *cir_start = graph->cir_start;
-	const rte_node_t mask = graph->cir_mask;
-	uint32_t head = graph->head;
+	const uint16_t nwords = graph->nb_sched_words;
 	struct rte_node *node;
+	uint16_t word, bit;
 
 	if (graph->dispatch.wq != NULL)
 		__rte_graph_mcore_dispatch_sched_wq_process(graph);
 
-	while (likely(head != graph->tail)) {
-		node = (struct rte_node *)RTE_PTR_ADD(graph, cir_start[(int32_t)head++]);
+	/* Seed pending bitmap with source nodes bound to this lcore */
+	for (word = 0; word < nwords; word++)
+		graph->pending[word] |= graph->src_pending[word];
 
-		/* skip the src nodes which not bind with current worker */
-		if ((int32_t)head < 1 && node->dispatch.lcore_id != graph->dispatch.lcore_id)
-			continue;
+	for (;;) {
+		/* find first word with any pending bit */
+		for (word = 0; word < nwords; word++)
+			if (graph->pending[word])
+				break;
+		if (word == nwords)
+			break; /* no more pending nodes */
+
+		bit = rte_ctz64(graph->pending[word]);
+		graph->pending[word] &= ~(1ULL << bit);
+		node = __rte_graph_pending_node(graph, word, bit);
 
 		/* Schedule the node until all task/objs are done */
 		if (node->dispatch.lcore_id != RTE_MAX_LCORE &&
@@ -111,11 +123,7 @@ rte_graph_walk_mcore_dispatch(struct rte_graph *graph)
 			continue;
 
 		__rte_node_process(graph, node);
-
-		head = likely((int32_t)head > 0) ? head & mask : head;
 	}
-
-	graph->tail = 0;
 }
 
 #ifdef __cplusplus

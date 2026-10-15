@@ -1050,9 +1050,9 @@ graph_init_parallel_tree(void)
  * The fan_out node enqueues to converge (edge 0) before branch (edge 1).
  * With a FIFO scheduler, converge is visited first with only 50% of the
  * objects, then branch runs and re-enqueues to converge for a second visit.
- * With priority-based bitmap scheduling, branch (priority -1) runs before
- * converge (priority 0), so converge accumulates all objects and is visited
- * only once.
+ * With bitmap scheduling sorted by topological order, branch runs before
+ * converge (lower topo_order), so converge accumulates all objects and is
+ * visited only once.
  */
 static inline int
 graph_init_diamond(void)

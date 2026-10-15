@@ -123,8 +123,9 @@ Source node:
 
 Source nodes are static nodes created using ``RTE_NODE_REGISTER`` by passing
 ``flags`` as ``RTE_NODE_SOURCE_F``.
-While performing the graph walk, the ``process()`` function of all the source
-nodes will be called first. So that these nodes can be used as input nodes for a graph.
+Source nodes are always visited first during the graph walk since they have
+the lowest topological depth (0). This ensures they act as input nodes for
+a graph.
 
 nb_xstats:
 ^^^^^^^^^^
@@ -395,12 +396,26 @@ Graph object memory layout
 Understanding the memory layout helps to debug the graph library and
 improve the performance if needed.
 
-Graph object consists of a header, circular buffer to store the pending stream
-when walking over the graph, variable-length memory to store the ``rte_node`` objects,
-and variable-length memory to store the xstat reported by each ``rte_node``.
+A graph object consists of a header, a scheduling table mapping bit positions to
+node offsets, pending and source bitmaps for tracking which nodes need
+processing, variable-length memory to store the ``rte_node`` objects, and
+variable-length memory to store the xstat reported by each ``rte_node``.
 
-The graph_nodes_mem_create() creates and populate this memory. The functions
-such as ``rte_graph_walk()`` and ``rte_node_enqueue_*`` use this memory
+Nodes are sorted by ``(topo_order, node_id)`` at graph creation time and each
+node is assigned a bit position in the pending bitmap. The topological depth
+is computed via BFS from source nodes so that upstream nodes are always visited
+before downstream ones. During the graph walk, the bitmap is scanned from the
+lowest bit, naturally following topological order.
+
+This ordering improves batching in fan-out-then-converge topologies. For
+example, if ``eth_input`` classifies packets to both ``mpls_input`` and
+``ipv4_input``, and ``mpls_input`` also feeds into ``ipv4_input``, the
+topological ordering ensures ``mpls_input`` runs first. Its output accumulates
+in ``ipv4_input`` which is then visited only once with all packets, instead of
+being visited twice (before and after MPLS label popping).
+
+The ``graph_fp_mem_create()`` function creates and populates this memory. The
+functions such as ``rte_graph_walk()`` and ``rte_node_enqueue_*`` use this memory
 to enable fastpath services.
 
 Graph feature arc
