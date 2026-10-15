@@ -9,9 +9,7 @@
 #include <cmdline_parse_num.h>
 #include <cmdline_parse_string.h>
 
-#include "iavf.h"
 #include "testpmd.h"
-#include "iavf_rxtx.h"
 
 struct cmd_reinit_result {
 	cmdline_fixed_string_t port;
