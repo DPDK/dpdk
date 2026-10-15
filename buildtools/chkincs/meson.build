@@ -49,19 +49,13 @@ sources_drivers = files('main.c')
 sources_drivers += gen_c_files.process(dpdk_drivers_headers)
 
 executable('chkincs-drv', sources_drivers,
-        c_args: cflags,
-        include_directories: includes + includes_drivers,
-        dependencies: deps + deps_drivers,
-        install: false)
-
-executable('chkincs-drv-exp', sources_drivers,
-        c_args: [cflags, '-DALLOW_EXPERIMENTAL_API'],
+        c_args: [cflags, '-DALLOW_INTERNAL_API'],
         include_directories: includes + includes_drivers,
         dependencies: deps + deps_drivers,
         install: false)
 
 executable('chkincs-drv-all', sources_drivers,
-        c_args: [cflags, '-DALLOW_EXPERIMENTAL_API', '-DALLOW_INTERNAL_API'],
+        c_args: [cflags, '-DALLOW_INTERNAL_API', '-DALLOW_EXPERIMENTAL_API'],
         include_directories: includes + includes_drivers,
         dependencies: deps + deps_drivers,
         install: false)
@@ -101,20 +95,14 @@ cpp_sources_drivers = files('main.cpp')
 cpp_sources_drivers += gen_cpp_files.process(dpdk_drivers_headers)
 
 executable('chkincs-drv-cpp', cpp_sources_drivers,
-        cpp_args: ['-include', 'rte_config.h', cflags],
-        include_directories: includes + includes_drivers,
-        dependencies: deps + deps_drivers,
-        install: false)
-
-executable('chkincs-drv-cpp-exp', cpp_sources_drivers,
-        cpp_args: ['-include', 'rte_config.h', cflags, '-DALLOW_EXPERIMENTAL_API'],
+        cpp_args: ['-include', 'rte_config.h', cflags, '-DALLOW_INTERNAL_API'],
         include_directories: includes + includes_drivers,
         dependencies: deps + deps_drivers,
         install: false)
 
 executable('chkincs-drv-cpp-all', cpp_sources_drivers,
-        cpp_args: ['-include', 'rte_config.h', cflags, '-DALLOW_EXPERIMENTAL_API',
-                   '-DALLOW_INTERNAL_API'],
+        cpp_args: ['-include', 'rte_config.h', cflags, '-DALLOW_INTERNAL_API',
+                   '-DALLOW_EXPERIMENTAL_API'],
         include_directories: includes + includes_drivers,
         dependencies: deps + deps_drivers,
         install: false)
