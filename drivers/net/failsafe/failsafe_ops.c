@@ -398,7 +398,8 @@ fs_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 	if (rxq->event_fd >= 0)
 		close(rxq->event_fd);
 	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
-		if (ETH(sdev)->data->rx_queues != NULL &&
+		if (SUBOPS(sdev, rx_queue_release) != NULL &&
+		    ETH(sdev)->data->rx_queues != NULL &&
 		    ETH(sdev)->data->rx_queues[rxq->qid] != NULL)
 			SUBOPS(sdev, rx_queue_release)(ETH(sdev), rxq->qid);
 	}
@@ -574,7 +575,8 @@ fs_tx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 	if (fs_lock(dev, 0) != 0)
 		return;
 	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
-		if (ETH(sdev)->data->tx_queues != NULL &&
+		if (SUBOPS(sdev, tx_queue_release) != NULL &&
+		    ETH(sdev)->data->tx_queues != NULL &&
 		    ETH(sdev)->data->tx_queues[txq->qid] != NULL)
 			SUBOPS(sdev, tx_queue_release)(ETH(sdev), txq->qid);
 	}
