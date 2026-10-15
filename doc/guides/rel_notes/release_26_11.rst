@@ -162,6 +162,8 @@ New Features
     enabling QinQ tag insertion and outer IPv4/UDP checksum offloads on those paths.
   * Added support for getting and setting link (802.3x) flow control.
   * Added support for Tx rate limiting per queue.
+  * Made the existing diagnostic dump functions available through
+    the public ``rte_pmd_ice.h`` header.
 
 * **Updated Intel ixgbe driver.**
 

@@ -13,6 +13,7 @@
 
 #include "ice_ethdev.h"
 #include "ice_rxtx.h"
+#include "rte_pmd_ice.h"
 
 #define ICE_BLK_MAX_COUNT          512
 #define ICE_BUFF_SEG_HEADER_FLAG   0x1
