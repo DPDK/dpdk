@@ -263,7 +263,7 @@ graph_perf_teardown(void)
 }
 
 static inline rte_node_t
-graph_node_get(const char *pname, char *nname)
+graph_node_get(const char *pname, const char *nname)
 {
 	rte_node_t pnode_id = rte_node_from_name(pname);
 	char lookup_name[RTE_NODE_NAMESIZE];
@@ -1042,6 +1042,132 @@ graph_init_parallel_tree(void)
  *	snk_map[][2] = { {50, 50}, {50, 50}, {0, 0}, {0, 0} }
  */
 
+/* Graph Topology: fan-out-then-converge (diamond)
+ *
+ *   src --> fan_out --(50%)-------------------+-> converge --(100%)--> sink
+ *                   `-(50%)--> branch -(100%)-'
+ *
+ * The fan_out node enqueues to converge (edge 0) before branch (edge 1).
+ * With a FIFO scheduler, converge is visited first with only 50% of the
+ * objects, then branch runs and re-enqueues to converge for a second visit.
+ * With priority-based bitmap scheduling, branch (priority -1) runs before
+ * converge (priority 0), so converge accumulates all objects and is visited
+ * only once.
+ */
+static inline int
+graph_init_diamond(void)
+{
+	rte_node_t fan_out, branch, converge, src, snk;
+	struct test_graph_perf *graph_data;
+	struct rte_graph_param gconf = {0};
+	struct test_node_data *node_data;
+	const struct rte_memzone *mz;
+	const char *edge_names[2];
+	char *node_patterns[5];
+	rte_graph_t graph_id;
+
+	mz = rte_memzone_reserve(TEST_GRAPH_PERF_MZ,
+				 sizeof(struct test_graph_perf), 0, 0);
+	if (mz == NULL) {
+		printf("Failed to allocate graph common memory\n");
+		return -ENOMEM;
+	}
+	graph_data = mz->addr;
+	graph_data->nb_nodes = 5;
+	graph_data->node_data = calloc(5, sizeof(struct test_node_data));
+	if (graph_data->node_data == NULL)
+		goto memzone_free;
+
+	/* Clone all nodes */
+	src = graph_node_get(TEST_GRAPH_SRC_NAME, "0");
+	fan_out = graph_node_get(TEST_GRAPH_WRK_NAME, "fan");
+	/* converge must be edge 0 from fan_out so FIFO visits it first */
+	converge = graph_node_get(TEST_GRAPH_WRK_NAME, "conv");
+	branch = graph_node_get(TEST_GRAPH_WRK_NAME, "br");
+	snk = graph_node_get(TEST_GRAPH_SNK_NAME, "0");
+
+	if (src == RTE_NODE_ID_INVALID || fan_out == RTE_NODE_ID_INVALID ||
+	    converge == RTE_NODE_ID_INVALID || branch == RTE_NODE_ID_INVALID ||
+	    snk == RTE_NODE_ID_INVALID) {
+		printf("Failed to create nodes\n");
+		goto data_free;
+	}
+
+	/* src -> fan_out (100%) */
+	edge_names[0] = rte_node_id_to_name(fan_out);
+	rte_node_edge_update(src, 0, edge_names, 1);
+	node_data = &graph_data->node_data[0];
+	node_data->node_id = src;
+	node_data->is_sink = false;
+	node_data->next_nodes[0] = fan_out;
+	node_data->next_percentage[0] = 100;
+
+	/* fan_out: edge 0 -> converge (50%), edge 1 -> branch (50%) */
+	edge_names[0] = rte_node_id_to_name(converge);
+	edge_names[1] = rte_node_id_to_name(branch);
+	rte_node_edge_update(fan_out, 0, edge_names, 2);
+	node_data = &graph_data->node_data[1];
+	node_data->node_id = fan_out;
+	node_data->is_sink = false;
+	node_data->next_nodes[0] = converge;
+	node_data->next_percentage[0] = 50;
+	node_data->next_nodes[1] = branch;
+	node_data->next_percentage[1] = 50;
+
+	/* branch -> converge (100%) */
+	edge_names[0] = rte_node_id_to_name(converge);
+	rte_node_edge_update(branch, 0, edge_names, 1);
+	node_data = &graph_data->node_data[2];
+	node_data->node_id = branch;
+	node_data->is_sink = false;
+	node_data->next_nodes[0] = converge;
+	node_data->next_percentage[0] = 100;
+
+	/* converge -> sink (100%) */
+	edge_names[0] = rte_node_id_to_name(snk);
+	rte_node_edge_update(converge, 0, edge_names, 1);
+	node_data = &graph_data->node_data[3];
+	node_data->node_id = converge;
+	node_data->is_sink = false;
+	node_data->next_nodes[0] = snk;
+	node_data->next_percentage[0] = 100;
+
+	/* sink */
+	node_data = &graph_data->node_data[4];
+	node_data->node_id = snk;
+	node_data->is_sink = true;
+
+	node_patterns[0] = rte_node_id_to_name(src);
+	node_patterns[1] = rte_node_id_to_name(fan_out);
+	node_patterns[2] = rte_node_id_to_name(converge);
+	node_patterns[3] = rte_node_id_to_name(branch);
+	node_patterns[4] = rte_node_id_to_name(snk);
+
+	gconf.socket_id = SOCKET_ID_ANY;
+	gconf.nb_node_patterns = 5;
+	gconf.node_patterns = (const char **)(uintptr_t)node_patterns;
+
+	graph_id = rte_graph_create("graph_diamond", &gconf);
+	if (graph_id == RTE_GRAPH_ID_INVALID) {
+		printf("Graph creation failed with error = %d\n", rte_errno);
+		goto data_free;
+	}
+	graph_data->graph_id = graph_id;
+	return 0;
+
+data_free:
+	free(graph_data->node_data);
+memzone_free:
+	rte_memzone_free(mz);
+	return -ENOMEM;
+}
+
+static inline int
+graph_diamond_1src_1snk(void)
+{
+	return measure_perf();
+}
+
 static struct unit_test_suite graph_perf_testsuite = {
 	.suite_name = "Graph library performance test suite",
 	.setup = graph_perf_setup,
@@ -1061,6 +1187,8 @@ static struct unit_test_suite graph_perf_testsuite = {
 			     graph_reverse_tree_3s_4n_1src_1snk),
 		TEST_CASE_ST(graph_init_parallel_tree, graph_fini,
 			     graph_parallel_tree_5s_4n_4src_4snk),
+		TEST_CASE_ST(graph_init_diamond, graph_fini,
+			     graph_diamond_1src_1snk),
 		TEST_CASES_END(), /**< NULL terminate unit test array */
 	},
 };
