@@ -177,6 +177,9 @@ fs_eth_dev_conf_apply(struct rte_eth_dev *dev,
 		struct rte_ether_addr *ea;
 
 		ea = &dev->data->mac_addrs[i];
+		/* Removed addresses leave a zeroed slot. */
+		if (rte_is_zero_ether_addr(ea))
+			continue;
 		ret = rte_eth_dev_mac_addr_add(PORT_ID(sdev), ea,
 				PRIV(dev)->mac_addr_pool[i]);
 		if (ret) {
