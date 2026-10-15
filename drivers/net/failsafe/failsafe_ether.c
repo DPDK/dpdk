@@ -298,12 +298,9 @@ fs_dev_remove(struct sub_device *sdev)
 		/* fallthrough */
 	case DEV_PROBED:
 		ret = rte_dev_remove(sdev->dev);
-		if (ret < 0) {
+		if (ret < 0)
 			ERROR("Bus detach failed for sub_device %u",
 			      SUB_ID(sdev));
-		} else {
-			rte_eth_dev_release_port(ETH(sdev));
-		}
 		sdev->state = DEV_PARSED;
 		/* fallthrough */
 	case DEV_PARSED:
