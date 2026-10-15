@@ -900,10 +900,6 @@ static int iavf_config_rx_queues_irqs(struct rte_eth_dev *dev,
 				       (0 << IAVF_VFINT_DYN_CTLN1_ITR_INDX_SHIFT) |
 				       IAVF_VFINT_DYN_CTLN1_WB_ON_ITR_MASK |
 				       (2UL << IAVF_VFINT_DYN_CTLN1_INTERVAL_SHIFT));
-			/* debug - check for success! the return value
-			 * should be 2, offset is 0x2800
-			 */
-			/* IAVF_READ_REG(hw, IAVF_VFINT_ITRN1(0, 0)); */
 		} else {
 			/* If no WB_ON_ITR offload flags, need to set
 			 * interrupt for descriptor write back.
