@@ -978,8 +978,13 @@ bond_ethdev_tx_burst_tlb(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	memcpy(members, internals->tlb_members_order,
 				sizeof(internals->tlb_members_order[0]) * num_of_members);
 
-
-	rte_ether_addr_copy(primary_port->data->mac_addrs, &primary_member_addr);
+	/*
+	 * memcpy() the address to avoid a GCC bug - using rte_ether_addr_copy()
+	 * causes -Wmaybe-uninitialized warnings to trigger on usages of
+	 * primary_member_addr.
+	 */
+	memcpy(&primary_member_addr, primary_port->data->mac_addrs,
+			sizeof(primary_member_addr));
 
 	if (nb_pkts > 3) {
 		for (i = 0; i < 3; i++)
