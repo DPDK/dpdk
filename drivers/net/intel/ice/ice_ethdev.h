@@ -821,15 +821,6 @@ ice_align_floor(int n)
 	((phy_type) & ICE_PHY_TYPE_HIGH_200G_AUI8_AOC_ACC) || \
 	((phy_type) & ICE_PHY_TYPE_HIGH_200G_AUI8))
 
-__rte_experimental
-int rte_pmd_ice_dump_package(uint16_t port, uint8_t **buff, uint32_t *size);
-
-__rte_experimental
-int rte_pmd_ice_dump_switch(uint16_t port, uint8_t **buff, uint32_t *size);
-
-__rte_experimental
-int rte_pmd_ice_dump_txsched(uint16_t port, bool detail, FILE *stream);
-
 int
 ice_tm_setup_txq_node(struct ice_pf *pf, struct ice_hw *hw, uint16_t qid, uint32_t node_teid);
 

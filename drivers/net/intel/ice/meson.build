@@ -19,6 +19,7 @@ sources = files(
 )
 
 testpmd_sources = files('ice_testpmd.c')
+headers = files('rte_pmd_ice.h')
 
 deps += ['hash', 'net']
 

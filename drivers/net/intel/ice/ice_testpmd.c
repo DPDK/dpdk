@@ -2,14 +2,17 @@
  * Copyright(c) 2022 Intel Corporation.
  */
 
-#include <stdlib.h>
+#include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <rte_pmd_ice.h>
 
 #include <cmdline_parse_num.h>
 #include <cmdline_parse_string.h>
 
 #include "testpmd.h"
-#include "ice_ethdev.h"
 
 /* Fixed size for ICE ddp runtime configure */
 #define ICE_BUFF_SIZE	0x000c9000
