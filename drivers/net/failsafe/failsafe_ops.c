@@ -1460,7 +1460,7 @@ fs_mac_addr_add(struct rte_eth_dev *dev,
 	}
 	if (index >= PRIV(dev)->nb_mac_addr) {
 		DEBUG("Growing mac_addrs array");
-		PRIV(dev)->nb_mac_addr = index;
+		PRIV(dev)->nb_mac_addr = index + 1;
 	}
 	PRIV(dev)->mac_addr_pool[index] = vmdq;
 	fs_unlock(dev, 0);
