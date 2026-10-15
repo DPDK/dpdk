@@ -138,6 +138,8 @@ struct sub_device {
 	unsigned int rmv_callback:1;
 	/* LSC callback registration state */
 	unsigned int lsc_callback:1;
+	/* Bus device event (removal) callback registration state */
+	unsigned int dev_event_callback:1;
 };
 
 /*
@@ -239,6 +241,9 @@ int failsafe_eth_rmv_event_callback(uint16_t port_id,
 int failsafe_eth_lsc_event_callback(uint16_t port_id,
 				    enum rte_eth_event_type event,
 				    void *cb_arg, void *out);
+void failsafe_dev_event_callback(const char *device_name,
+				 enum rte_dev_event_type type,
+				 void *cb_arg);
 int failsafe_eth_new_event_callback(uint16_t port_id,
 				    enum rte_eth_event_type event,
 				    void *cb_arg, void *out);
