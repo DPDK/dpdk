@@ -251,7 +251,7 @@ rte_gpu_attach(const char *name)
 {
 	int16_t dev_id;
 	struct rte_gpu *dev;
-	struct rte_gpu_mpshared *shared_dev;
+	struct rte_gpu_mpshared *shared_dev = NULL;
 
 	if (rte_eal_process_type() != RTE_PROC_SECONDARY) {
 		GPU_LOG(ERR, "only secondary process can attach device");
