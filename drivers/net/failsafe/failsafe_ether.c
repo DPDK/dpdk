@@ -115,7 +115,11 @@ fs_eth_dev_conf_apply(struct rte_eth_dev *dev,
 			ret = rte_eth_dev_set_link_up(PORT_ID(sdev));
 		else
 			ret = rte_eth_dev_set_link_down(PORT_ID(sdev));
-		if (ret) {
+		if (ret == -ENOTSUP) {
+			/* The sub-device link follows its physical state. */
+			DEBUG("link_status control not supported");
+			ret = 0;
+		} else if (ret) {
 			ERROR("Failed to apply link_status");
 			return ret;
 		}
