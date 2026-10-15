@@ -554,17 +554,20 @@ vfio_open_group_sysfs(int iommu_group_num)
 	char filename[PATH_MAX];
 	int fd;
 
-	if (vfio_global_cfg.iova_mode == DEV_VFIO_IOVA_MODE_VA)
-		snprintf(filename, sizeof(filename), DEV_VFIO_GROUP_FMT, iommu_group_num);
-	else if (vfio_global_cfg.iova_mode == DEV_VFIO_IOVA_MODE_PA)
-		snprintf(filename, sizeof(filename), DEV_VFIO_NOIOMMU_GROUP_FMT, iommu_group_num);
-
-	/* reset errno before open to differentiate errors */
-	errno = 0;
+	/*
+	 * Global no-IOMMU mode does not mean every group is no-IOMMU: the
+	 * kernel only creates no-IOMMU groups for devices without an IOMMU
+	 * group, so try the regular group first, then the no-IOMMU one.
+	 */
+	snprintf(filename, sizeof(filename), DEV_VFIO_GROUP_FMT, iommu_group_num);
 	fd = open(filename, O_RDWR);
+	if (fd < 0 && errno == ENOENT) {
+		snprintf(filename, sizeof(filename), DEV_VFIO_NOIOMMU_GROUP_FMT, iommu_group_num);
+		fd = open(filename, O_RDWR);
+	}
 
 	/* we have to differentiate between failed open and non-existence */
-	if (errno == ENOENT)
+	if (fd < 0 && errno == ENOENT)
 		return -ENOENT;
 	return fd;
 }

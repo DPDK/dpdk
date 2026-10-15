@@ -23,8 +23,29 @@
 #include "eal_internal_cfg.h"
 
 #define DEV_VFIO_IOMMUFD_PATH "/dev/iommu"
-#define DEV_VFIO_CDEV_FMT "/dev/vfio/devices/vfio%d"
-#define DEV_VFIO_NOIOMMU_CDEV_FMT "/dev/vfio/devices/noiommu-vfio%d"
+#define DEV_VFIO_CDEV_FMT "/dev/vfio/devices/%s%d"
+
+/*
+ * Global no-IOMMU mode does not mean every device is no-IOMMU: the kernel only
+ * creates no-IOMMU devices for devices without an IOMMU group, so cdev names
+ * are tried in this order regardless of IOVA mode.
+ */
+static const char * const cdev_prefixes[] = {"vfio", "noiommu-vfio"};
+
+/* return length of the matching cdev prefix, or 0 if the name has none */
+static size_t
+cdev_match_prefix(const char *name)
+{
+	unsigned int i;
+
+	for (i = 0; i < RTE_DIM(cdev_prefixes); i++) {
+		size_t len = strlen(cdev_prefixes[i]);
+
+		if (strncmp(name, cdev_prefixes[i], len) == 0)
+			return len;
+	}
+	return 0;
+}
 
 static int vfio_cdev_dma_map(struct vfio_container *cfg);
 static int vfio_cdev_dma_mem_map(struct vfio_container *cfg, uint64_t vaddr,
@@ -208,27 +229,11 @@ int
 vfio_cdev_get_device_num(const char *sysfs_base, const char *dev_addr, int *cdev_dev_num)
 {
 	char linkname[PATH_MAX] = {0};
-	const char *prefix;
 	size_t prefix_len;
 	char *dev_tok, *end;
 	int dev_num;
 	DIR *dir;
 	struct dirent *entry;
-
-	/* different prefixes for different IOMMU modes */
-	switch (vfio_global_cfg.iova_mode) {
-	case DEV_VFIO_IOVA_MODE_VA:
-		prefix = "vfio";
-		prefix_len = strlen(prefix);
-		break;
-	case DEV_VFIO_IOVA_MODE_PA:
-		prefix = "noiommu-vfio";
-		prefix_len = strlen(prefix);
-		break;
-	default:
-		EAL_LOG(ERR, "VFIO IOMMU mode is not initialized");
-		return -1;
-	}
 
 	/* check if vfio-dev directory exists for this device */
 	snprintf(linkname, sizeof(linkname), "%s/%s/vfio-dev", sysfs_base, dev_addr);
@@ -241,7 +246,8 @@ vfio_cdev_get_device_num(const char *sysfs_base, const char *dev_addr, int *cdev
 
 	/* find the matching VFIO cdev entry */
 	while ((entry = readdir(dir)) != NULL) {
-		if (strncmp(entry->d_name, prefix, prefix_len) != 0)
+		prefix_len = cdev_match_prefix(entry->d_name);
+		if (prefix_len == 0)
 			continue;
 
 		/* parse device number after the cdev entry prefix */
@@ -281,21 +287,16 @@ static int
 cdev_open_device_fd(int cdev_dev_num)
 {
 	char devname[PATH_MAX] = {0};
-	int dev_fd;
+	int dev_fd = -1;
+	unsigned int i;
 
-	switch (vfio_global_cfg.iova_mode) {
-	case DEV_VFIO_IOVA_MODE_VA:
-		snprintf(devname, sizeof(devname), DEV_VFIO_CDEV_FMT, cdev_dev_num);
-		break;
-	case DEV_VFIO_IOVA_MODE_PA:
-		snprintf(devname, sizeof(devname), DEV_VFIO_NOIOMMU_CDEV_FMT, cdev_dev_num);
-		break;
-	default:
-		EAL_LOG(ERR, "VFIO IOMMU mode is not initialized");
-		return -1;
+	for (i = 0; i < RTE_DIM(cdev_prefixes); i++) {
+		snprintf(devname, sizeof(devname), DEV_VFIO_CDEV_FMT,
+			cdev_prefixes[i], cdev_dev_num);
+		dev_fd = open(devname, O_RDWR);
+		if (dev_fd >= 0 || errno != ENOENT)
+			break;
 	}
-
-	dev_fd = open(devname, O_RDWR);
 	if (dev_fd < 0) {
 		EAL_LOG(ERR, "Cannot open %s: %s", devname, strerror(errno));
 		return -1;
