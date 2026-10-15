@@ -2,11 +2,12 @@
  * Copyright(c) 2010-2016 Intel Corporation.
  */
 
-/* Required for ixgbe internal structures to be aligned with the driver */
-#define RTE_LIBRTE_IXGBE_BYPASS
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include <ethdev_driver.h>
-#include "ixgbe_ethdev.h"
+#include <rte_string_fns.h>
 #include "rte_pmd_ixgbe.h"
 
 #include <cmdline_parse_etheraddr.h>
@@ -621,20 +622,6 @@ static cmdline_parse_inst_t cmd_tc_min_bw = {
 /* The NIC bypass watchdog timeout. */
 uint32_t bypass_timeout = RTE_PMD_IXGBE_BYPASS_TMT_OFF;
 
-static inline bool
-check_bypass_enabled(portid_t port_id)
-{
-	struct ixgbe_adapter *adapter;
-
-	adapter = rte_eth_devices[port_id].data->dev_private;
-	if (adapter->bps.ops.bypass_rw == NULL) {
-		fprintf(stderr, "Bypass is not enabled on this port.\n");
-		return false;
-	}
-
-	return true;
-}
-
 /* Enable bypass mode */
 struct cmd_config_bypass_result {
 	cmdline_fixed_string_t port;
@@ -704,9 +691,6 @@ cmd_set_bypass_mode_parsed(void *parsed_result,
 	portid_t port_id = res->port_id;
 	int32_t rc = -EINVAL;
 
-	if (!check_bypass_enabled(port_id))
-		return;
-
 	if (!strcmp(res->value, "bypass"))
 		bypass_mode = RTE_PMD_IXGBE_BYPASS_MODE_BYPASS;
 	else if (!strcmp(res->value, "isolate"))
@@ -716,7 +700,9 @@ cmd_set_bypass_mode_parsed(void *parsed_result,
 
 	/* Set the bypass mode for the relevant port. */
 	rc = rte_pmd_ixgbe_bypass_state_set(port_id, &bypass_mode);
-	if (rc != 0)
+	if (rc == -ENOTSUP)
+		fprintf(stderr, "Bypass is not enabled on this port.\n");
+	else if (rc != 0)
 		fprintf(stderr, "\t Failed to set bypass mode for port = %d.\n",
 			port_id);
 }
@@ -773,9 +759,6 @@ cmd_set_bypass_event_parsed(void *parsed_result,
 	uint32_t bypass_event = RTE_PMD_IXGBE_BYPASS_EVENT_NONE;
 	uint32_t bypass_mode = RTE_PMD_IXGBE_BYPASS_MODE_NORMAL;
 
-	if (!check_bypass_enabled(port_id))
-		return;
-
 	if (!strcmp(res->event_value, "timeout"))
 		bypass_event = RTE_PMD_IXGBE_BYPASS_EVENT_TIMEOUT;
 	else if (!strcmp(res->event_value, "os_on"))
@@ -803,6 +786,10 @@ cmd_set_bypass_event_parsed(void *parsed_result,
 			rc = rte_pmd_ixgbe_bypass_wd_timeout_store(port_id,
 				bypass_timeout);
 		}
+		if (rc == -ENOTSUP) {
+			fprintf(stderr, "Bypass is not enabled on this port.\n");
+			return;
+		}
 		if (rc != 0) {
 			fprintf(stderr,
 				"Failed to set timeout value %u for port %d, errto code: %d.\n",
@@ -813,7 +800,9 @@ cmd_set_bypass_event_parsed(void *parsed_result,
 	/* Set the bypass event to transition to bypass mode. */
 	rc = rte_pmd_ixgbe_bypass_event_store(port_id, bypass_event,
 		bypass_mode);
-	if (rc != 0)
+	if (rc == -ENOTSUP)
+		fprintf(stderr, "Bypass is not enabled on this port.\n");
+	else if (rc != 0)
 		fprintf(stderr, "\t Failed to set bypass event for port = %d.\n",
 			port_id);
 }
@@ -952,11 +941,13 @@ cmd_show_bypass_config_parsed(void *parsed_result,
 		"power supply off",
 		"timeout"};
 
-	if (!check_bypass_enabled(port_id))
-		return;
-
 	/* Display the bypass mode.*/
-	if (rte_pmd_ixgbe_bypass_state_show(port_id, &bypass_mode) != 0) {
+	rc = rte_pmd_ixgbe_bypass_state_show(port_id, &bypass_mode);
+	if (rc == -ENOTSUP) {
+		fprintf(stderr, "Bypass is not enabled on this port.\n");
+		return;
+	}
+	if (rc != 0) {
 		fprintf(stderr, "\tFailed to get bypass mode for port = %d\n",
 			port_id);
 		return;
@@ -985,10 +976,6 @@ cmd_show_bypass_config_parsed(void *parsed_result,
 				modes[event_mode]);
 		}
 	}
-	if (rc != 0)
-		fprintf(stderr,
-			"\tFailed to get bypass configuration for port = %d\n",
-			port_id);
 }
 
 static cmdline_parse_token_string_t cmd_showbypass_config_show =
