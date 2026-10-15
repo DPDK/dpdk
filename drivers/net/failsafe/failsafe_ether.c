@@ -385,6 +385,22 @@ failsafe_eth_dev_unregister_callbacks(struct sub_device *sdev)
 			     " %d", SUB_ID(sdev));
 		sdev->lsc_callback = 0;
 	}
+	/*
+	 * The bus device-event callback is registered by the primary only
+	 * (hotplug is handled there). sub_device is shared memory, so in a
+	 * secondary the flag reads as set and sdev->dev holds the primary's
+	 * pointer; dereferencing it (rte_dev_name) would crash. Skip it.
+	 */
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY &&
+	    sdev->dev_event_callback) {
+		ret = rte_dev_event_callback_unregister(rte_dev_name(sdev->dev),
+						failsafe_dev_event_callback,
+						sdev);
+		if (ret < 0)
+			WARN("Failed to unregister device event callback for"
+			     " sub_device %d", SUB_ID(sdev));
+		sdev->dev_event_callback = 0;
+	}
 }
 
 void
@@ -598,6 +614,16 @@ failsafe_eth_rmv_event_callback(uint16_t port_id __rte_unused,
 	sdev->remove = 1;
 	fs_unlock(fs_dev(sdev), 0);
 	return 0;
+}
+
+void
+failsafe_dev_event_callback(const char *device_name __rte_unused,
+			    enum rte_dev_event_type type,
+			    void *cb_arg)
+{
+	if (type == RTE_DEV_EVENT_REMOVE)
+		failsafe_eth_rmv_event_callback(0, RTE_ETH_EVENT_INTR_RMV,
+						cb_arg, NULL);
 }
 
 int

@@ -82,6 +82,25 @@ fs_dev_configure(struct rte_eth_dev *dev)
 			else
 				sdev->rmv_callback = 1;
 		}
+		/*
+		 * Without RMV interrupts, a hot-unplug is only reported by the
+		 * bus (e.g. a VFIO device release request) as a device event.
+		 * Only the primary registers for it; a secondary learns of the
+		 * removal through the shared sub_device state checked by
+		 * fs_rx_unsafe()/fs_tx_unsafe() on every burst.
+		 */
+		if (rte_eal_process_type() == RTE_PROC_PRIMARY &&
+		    !rmv_interrupt && sdev->dev != NULL &&
+		    sdev->dev_event_callback == 0) {
+			ret = rte_dev_event_callback_register(rte_dev_name(sdev->dev),
+					failsafe_dev_event_callback,
+					sdev);
+			if (ret)
+				WARN("Failed to register device event callback for sub_device %d",
+				     SUB_ID(sdev));
+			else
+				sdev->dev_event_callback = 1;
+		}
 		dev->data->dev_conf.intr_conf.rmv = 0;
 		if (lsc_interrupt && sdev->lsc_callback == 0) {
 			ret = rte_eth_dev_callback_register(PORT_ID(sdev),
