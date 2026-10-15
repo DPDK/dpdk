@@ -98,7 +98,7 @@ if (binutils_ok and cc.has_multi_arguments(avx512_march_flag)
         endif
     endif
 endif
-if developer_mode and meson.version().version_compare('>=0.60.2')
+if developer_mode
     message('Extra C flags needed for AVX2 output: [@0@]'.format(','.join(cc_avx2_flags)))
     if cc_has_avx512
         message('Extra C flags needed for AVX512 output: [@0@]'.format(','.join(cc_avx512_flags)))
