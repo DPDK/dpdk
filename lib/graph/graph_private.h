@@ -82,6 +82,7 @@ struct graph_node {
 	STAILQ_ENTRY(graph_node) next; /**< Next graph node in the list. */
 	struct node *node; /**< Pointer to internal node. */
 	bool visited;      /**< Flag used in BFS to mark node visited. */
+	uint32_t topo_order; /**< Topological depth from source nodes. */
 	struct graph_node *adjacency_list[]; /**< Adjacency list of the node. */
 };
 
@@ -98,19 +99,23 @@ struct graph {
 	const struct rte_memzone *mz;
 	/**< Memzone to store graph data. */
 	rte_graph_off_t nodes_start;
-	/**< Node memory start offset in graph reel. */
+	/**< Node memory start offset in graph memory. */
 	rte_graph_off_t xstats_start;
-	/**< Node xstats memory start offset in graph reel. */
+	/**< Node xstats memory start offset in graph memory. */
 	rte_node_t src_node_count;
 	/**< Number of source nodes in a graph. */
 	struct rte_graph *graph;
 	/**< Pointer to graph data. */
 	rte_node_t node_count;
 	/**< Total number of nodes. */
-	uint32_t cir_start;
-	/**< Circular buffer start offset in graph reel. */
-	uint32_t cir_mask;
-	/**< Circular buffer mask for wrap around. */
+	uint32_t sched_table_off;
+	/**< Schedule table start offset in graph memory. */
+	uint32_t pending_off;
+	/**< Pending bitmap start offset in graph memory. */
+	uint32_t src_pending_off;
+	/**< Source pending bitmap start offset in graph memory. */
+	uint16_t nb_sched_words;
+	/**< Number of uint64_t words in pending bitmaps. */
 	rte_graph_t id;
 	/**< Graph identifier. */
 	rte_graph_t parent_id;
@@ -347,6 +352,20 @@ rte_node_t graph_nodes_count(struct graph *graph);
  */
 void graph_mark_nodes_as_not_visited(struct graph *graph);
 
+/**
+ * @internal
+ *
+ * Compute topological depth for all nodes via BFS from source nodes.
+ *
+ * @param graph
+ *   Pointer to the internal graph object.
+ *
+ * @return
+ *   - 0: Success.
+ *   - <0: Not enough memory for BFS queue.
+ */
+int graph_topo_order_compute(struct graph *graph);
+
 /* Fast path graph memory populate unctions */
 
 /**
@@ -377,6 +396,16 @@ int graph_fp_mem_create(struct graph *graph);
  *   - <0: Graph memzone related error.
  */
 int graph_fp_mem_destroy(struct graph *graph);
+
+/**
+ * @internal
+ *
+ * Rebuild the source pending bitmap based on lcore affinity.
+ *
+ * @param graph
+ *   Pointer to the internal graph object.
+ */
+void graph_src_bitmap_rebuild(struct graph *graph);
 
 /* Lookup functions */
 /**

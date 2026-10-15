@@ -251,6 +251,12 @@ New Features
   ``RTE_GRAPH_PROFILE_BURST_SMALL``, ``RTE_GRAPH_PROFILE_BURST_MEDIUM``, and
   ``RTE_GRAPH_PROFILE_BURST_LARGE`` in ``rte_config.h``.
 
+* **graph: The internal scheduling mechanism has changed.**
+
+  The graph walk functions now process nodes in topological order using bitmap scanning instead of
+  a circular buffer. This ensures that in fan-out-then-converge topologies, all branches feeding
+  a converge node complete before that node is visited. Reducing the occurrence of double-visits.
+
 
 Removed Items
 -------------
@@ -538,6 +544,11 @@ ABI Changes
 
 * cryptodev: The struct ``rte_crypto_rsa_op_param``
   was updated to include ``pss_salt``.
+
+* graph: The internal scheduling mechanism of ``struct rte_graph`` has changed.
+  The circular buffer fields (``head``, ``tail``, ``cir_mask``, ``cir_start``) have been replaced
+  with a topological bitmap scheduler. ``struct rte_node`` has a new internal field to hold the
+  scheduling order.
 
 
 Known Issues

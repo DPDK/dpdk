@@ -15,8 +15,8 @@ graph_dump(FILE *f, struct graph *g)
 
 	fprintf(f, "graph <%s>\n", g->name);
 	fprintf(f, "  id=%" PRIu32 "\n", g->id);
-	fprintf(f, "  cir_start=%" PRIu32 "\n", g->cir_start);
-	fprintf(f, "  cir_mask=%" PRIu32 "\n", g->cir_mask);
+	fprintf(f, "  sched_table_off=%" PRIu32 "\n", g->sched_table_off);
+	fprintf(f, "  nb_sched_words=%" PRIu16 "\n", g->nb_sched_words);
 	fprintf(f, "  addr=%p\n", g);
 	fprintf(f, "  graph=%p\n", g->graph);
 	fprintf(f, "  mem_sz=%zu\n", g->mem_sz);
@@ -64,14 +64,14 @@ rte_graph_obj_dump(FILE *f, struct rte_graph *g, bool all)
 
 	fprintf(f, "graph <%s> @ %p\n", g->name, g);
 	fprintf(f, "  id=%" PRIu32 "\n", g->id);
-	fprintf(f, "  head=%" PRId32 "\n", (int32_t)g->head);
-	fprintf(f, "  tail=%" PRId32 "\n", (int32_t)g->tail);
-	fprintf(f, "  cir_mask=0x%" PRIx32 "\n", g->cir_mask);
 	fprintf(f, "  nb_nodes=%" PRId32 "\n", g->nb_nodes);
+	fprintf(f, "  nb_sched_words=%" PRIu16 "\n", g->nb_sched_words);
 	fprintf(f, "  socket=%d\n", g->socket);
 	fprintf(f, "  fence=0x%" PRIx64 "\n", g->fence);
 	fprintf(f, "  nodes_start=0x%" PRIx32 "\n", g->nodes_start);
-	fprintf(f, "  cir_start=%p\n", g->cir_start);
+	fprintf(f, "  sched_table=%p\n", g->sched_table);
+	fprintf(f, "  pending=%p\n", g->pending);
+	fprintf(f, "  src_pending=%p\n", g->src_pending);
 
 	rte_graph_foreach_node(count, off, g, n) {
 		if (!all && n->idx == 0)

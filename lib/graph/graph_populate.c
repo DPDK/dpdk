@@ -3,6 +3,8 @@
  */
 
 
+#include <stdlib.h>
+
 #include <rte_common.h>
 #include <rte_errno.h>
 #include <rte_malloc.h>
@@ -15,19 +17,27 @@ static size_t
 graph_fp_mem_calc_size(struct graph *graph)
 {
 	struct graph_node *graph_node;
-	rte_node_t val;
+	uint16_t nwords;
 	size_t sz;
 
 	/* Graph header */
 	sz = sizeof(struct rte_graph);
-	/* Source nodes list */
-	sz += sizeof(rte_graph_off_t) * graph->src_node_count;
-	/* Circular buffer for pending streams of size number of nodes */
-	val = rte_align32pow2(graph->node_count * sizeof(rte_graph_off_t));
-	sz = RTE_ALIGN(sz, val);
-	graph->cir_start = sz;
-	graph->cir_mask = rte_align32pow2(graph->node_count) - 1;
-	sz += val;
+
+	/* Schedule table: node offset indexed by sched_idx */
+	sz = RTE_ALIGN(sz, RTE_CACHE_LINE_SIZE);
+	graph->sched_table_off = sz;
+	sz += sizeof(rte_graph_off_t) * graph->node_count;
+
+	/* Pending and source pending bitmaps */
+	nwords = (graph->node_count + 63) / 64;
+	graph->nb_sched_words = nwords;
+	sz = RTE_ALIGN(sz, RTE_CACHE_LINE_SIZE);
+	graph->pending_off = sz;
+	sz += sizeof(uint64_t) * nwords;
+	sz = RTE_ALIGN(sz, RTE_CACHE_LINE_SIZE);
+	graph->src_pending_off = sz;
+	sz += sizeof(uint64_t) * nwords;
+
 	/* Fence */
 	sz += sizeof(RTE_GRAPH_FENCE);
 	sz = RTE_ALIGN(sz, RTE_CACHE_LINE_SIZE);
@@ -54,20 +64,34 @@ graph_fp_mem_calc_size(struct graph *graph)
 }
 
 static void
-graph_header_popluate(struct graph *_graph)
+graph_header_populate(struct graph *_graph)
 {
 	struct rte_graph *graph = _graph->graph;
 
-	graph->tail = 0;
-	graph->head = (int32_t)-_graph->src_node_count;
-	graph->cir_mask = _graph->cir_mask;
 	graph->nb_nodes = _graph->node_count;
-	graph->cir_start = RTE_PTR_ADD(graph, _graph->cir_start);
+	graph->nb_sched_words = _graph->nb_sched_words;
+	graph->sched_table = RTE_PTR_ADD(graph, _graph->sched_table_off);
+	graph->pending = RTE_PTR_ADD(graph, _graph->pending_off);
+	graph->src_pending = RTE_PTR_ADD(graph, _graph->src_pending_off);
 	graph->nodes_start = _graph->nodes_start;
 	graph->socket = _graph->socket;
 	graph->id = _graph->id;
 	memcpy(graph->name, _graph->name, RTE_GRAPH_NAMESIZE);
 	graph->fence = RTE_GRAPH_FENCE;
+
+	memset(graph->pending, 0, sizeof(uint64_t) * _graph->nb_sched_words);
+	memset(graph->src_pending, 0, sizeof(uint64_t) * _graph->nb_sched_words);
+}
+
+static int
+graph_node_topo_cmp(const void *a, const void *b)
+{
+	const struct graph_node *const *na = a;
+	const struct graph_node *const *nb = b;
+
+	if ((*na)->topo_order != (*nb)->topo_order)
+		return (int)(*na)->topo_order - (int)(*nb)->topo_order;
+	return (int)(*na)->node->id - (int)(*nb)->node->id;
 }
 
 static void
@@ -76,15 +100,26 @@ graph_nodes_populate(struct graph *_graph)
 	rte_graph_off_t xstat_off = _graph->xstats_start;
 	rte_graph_off_t off = _graph->nodes_start;
 	struct rte_graph *graph = _graph->graph;
-	struct graph_node *graph_node;
+	struct graph_node **sorted, *graph_node;
 	rte_edge_t count, nb_edges;
 	rte_node_t pid;
+	uint32_t n;
 
-	STAILQ_FOREACH(graph_node, &_graph->node_list, next) {
+	/* Build a sorted array of graph_node pointers by (topo_order, id) */
+	sorted = calloc(_graph->node_count, sizeof(*sorted));
+	RTE_VERIFY(sorted != NULL);
+	n = 0;
+	STAILQ_FOREACH(graph_node, &_graph->node_list, next)
+		sorted[n++] = graph_node;
+	qsort(sorted, n, sizeof(*sorted), graph_node_topo_cmp);
+
+	for (n = 0; n < _graph->node_count; n++) {
+		graph_node = sorted[n];
 		struct rte_node *node = RTE_PTR_ADD(graph, off);
 		memset(node, 0, sizeof(*node));
 		node->fence = RTE_GRAPH_FENCE;
 		node->off = off;
+		node->sched_idx = n;
 		if (graph_pcap_is_enable()) {
 			node->process = graph_pcap_dispatch;
 			node->original_process = graph_node->node->process;
@@ -123,8 +158,14 @@ graph_nodes_populate(struct graph *_graph)
 		off += sizeof(struct rte_node *) * nb_edges;
 		off = RTE_ALIGN(off, RTE_CACHE_LINE_SIZE);
 		node->next = off;
+
+		/* Fill the schedule table */
+		graph->sched_table[n] = node->off;
+
 		__rte_node_stream_alloc(graph, node);
 	}
+
+	free(sorted);
 }
 
 struct rte_node *
@@ -179,12 +220,11 @@ fail:
 }
 
 static int
-graph_src_nodes_offset_populate(struct graph *_graph)
+graph_src_bitmap_populate(struct graph *_graph)
 {
 	struct rte_graph *graph = _graph->graph;
 	struct graph_node *graph_node;
 	struct rte_node *node;
-	int32_t head = -1;
 	const char *name;
 
 	STAILQ_FOREACH(graph_node, &_graph->node_list, next) {
@@ -195,7 +235,7 @@ graph_src_nodes_offset_populate(struct graph *_graph)
 				SET_ERR_JMP(EINVAL, fail, "%s not found", name);
 
 			__rte_node_stream_alloc(graph, node);
-			graph->cir_start[head--] = node->off;
+			__rte_node_pending_set(graph->src_pending, node);
 		}
 	}
 
@@ -204,17 +244,42 @@ fail:
 	return -rte_errno;
 }
 
+void
+graph_src_bitmap_rebuild(struct graph *_graph)
+{
+	struct rte_graph *graph = _graph->graph;
+	struct graph_node *graph_node;
+	struct rte_node *node;
+	const char *name;
+
+	memset(graph->src_pending, 0,
+	       sizeof(uint64_t) * graph->nb_sched_words);
+
+	STAILQ_FOREACH(graph_node, &_graph->node_list, next) {
+		if (!(graph_node->node->flags & RTE_NODE_SOURCE_F))
+			continue;
+		if (graph_node->node->lcore_id != RTE_MAX_LCORE &&
+		    graph_node->node->lcore_id != _graph->lcore_id)
+			continue;
+		name = graph_node->node->name;
+		node = graph_node_name_to_ptr(graph, name);
+		if (node == NULL)
+			continue;
+		__rte_node_pending_set(graph->src_pending, node);
+	}
+}
+
 static int
 graph_fp_mem_populate(struct graph *graph)
 {
 	int rc;
 
-	graph_header_popluate(graph);
+	graph_header_populate(graph);
 	if (graph_pcap_is_enable())
 		graph_pcap_init(graph);
 	graph_nodes_populate(graph);
 	rc = graph_node_nexts_populate(graph);
-	rc |= graph_src_nodes_offset_populate(graph);
+	rc |= graph_src_bitmap_populate(graph);
 
 	return rc;
 }

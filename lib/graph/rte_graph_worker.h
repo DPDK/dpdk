@@ -14,7 +14,7 @@ extern "C" {
 #endif
 
 /**
- * Perform graph walk on the circular buffer and invoke the process function
+ * Perform graph walk on the pending bitmap and invoke the process function
  * of the nodes and collect the stats.
  *
  * @param graph

@@ -334,20 +334,6 @@ graph_mem_fixup_secondary(struct rte_graph *graph)
 	return graph_mem_fixup_node_ctx(graph);
 }
 
-static bool
-graph_src_node_avail(struct graph *graph)
-{
-	struct graph_node *graph_node;
-
-	STAILQ_FOREACH(graph_node, &graph->node_list, next)
-		if ((graph_node->node->flags & RTE_NODE_SOURCE_F) &&
-		    (graph_node->node->lcore_id == RTE_MAX_LCORE ||
-		     graph->lcore_id == graph_node->node->lcore_id))
-			return true;
-
-	return false;
-}
-
 RTE_EXPORT_SYMBOL(rte_graph_model_mcore_dispatch_core_bind)
 int
 rte_graph_model_mcore_dispatch_core_bind(rte_graph_t id, int lcore)
@@ -375,9 +361,8 @@ rte_graph_model_mcore_dispatch_core_bind(rte_graph_t id, int lcore)
 	graph->graph->dispatch.lcore_id = graph->lcore_id;
 	graph->socket = rte_lcore_to_socket_id(lcore);
 
-	/* check the availability of source node */
-	if (!graph_src_node_avail(graph))
-		graph->graph->head = 0;
+	/* Rebuild source bitmap with only source nodes bound to this lcore */
+	graph_src_bitmap_rebuild(graph);
 
 	return 0;
 
@@ -482,6 +467,10 @@ rte_graph_create(const char *name, struct rte_graph_param *prm)
 
 	/* Do BFS from src nodes on the graph to find isolated nodes */
 	if (graph_has_isolated_node(graph))
+		goto graph_cleanup;
+
+	/* Compute topological depth for bitmap scheduling order */
+	if (graph_topo_order_compute(graph))
 		goto graph_cleanup;
 
 	/* Initialize pcap config. */
@@ -596,6 +585,10 @@ graph_clone(struct graph *parent_graph, const char *name, struct rte_graph_param
 
 	/* Just update adjacency list of all nodes in the graph */
 	if (graph_adjacency_list_update(graph))
+		goto graph_cleanup;
+
+	/* Compute topological depth for bitmap scheduling order */
+	if (graph_topo_order_compute(graph))
 		goto graph_cleanup;
 
 	/* Initialize the graph object */
