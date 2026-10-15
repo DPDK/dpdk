@@ -120,7 +120,7 @@ else
 fi
 if [ "$MINI" = "true" ]; then
     OPTS="$OPTS -Denable_drivers=net/null"
-    OPTS="$OPTS -Ddisable_libs=*"
+    OPTS="$OPTS -Denable_libs=cmdline"
     if [ "$DEF_LIB" = "static" ]; then
         OPTS="$OPTS -Dexamples=l2fwd"
     fi
