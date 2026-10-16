@@ -32,6 +32,11 @@
 #include <unistd.h>
 #include <poll.h>
 
+/* Added in Linux 6.2. Older kernels ignore it. */
+#ifndef PACKET_FANOUT_FLAG_IGNORE_OUTGOING
+#define PACKET_FANOUT_FLAG_IGNORE_OUTGOING 0x4000
+#endif
+
 #define ETH_AF_PACKET_IFACE_ARG		"iface"
 #define ETH_AF_PACKET_NUM_Q_ARG		"qpairs"
 #define ETH_AF_PACKET_BLOCKSIZE_ARG	"blocksz"
@@ -994,6 +999,14 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 		PMD_LOG(ERR, "Invalid fanout mode: %s", fanout_mode);
 		goto error;
 	}
+
+	/*
+	 * Set the flag opportunistically if multiple queues are requested.
+	 * It takes effect from Linux 6.2. Older kernels ignore it and the
+	 * PMD filters instead.
+	 */
+	if (ignore_outgoing != 0 && nb_queues > 1)
+		fanout_arg |= PACKET_FANOUT_FLAG_IGNORE_OUTGOING << 16;
 
 	for (q = 0; q < nb_queues; q++) {
 		/* Open an AF_PACKET socket for this queue... */
