@@ -182,6 +182,7 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	uint16_t first_sw_id;
 	uint16_t req_descs;
 	const char *reason;
+	uint16_t nb_sent = 0;
 	uint16_t nb_tx = 0;
 	uint64_t ol_flags;
 	uint16_t nb_descs;
@@ -210,7 +211,9 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		if (rte_mbuf_check(tx_pkt, true, &reason)) {
 			PMD_DRV_LOG(DEBUG, "Invalid mbuf: %s", reason);
-			break;
+			txq->stats.invalid_mbufs++;
+			rte_pktmbuf_free(tx_pkt);
+			continue;
 		}
 
 		ol_flags = tx_pkt->ol_flags;
@@ -221,6 +224,14 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		nb_descs = gve_tx_pkt_nb_data_descs(tx_pkt);
 		nb_descs += tso;
+
+		/* Drop packet if it doesn't adhere to hardware limits. */
+		if (!gve_tx_validate_descs(tx_pkt, nb_descs, tso)) {
+			txq->stats.too_many_descs++;
+			rte_pktmbuf_free(tx_pkt);
+			continue;
+		}
+
 		req_descs = nb_descs + GVE_TX_MIN_DESC_PREVENT_CACHE_OVERLAP;
 
 		/* Clean if there aren't enough descriptors to send the packet
@@ -233,12 +244,6 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			gve_tx_clean_descs_dqo(txq, nb_to_clean);
 			if (txq->nb_free < req_descs)
 				break;
-		}
-
-		/* Drop packet if it doesn't adhere to hardware limits. */
-		if (!gve_tx_validate_descs(tx_pkt, nb_descs, tso)) {
-			txq->stats.too_many_descs++;
-			break;
 		}
 
 		if (tso) {
@@ -301,6 +306,7 @@ finish_mbuf:
 
 		txq->nb_free -= nb_descs;
 		txq->nb_used += nb_descs;
+		nb_sent++;
 	}
 
 	/* update the tail pointer if any packets were processed */
@@ -309,9 +315,9 @@ finish_mbuf:
 		txq->tx_tail = tx_id;
 		txq->sw_tail = sw_id;
 
-		txq->stats.packets += nb_tx;
+		txq->stats.packets += nb_sent;
 		txq->stats.bytes += bytes;
-		txq->stats.errors += nb_pkts - nb_tx;
+		txq->stats.errors += nb_pkts - nb_sent;
 	}
 
 	return nb_tx;
