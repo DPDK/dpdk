@@ -1164,6 +1164,7 @@ F: drivers/net/memif/
 F: devtools/test-memif.sh
 F: doc/guides/nics/memif.rst
 F: doc/guides/nics/features/memif.ini
+F: app/test/test_pmd_memif.c
 
 
 Crypto Drivers
