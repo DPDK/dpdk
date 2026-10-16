@@ -292,6 +292,9 @@ struct bman_pool *bman_new_pool(const struct bman_pool_params *params);
 __rte_internal
 void bman_free_pool(struct bman_pool *pool);
 
+__rte_internal
+void bman_free_bpid(u8 bpid, u32 flags);
+
 /**
  * bman_get_params - Returns a pool object's parameters.
  * @pool: the pool object

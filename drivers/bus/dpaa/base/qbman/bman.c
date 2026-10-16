@@ -246,6 +246,14 @@ void bman_free_pool(struct bman_pool *pool)
 	kfree(pool);
 }
 
+void bman_free_bpid(u8 bpid, u32 flags)
+{
+	if (flags & BMAN_POOL_FLAG_THRESH)
+		bm_pool_set(bpid, zero_thresholds);
+	if (flags & BMAN_POOL_FLAG_DYNAMIC_BPID)
+		bman_release_bpid(bpid);
+}
+
 const struct bman_pool_params *bman_get_params(const struct bman_pool *pool)
 {
 	return &pool->params;
