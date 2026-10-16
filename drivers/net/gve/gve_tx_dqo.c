@@ -127,11 +127,23 @@ gve_tx_clean_descs_dqo(struct gve_tx_queue *txq, uint16_t nb_descs) {
 static inline bool
 gve_tx_validate_pkt(const struct rte_mbuf *tx_pkt, bool is_tso)
 {
+	uint32_t headlen;
+
 	if (!is_tso)
 		return tx_pkt->pkt_len >= GVE_TX_MIN_PKT_SIZE_DQO &&
 		       tx_pkt->pkt_len <= GVE_TX_MAX_PKT_SIZE_DQO;
 
-	return true;
+	/* Headers must be present, fit the context descriptor, and be
+	 * contained in the first segment; the payload must not be empty.
+	 */
+	headlen = tx_pkt->l2_len + tx_pkt->l3_len + tx_pkt->l4_len;
+	if (tx_pkt->l4_len == 0 || headlen > GVE_TX_MAX_HDR_SIZE_DQO ||
+	    tx_pkt->data_len < headlen || tx_pkt->pkt_len <= headlen)
+		return false;
+
+	return tx_pkt->pkt_len - headlen <= GVE_TX_MAX_TSO_LEN_DQO &&
+	       tx_pkt->tso_segsz >= GVE_TX_MIN_TSO_MSS_DQO &&
+	       tx_pkt->tso_segsz <= GVE_TX_MAX_PKT_SIZE_DQO;
 }
 
 /* Max descriptors a single packet may use. A larger packet can never pass
