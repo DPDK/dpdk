@@ -138,6 +138,7 @@ enum i40e_admin_queue_opc {
 	/* WoL commands */
 	i40e_aqc_opc_set_wol_filter	= 0x0120,
 	i40e_aqc_opc_get_wake_reason	= 0x0121,
+	i40e_aqc_opc_get_wake_packet	= 0x0122,
 	i40e_aqc_opc_clear_all_wol_filters = 0x025E,
 
 	/* internal switch commands */
@@ -628,6 +629,17 @@ struct i40e_aqc_get_wake_reason_completion {
 };
 
 I40E_CHECK_CMD_LENGTH(i40e_aqc_get_wake_reason_completion);
+
+/* Get Wake Packet (0x0122) */
+#define I40E_AQC_GET_WAKE_PACKET_BUFFER_SIZE	0x600
+
+struct i40e_aqc_get_wake_packet {
+	u8 reserved[8];
+	__le32 address_high;
+	__le32 address_low;
+};
+
+I40E_CHECK_CMD_LENGTH(i40e_aqc_get_wake_packet);
 
 /* Switch configuration commands (0x02xx) */
 
