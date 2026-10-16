@@ -2679,11 +2679,14 @@ rte_dpaa_remove(struct rte_dpaa_device *dpaa_dev)
 	PMD_INIT_FUNC_TRACE();
 
 	eth_dev = rte_eth_dev_allocated(dpaa_dev->device.name);
-	ret = dpaa_eth_dev_close(eth_dev);
-	if (eth_dev->state !=  RTE_ETH_DEV_UNUSED) {
-		dpaa_eth_dev_close(eth_dev);
+	if (eth_dev != NULL && eth_dev->state != RTE_ETH_DEV_UNUSED) {
+		ret = dpaa_eth_dev_close(eth_dev);
+		if (ret != 0)
+			DPAA_PMD_WARN("%s: close failed(%d), releasing port",
+				dpaa_dev->device.name, ret);
 		ret = rte_eth_dev_release_port(eth_dev);
 	}
+
 	dpaa_valid_dev--;
 	if (!dpaa_valid_dev)
 		rte_mempool_free(dpaa_tx_sg_pool);
