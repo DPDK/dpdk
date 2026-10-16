@@ -34,7 +34,7 @@ return &scheme_params->param.key_ext_and_hash.extract_array[hdr_idx];
 /* FMAN mac indexes mappings (0 is unused, first 8 are for 1G, next for 10G
  * ports).
  */
-const uint8_t mac_idx[] = {-1, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1};
+static const uint8_t mac_idx[] = {-1, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1};
 
 /* FM global info */
 struct dpaa_fm_info {
