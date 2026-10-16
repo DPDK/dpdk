@@ -35,9 +35,6 @@ extern "C" {
 #define QMAN_CHANNEL_POOL1_REV3 0x401
 #define QMAN_CHANNEL_CAAM_REV3 0x840
 #define QMAN_CHANNEL_PME_REV3 0x860
-extern u16 qm_channel_pool1;
-extern u16 qm_channel_caam;
-extern u16 qm_channel_pme;
 enum qm_dc_portal {
 	qm_dc_portal_fman0 = 0,
 	qm_dc_portal_fman1 = 1,
@@ -50,6 +47,9 @@ u16 dpaa_get_qm_channel_caam(void);
 
 __rte_internal
 u16 dpaa_get_qm_channel_pool(void);
+
+__rte_internal
+u16 dpaa_get_qm_channel_pool_num(void);
 
 /* Portal processing (interrupt) sources */
 #define QM_PIRQ_CCSCI	0x00200000	/* CEETM Congestion State Change */
@@ -1275,6 +1275,9 @@ struct qman_cgr {
 	u16 chan; /* portal channel this object is created on */
 	struct list_head node;
 };
+
+/* Maximum FQID value: frame queue IDs are 24 bits wide. */
+#define QMAN_MAX_FQID			0x00FFFFFFu
 
 /* Polling bound while waiting for an FQ retirement notification. A retire
  * that has not been reported by then is not going to complete on this portal.
