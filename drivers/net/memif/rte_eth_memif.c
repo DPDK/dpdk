@@ -904,6 +904,8 @@ eth_memif_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 				mq->in_port, rte_strerror(-ret));
 		return 0;
 	}
+	if (unlikely(nb_pkts == 0))
+		return 0;
 
 	ring_size = 1 << mq->log2_ring_size;
 	mask = ring_size - 1;
