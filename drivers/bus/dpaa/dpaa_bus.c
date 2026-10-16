@@ -521,6 +521,11 @@ rte_dpaa_bus_parse(const char *name, void *out)
 				i < 1 || i > 4)
 			return -EINVAL;
 		max_name_len = sizeof("dpaa_sec-.") - 1;
+	} else if (strncmp("dpaa_qdma", &name[delta], 9) == 0) {
+		if (sscanf(&name[delta], "dpaa_qdma-%u", &i) != 1 ||
+				i < 1 || i > RTE_DPAA_QDMA_DEVICES)
+			return -EINVAL;
+		max_name_len = sizeof("dpaa_qdma-.") - 1;
 	} else if (strncmp("oh", &name[dev_delta], 2) == 0) {
 		if (sscanf(&name[delta], "fm%u-oh%u", &i, &j) != 2 ||
 				i >= 2 || j >= 16)
