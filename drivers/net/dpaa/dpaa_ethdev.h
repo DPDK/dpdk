@@ -116,6 +116,16 @@ enum {
 
 #define FMC_FILE "/tmp/fmc.bin"
 
+struct dpaa_if_vsp {
+	/* Copied from the mempool private data, which is freed with the
+	 * mempool while the port may still be around.
+	 */
+	uint32_t bpid[FMAN_PORT_MAX_EXT_POOLS_NUM];
+	uint32_t size[FMAN_PORT_MAX_EXT_POOLS_NUM];
+	uint8_t bp_num;
+	void *vsp_handle;
+};
+
 extern struct rte_mempool *dpaa_tx_sg_pool;
 
 /* PMD related logs */
@@ -162,8 +172,7 @@ struct dpaa_if {
 	 */
 	struct qman_fq *next_tx_conf_queue;
 
-	void *vsp_handle[DPAA_VSP_PROFILE_MAX_NUM];
-	uint32_t vsp_bpid[DPAA_VSP_PROFILE_MAX_NUM];
+	struct dpaa_if_vsp vsp[DPAA_VSP_PROFILE_MAX_NUM];
 };
 
 struct dpaa_if_stats {
