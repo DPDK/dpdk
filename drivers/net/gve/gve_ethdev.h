@@ -115,6 +115,7 @@ struct gve_tx_stats {
 	uint64_t errors;
 	uint64_t too_many_descs;
 	uint64_t invalid_mbufs;
+	uint64_t invalid_pkts;
 };
 
 struct gve_rx_stats {
