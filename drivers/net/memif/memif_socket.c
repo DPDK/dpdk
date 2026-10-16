@@ -664,6 +664,9 @@ memif_disconnect(struct rte_eth_dev *dev)
 				continue;
 		}
 
+		if (mq == NULL)
+			continue;
+
 		if (rte_intr_fd_get(mq->intr_handle) > 0) {
 			close(rte_intr_fd_get(mq->intr_handle));
 			rte_intr_fd_set(mq->intr_handle, -1);
@@ -681,6 +684,9 @@ memif_disconnect(struct rte_eth_dev *dev)
 			else
 				continue;
 		}
+
+		if (mq == NULL)
+			continue;
 
 		if (rte_intr_fd_get(mq->intr_handle) > 0) {
 			close(rte_intr_fd_get(mq->intr_handle));
