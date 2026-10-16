@@ -12,6 +12,8 @@
 
 #define GVE_TX_MAX_HDR_SIZE_DQO 255
 #define GVE_TX_MIN_TSO_MSS_DQO 88
+#define GVE_TX_MIN_PKT_SIZE_DQO 17
+#define GVE_TX_MAX_PKT_SIZE_DQO 9728
 
 /* Basic TX descriptor (DTYPE 0x0C) */
 struct gve_tx_pkt_desc_dqo {

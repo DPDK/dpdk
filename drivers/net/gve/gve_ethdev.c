@@ -1044,6 +1044,7 @@ static const struct gve_xstats_name_offset tx_xstats_name_offset[] = {
 	{ "errors",  TX_QUEUE_STATS_OFFSET(errors) },
 	{ "too_many_descs", TX_QUEUE_STATS_OFFSET(too_many_descs) },
 	{ "invalid_mbufs", TX_QUEUE_STATS_OFFSET(invalid_mbufs) },
+	{ "invalid_pkts", TX_QUEUE_STATS_OFFSET(invalid_pkts) },
 };
 
 static const struct gve_xstats_name_offset rx_xstats_name_offset[] = {
