@@ -7048,7 +7048,7 @@ flow_create_split_meter(struct rte_eth_dev *dev,
 			goto exit;
 		}
 		/* Setting the sfx group atrr. */
-		sfx_attr.group = sfx_attr.transfer ?
+		sfx_attr.group = (sfx_attr.transfer && priv->fdb_def_rule) ?
 				(MLX5_FLOW_TABLE_LEVEL_METER - 1) :
 				 MLX5_FLOW_TABLE_LEVEL_METER;
 		flow_split_info->prefix_layers =
@@ -7229,7 +7229,7 @@ flow_create_split_sample(struct rte_eth_dev *dev,
 			sfx_tbl_data = container_of(sfx_tbl,
 						struct mlx5_flow_tbl_data_entry,
 						tbl);
-			sfx_attr.group = sfx_attr.transfer ?
+			sfx_attr.group = (sfx_attr.transfer && priv->fdb_def_rule) ?
 			(sfx_tbl_data->level - 1) : sfx_tbl_data->level;
 		} else {
 			MLX5_ASSERT(attr->transfer);
