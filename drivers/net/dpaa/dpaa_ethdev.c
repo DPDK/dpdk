@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright 2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2017-2020,2022-2025 NXP
+ *   Copyright 2017-2020,2022-2026 NXP
  *
  */
 /* System headers */
@@ -2691,6 +2691,10 @@ rte_dpaa_remove(struct rte_dpaa_device *dpaa_dev)
 	PMD_INIT_FUNC_TRACE();
 
 	eth_dev = rte_eth_dev_allocated(dpaa_dev->device.name);
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return eth_dev != NULL ? rte_eth_dev_release_port(eth_dev) : 0;
+
 	if (eth_dev != NULL && eth_dev->state != RTE_ETH_DEV_UNUSED) {
 		ret = dpaa_eth_dev_close(eth_dev);
 		if (ret != 0)
