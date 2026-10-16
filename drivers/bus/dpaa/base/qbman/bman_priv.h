@@ -11,11 +11,6 @@
 #include "dpaa_sys.h"
 #include <fsl_bman.h>
 
-/* Revision info (for errata and feature handling) */
-#define BMAN_REV10 0x0100
-#define BMAN_REV20 0x0200
-#define BMAN_REV21 0x0201
-
 #define BMAN_PORTAL_IRQ_PATH "/dev/fsl-usdpaa-irq"
 #define BMAN_CCSR_MAP "/dev/mem"
 

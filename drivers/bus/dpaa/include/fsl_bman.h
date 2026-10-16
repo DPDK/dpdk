@@ -21,6 +21,11 @@ struct bman_depletion {
 	u32 state[2];
 };
 
+/* Number of buffer pools the depletion mask above, and the BMan portal SCN
+ * registers, can describe. BPIDs are limited to this range.
+ */
+#define BMAN_MAX_POOLS	64U
+
 static inline void bman_depletion_init(struct bman_depletion *c)
 {
 	c->state[0] = c->state[1] = 0;

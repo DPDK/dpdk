@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
  *
  * Copyright 2008-2016 Freescale Semiconductor Inc.
- * Copyright 2017 NXP
+ * Copyright 2017,2026 NXP
  *
  */
 
@@ -9,6 +9,7 @@
 
 #include <fsl_usd.h>
 #include <process.h>
+#include <rte_dpaa_logs.h>
 #include "bman_priv.h"
 #include <sys/ioctl.h>
 #include <err.h>
@@ -16,8 +17,7 @@
 /*
  * Global variables of the max portal/pool number this bman version supported
  */
-static u16 bman_ip_rev;
-u16 bman_pool_max;
+u16 bman_pool_max = BMAN_MAX_POOLS;
 static void *bman_ccsr_map;
 
 /*****************/
@@ -180,9 +180,16 @@ int bman_init_ccsr(const struct device_node *node)
 	return 0;
 }
 
+#define BPID_RANGE_START_INDEX 0
+#define BPID_RANGE_COUNT_INDEX 1
+
 int bman_global_init(void)
 {
 	const struct device_node *dt_node;
+	const rte_be32_t *range;
+	uint32_t start = 0, count = 0;
+	int ret;
+	size_t len;
 	static int done;
 
 	if (done)
@@ -195,39 +202,46 @@ int bman_global_init(void)
 		pr_err("No bman portals available for any CPU\n");
 		return -ENODEV;
 	}
-	if (of_device_is_compatible(dt_node, "fsl,bman-portal-1.0") ||
-	    of_device_is_compatible(dt_node, "fsl,bman-portal-1.0.0")) {
-		bman_ip_rev = BMAN_REV10;
-		bman_pool_max = 64;
-	} else if (of_device_is_compatible(dt_node, "fsl,bman-portal-2.0") ||
-		of_device_is_compatible(dt_node, "fsl,bman-portal-2.0.8")) {
-		bman_ip_rev = BMAN_REV20;
-		bman_pool_max = 8;
-	} else if (of_device_is_compatible(dt_node, "fsl,bman-portal-2.1.0") ||
-		of_device_is_compatible(dt_node, "fsl,bman-portal-2.1.1") ||
-		of_device_is_compatible(dt_node, "fsl,bman-portal-2.1.2") ||
-		of_device_is_compatible(dt_node, "fsl,bman-portal-2.1.3")) {
-		bman_ip_rev = BMAN_REV21;
-		bman_pool_max = 64;
-	} else {
-		pr_warn("unknown BMan version in portal node,default "
-			"to rev1.0");
-		bman_ip_rev = BMAN_REV10;
-		bman_pool_max = 64;
-	}
 
-	if (!bman_ip_rev) {
-		pr_err("Unknown bman portal version\n");
+	for_each_compatible_node(dt_node, NULL, "fsl,bpid-range") {
+		range = of_get_property(dt_node, "fsl,bpid-range", &len);
+		if (!range || len < (int)(2 * sizeof(rte_be32_t)))
+			continue;
+		start = rte_be_to_cpu_32(range[BPID_RANGE_START_INDEX]);
+		count = rte_be_to_cpu_32(range[BPID_RANGE_COUNT_INDEX]);
+		if (!count) {
+			pr_warn("Empty BPID range in DTS, using default pool max\n");
+			continue;
+		}
+		/* The depletion mask and the SCN registers only describe
+		 * BPID 0..BMAN_MAX_POOLS-1, and bman_create_portal() walks
+		 * this bound with a u8, so a larger value from the DTS would
+		 * write past the last SCN register and never terminate.
+		 */
+		if (start + count > BMAN_MAX_POOLS) {
+			pr_warn("BPID range %u+%u exceeds max %u, clamping\n",
+				start, count, BMAN_MAX_POOLS);
+			bman_pool_max = BMAN_MAX_POOLS;
+		} else {
+			bman_pool_max = start + count;
+		}
+		DPAA_BUS_DEBUG("Max BPID: %d, fixed BPID < %d",
+			       bman_pool_max, start);
+		break;
+	}
+	if (!count)
+		pr_warn("No BPID range found in DTS, using default pool max\n");
+
+	dt_node = of_find_compatible_node(NULL, NULL, "fsl,bman");
+	if (!dt_node) {
+		pr_err("No bman device node available");
 		return -ENODEV;
 	}
-	{
-		const struct device_node *dn = of_find_compatible_node(NULL,
-							NULL, "fsl,bman");
-		if (!dn)
-			pr_err("No bman device node available");
 
-		if (bman_init_ccsr(dn))
-			pr_err("BMan CCSR map failed.");
+	ret = bman_init_ccsr(dt_node);
+	if (ret) {
+		pr_err("Failed(%d) to init bman ccsr", ret);
+		return ret;
 	}
 
 	done = 1;
