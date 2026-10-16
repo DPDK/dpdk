@@ -41,7 +41,7 @@ memif_msg_send(int fd, memif_msg_t *msg, int afd)
 	mh.msg_iov = iov;
 	mh.msg_iovlen = 1;
 
-	if (afd > 0) {
+	if (afd >= 0) {
 		memset(&ctl, 0, sizeof(ctl));
 		mh.msg_control = ctl;
 		mh.msg_controllen = sizeof(ctl);
@@ -623,7 +623,7 @@ memif_disconnect(struct rte_eth_dev *dev)
 		}
 
 		ih = pmd->cc->intr_handle;
-		if (rte_intr_fd_get(ih) > 0) {
+		if (rte_intr_fd_get(ih) >= 0) {
 			ret = rte_intr_callback_unregister(ih,
 							memif_intr_handler,
 							pmd->cc);
