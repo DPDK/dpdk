@@ -1,11 +1,14 @@
 /* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
  *
  * Copyright 2008-2016 Freescale Semiconductor Inc.
- * Copyright 2017 NXP
+ * Copyright 2017,2026 NXP
  *
  */
 
 #include "qman_priv.h"
+
+#define GENMASK(h, l) \
+	(((~0U) >> (sizeof(u32) * 8 - ((h) - (l) + 1))) << (l))
 
 /***************************/
 /* Portal register assists */
@@ -41,6 +44,14 @@
 #define QM_CL_CR		0x3800
 #define QM_CL_RR0		0x3900
 #define QM_CL_RR1		0x3940
+
+#define QM_FQD_CHAN_OFF                3
+#define QM_FQD_WQ_MASK         GENMASK(2, 0)
+/* 'fqid' is a 24-bit field in every h/w descriptor */
+#define QM_FQID_MASK    GENMASK(23, 0)
+
+#define qm_fqid_set(p, v) ((p)->fqid = cpu_to_be32((v) & QM_FQID_MASK))
+#define qm_fqid_get(p)    (be32_to_cpu((p)->fqid) & QM_FQID_MASK)
 
 /* BTW, the drivers (and h/w programming model) already obtain the required
  * synchronisation for portal accesses via lwsync(), hwsync(), and
@@ -910,4 +921,14 @@ static inline void __qm_isr_write(struct qm_portal *portal, enum qm_isr_reg n,
 #else
 	__qm_out(&portal->addr, QM_REG_ISR + (n << 2), val);
 #endif
+}
+
+static inline int qm_fqd_get_chan(const struct qm_fqd *fqd)
+{
+	return be16_to_cpu(fqd->dest_wq) >> QM_FQD_CHAN_OFF;
+}
+
+static inline int qm_fqd_get_wq(const struct qm_fqd *fqd)
+{
+	return be16_to_cpu(fqd->dest_wq) & QM_FQD_WQ_MASK;
 }
