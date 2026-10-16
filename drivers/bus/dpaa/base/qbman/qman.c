@@ -2669,7 +2669,6 @@ int qman_shutdown_fq(u32 fqid)
 	int orl_empty, fq_empty, drain = 0;
 	u32 result;
 	u32 channel, wq;
-	u16 dest_wq;
 
 	p = get_affine_portal();
 	low_p = &p->p;
@@ -2694,9 +2693,8 @@ int qman_shutdown_fq(u32 fqid)
 	DPAA_ASSERT((mcr->verb & QM_MCR_VERB_MASK) == QM_MCR_VERB_QUERYFQ);
 
 	/* Need to store these since the MCR gets reused */
-	dest_wq = be16_to_cpu(mcr->queryfq.fqd.dest_wq);
-	channel = dest_wq & 0x7;
-	wq = dest_wq >> 3;
+	channel = qm_fqd_get_chan(&mcr->queryfq.fqd);
+	wq = qm_fqd_get_wq(&mcr->queryfq.fqd);
 
 	switch (state) {
 	case QM_MCR_NP_STATE_TEN_SCHED:
