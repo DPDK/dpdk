@@ -2710,14 +2710,6 @@ put_portal:
 	return ret;
 }
 
-#define GENMASK(h, l) \
-	(((~0U) >> (sizeof(unsigned int) * 8 - ((h) - (l) + 1))) << (l))
-
-/* 'fqid' is a 24-bit field in every h/w descriptor */
-#define QM_FQID_MASK    GENMASK(23, 0)
-#define qm_fqid_set(p, v) ((p)->fqid = cpu_to_be32((v) & QM_FQID_MASK))
-#define qm_fqid_get(p)    (be32_to_cpu((p)->fqid) & QM_FQID_MASK)
-
 static int
 _qm_mr_consume_and_match_verb(struct qm_portal *p, int v)
 {
@@ -2804,7 +2796,6 @@ qman_shutdown_fq(u32 fqid)
 	u32 res;
 	u8 state;
 	u32 channel, wq;
-	u16 dest_wq;
 
 	DPAA_BUS_DEBUG("In shutdown for queue = %x", fqid);
 	p = get_affine_portal();
@@ -2834,9 +2825,8 @@ qman_shutdown_fq(u32 fqid)
 	}
 
 	/* Need to store these since the MCR gets reused */
-	dest_wq = be16_to_cpu(mcr->queryfq.fqd.dest_wq);
-	channel = dest_wq & 0x7;
-	wq = dest_wq >> 3;
+	channel = qm_fqd_get_chan(&mcr->queryfq.fqd);
+	wq = qm_fqd_get_wq(&mcr->queryfq.fqd);
 
 	switch (state) {
 	case QM_MCR_NP_STATE_TEN_SCHED:
