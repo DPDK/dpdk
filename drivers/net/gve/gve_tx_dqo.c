@@ -61,8 +61,8 @@ gve_tx_clean_dqo(struct gve_tx_queue *txq)
 		PMD_DRV_LOG(DEBUG, "GVE_COMPL_TYPE_DQO_MISS ignored !!!");
 		break;
 	default:
-		PMD_DRV_LOG(ERR, "unknown completion type.");
-		return;
+		PMD_DRV_LOG(ERR, "unknown completion type %u", compl_desc->type);
+		break;
 	}
 
 	next++;
