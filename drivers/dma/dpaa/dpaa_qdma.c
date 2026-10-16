@@ -11,6 +11,7 @@
 
 static uint32_t s_sg_max_entry_sz = 2000;
 static bool s_hw_err_check;
+static bool s_data_validation;
 
 #define DPAA_DMA_ERROR_CHECK "dpaa_dma_err_check"
 
@@ -391,6 +392,9 @@ fsl_qdma_data_validation(struct fsl_qdma_desc *desc[],
 	uint8_t *v_src, *v_dst;
 	char err_msg[512];
 	int offset;
+
+	if (likely(!s_data_validation))
+		return;
 
 
 	offset = sprintf(err_msg, "Fatal TC%d/queue%d: ",
