@@ -296,13 +296,24 @@ fman_if_bmi_stats_enable(struct fman_if *p)
 {
 	struct __fman_if *m = container_of(p, struct __fman_if, __if);
 	struct rx_bmi_regs *regs = (struct rx_bmi_regs *)m->rx_bmi_map;
+	struct tx_bmi_regs *tx_regs = (struct tx_bmi_regs *)m->tx_bmi_map;
 	uint32_t tmp;
 
-	tmp = in_be32(&regs->fmbm_rstc);
+	if (regs) {
+		tmp = in_be32(&regs->fmbm_rstc);
 
-	tmp |= FMAN_BMI_COUNTERS_EN;
+		tmp |= FMAN_BMI_COUNTERS_EN;
 
-	out_be32(&regs->fmbm_rstc, tmp);
+		out_be32(&regs->fmbm_rstc, tmp);
+	}
+
+	if (tx_regs) {
+		tmp = in_be32(&tx_regs->fmbm_tstc);
+
+		tmp |= FMAN_BMI_COUNTERS_EN;
+
+		out_be32(&tx_regs->fmbm_tstc, tmp);
+	}
 }
 
 void
@@ -310,13 +321,24 @@ fman_if_bmi_stats_disable(struct fman_if *p)
 {
 	struct __fman_if *m = container_of(p, struct __fman_if, __if);
 	struct rx_bmi_regs *regs = (struct rx_bmi_regs *)m->rx_bmi_map;
+	struct tx_bmi_regs *tx_regs = (struct tx_bmi_regs *)m->tx_bmi_map;
 	uint32_t tmp;
 
-	tmp = in_be32(&regs->fmbm_rstc);
+	if (regs) {
+		tmp = in_be32(&regs->fmbm_rstc);
 
-	tmp &= ~FMAN_BMI_COUNTERS_EN;
+		tmp &= ~FMAN_BMI_COUNTERS_EN;
 
-	out_be32(&regs->fmbm_rstc, tmp);
+		out_be32(&regs->fmbm_rstc, tmp);
+	}
+
+	if (tx_regs) {
+		tmp = in_be32(&tx_regs->fmbm_tstc);
+
+		tmp &= ~FMAN_BMI_COUNTERS_EN;
+
+		out_be32(&tx_regs->fmbm_tstc, tmp);
+	}
 }
 
 void
@@ -324,16 +346,37 @@ fman_if_bmi_stats_get_all(struct fman_if *p, uint64_t *value)
 {
 	struct __fman_if *m = container_of(p, struct __fman_if, __if);
 	struct rx_bmi_regs *regs = (struct rx_bmi_regs *)m->rx_bmi_map;
+	struct tx_bmi_regs *tx_regs = (struct tx_bmi_regs *)m->tx_bmi_map;
+
 	int i = 0;
 
-	value[i++] = (u32)in_be32(&regs->fmbm_rfrc);
-	value[i++] = (u32)in_be32(&regs->fmbm_rfbc);
-	value[i++] = (u32)in_be32(&regs->fmbm_rlfc);
-	value[i++] = (u32)in_be32(&regs->fmbm_rffc);
-	value[i++] = (u32)in_be32(&regs->fmbm_rfdc);
-	value[i++] = (u32)in_be32(&regs->fmbm_rfldec);
-	value[i++] = (u32)in_be32(&regs->fmbm_rodc);
-	value[i++] = (u32)in_be32(&regs->fmbm_rbdc);
+	/* Report zero for register blocks that are not mapped for this port
+	 * type, the caller expects a fixed number of values in a fixed order.
+	 */
+	if (regs) {
+		value[i++] = (u32)in_be32(&regs->fmbm_rfrc);
+		value[i++] = (u32)in_be32(&regs->fmbm_rfbc);
+		value[i++] = (u32)in_be32(&regs->fmbm_rlfc);
+		value[i++] = (u32)in_be32(&regs->fmbm_rffc);
+		value[i++] = (u32)in_be32(&regs->fmbm_rfdc);
+		value[i++] = (u32)in_be32(&regs->fmbm_rfldec);
+		value[i++] = (u32)in_be32(&regs->fmbm_rodc);
+		value[i++] = (u32)in_be32(&regs->fmbm_rbdc);
+	} else {
+		while (i < (int)FMAN_IF_BMI_RX_STATS_COUNT)
+			value[i++] = 0;
+	}
+
+	if (tx_regs) {
+		value[i++] = (u32)in_be32(&tx_regs->fmbm_tfrc);
+		value[i++] = (u32)in_be32(&tx_regs->fmbm_tfdc);
+		value[i++] = (u32)in_be32(&tx_regs->fmbm_tfledc);
+		value[i++] = (u32)in_be32(&tx_regs->fmbm_tfufdc);
+		value[i++] = (u32)in_be32(&tx_regs->fmbm_tbdc);
+	} else {
+		while (i < (int)FMAN_IF_BMI_STATS_COUNT)
+			value[i++] = 0;
+	}
 }
 
 void
@@ -341,15 +384,26 @@ fman_if_bmi_stats_reset(struct fman_if *p)
 {
 	struct __fman_if *m = container_of(p, struct __fman_if, __if);
 	struct rx_bmi_regs *regs = (struct rx_bmi_regs *)m->rx_bmi_map;
+	struct tx_bmi_regs *tx_regs = (struct tx_bmi_regs *)m->tx_bmi_map;
 
-	out_be32(&regs->fmbm_rfrc, 0);
-	out_be32(&regs->fmbm_rfbc, 0);
-	out_be32(&regs->fmbm_rlfc, 0);
-	out_be32(&regs->fmbm_rffc, 0);
-	out_be32(&regs->fmbm_rfdc, 0);
-	out_be32(&regs->fmbm_rfldec, 0);
-	out_be32(&regs->fmbm_rodc, 0);
-	out_be32(&regs->fmbm_rbdc, 0);
+	if (regs) {
+		out_be32(&regs->fmbm_rfrc, 0);
+		out_be32(&regs->fmbm_rfbc, 0);
+		out_be32(&regs->fmbm_rlfc, 0);
+		out_be32(&regs->fmbm_rffc, 0);
+		out_be32(&regs->fmbm_rfdc, 0);
+		out_be32(&regs->fmbm_rfldec, 0);
+		out_be32(&regs->fmbm_rodc, 0);
+		out_be32(&regs->fmbm_rbdc, 0);
+	}
+
+	if (tx_regs) {
+		out_be32(&tx_regs->fmbm_tfrc, 0);
+		out_be32(&tx_regs->fmbm_tfdc, 0);
+		out_be32(&tx_regs->fmbm_tfledc, 0);
+		out_be32(&tx_regs->fmbm_tfufdc, 0);
+		out_be32(&tx_regs->fmbm_tbdc, 0);
+	}
 }
 
 void

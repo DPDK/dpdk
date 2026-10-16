@@ -143,7 +143,32 @@ static const struct rte_dpaa_xstats_name_off dpaa_xstats_strings[] = {
 		offsetof(struct dpaa_if_rx_bmi_stats, fmbm_rodc)},
 	{"rx_buf_deallocate",
 		offsetof(struct dpaa_if_rx_bmi_stats, fmbm_rbdc)},
+	{"tx_frame_counter",
+		offsetof(struct dpaa_if_tx_bmi_stats, fmbm_tfrc)},
+	{"tx_bad_frames_count",
+		offsetof(struct dpaa_if_tx_bmi_stats, fmbm_tfdc)},
+	{"tx_frame_length_discard",
+		offsetof(struct dpaa_if_tx_bmi_stats, fmbm_tfledc)},
+	{"tx_frames_unsupported_format",
+		offsetof(struct dpaa_if_tx_bmi_stats, fmbm_tfufdc)},
+	{"tx_buf_deallocate",
+		offsetof(struct dpaa_if_tx_bmi_stats, fmbm_tbdc)},
 };
+
+/* Number of BMI entries at the tail of dpaa_xstats_strings[].
+ * Must equal RTE_DIM(dpaa_xstats_strings) - number_of_non_bmi_entries.
+ */
+#define DPAA_MAC_XSTATS_COUNT   13
+#define DPAA_BMI_XSTATS_COUNT   (RTE_DIM(dpaa_xstats_strings) - DPAA_MAC_XSTATS_COUNT)
+static_assert(sizeof(struct dpaa_if_rx_bmi_stats) / sizeof(uint32_t)
+		+ sizeof(struct dpaa_if_tx_bmi_stats) / sizeof(uint32_t)
+		== DPAA_BMI_XSTATS_COUNT,
+		"DPAA_BMI_XSTATS_COUNT out of sync with BMI stats structs");
+/* Every BMI counter read by fman_if_bmi_stats_get_all() must have a name
+ * entry above, and vice versa.
+ */
+static_assert(FMAN_IF_BMI_STATS_COUNT == DPAA_BMI_XSTATS_COUNT,
+		"DPAA_BMI_XSTATS_COUNT out of sync with BMI register windows");
 
 static struct rte_dpaa_driver rte_dpaa_pmd;
 int dpaa_valid_dev;
@@ -866,7 +891,7 @@ dpaa_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 {
 	unsigned int i = 0, j, num = RTE_DIM(dpaa_xstats_strings);
 	uint64_t values[sizeof(struct dpaa_if_stats) / 8];
-	unsigned int bmi_count = sizeof(struct dpaa_if_rx_bmi_stats) / 4;
+	unsigned int bmi_count = DPAA_BMI_XSTATS_COUNT;
 
 	if (n < num)
 		return num;
@@ -877,7 +902,7 @@ dpaa_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	fman_if_stats_get_all(dev->process_private, values,
 			      sizeof(struct dpaa_if_stats) / 8);
 
-	for (i = 0; i < num - (bmi_count - 1); i++) {
+	for (i = 0; i < num - bmi_count; i++) {
 		xstats[i].id = i;
 		xstats[i].value = values[dpaa_xstats_strings[i].offset / 8];
 	}
@@ -915,7 +940,7 @@ dpaa_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
 {
 	unsigned int i, j, stat_cnt = RTE_DIM(dpaa_xstats_strings);
 	uint64_t values_copy[sizeof(struct dpaa_if_stats) / 8];
-	unsigned int bmi_count = sizeof(struct dpaa_if_rx_bmi_stats) / 4;
+	unsigned int bmi_count = DPAA_BMI_XSTATS_COUNT;
 
 	if (!ids) {
 		if (n < stat_cnt)
@@ -927,7 +952,7 @@ dpaa_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
 		fman_if_stats_get_all(dev->process_private, values_copy,
 				      sizeof(struct dpaa_if_stats) / 8);
 
-		for (i = 0; i < stat_cnt - (bmi_count - 1); i++)
+		for (i = 0; i < stat_cnt - bmi_count; i++)
 			values[i] =
 				values_copy[dpaa_xstats_strings[i].offset / 8];
 
