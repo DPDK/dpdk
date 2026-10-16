@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
  *
  * Copyright 2008-2016 Freescale Semiconductor Inc.
- * Copyright 2017, 2024 NXP
+ * Copyright 2017, 2024-2026 NXP
  *
  */
 #include <rte_memcpy.h>
@@ -16,20 +16,6 @@
 #define RCR_THRESH	2	/* reread h/w CI when running out of space */
 #define IRQNAME		"BMan portal %d"
 #define MAX_IRQNAME	16	/* big enough for "BMan portal %d" */
-
-
-#define MAX_U16 UINT16_MAX
-#define MAX_U32 UINT32_MAX
-#ifndef BIT_SIZE
-#define BIT_SIZE(t) (sizeof(t) * 8)
-#endif
-#define MAX_U48 \
-	((((uint64_t)MAX_U16) << BIT_SIZE(uint32_t)) | MAX_U32)
-#define HI16_OF_U48(x) \
-	(((x) >> BIT_SIZE(rte_be32_t)) & MAX_U16)
-#define LO32_OF_U48(x) ((x) & MAX_U32)
-#define U48_BY_HI16_LO32(hi, lo) \
-	(((hi) << BIT_SIZE(uint32_t)) | (lo))
 
 struct bman_portal {
 	struct bm_portal p;
@@ -276,7 +262,7 @@ bman_release_fast(struct bman_pool *pool, const uint64_t *bufs,
 	struct bm_rcr_entry *r;
 	uint8_t i, avail;
 	uint64_t bpid = pool->params.bpid;
-	struct bm_hw_buf_desc bm_bufs[FSL_BM_BURST_MAX];
+	struct bm_buffer bm_bufs[FSL_BM_BURST_MAX];
 
 #ifdef RTE_LIBRTE_DPAA_HWDEBUG
 	if (!num || (num > FSL_BM_BURST_MAX))
@@ -293,19 +279,18 @@ bman_release_fast(struct bman_pool *pool, const uint64_t *bufs,
 	if (unlikely(!r))
 		return -EBUSY;
 
-	/*
-	 * we can copy all but the first entry, as this can trigger badness
-	 * with the valid-bit
-	 */
-	bm_bufs[0].bpid = bpid;
-	bm_bufs[0].hi_addr = cpu_to_be16(HI16_OF_U48(bufs[0]));
-	bm_bufs[0].lo_addr = cpu_to_be32(LO32_OF_U48(bufs[0]));
-	for (i = 1; i < num; i++) {
-		bm_bufs[i].hi_addr = cpu_to_be16(HI16_OF_U48(bufs[i]));
-		bm_bufs[i].lo_addr = cpu_to_be32(LO32_OF_U48(bufs[i]));
-	}
+	for (i = 0; i < num; i++)
+		bm_buffer_set64_to_be(&bm_bufs[i], bufs[i]);
 
-	memcpy(r->bufs, bm_bufs, sizeof(struct bm_buffer) * num);
+	/* bufs[0] overlaps the verb, which bm_rcr_pvb_commit() writes last
+	 * to publish the entry, so do not store over byte 0 here.
+	 */
+	r->bpid = bpid;
+	r->bufs[0].be_desc.hi = bm_bufs[0].be_desc.hi;
+	r->bufs[0].be_desc.lo = bm_bufs[0].be_desc.lo;
+	if (num > 1)
+		memcpy(&r->bufs[1], &bm_bufs[1],
+			sizeof(struct bm_buffer) * (num - 1));
 
 	bm_rcr_pvb_commit(&p->p, BM_RCR_VERB_CMD_BPID_SINGLE |
 		(num & BM_RCR_VERB_BUFCOUNT_MASK));
@@ -363,16 +348,6 @@ __rte_unused bman_extract_addr(struct bm_buffer *buf)
 	return buf->addr;
 }
 
-static inline uint64_t
-bman_hw_extract_addr(struct bm_hw_buf_desc *buf)
-{
-	uint64_t hi, lo;
-
-	hi = be16_to_cpu(buf->hi_addr);
-	lo = be32_to_cpu(buf->lo_addr);
-	return U48_BY_HI16_LO32(hi, lo);
-}
-
 RTE_EXPORT_INTERNAL_SYMBOL(bman_acquire_fast)
 int
 bman_acquire_fast(struct bman_pool *pool, uint64_t *bufs, uint8_t num)
@@ -381,7 +356,7 @@ bman_acquire_fast(struct bman_pool *pool, uint64_t *bufs, uint8_t num)
 	struct bm_mc_command *mcc;
 	struct bm_mc_result *mcr;
 	uint8_t i, rst;
-	struct bm_hw_buf_desc bm_bufs[FSL_BM_BURST_MAX];
+	struct bm_buffer bm_bufs[FSL_BM_BURST_MAX];
 
 #ifdef RTE_LIBRTE_DPAA_HWDEBUG
 	if (!num || (num > FSL_BM_BURST_MAX))
@@ -400,11 +375,10 @@ bman_acquire_fast(struct bman_pool *pool, uint64_t *bufs, uint8_t num)
 	if (unlikely(rst < 1 || rst > FSL_BM_BURST_MAX))
 		return -EINVAL;
 
-	rte_memcpy(bm_bufs, mcr->acquire.bufs,
-		sizeof(struct bm_buffer) * rst);
+	rte_memcpy(bm_bufs, mcr->acquire.bufs, sizeof(struct bm_buffer) * rst);
 
 	for (i = 0; i < rst; i++)
-		bufs[i] = bman_hw_extract_addr(&bm_bufs[i]);
+		bufs[i] = bm_buffer_get64_from_be(&bm_bufs[i]);
 
 	return rst;
 }
