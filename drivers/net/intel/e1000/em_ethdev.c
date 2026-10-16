@@ -593,6 +593,7 @@ em_set_pba(struct e1000_hw *hw)
 		case e1000_pch_tgp:
 		case e1000_pch_mtp:
 		case e1000_pch_ptp:
+		case e1000_pch_nvp:
 			pba = E1000_PBA_26K;
 			break;
 		default:
@@ -983,7 +984,8 @@ em_hardware_init(struct e1000_hw *hw)
 		   hw->mac.type == e1000_pch_adp ||
 		   hw->mac.type == e1000_pch_tgp ||
 		   hw->mac.type == e1000_pch_mtp ||
-		   hw->mac.type == e1000_pch_ptp) {
+		   hw->mac.type == e1000_pch_ptp ||
+		   hw->mac.type == e1000_pch_nvp) {
 		hw->fc.requested_mode = e1000_fc_full;
 	}
 
@@ -1177,6 +1179,7 @@ em_get_max_pktlen(struct rte_eth_dev *dev)
 	case e1000_pch_tgp:
 	case e1000_pch_mtp:
 	case e1000_pch_ptp:
+	case e1000_pch_nvp:
 	case e1000_82574:
 	case e1000_80003es2lan: /* 9K Jumbo Frame size */
 	case e1000_82583:
