@@ -833,6 +833,100 @@ test_pktmbuf_pool_bulk(void)
 		goto err;
 	}
 
+	printf("Test bulk free with NULL entries.\n");
+
+	ret = rte_pktmbuf_alloc_bulk(pool, mbufs, 4);
+	if (ret != 0)
+		goto err;
+
+	m = mbufs[1];
+	mbufs[1] = NULL;
+	rte_pktmbuf_free_bulk(mbufs, 4);
+	rte_pktmbuf_free(m);
+
+	if (!rte_mempool_full(pool)) {
+		printf("mempool not full after NULL-entry bulk free\n");
+		goto err;
+	}
+
+	printf("Test bulk free with multiple pools.\n");
+
+	for (i = 0; i < 4; i++) {
+		mbufs[i] = rte_pktmbuf_alloc((i & 1) ? pool2 : pool);
+		if (mbufs[i] == NULL)
+			goto err;
+	}
+
+	rte_pktmbuf_free_bulk(mbufs, 4);
+
+	if (!(rte_mempool_full(pool) && rte_mempool_full(pool2))) {
+		printf("mempools not full after mixed-pool bulk free\n");
+		goto err;
+	}
+
+	printf("Test bulk free with shared mbuf.\n");
+
+	ret = rte_pktmbuf_alloc_bulk(pool, mbufs, 4);
+	if (ret != 0)
+		goto err;
+
+	m = mbufs[1];
+	rte_mbuf_refcnt_update(m, 1);
+	rte_pktmbuf_free_bulk(mbufs, 4);
+
+	if (rte_mbuf_refcnt_read(m) != 1) {
+		printf("shared mbuf reference count incorrect\n");
+		goto err;
+	}
+
+	rte_pktmbuf_free(m);
+
+	if (!rte_mempool_full(pool)) {
+		printf("mempool not full after shared mbuf free\n");
+		goto err;
+	}
+
+	printf("Test bulk free of flat mbufs around a chain.\n");
+
+	ret = rte_pktmbuf_alloc_bulk(pool, mbufs, 5);
+	if (ret != 0)
+		goto err;
+
+	ret = rte_pktmbuf_chain(mbufs[1], mbufs[2]);
+	if (ret != 0)
+		goto err;
+	mbufs[2] = mbufs[3];
+	mbufs[3] = mbufs[4];
+	rte_pktmbuf_free_bulk(mbufs, 4);
+
+	if (!rte_mempool_full(pool)) {
+		printf("mempool not full after mixed flat and chain bulk free\n");
+		goto err;
+	}
+
+	printf("Test bulk free with an indirect mbuf.\n");
+
+	m = rte_pktmbuf_alloc(pool);
+	if (m == NULL)
+		goto err;
+	mbufs[0] = rte_pktmbuf_alloc(pool);
+	mbufs[1] = rte_pktmbuf_clone(m, pool);
+	mbufs[2] = rte_pktmbuf_alloc(pool);
+	if (mbufs[0] == NULL || mbufs[1] == NULL || mbufs[2] == NULL)
+		goto err;
+
+	rte_pktmbuf_free_bulk(mbufs, 3);
+	if (rte_mbuf_refcnt_read(m) != 1) {
+		printf("indirect mbuf reference count incorrect\n");
+		goto err;
+	}
+	rte_pktmbuf_free(m);
+
+	if (!rte_mempool_full(pool)) {
+		printf("mempool not full after indirect mbuf bulk free\n");
+		goto err;
+	}
+
 	printf("Test bulk free of single long chain.\n");
 
 	/* Bulk allocate all mbufs in the pool, in one go. */
