@@ -123,6 +123,10 @@ New Features
   Added internal ``flow_graph`` API in ethdev
   for PMD drivers to build graph-based flow pattern parsers.
 
+* **Updated AF_PACKET driver.**
+
+  Added ``ignore_outgoing`` devarg to only receive incoming packets.
+
 * **Updated AF_XDP driver.**
 
   * Changed the default device plugin endpoint path used when
