@@ -195,6 +195,12 @@ New Features
   * Increased the maximum number of secondary unicast MAC addresses from 128 to up to 4096
     (depending on devlink configuration on the associated kernel netdevice).
 
+* **Updated NXP DPAA drivers.**
+
+  * Renamed the fmlib ``create_device()`` and ``get_device_id()`` helpers
+    to ``fm_create_device()`` and ``fm_get_device_id()``
+    to avoid clashing with other drivers when DPDK is linked statically.
+
 * **Updated NXP DPAA2 ethernet driver.**
 
   * Added the inner IP header to the RSS hash so tunneled traffic is

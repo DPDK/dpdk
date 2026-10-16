@@ -202,7 +202,7 @@ struct fmc_model_t {
 		(FMC_SCHEMES_NUM + FMC_CC_NODES_NUM)];
 };
 
-struct fmc_model_t *g_fmc_model;
+static struct fmc_model_t *g_fmc_model;
 
 static int
 dpaa_port_fmc_port_parse(struct fman_if *fif,

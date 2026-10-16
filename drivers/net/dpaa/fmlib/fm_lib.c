@@ -533,7 +533,7 @@ fm_port_delete_pcd(t_handle h_fm_port)
 }
 
 t_handle
-create_device(t_handle h_user_priv, t_handle h_dev_id)
+fm_create_device(t_handle h_user_priv, t_handle h_dev_id)
 {
 	t_device *p_user_priv_dev = (t_device *)h_user_priv;
 	t_device *p_dev = NULL;
@@ -555,7 +555,7 @@ create_device(t_handle h_user_priv, t_handle h_dev_id)
 }
 
 t_handle
-get_device_id(t_handle h_dev)
+fm_get_device_id(t_handle h_dev)
 {
 	t_device *p_dev = (t_device *)h_dev;
 

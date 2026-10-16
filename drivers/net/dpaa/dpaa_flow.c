@@ -87,18 +87,18 @@ static void fm_prev_cleanup(void)
 		}
 		dpaa_intf.port_handle =
 				fm_port_open(&fm_model.fm_port_params[devid]);
-		dpaa_intf.scheme_handle[0] = create_device(fm_info.pcd_handle,
+		dpaa_intf.scheme_handle[0] = fm_create_device(fm_info.pcd_handle,
 					fm_model.scheme_devid[devid][0]);
 		dpaa_intf.scheme_count = 1;
 		if (fm_model.scheme_devid[devid][1]) {
 			dpaa_intf.scheme_handle[1] =
-				create_device(fm_info.pcd_handle,
+				fm_create_device(fm_info.pcd_handle,
 					fm_model.scheme_devid[devid][1]);
 			if (dpaa_intf.scheme_handle[1])
 				dpaa_intf.scheme_count++;
 		}
 
-		dpaa_intf.netenv_handle = create_device(fm_info.pcd_handle,
+		dpaa_intf.netenv_handle = fm_create_device(fm_info.pcd_handle,
 					fm_model.netenv_devid[devid]);
 		i++;
 		if (!dpaa_intf.netenv_handle ||
@@ -598,7 +598,7 @@ static inline int set_default_scheme(struct dpaa_if *dpaa_intf)
 	}
 
 	fm_model.scheme_devid[dpaa_intf->ifid][idx] =
-				get_device_id(dpaa_intf->scheme_handle[idx]);
+				fm_get_device_id(dpaa_intf->scheme_handle[idx]);
 	dpaa_intf->scheme_count++;
 	return 0;
 }
@@ -642,7 +642,7 @@ static inline int set_pcd_netenv_scheme(struct dpaa_if *dpaa_intf,
 	}
 
 	fm_model.scheme_devid[dpaa_intf->ifid][idx] =
-				get_device_id(dpaa_intf->scheme_handle[idx]);
+				fm_get_device_id(dpaa_intf->scheme_handle[idx]);
 	dpaa_intf->scheme_count++;
 	return 0;
 }
@@ -714,7 +714,7 @@ static inline int set_fm_port_handle(struct dpaa_if *dpaa_intf,
 	}
 
 	fm_model.netenv_devid[dpaa_intf->ifid] =
-				get_device_id(dpaa_intf->netenv_handle);
+				fm_get_device_id(dpaa_intf->netenv_handle);
 
 	return 0;
 }
