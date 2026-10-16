@@ -1414,8 +1414,8 @@ retry:
 	 */
 	if (status && (hw->aq.asq_last_status == I40E_AQ_RC_EBUSY) &&
 	    !retry_attempt) {
+		enum i40e_admin_queue_err old_asq_status = hw->aq.asq_last_status;
 		enum i40e_status_code old_status = status;
-		u32 old_asq_status = hw->aq.asq_last_status;
 		u32 gtime;
 
 		gtime = rd32(hw, I40E_GLVFGEN_TIMER);
@@ -1656,7 +1656,7 @@ STATIC enum i40e_status_code i40e_nvmupd_exec_aq(struct i40e_hw *hw,
 		}
 
 		if (hw->nvm_buff.va) {
-			buff = hw->nvm_buff.va;
+			buff = (u8 *)hw->nvm_buff.va;
 			i40e_memcpy(buff, &bytes[aq_desc_len], aq_data_len,
 				I40E_NONDMA_TO_NONDMA);
 		}
@@ -1667,19 +1667,19 @@ STATIC enum i40e_status_code i40e_nvmupd_exec_aq(struct i40e_hw *hw,
 
 	/* and away we go! */
 	status = i40e_asq_send_command(hw, aq_desc, buff,
-				       buff_size, &cmd_details);
+				       (u16)buff_size, &cmd_details);
 	if (status) {
 		i40e_debug(hw, I40E_DEBUG_NVM,
-			   "i40e_nvmupd_exec_aq err %s aq_err %s\n",
-			   i40e_stat_str(hw, status),
-			   i40e_aq_str(hw, hw->aq.asq_last_status));
+			   "i40e_nvmupd_exec_aq err %d aq_err %d\n",
+			   status,
+			   hw->aq.asq_last_status);
 		*perrno = i40e_aq_rc_to_posix(status, hw->aq.asq_last_status);
 		return status;
 	}
 
 	/* should we wait for a followup event? */
 	if (cmd->offset) {
-		hw->nvm_wait_opcode = cmd->offset;
+		hw->nvm_wait_opcode = (u16)cmd->offset;
 		hw->nvmupd_state = I40E_NVMUPD_STATE_INIT_WAIT;
 	}
 
@@ -1739,7 +1739,7 @@ STATIC enum i40e_status_code i40e_nvmupd_get_aq_result(struct i40e_hw *hw,
 
 		bytes += len;
 		remainder -= len;
-		buff = hw->nvm_buff.va;
+		buff = (u8 *)hw->nvm_buff.va;
 	} else {
 		buff = (u8 *)hw->nvm_buff.va + (cmd->offset - aq_desc_len);
 	}
