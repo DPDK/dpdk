@@ -119,7 +119,7 @@ _fman_init(const struct device_node *fman_node, int fd)
 	ip_rev_1 = in_be32((uint8_t *)fman->ccsr_vir + FMAN_IP_REV_1);
 	fman->ip_rev = ip_rev_1 >> FMAN_IP_REV_1_MAJOR_SHIFT;
 	fman->ip_rev &=	FMAN_IP_REV_1_MAJOR_MASK;
-	DPAA_BUS_LOG(NOTICE, "FMan version is 0x%02x", fman->ip_rev);
+	DPAA_BUS_INFO("FMan version is 0x%02x", fman->ip_rev);
 
 	if (fman->ip_rev >= FMAN_V3) {
 		/*
@@ -795,8 +795,7 @@ oh_init_done:
 	fman_if_vsp_init(__if);
 
 	/* Parsing of the network interface is complete, add it to the list */
-	DPAA_BUS_LOG(DEBUG, "Found %s, Tx Channel = %x, FMAN = %x,"
-		    "Port ID = %x",
+	DPAA_BUS_DEBUG("Found %s, Tx Channel = %x, FMAN = %x, Port ID = %x",
 		    dname, __if->__if.tx_channel_id, __if->__if.fman->idx,
 		    __if->__if.mac_idx);
 
@@ -1109,14 +1108,14 @@ fman_init(void)
 
 	fd = open(FMAN_DEVICE_PATH, O_RDWR);
 	if (unlikely(fd < 0)) {
-		DPAA_BUS_LOG(ERR, "Unable to open %s: %s", FMAN_DEVICE_PATH, strerror(errno));
+		DPAA_BUS_ERR("Unable to open %s: %s", FMAN_DEVICE_PATH, strerror(errno));
 		return fd;
 	}
 	fman_ccsr_map_fd = fd;
 
 	parent_node = of_find_compatible_node(NULL, NULL, "fsl,dpaa");
 	if (!parent_node) {
-		DPAA_BUS_LOG(ERR, "Unable to find fsl,dpaa node");
+		DPAA_BUS_ERR("Unable to find fsl,dpaa node");
 		return -ENODEV;
 	}
 

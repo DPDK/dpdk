@@ -95,7 +95,7 @@ netcfg_acquire(void)
 	/* Initialise the Fman driver */
 	_errno = fman_init();
 	if (_errno) {
-		DPAA_BUS_LOG(ERR, "FMAN driver init failed (%d)", errno);
+		DPAA_BUS_ERR("FMAN driver init failed (%d)", errno);
 		close(skfd);
 		skfd = -1;
 		return NULL;
@@ -106,7 +106,7 @@ netcfg_acquire(void)
 		num_ports++;
 
 	if (!num_ports) {
-		DPAA_BUS_LOG(ERR, "FMAN ports not available");
+		DPAA_BUS_ERR("FMAN ports not available");
 		return NULL;
 	}
 	/* Allocate space for all enabled mac ports */
@@ -115,7 +115,7 @@ netcfg_acquire(void)
 
 	netcfg = rte_calloc(NULL, 1, size, 0);
 	if (unlikely(netcfg == NULL)) {
-		DPAA_BUS_LOG(ERR, "Unable to allocat mem for netcfg");
+		DPAA_BUS_ERR("Unable to allocate mem for netcfg");
 		goto error;
 	}
 
@@ -131,7 +131,7 @@ netcfg_acquire(void)
 	}
 
 	if (!num_cfg_ports) {
-		DPAA_BUS_LOG(ERR, "No FMAN ports found");
+		DPAA_BUS_ERR("No FMAN ports found");
 		goto error;
 	} else if (num_ports != num_cfg_ports)
 		netcfg->num_ethports = num_cfg_ports;
