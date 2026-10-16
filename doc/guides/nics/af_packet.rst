@@ -43,6 +43,9 @@ Only one ``fanout_mode`` can be chosen.
 If left unspecified, the default is to use the ``PACKET_FANOUT_HASH`` behavior
 of AF_PACKET for frame reception.
 
+When ``ignore_outgoing`` is set, ``PACKET_IGNORE_OUTGOING`` is set for
+single-queue ports, which moves the filtering from the PMD to the kernel.
+
 Because this implementation is based on PACKET_MMAP, and PACKET_MMAP has its
 own pre-requisites, it should be noted that the inner workings of PACKET_MMAP
 should be carefully considered before modifying some of these options (namely,
