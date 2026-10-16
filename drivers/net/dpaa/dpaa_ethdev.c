@@ -2602,24 +2602,30 @@ rte_dpaa_probe(struct rte_dpaa_driver *dpaa_drv,
 
 	/* Invoke PMD device initialization function */
 	diag = dpaa_dev_init(eth_dev);
-	if (diag == 0) {
-		if (!dpaa_tx_sg_pool) {
-			dpaa_tx_sg_pool =
-				rte_pktmbuf_pool_create("dpaa_mbuf_tx_sg_pool",
-				DPAA_POOL_SIZE,
-				DPAA_POOL_CACHE_SIZE, 0,
-				DPAA_MAX_SGS * sizeof(struct qm_sg_entry),
-				rte_socket_id());
-			if (dpaa_tx_sg_pool == NULL) {
-				DPAA_PMD_ERR("SG pool creation failed");
-				return -ENOMEM;
-			}
+	if (diag != 0)
+		goto release_port;
+
+	if (dpaa_tx_sg_pool == NULL) {
+		dpaa_tx_sg_pool =
+			rte_pktmbuf_pool_create("dpaa_mbuf_tx_sg_pool",
+			DPAA_POOL_SIZE,
+			DPAA_POOL_CACHE_SIZE, 0,
+			DPAA_MAX_SGS * sizeof(struct qm_sg_entry),
+			rte_socket_id());
+		if (dpaa_tx_sg_pool == NULL) {
+			DPAA_PMD_ERR("SG pool creation failed");
+			diag = -ENOMEM;
+			goto close_dev;
 		}
-		rte_eth_dev_probing_finish(eth_dev);
-		dpaa_valid_dev++;
-		return 0;
 	}
 
+	rte_eth_dev_probing_finish(eth_dev);
+	dpaa_valid_dev++;
+	return 0;
+
+close_dev:
+	dpaa_eth_dev_close(eth_dev);
+release_port:
 	rte_eth_dev_release_port(eth_dev);
 	return diag;
 }
