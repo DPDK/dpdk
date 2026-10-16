@@ -2296,8 +2296,8 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 				dpaa_intf->name);
 		}
 	} else {
-		/* FMCLESS mode, load balance to multiple cores.*/
-		num_rx_fqs = rte_lcore_count();
+		/* FMCLESS: create the max; configure() picks how many are used. */
+		num_rx_fqs = DPAA_MAX_NUM_PCD_QUEUES;
 	}
 
 	/* Each device can not have more than DPAA_MAX_NUM_PCD_QUEUES RX
