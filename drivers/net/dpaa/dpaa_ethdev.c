@@ -548,7 +548,7 @@ static int dpaa_eth_dev_close(struct rte_eth_dev *dev)
 
 	if (fif->mac_type == fman_offline_internal ||
 	    fif->mac_type == fman_onic)
-		return 0;
+		goto clean_1;
 
 	/* Reset link to autoneg */
 	if (link->link_status && !link->link_autoneg) {
@@ -573,7 +573,7 @@ static int dpaa_eth_dev_close(struct rte_eth_dev *dev)
 				dev->data->name, ret);
 		}
 	}
-
+clean_1:
 	/* release configuration memory */
 	rte_free(dpaa_intf->fc_conf);
 
@@ -634,6 +634,9 @@ static int dpaa_eth_dev_close(struct rte_eth_dev *dev)
 				dev->data->name, ret);
 		}
 	}
+
+	rte_free(dpaa_intf->tx_conf_queues);
+	dpaa_intf->tx_conf_queues = NULL;
 
 	return ret;
 }
@@ -2413,7 +2416,7 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 	if (!dpaa_intf->tx_conf_queues) {
 		DPAA_PMD_ERR("Failed to alloc mem for TX conf queues");
 		ret = -ENOMEM;
-		goto free_rx;
+		goto free_tx;
 	}
 
 	/* If congestion control is enabled globally*/
@@ -2424,7 +2427,7 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 		if (!dpaa_intf->cgr_tx) {
 			DPAA_PMD_ERR("Failed to alloc mem for cgr_tx");
 			ret = -ENOMEM;
-			goto free_rx;
+			goto free_tx;
 		}
 
 		ret = qman_alloc_cgrid_range(&cgrid_tx[0], MAX_DPAA_CORES,
@@ -2432,7 +2435,7 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 		if (ret != MAX_DPAA_CORES) {
 			DPAA_PMD_WARN("insufficient CGRIDs available");
 			ret = -EINVAL;
-			goto free_rx;
+			goto free_tx;
 		}
 	} else {
 		dpaa_intf->cgr_tx = NULL;
@@ -2524,6 +2527,8 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 	return 0;
 
 free_tx:
+	rte_free(dpaa_intf->tx_conf_queues);
+	dpaa_intf->tx_conf_queues = NULL;
 	rte_free(dpaa_intf->tx_queues);
 	dpaa_intf->tx_queues = NULL;
 	dpaa_intf->nb_tx_queues = 0;
