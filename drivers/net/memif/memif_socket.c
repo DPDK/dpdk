@@ -663,6 +663,9 @@ memif_disconnect(struct rte_eth_dev *dev)
 				continue;
 		}
 
+		if (mq == NULL)
+			continue;
+
 		rte_intr_fd_close(mq->intr_handle);
 	}
 	for (i = 0; i < pmd->cfg.num_s2c_rings; i++) {
@@ -677,6 +680,9 @@ memif_disconnect(struct rte_eth_dev *dev)
 			else
 				continue;
 		}
+
+		if (mq == NULL)
+			continue;
 
 		rte_intr_fd_close(mq->intr_handle);
 	}
