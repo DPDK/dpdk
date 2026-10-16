@@ -30,6 +30,8 @@ extern int dpaa_logtype_bus;
 
 #define BUS_INIT_FUNC_TRACE() DPAA_BUS_DEBUG(" >>")
 
+#define DPAA_BUS_NOTICE(fmt, ...) \
+	DPAA_BUS_LOG(NOTICE, fmt, ## __VA_ARGS__)
 #define DPAA_BUS_INFO(fmt, ...) \
 	DPAA_BUS_LOG(INFO, fmt, ## __VA_ARGS__)
 #define DPAA_BUS_ERR(fmt, ...) \
