@@ -1289,9 +1289,9 @@ memif_free_regions(struct rte_eth_dev *dev)
 		if (r != NULL) {
 			/* This is memzone */
 			if (i > 0 && (pmd->flags & ETH_MEMIF_FLAG_ZERO_COPY)) {
+				/* memseg fd is owned by EAL, do not close */
 				r->addr = NULL;
-				if (r->fd > 0)
-					close(r->fd);
+				r->fd = -1;
 			}
 			if (r->addr != NULL) {
 				munmap(r->addr, r->region_size);
@@ -1611,8 +1611,7 @@ memif_connect(struct rte_eth_dev *dev)
 				}
 			}
 			if (i > 0 && (pmd->flags & ETH_MEMIF_FLAG_ZERO_COPY)) {
-				/* close memseg file */
-				close(mr->fd);
+				/* memseg fd is owned by EAL, do not close */
 				mr->fd = -1;
 			}
 		}
