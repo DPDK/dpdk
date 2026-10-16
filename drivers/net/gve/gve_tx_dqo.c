@@ -123,6 +123,17 @@ gve_tx_clean_descs_dqo(struct gve_tx_queue *txq, uint16_t nb_descs) {
 		gve_tx_clean_dqo(txq);
 }
 
+/* Validate packet lengths against the device limits. */
+static inline bool
+gve_tx_validate_pkt(const struct rte_mbuf *tx_pkt, bool is_tso)
+{
+	if (!is_tso)
+		return tx_pkt->pkt_len >= GVE_TX_MIN_PKT_SIZE_DQO &&
+		       tx_pkt->pkt_len <= GVE_TX_MAX_PKT_SIZE_DQO;
+
+	return true;
+}
+
 /* Max descriptors a single packet may use. A larger packet can never pass
  * gve_can_tx(): one slot is always reserved, the cacheline overlap margin
  * must stay free, and up to GVE_TX_MIN_RE_INTERVAL - 1 descriptors posted
@@ -305,6 +316,12 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		ol_flags = tx_pkt->ol_flags;
 		tso = !!(ol_flags & RTE_MBUF_F_TX_TCP_SEG);
 		csum = !!(ol_flags & GVE_TX_CKSUM_OFFLOAD_MASK_DQO);
+
+		if (!gve_tx_validate_pkt(tx_pkt, tso)) {
+			txq->stats.invalid_pkts++;
+			rte_pktmbuf_free(tx_pkt);
+			continue;
+		}
 
 		nb_descs = gve_tx_pkt_nb_data_descs(tx_pkt);
 		nb_descs += tso;
