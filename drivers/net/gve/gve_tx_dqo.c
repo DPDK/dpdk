@@ -305,14 +305,14 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			break;
 		}
 
+		if (!gve_free_compl_tags_pop(txq, &compl_tag))
+			break;
+
 		if (tso) {
 			txd = &txr[tx_id];
 			gve_tx_fill_seg_desc_dqo(txd, tx_pkt);
 			tx_id = (tx_id + 1) & mask;
 		}
-
-		if (!gve_free_compl_tags_pop(txq, &compl_tag))
-			break;
 
 		pkts[compl_tag].mbuf = tx_pkt;
 		while (tx_pkt) {
