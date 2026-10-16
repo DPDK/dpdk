@@ -1723,6 +1723,10 @@ memif_dev_close(struct rte_eth_dev *dev)
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
 		memif_msg_enq_disconnect(pmd->cc, "Device closed", 0);
+		/* Flush the disconnect and tear down the control channel;
+		 * memif_disconnect() is idempotent if dev_stop already ran.
+		 */
+		memif_disconnect(dev);
 
 		for (i = 0; i < dev->data->nb_rx_queues; i++)
 			memif_rx_queue_release(dev, i);
