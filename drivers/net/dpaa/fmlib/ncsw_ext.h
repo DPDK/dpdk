@@ -152,7 +152,7 @@ typedef struct t_device {
 	uint32_t	owners;
 } t_device;
 
-t_handle create_device(t_handle h_user_priv, t_handle h_dev_id);
-t_handle get_device_id(t_handle h_dev);
+t_handle fm_create_device(t_handle h_user_priv, t_handle h_dev_id);
+t_handle fm_get_device_id(t_handle h_dev);
 
 #endif /* __NCSW_EXT_H */
