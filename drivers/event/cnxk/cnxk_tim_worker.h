@@ -692,31 +692,31 @@ cnxk_tim_add_entry_tmo_hwwqe(struct cnxk_tim_ring *const tim_ring,
 
 		done += CNXK_TIM_ENT_PER_LMT;
 		rsp &= 0xF;
-		if (rsp != 0x1) {
+		if (rsp != 0x1 && rsp != 0x5) {
 			switch (rsp) {
 			case 0x3:
-				for (j = 0; j < CNXK_TIM_ENT_PER_LMT; j++)
-					tim[(i * CNXK_TIM_ENT_PER_LMT) + j]->state =
-						RTE_EVENT_TIMER_ERROR_TOOEARLY;
-				done -= CNXK_TIM_ENT_PER_LMT;
-				break;
-			case 0x4:
 				for (j = 0; j < CNXK_TIM_ENT_PER_LMT; j++)
 					tim[(i * CNXK_TIM_ENT_PER_LMT) + j]->state =
 						RTE_EVENT_TIMER_ERROR_TOOLATE;
 				done -= CNXK_TIM_ENT_PER_LMT;
 				break;
+			case 0x4:
+				for (j = 0; j < CNXK_TIM_ENT_PER_LMT; j++)
+					tim[(i * CNXK_TIM_ENT_PER_LMT) + j]->state =
+						RTE_EVENT_TIMER_ERROR_TOOEARLY;
+				done -= CNXK_TIM_ENT_PER_LMT;
+				break;
 			case 0x2:
 			default:
 				for (j = 0; j < CNXK_TIM_ENT_PER_LMT; j++) {
-					if ((rte_atomic_load_explicit(
-						     (uint64_t __rte_atomic
-							      *)&tim[(i * CNXK_TIM_ENT_PER_LMT) + j]
-							     ->impl_opaque[0],
-						     rte_memory_order_relaxed) &
-					     0xF0) != 0x10) {
-						tim[(i * CNXK_TIM_ENT_PER_LMT) + j]->state =
-							RTE_EVENT_TIMER_ERROR;
+					struct rte_event_timer *t =
+						tim[(i * CNXK_TIM_ENT_PER_LMT) + j];
+					uint64_t res = rte_atomic_load_explicit(
+						(uint64_t __rte_atomic *)&t->impl_opaque[0],
+						rte_memory_order_relaxed) & 0xF0;
+
+					if (res != 0x10 && res != 0x50) {
+						t->state = RTE_EVENT_TIMER_ERROR;
 						done--;
 					}
 				}
@@ -749,27 +749,28 @@ cnxk_tim_add_entry_tmo_hwwqe(struct cnxk_tim_ring *const tim_ring,
 
 		done += (nb_timers - cnt);
 		rsp &= 0xF;
-		if (rsp != 0x1) {
+		if (rsp != 0x1 && rsp != 0x5) {
 			switch (rsp) {
 			case 0x3:
 				for (j = 0; j < nb_timers - cnt; j++)
-					tim[cnt + j]->state = RTE_EVENT_TIMER_ERROR_TOOEARLY;
+					tim[cnt + j]->state = RTE_EVENT_TIMER_ERROR_TOOLATE;
 				done -= (nb_timers - cnt);
 				break;
 			case 0x4:
 				for (j = 0; j < nb_timers - cnt; j++)
-					tim[cnt + j]->state = RTE_EVENT_TIMER_ERROR_TOOLATE;
+					tim[cnt + j]->state = RTE_EVENT_TIMER_ERROR_TOOEARLY;
 				done -= (nb_timers - cnt);
 				break;
 			case 0x2:
 			default:
 				for (j = 0; j < nb_timers - cnt; j++) {
-					if ((rte_atomic_load_explicit(
-						     (uint64_t __rte_atomic *)&tim[cnt + j]
-							     ->impl_opaque[0],
-						     rte_memory_order_relaxed) &
-					     0xF0) != 0x10) {
-						tim[cnt + j]->state = RTE_EVENT_TIMER_ERROR;
+					struct rte_event_timer *t = tim[cnt + j];
+					uint64_t res = rte_atomic_load_explicit(
+						(uint64_t __rte_atomic *)&t->impl_opaque[0],
+						rte_memory_order_relaxed) & 0xF0;
+
+					if (res != 0x10 && res != 0x50) {
+						t->state = RTE_EVENT_TIMER_ERROR;
 						done--;
 					}
 				}

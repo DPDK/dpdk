@@ -12,14 +12,56 @@
 static struct event_timer_adapter_ops cnxk_tim_ops;
 static cnxk_sso_set_priv_mem_t sso_set_priv_mem_fn;
 
+static void
+cnxk_tim_chnk_pool_mem_free(struct rte_mempool_memhdr *memhdr, void *opaque)
+{
+	RTE_SET_USED(memhdr);
+	rte_free(opaque);
+}
+
+/* CN20K needs 256B aligned chunk buffers (cn20k-tim 14.2), other models use ROC_ALIGN. */
+static inline size_t
+cnxk_tim_chunk_buf_align(void)
+{
+	return roc_model_is_cn20k() ? CNXK_TIM_CN20K_CHUNK_BUF_ALIGN : ROC_ALIGN;
+}
+
+/* Populate the pool from a single aligned block, like the SSO XAQ pool. */
+static int
+cnxk_tim_chnk_pool_populate_aligned(struct rte_mempool *mp, size_t align)
+{
+	size_t stride, len;
+	void *mem;
+	int rc;
+
+	stride = (size_t)mp->header_size + mp->elt_size + mp->trailer_size;
+	len = stride * mp->size;
+
+	mem = rte_zmalloc_socket("cnxk_tim_chunks", len, align, mp->socket_id);
+	if (mem == NULL)
+		return -ENOMEM;
+
+	rc = rte_mempool_populate_iova(mp, mem, rte_malloc_virt2iova(mem), len,
+				       cnxk_tim_chnk_pool_mem_free, mem);
+	if (rc <= 0) {
+		/* The pool only takes ownership of the memory when objects were added. */
+		rte_free(mem);
+		return rc < 0 ? rc : -ENOMEM;
+	}
+
+	return 0;
+}
+
 static int
 cnxk_tim_chnk_pool_create(struct cnxk_tim_ring *tim_ring,
 			  struct rte_event_timer_adapter_conf *rcfg)
 {
 	unsigned int mp_flags = 0;
+	struct rte_mempool *mp;
 	unsigned int cache_sz;
-	const char *ops;
 	char pool_name[25];
+	size_t align, sz;
+	const char *ops;
 	int rc;
 
 	/* Create chunk pool. */
@@ -28,6 +70,10 @@ cnxk_tim_chnk_pool_create(struct cnxk_tim_ring *tim_ring,
 		plt_tim_dbg("Using single producer mode");
 		tim_ring->prod_type_sp = true;
 	}
+
+	/* One aligned block backs the pool, so objects need not be page contiguous. */
+	if (tim_ring->disable_npa)
+		mp_flags |= RTE_MEMPOOL_F_NO_IOVA_CONTIG;
 
 	snprintf(pool_name, sizeof(pool_name), "cnxk_tim_chunk_pool%d",
 		 tim_ring->ring_id);
@@ -43,10 +89,12 @@ cnxk_tim_chnk_pool_create(struct cnxk_tim_ring *tim_ring,
 		return -ENOMEM;
 	}
 
-	/* cn20k needs 256B-aligned chunk buffers (cn20k-tim 14.2). */
-	if (roc_model_is_cn20k())
-		tim_ring->chunk_pool->header_size = RTE_ALIGN_CEIL(
-			tim_ring->chunk_pool->header_size, CNXK_TIM_CN20K_CHUNK_BUF_ALIGN);
+	/* Align the header and pad the trailer so every chunk buffer is aligned. */
+	mp = tim_ring->chunk_pool;
+	align = cnxk_tim_chunk_buf_align();
+	mp->header_size = RTE_ALIGN_CEIL(mp->header_size, align);
+	sz = (size_t)mp->header_size + mp->elt_size + mp->trailer_size;
+	mp->trailer_size += RTE_ALIGN_CEIL(sz, align) - sz;
 
 	if (!tim_ring->disable_npa)
 		ops = rte_mbuf_platform_mempool_ops();
@@ -61,7 +109,11 @@ cnxk_tim_chnk_pool_create(struct cnxk_tim_ring *tim_ring,
 		goto free;
 	}
 
-	rc = rte_mempool_populate_default(tim_ring->chunk_pool);
+	if (tim_ring->disable_npa) {
+		rc = cnxk_tim_chnk_pool_populate_aligned(tim_ring->chunk_pool, align);
+	} else {
+		rc = rte_mempool_populate_default(tim_ring->chunk_pool);
+	}
 	if (rc < 0) {
 		plt_err("Unable to populate chunkpool.");
 		goto free;
@@ -79,6 +131,12 @@ cnxk_tim_chnk_pool_create(struct cnxk_tim_ring *tim_ring,
 free:
 	rte_mempool_free(tim_ring->chunk_pool);
 	return rc;
+}
+
+static inline bool
+cnxk_tim_hwwqe_enabled(const struct cnxk_tim_evdev *dev)
+{
+	return dev->tim.feat.hwwqe && dev->tim.feat.hwwqe_ver != TIM_HWWQE_VER_0;
 }
 
 static int
@@ -120,7 +178,7 @@ cnxk_tim_set_fp_ops(struct cnxk_tim_ring *tim_ring)
 	if (dev == NULL)
 		return;
 
-	if (dev->tim.feat.hwwqe) {
+	if (cnxk_tim_hwwqe_enabled(dev)) {
 		cnxk_tim_ops.arm_burst = cnxk_tim_arm_burst_hwwqe;
 		cnxk_tim_ops.arm_tmo_tick_burst = cnxk_tim_arm_tmo_burst_hwwqe;
 		cnxk_tim_ops.cancel_burst = cnxk_tim_timer_cancel_burst_hwwqe;
@@ -243,24 +301,30 @@ cnxk_tim_ring_create(struct rte_event_timer_adapter *adptr)
 		struct cnxk_tim_ctl *ring_ctl = &dev->ring_ctl_data[i];
 
 		if (ring_ctl->ring == tim_ring->ring_id) {
-			tim_ring->chunk_sz =
-				ring_ctl->chunk_slots ?
-					((uint32_t)(ring_ctl->chunk_slots + 1) *
-					 CNXK_TIM_CHUNK_ALIGNMENT) :
-					      tim_ring->chunk_sz;
+			if (ring_ctl->chunk_slots >= CNXK_TIM_MIN_CHUNK_SLOTS &&
+			    ring_ctl->chunk_slots <= CNXK_TIM_MAX_CHUNK_SLOTS)
+				tim_ring->chunk_sz = ((uint32_t)ring_ctl->chunk_slots + 1) *
+						     CNXK_TIM_CHUNK_ALIGNMENT;
 			tim_ring->enable_stats = ring_ctl->enable_stats;
 			tim_ring->disable_npa = ring_ctl->disable_npa;
 		}
 	}
 
-	if (roc_model_is_cn20k())
+	if (roc_model_is_cn20k()) {
 		tim_ring->chunk_sz =
 			RTE_ALIGN_CEIL(tim_ring->chunk_sz, CNXK_TIM_CN20K_CHUNK_BUF_ALIGN);
+		/* Clamp to the largest 256B aligned size within the slot limit. */
+		if (CNXK_TIM_NB_CHUNK_SLOTS(tim_ring->chunk_sz) > CNXK_TIM_MAX_CHUNK_SLOTS)
+			tim_ring->chunk_sz = RTE_ALIGN_FLOOR(
+				(CNXK_TIM_MAX_CHUNK_SLOTS + 1) * CNXK_TIM_CHUNK_ALIGNMENT,
+				CNXK_TIM_CN20K_CHUNK_BUF_ALIGN);
+	}
 
-	if (!dev->tim.feat.hwwqe && tim_ring->disable_npa) {
-		tim_ring->nb_chunks =
-			tim_ring->nb_timers /
-			CNXK_TIM_NB_CHUNK_SLOTS(tim_ring->chunk_sz);
+	if (!cnxk_tim_hwwqe_enabled(dev) && tim_ring->disable_npa) {
+		/* Each bucket needs at least one chunk. */
+		tim_ring->nb_chunks = RTE_MAX(RTE_ALIGN_MUL_CEIL(tim_ring->nb_timers,
+				CNXK_TIM_NB_CHUNK_SLOTS(tim_ring->chunk_sz)) /
+				CNXK_TIM_NB_CHUNK_SLOTS(tim_ring->chunk_sz), 1UL);
 		tim_ring->nb_chunks = tim_ring->nb_chunks * tim_ring->nb_bkts;
 	} else {
 		tim_ring->disable_npa = 0;
@@ -289,7 +353,7 @@ cnxk_tim_ring_create(struct rte_event_timer_adapter *adptr)
 		goto tim_chnk_free;
 	}
 
-	if (dev->tim.feat.hwwqe && dev->tim.feat.hwwqe_ver != TIM_HWWQE_VER_0) {
+	if (cnxk_tim_hwwqe_enabled(dev)) {
 		rc = cnxk_tim_enable_hwwqe(dev, tim_ring);
 		if (rc < 0) {
 			plt_err("Failed to enable hwwqe");
