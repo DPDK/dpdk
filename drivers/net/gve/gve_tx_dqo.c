@@ -256,6 +256,7 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	struct gve_tx_pkt *pkts;
 	struct rte_mbuf *tx_pkt;
 	uint16_t compl_tag;
+	uint16_t req_descs;
 	const char *reason;
 	uint16_t nb_tx = 0;
 	uint64_t bytes = 0;
@@ -288,14 +289,17 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		nb_descs = gve_tx_pkt_nb_data_descs(tx_pkt);
 		nb_descs += tso;
+		req_descs = nb_descs + GVE_TX_MIN_DESC_PREVENT_CACHE_OVERLAP;
 
-		/* Clean if there aren't enough descriptors to send the packet. */
-		if (unlikely(!gve_can_tx(txq, nb_descs, 1))) {
+		/* Clean if there aren't enough descriptors to send the packet
+		 * while maintaining the cacheline overlap margin.
+		 */
+		if (unlikely(!gve_can_tx(txq, req_descs, 1))) {
 			int nb_to_clean = RTE_MAX(DQO_TX_MULTIPLIER * txq->rs_thresh,
-						  nb_descs);
+						  (int)req_descs);
 
 			gve_tx_clean_descs_dqo(txq, nb_to_clean);
-			if (!gve_can_tx(txq, nb_descs, 1))
+			if (!gve_can_tx(txq, req_descs, 1))
 				break;
 		}
 
