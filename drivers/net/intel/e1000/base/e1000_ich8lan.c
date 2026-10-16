@@ -1283,6 +1283,7 @@ skip_smbus:
 	if (ret_val)
 		goto release;
 	phy_reg |= (I218_ULP_CONFIG1_RESET_TO_SMBUS |
+		    I218_ULP_CONFIG1_EN_ULP_LANPHYPC |
 		    I218_ULP_CONFIG1_DISABLE_SMB_PERST);
 	if (to_sx) {
 		if (E1000_READ_REG(hw, E1000_WUFC) & E1000_WUFC_LNKC)
