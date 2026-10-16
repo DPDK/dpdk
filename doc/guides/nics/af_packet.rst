@@ -45,6 +45,9 @@ of AF_PACKET for frame reception.
 
 When ``ignore_outgoing`` is set, ``PACKET_IGNORE_OUTGOING`` is set for
 single-queue ports, which moves the filtering from the PMD to the kernel.
+For multi-queue ports ``PACKET_FANOUT_FLAG_IGNORE_OUTGOING`` is set to
+achieve the same but this only works from Linux 6.2. For earlier Linux
+versions, the PMD does the filtering for multi-queue ports.
 
 Because this implementation is based on PACKET_MMAP, and PACKET_MMAP has its
 own pre-requisites, it should be noted that the inner workings of PACKET_MMAP
