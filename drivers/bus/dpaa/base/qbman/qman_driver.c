@@ -17,9 +17,9 @@
  * where CCSR isn't available).
  */
 u16 qman_ip_rev;
-u16 qm_channel_pool1 = QMAN_CHANNEL_POOL1;
-u16 qm_channel_caam = QMAN_CHANNEL_CAAM;
-u16 qm_channel_pme = QMAN_CHANNEL_PME;
+static u16 qm_channel_pool1 = QMAN_CHANNEL_POOL1;
+static u16 qm_channel_caam = QMAN_CHANNEL_CAAM;
+static u16 qm_channel_pool_num;
 
 /* Ccsr map address to access ccsrbased register */
 static void *qman_ccsr_map;
@@ -61,6 +61,11 @@ u16 dpaa_get_qm_channel_caam(void)
 u16 dpaa_get_qm_channel_pool(void)
 {
 	return qm_channel_pool1;
+}
+
+u16 dpaa_get_qm_channel_pool_num(void)
+{
+	return qm_channel_pool_num;
 }
 
 static int fsl_qman_portal_init(uint32_t index, int is_shared)
@@ -273,7 +278,7 @@ int qman_global_init(void)
 	uint64_t phys_addr;
 	uint64_t regs_size;
 	const u32 *clk;
-
+	u16 pool_channel;
 	static int done;
 
 	if (done)
@@ -320,7 +325,6 @@ int qman_global_init(void)
 	if ((qman_ip_rev & 0xFF00) >= QMAN_REV30) {
 		qm_channel_pool1 = QMAN_CHANNEL_POOL1_REV3;
 		qm_channel_caam = QMAN_CHANNEL_CAAM_REV3;
-		qm_channel_pme = QMAN_CHANNEL_PME_REV3;
 	}
 
 	dt_node = of_find_compatible_node(NULL, NULL, "fsl,pool-channel-range");
@@ -333,6 +337,31 @@ int qman_global_init(void)
 		pr_err("Can not get pool-channel-range property\n");
 		return -EINVAL;
 	}
+
+	if (lenp != sizeof(rte_be32_t) * 2) {
+		pr_err("pool-channel-range should have 2 items.\n");
+		return -EINVAL;
+	}
+	pool_channel = rte_be_to_cpu_32(chanid[0]);
+	qm_channel_pool_num = rte_be_to_cpu_32(chanid[1]);
+
+	if (qm_channel_pool_num == 0) {
+		pr_err("pool-channel-range count is 0\n");
+		return -EINVAL;
+	}
+	if (qm_channel_pool_num > 15) {
+		pr_warn("pool-channel-range count %u > 15, clamping\n",
+			qm_channel_pool_num);
+		qm_channel_pool_num = 15;
+	}
+
+	if (pool_channel != qm_channel_pool1) {
+		pr_warn("Pool channel(0x%04x) configured != default(0x%04x)\n",
+			pool_channel, qm_channel_pool1);
+	}
+	qm_channel_pool1 = pool_channel;
+	pr_debug("Pool channel starts from 0x%04x, number=%d, lenp:%zu\n",
+		qm_channel_pool1, qm_channel_pool_num, lenp);
 
 	/* get ccsr base */
 	dt_node = of_find_compatible_node(NULL, NULL, "fsl,qman");
