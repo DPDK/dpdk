@@ -1699,6 +1699,12 @@ memif_dev_stop(struct rte_eth_dev *dev)
 	rte_eal_alarm_cancel(memif_bad_desc_disconnect, dev);
 	rte_atomic_store_explicit(&pmd->bad_desc, false, rte_memory_order_relaxed);
 
+	/* Refuse peers while stopped: a server must not accept a connection
+	 * after dev_stop, which would leave a live control channel on a
+	 * stopped port.
+	 */
+	pmd->flags |= ETH_MEMIF_FLAG_DISABLED;
+
 	memif_disconnect(dev);
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++)
