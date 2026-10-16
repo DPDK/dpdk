@@ -44,6 +44,14 @@ test_pmd_af_packet(void)
 #define BURST_SIZE 32
 #define RING_SIZE 256
 
+/* Length of Ethernet frames built by the tests */
+#define TEST_FRAME_LEN (sizeof(struct rte_ether_hdr) + 46)
+
+/* Source MAC used to recognise frames sent by this test */
+static const struct rte_ether_addr DEV_MAC_TAG = {
+	.addr_bytes = { 'P', 'A', 'C', 'K', 'E', 'T' },
+};
+
 /* Polling and timeout constants */
 #define STATS_POLL_INTERVAL_US 100
 #define STATS_POLL_TIMEOUT_US 100000  /* 100ms overall timeout */
@@ -206,21 +214,37 @@ alloc_tx_mbufs(struct rte_mbuf **bufs, unsigned int count)
 
 	for (i = 0; i < count; i++) {
 		struct rte_ether_hdr *eth_hdr;
+
 		eth_hdr = (struct rte_ether_hdr *)rte_pktmbuf_append(bufs[i],
-				sizeof(struct rte_ether_hdr) + 46);
+				TEST_FRAME_LEN);
 		if (eth_hdr == NULL) {
 			/* Free all allocated mbufs on failure */
 			rte_pktmbuf_free_bulk(bufs, count);
 			return 0;
 		}
 
-		/* Set broadcast destination and zero source MAC */
+		/* Set broadcast destination and DEV_MAC_TAG source MAC */
 		memset(&eth_hdr->dst_addr, 0xFF, RTE_ETHER_ADDR_LEN);
-		memset(&eth_hdr->src_addr, 0x00, RTE_ETHER_ADDR_LEN);
+		rte_ether_addr_copy(&DEV_MAC_TAG, &eth_hdr->src_addr);
 		eth_hdr->ether_type = rte_cpu_to_be_16(RTE_ETHER_TYPE_IPV4);
 	}
 
 	return count;
+}
+
+/*
+ * Helper: Indicates whether the mbuf source MAC is DEV_MAC_TAG.
+ */
+static bool
+is_tagged_mbuf(struct rte_mbuf *buf)
+{
+	struct rte_ether_hdr *eth;
+
+	if (rte_pktmbuf_data_len(buf) < sizeof(*eth))
+		return false;
+
+	eth = rte_pktmbuf_mtod(buf, struct rte_ether_hdr *);
+	return rte_is_same_ether_addr(&eth->src_addr, &DEV_MAC_TAG);
 }
 
 /*
@@ -243,15 +267,22 @@ do_tx_burst(uint16_t pid, uint16_t queue_id, struct rte_mbuf **bufs,
 
 /*
  * Helper: Receive packets and free received mbufs.
+ * If count_tagged is non-NULL, count DEV_MAC_TAG frames in it.
  * Returns the number of packets received.
  */
 static uint16_t
 do_rx_burst(uint16_t pid, uint16_t queue_id, struct rte_mbuf **bufs,
-	    unsigned int count)
+	    unsigned int count, unsigned int *count_tagged)
 {
-	uint16_t nb_rx;
+	uint16_t i, nb_rx;
 
 	nb_rx = rte_eth_rx_burst(pid, queue_id, bufs, count);
+	if (count_tagged != NULL) {
+		for (i = 0; i < nb_rx; i++) {
+			if (is_tagged_mbuf(bufs[i]))
+				(*count_tagged)++;
+		}
+	}
 	rte_pktmbuf_free_bulk(bufs, nb_rx);
 
 	return nb_rx;
@@ -527,7 +558,7 @@ test_af_packet_rx(void)
 	}
 
 	/* Try to receive packets (non-blocking) using helper */
-	do_rx_burst(port_id, 0, bufs, BURST_SIZE);
+	do_rx_burst(port_id, 0, bufs, BURST_SIZE, NULL);
 
 	/* RX from tap interface without external traffic will return 0 */
 	/* This test just verifies the RX path doesn't crash */
@@ -544,7 +575,8 @@ test_af_packet_loopback(void)
 {
 	struct rte_mbuf *tx_bufs[BURST_SIZE];
 	struct rte_mbuf *rx_bufs[BURST_SIZE];
-	uint16_t nb_tx, total_rx = 0;
+	uint16_t nb_tx;
+	unsigned int count_tagged = 0;
 	uint64_t elapsed = 0;
 	unsigned int allocated;
 	char tap_buf[2048];
@@ -588,14 +620,10 @@ test_af_packet_loopback(void)
 		}
 
 		/* Try to receive via af_packet RX */
-		uint16_t nb_rx = rte_eth_rx_burst(port_id, 0, rx_bufs, BURST_SIZE);
-		if (nb_rx > 0) {
-			total_rx += nb_rx;
-			rte_pktmbuf_free_bulk(rx_bufs, nb_rx);
-		}
+		do_rx_burst(port_id, 0, rx_bufs, BURST_SIZE, &count_tagged);
 
 		/* Check if we've received enough */
-		if (total_rx >= nb_tx)
+		if (count_tagged >= nb_tx)
 			break;
 
 		rte_delay_us_block(STATS_POLL_INTERVAL_US);
@@ -609,7 +637,7 @@ test_af_packet_loopback(void)
 	 * Note: We may not receive all packets due to timing, but receiving
 	 * any packets proves the loopback path works.
 	 */
-	printf("Loopback: TX=%u, RX=%u\n", nb_tx, total_rx);
+	printf("Loopback: TX=%u, RX=%u\n", nb_tx, count_tagged);
 
 	return TEST_SUCCESS;
 }
@@ -982,7 +1010,7 @@ test_af_packet_multi_queue(void)
 
 	/* Test RX on different queues */
 	for (q = 0; q < num_queues; q++)
-		do_rx_burst(test_port, q, bufs, BURST_SIZE);
+		do_rx_burst(test_port, q, bufs, BURST_SIZE, NULL);
 
 	/* Cleanup */
 	rte_eth_dev_stop(test_port);
