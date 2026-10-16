@@ -110,9 +110,7 @@ enum {
 #define DPAA_FD_CMD_CFQ			0x00ffffff
 /**< Confirmation Frame Queue */
 
-#define DPAA_1G_MAC_START_IDX 1
 #define DPAA_10G_MAC_START_IDX 9
-#define DPAA_2_5G_MAC_START_IDX DPAA_10G_MAC_START_IDX
 
 #define DPAA_DEFAULT_RXQ_VSP_ID		1
 
