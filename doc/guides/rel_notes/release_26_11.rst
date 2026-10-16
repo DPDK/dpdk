@@ -197,6 +197,9 @@ New Features
 
 * **Updated NXP DPAA drivers.**
 
+  * Changed the default number of Rx queues in FMCLESS mode
+    to the maximum supported per port instead of the number of lcores,
+    because several queues may be processed on the same core.
   * Renamed the fmlib ``create_device()`` and ``get_device_id()`` helpers
     to ``fm_create_device()`` and ``fm_get_device_id()``
     to avoid clashing with other drivers when DPDK is linked statically.
