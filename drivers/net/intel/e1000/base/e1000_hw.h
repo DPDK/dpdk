@@ -265,6 +265,7 @@ enum e1000_mac_type {
 	e1000_pch_adp,
 	e1000_pch_mtp,
 	e1000_pch_ptp,
+	e1000_pch_nvp,
 	e1000_pch_tgp,
 	e1000_82575,
 	e1000_82576,
