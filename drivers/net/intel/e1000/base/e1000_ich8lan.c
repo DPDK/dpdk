@@ -372,6 +372,7 @@ STATIC s32 e1000_init_phy_workarounds_pchlan(struct e1000_hw *hw)
 	case e1000_pch_adp:
 	case e1000_pch_mtp:
 	case e1000_pch_ptp:
+	case e1000_pch_nvp:
 		/* Due to clock synchronization issue on MTL and above prior to
 		 * disabling k1 it is required to disable P0s state and
 		 * reconfigure PHY k1 exit timeout. At this point the PHY might
@@ -549,6 +550,7 @@ STATIC s32 e1000_init_phy_params_pchlan(struct e1000_hw *hw)
 		case e1000_pch_adp:
 		case e1000_pch_mtp:
 		case e1000_pch_ptp:
+		case e1000_pch_nvp:
 			/* In case the PHY needs to be in mdio slow mode,
 			 * set slow mode and try to get the PHY id again.
 			 */
@@ -856,6 +858,7 @@ STATIC s32 e1000_init_mac_params_ich8lan(struct e1000_hw *hw)
 	case e1000_pch_adp:
 	case e1000_pch_mtp:
 	case e1000_pch_ptp:
+	case e1000_pch_nvp:
 		/* multicast address update for pch2 */
 		mac->ops.update_mc_addr_list =
 			e1000_update_mc_addr_list_pch2lan;
@@ -1866,6 +1869,7 @@ void e1000_init_function_pointers_ich8lan(struct e1000_hw *hw)
 	case e1000_pch_adp:
 	case e1000_pch_mtp:
 	case e1000_pch_ptp:
+	case e1000_pch_nvp:
 		hw->phy.ops.init_params = e1000_init_phy_params_pchlan;
 		break;
 	default:
@@ -2335,6 +2339,7 @@ STATIC s32 e1000_sw_lcd_config_ich8lan(struct e1000_hw *hw)
 	case e1000_pch_adp:
 	case e1000_pch_mtp:
 	case e1000_pch_ptp:
+	case e1000_pch_nvp:
 		sw_cfg_mask = E1000_FEXTNVM_SW_CONFIG_ICH8M;
 		break;
 	default:
@@ -3461,6 +3466,7 @@ STATIC s32 e1000_valid_nvm_bank_detect_ich8lan(struct e1000_hw *hw, u32 *bank)
 	case e1000_pch_adp:
 	case e1000_pch_mtp:
 	case e1000_pch_ptp:
+	case e1000_pch_nvp:
 		bank1_offset = nvm->flash_bank_size;
 		act_offset = E1000_ICH_NVM_SIG_WORD;
 
@@ -4436,6 +4442,7 @@ STATIC s32 e1000_validate_nvm_checksum_ich8lan(struct e1000_hw *hw)
 	case e1000_pch_adp:
 	case e1000_pch_mtp:
 	case e1000_pch_ptp:
+	case e1000_pch_nvp:
 		word = NVM_COMPAT;
 		valid_csum_mask = NVM_COMPAT_VALID_CSUM;
 		break;
