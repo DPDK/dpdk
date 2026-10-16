@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause OR GPL-2.0
  *
  * Copyright 2008-2012 Freescale Semiconductor, Inc.
- * Copyright 2024 NXP
+ * Copyright 2024-2026 NXP
  *
  */
 
@@ -47,6 +47,13 @@ struct bm_mc_result;	/* MC result */
  * pool id specific to this buffer is needed (BM_RCR_VERB_CMD_BPID_MULTI,
  * BM_MCC_VERB_ACQUIRE), the 'bpid' field is used.
  */
+struct __rte_packed_begin bm_hw_buf_desc {
+	uint8_t rsv;
+	uint8_t bpid;
+	rte_be16_t hi; /* High 16-bits of 48-bit address */
+	rte_be32_t lo; /* Low 32-bits of 48-bit address */
+} __rte_packed_end;
+
 struct __rte_aligned(8) bm_buffer {
 	union {
 		struct {
@@ -71,16 +78,10 @@ struct __rte_aligned(8) bm_buffer {
 			u64 __notaddress:16;
 #endif
 		};
+		struct bm_hw_buf_desc be_desc;
 		u64 opaque;
 	};
 };
-
-struct __rte_packed_begin bm_hw_buf_desc {
-	uint8_t rsv;
-	uint8_t bpid;
-	rte_be16_t hi_addr; /* High 16-bits of 48-bit address */
-	rte_be32_t lo_addr; /* Low 32-bits of 48-bit address */
-} __rte_packed_end;
 
 static inline u64 bm_buffer_get64(const struct bm_buffer *buf)
 {
@@ -92,12 +93,43 @@ static inline dma_addr_t bm_buf_addr(const struct bm_buffer *buf)
 	return (dma_addr_t)buf->addr;
 }
 
+#ifndef BIT_SIZE
+#define BIT_SIZE(t) (sizeof(t) * 8)
+#endif
+#define MAX_U48 \
+	((((uint64_t)UINT16_MAX) << BIT_SIZE(uint32_t)) | UINT32_MAX)
+#define U48_BY_HI16_LO32(hi, lo) \
+	(((uint64_t)(hi) << BIT_SIZE(uint32_t)) | (lo))
+
 #define bm_buffer_set64(buf, v) \
 	do { \
 		struct bm_buffer *__buf931 = (buf); \
 		__buf931->hi = upper_32_bits(v); \
 		__buf931->lo = lower_32_bits(v); \
 	} while (0)
+
+/*
+ * Write the whole 8-byte descriptor in one store. Besides the 48-bit
+ * address this clears the reserved byte and the bpid field, so no
+ * uninitialized stack content can be published to the hardware ring.
+ * Callers that need a bpid must set it after this macro.
+ */
+#define bm_buffer_set64_to_be(buf, v) \
+	do { \
+		struct bm_buffer *__buf931 = (buf); \
+		\
+		__buf931->opaque = cpu_to_be64((uint64_t)(v) & MAX_U48); \
+	} while (0)
+
+#define bm_buffer_get64_from_be(buf) \
+	({ \
+		uint64_t hi, lo; \
+		struct bm_buffer *__buf931 = (buf); \
+		\
+		hi = be16_to_cpu(__buf931->be_desc.hi); \
+		lo = be32_to_cpu(__buf931->be_desc.lo); \
+		U48_BY_HI16_LO32(hi, lo); \
+	})
 
 #define FSL_BM_BURST_MAX 8
 
