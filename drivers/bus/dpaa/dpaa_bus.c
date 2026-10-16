@@ -782,7 +782,8 @@ dpaa_bus_probe_device(struct rte_driver *drv, struct rte_device *dev)
 	}
 
 	ret = dpaa_drv->probe(dpaa_drv, dpaa_dev);
-	if (ret != 0) {
+	/* A positive return means the driver declined the device. */
+	if (ret < 0) {
 		DPAA_BUS_ERR("unable to probe: %s", dpaa_dev->name);
 		rte_intr_fd_close(dpaa_dev->intr_handle);
 release_intr:

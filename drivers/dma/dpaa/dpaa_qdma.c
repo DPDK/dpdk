@@ -1437,6 +1437,20 @@ dpaa_qdma_probe(__rte_unused struct rte_dpaa_driver *dpaa_drv,
 	struct rte_dma_dev *dmadev;
 	int ret;
 
+	/*
+	 * struct fsl_qdma_engine lives in memory shared with the primary, and
+	 * reg_base in it is a process-private mmap of the QDMA CCSR region that
+	 * is only valid in the primary. Until a secondary can establish its own
+	 * mapping, do not advertise the device here: registering it would hand
+	 * out a usable dmadev whose MMIO pointers are not mapped in this
+	 * process.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		DPAA_QDMA_WARN("%s: not supported in secondary process",
+			dpaa_dev->device.name);
+		return -ENOTSUP;
+	}
+
 	dmadev = rte_dma_pmd_allocate(dpaa_dev->device.name,
 				      rte_socket_id(),
 				      sizeof(struct fsl_qdma_engine));
