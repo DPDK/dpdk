@@ -2359,7 +2359,7 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 		/* Clean up a frame queue left behind by a previous run
 		 * before it is initialized.
 		 */
-		qman_shutdown_fq(fqid);
+		qman_shutdown_fq_by_fqid(fqid);
 
 		if (dpaa_intf->cgr_rx)
 			dpaa_intf->cgr_rx[loop].cgrid = cgrid[loop];
