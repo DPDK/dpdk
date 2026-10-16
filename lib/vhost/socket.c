@@ -1135,6 +1135,8 @@ again:
 		if (vsocket->is_server) {
 			close(vsocket->socket_fd);
 			unlink(path);
+		} else if (vsocket->reconnect) {
+			vhost_user_remove_reconnect(vsocket);
 		}
 
 		pthread_mutex_destroy(&vsocket->conn_mutex);
