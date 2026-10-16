@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  *
  *   Copyright (c) 2014-2016 Freescale Semiconductor, Inc. All rights reserved.
- *   Copyright 2017-2024 NXP
+ *   Copyright 2017-2026 NXP
  *
  */
 #ifndef __DPAA_ETHDEV_H__
@@ -234,7 +234,6 @@ dpaa_rx_cb_atomic(void *event,
 		  void **bufs);
 
 struct dpaa_if_rx_bmi_stats {
-	uint32_t fmbm_rstc;		/**< Rx Statistics Counters*/
 	uint32_t fmbm_rfrc;		/**< Rx Frame Counter*/
 	uint32_t fmbm_rfbc;		/**< Rx Bad Frames Counter*/
 	uint32_t fmbm_rlfc;		/**< Rx Large Frames Counter*/
@@ -243,6 +242,14 @@ struct dpaa_if_rx_bmi_stats {
 	uint32_t fmbm_rfldec;		/**< Rx Frames List DMA Error Counter*/
 	uint32_t fmbm_rodc;		/**< Rx Out of Buffers Discard nntr*/
 	uint32_t fmbm_rbdc;		/**< Rx Buffers Deallocate Counter*/
+};
+
+struct dpaa_if_tx_bmi_stats {
+	uint32_t fmbm_tfrc;		/**< Tx Frame Counter*/
+	uint32_t fmbm_tfdc;		/**< Tx Frames Discard Counter*/
+	uint32_t fmbm_tfledc;	/**< Tx Frames Length Error Discard*/
+	uint32_t fmbm_tfufdc;	/**< Tx Frames Unsupported Format*/
+	uint32_t fmbm_tbdc;		/**< Tx Buffers Deallocate Counter */
 };
 
 int
