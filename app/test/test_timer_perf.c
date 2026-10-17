@@ -41,6 +41,13 @@ test_timer_perf(void)
 	struct rte_timer *tms;
 	uint64_t start_tsc, end_tsc, delay_start;
 	unsigned lcore_id = rte_lcore_id();
+	int ret;
+
+	ret = rte_timer_subsystem_init();
+	if (ret < 0 && ret != -EALREADY) {
+		printf("timer subsystem init failed: %d\n", ret);
+		return TEST_FAILED;
+	}
 
 	tms = rte_malloc(NULL, sizeof(*tms) * MAX_ITERATIONS, 0);
 

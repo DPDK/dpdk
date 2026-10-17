@@ -121,6 +121,12 @@ test_timer_racecond(void)
 	unsigned lcore_id;
 	unsigned i;
 
+	ret = rte_timer_subsystem_init();
+	if (ret < 0 && ret != -EALREADY) {
+		printf("timer subsystem init failed: %d\n", ret);
+		return TEST_FAILED;
+	}
+
 	main_lcore = lcore_id = rte_lcore_id();
 	hz = rte_get_timer_hz();
 

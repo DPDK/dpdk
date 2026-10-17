@@ -162,14 +162,6 @@ main(int argc, char **argv)
 
 	prgname = argv[0];
 
-#ifdef RTE_LIB_TIMER
-	ret = rte_timer_subsystem_init();
-	if (ret < 0 && ret != -EALREADY) {
-		ret = -1;
-		goto out;
-	}
-#endif
-
 	if (commands_init() < 0) {
 		ret = -1;
 		goto out;

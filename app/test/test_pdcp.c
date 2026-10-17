@@ -1751,13 +1751,21 @@ test_expiry_with_rte_timer(const struct pdcp_test_conf *ul_conf)
 	struct test_rte_timer_args timer_args;
 	struct rte_pdcp_entity *pdcp_entity;
 	struct pdcp_test_conf dl_conf;
-	int ret = TEST_FAILED, nb_out;
+	int ret, nb_out;
 	struct rte_timer timer = {0};
 
 	const int start_count = 0;
 
 	if (ul_conf->entity.pdcp_xfrm.pkt_dir == RTE_SECURITY_PDCP_DOWNLINK)
 		return TEST_SKIPPED;
+
+	ret = rte_timer_subsystem_init();
+	if (ret < 0 && ret != -EALREADY) {
+		printf("timer subsystem init failed: %d\n", ret);
+		return TEST_FAILED;
+	}
+
+	ret = TEST_FAILED;
 
 	/* Set up a timer */
 	rte_timer_init(&timer);

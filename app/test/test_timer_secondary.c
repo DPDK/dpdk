@@ -127,13 +127,19 @@ test_timer_secondary(void)
 	struct test_info *test_info;
 	int ret;
 
-	if (proc_type == RTE_PROC_PRIMARY) {
-		if (rte_lcore_count() < NUM_LCORES_NEEDED) {
-			printf("Not enough cores for test_timer_secondary, expecting at least %u\n",
-			       NUM_LCORES_NEEDED);
-			return TEST_SKIPPED;
-		}
+	if (proc_type == RTE_PROC_PRIMARY && rte_lcore_count() < NUM_LCORES_NEEDED) {
+		printf("Not enough cores for test_timer_secondary, expecting at least %u\n",
+		       NUM_LCORES_NEEDED);
+		return TEST_SKIPPED;
+	}
 
+	ret = rte_timer_subsystem_init();
+	if (ret < 0 && ret != -EALREADY) {
+		printf("timer subsystem init failed: %d\n", ret);
+		return TEST_FAILED;
+	}
+
+	if (proc_type == RTE_PROC_PRIMARY) {
 		mz = rte_memzone_reserve(TEST_INFO_MZ_NAME, sizeof(*test_info),
 					 SOCKET_ID_ANY, 0);
 		TEST_ASSERT_NOT_NULL(mz, "Couldn't allocate memory for "
