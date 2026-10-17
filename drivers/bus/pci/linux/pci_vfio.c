@@ -998,8 +998,6 @@ pci_vfio_map_resource_secondary(struct rte_pci_device *dev)
 	/* we need save vfio_dev_fd, so it can be used during release */
 	if (rte_intr_dev_fd_set(dev->intr_handle, vfio_dev_fd))
 		goto err_map;
-	if (rte_intr_dev_fd_set(dev->vfio_req_intr_handle, vfio_dev_fd))
-		goto err_map;
 
 	return 0;
 err_map:
@@ -1103,6 +1101,7 @@ pci_vfio_unmap_resource_primary(struct rte_pci_device *dev)
 		PCI_LOG(ERR, "Cannot release VFIO device");
 		return ret;
 	}
+	rte_intr_dev_fd_set(dev->intr_handle, -1);
 
 	vfio_res_list =
 		RTE_TAILQ_CAST(dev_vfio_tailq.head, mapped_pci_res_list);
@@ -1142,6 +1141,7 @@ pci_vfio_unmap_resource_secondary(struct rte_pci_device *dev)
 		PCI_LOG(ERR, "Cannot release VFIO device");
 		return ret;
 	}
+	rte_intr_dev_fd_set(dev->intr_handle, -1);
 
 	vfio_res_list =
 		RTE_TAILQ_CAST(dev_vfio_tailq.head, mapped_pci_res_list);
