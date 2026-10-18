@@ -378,6 +378,9 @@ otx_ep_init_droq(struct otx_ep_device *otx_ep, uint32_t q_no,
 
 	otx_ep->io_qmask.oq |= (1ull << q_no);
 
+	if (otx_ep->chip_gen == OTX_EP_CN20XX)
+		droq->chip_gen = OTX_EP_CN20XX;
+
 	return 0;
 
 init_droq_fail:

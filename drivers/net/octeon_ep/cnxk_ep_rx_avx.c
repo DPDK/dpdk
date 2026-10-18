@@ -7,6 +7,7 @@
 static __rte_always_inline void
 cnxk_ep_process_pkts_vec_avx(struct rte_mbuf **rx_pkts, struct otx_ep_droq *droq, uint16_t new_pkts)
 {
+	struct otx_ep_droq_desc *desc_ring = droq->desc_ring;
 	struct rte_mbuf **recv_buf_list = droq->recv_buf_list;
 	uint32_t bytes_rsvd = 0, read_idx = droq->read_idx;
 	const uint64_t rearm_data = droq->rearm_data;
@@ -25,6 +26,11 @@ cnxk_ep_process_pkts_vec_avx(struct rte_mbuf **rx_pkts, struct otx_ep_droq *droq
 			_mm256_set_epi8(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 20, 21, 0xFF, 0xFF, 20,
 					21, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
 					0xFF, 0xFF, 0xFF, 7, 6, 5, 4, 3, 2, 1, 0);
+		const __m256i mask1 =
+			_mm256_set_epi8(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 25, 24, 0xFF, 0xFF, 25,
+					24, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+					0xFF, 0xFF, 0xFF, 7, 6, 5, 4, 3, 2, 1, 0);
+
 
 		/* Load indexes. */
 		for (i = 1; i < CNXK_EP_OQ_DESC_PER_LOOP_AVX; i++)
@@ -46,16 +52,28 @@ cnxk_ep_process_pkts_vec_avx(struct rte_mbuf **rx_pkts, struct otx_ep_droq *droq
 		for (i = 0; i < CNXK_EP_OQ_DESC_PER_LOOP_AVX; i++)
 			m[i] = recv_buf_list[idx[i]];
 
-		/* Load rearm data and packet length for shuffle. */
-		for (i = 0; i < CNXK_EP_OQ_DESC_PER_LOOP_AVX; i++)
-			data[i] = _mm256_set_epi64x(0,
-				cnxk_pktmbuf_mtod(m[i], struct otx_ep_droq_info *)->length >> 16,
-				0, rearm_data);
+		if (droq->chip_gen == OTX_EP_CN20XX) {
+			for (i = 0; i < CNXK_EP_OQ_DESC_PER_LOOP_AVX; i++)
+				data[i] = _mm256_set_epi64x(rte_bswap64(desc_ring[idx[i]].info_ptr),
+							    0, 0, rearm_data);
 
-		/* Shuffle data to its place and sum the packet length. */
-		for (i = 0; i < CNXK_EP_OQ_DESC_PER_LOOP_AVX; i++) {
-			data[i] = _mm256_shuffle_epi8(data[i], mask);
-			bytes_rsvd += _mm256_extract_epi16(data[i], 10);
+			for (i = 0; i < CNXK_EP_OQ_DESC_PER_LOOP_AVX; i++) {
+				data[i] = _mm256_shuffle_epi8(data[i], mask1);
+				bytes_rsvd += _mm256_extract_epi16(data[i], 10);
+			}
+		} else {
+			uint64_t len;
+			/* Load rearm data and packet length for shuffle. */
+			for (i = 0; i < CNXK_EP_OQ_DESC_PER_LOOP_AVX; i++) {
+				len = cnxk_pktmbuf_mtod(m[i], struct otx_ep_droq_info *)->length;
+				data[i] = _mm256_set_epi64x(0, len >> 16, 0, rearm_data);
+			}
+
+			/* Shuffle data to its place and sum the packet length. */
+			for (i = 0; i < CNXK_EP_OQ_DESC_PER_LOOP_AVX; i++) {
+				data[i] = _mm256_shuffle_epi8(data[i], mask);
+				bytes_rsvd += _mm256_extract_epi16(data[i], 10);
+			}
 		}
 
 		/* Store the 256bit data to the mbuf. */

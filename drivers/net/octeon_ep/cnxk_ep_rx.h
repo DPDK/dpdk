@@ -11,6 +11,18 @@
 #define CNXK_EP_OQ_DESC_PER_LOOP_SSE 4
 #define CNXK_EP_OQ_DESC_PER_LOOP_AVX 8
 
+union cn20k_ep_rx_compl_t {
+	uint64_t u;
+	struct cn20k_ep_rx_compl_s {
+		uint64_t pkt_len : 16;
+		uint64_t last_buf_len : 16;
+		uint64_t num_buf : 10;
+		uint64_t rsvd : 20;
+		uint64_t ptp : 1;
+		uint64_t done : 1;
+	} s;
+};
+
 static inline int
 cnxk_ep_rx_refill_mbuf(struct otx_ep_droq *droq, uint32_t count)
 {
@@ -32,7 +44,10 @@ cnxk_ep_rx_refill_mbuf(struct otx_ep_droq *droq, uint32_t count)
 		if (i < count - 1)
 			rte_prefetch_non_temporal(recv_buf_list[refill_idx + 1]);
 		buf = recv_buf_list[refill_idx];
+
 		desc_ring[refill_idx].buffer_ptr = rte_mbuf_data_iova_default(buf);
+		if (droq->chip_gen == OTX_EP_CN20XX)
+			desc_ring[refill_idx].info_ptr = 0;
 		refill_idx++;
 	}
 
@@ -164,12 +179,14 @@ cnxk_ep_rx_pkts_to_process(struct otx_ep_droq *droq, uint16_t nb_pkts)
 static __rte_always_inline void
 cnxk_ep_process_pkts_scalar(struct rte_mbuf **rx_pkts, struct otx_ep_droq *droq, uint16_t new_pkts)
 {
+	struct otx_ep_droq_desc *desc_ring = droq->desc_ring;
 	struct rte_mbuf **recv_buf_list = droq->recv_buf_list;
 	uint32_t bytes_rsvd = 0, read_idx = droq->read_idx;
 	uint16_t nb_desc = droq->nb_desc;
 	uint16_t pkts;
 
 	for (pkts = 0; pkts < new_pkts; pkts++) {
+		union cn20k_ep_rx_compl_t compl;
 		struct otx_ep_droq_info *info;
 		struct rte_mbuf *mbuf;
 		uint16_t pkt_len;
@@ -180,9 +197,15 @@ cnxk_ep_process_pkts_scalar(struct rte_mbuf **rx_pkts, struct otx_ep_droq *droq,
 			      void *));
 
 		mbuf = recv_buf_list[read_idx];
-		info = cnxk_pktmbuf_mtod(mbuf, struct otx_ep_droq_info *);
-		read_idx = otx_ep_incr_index(read_idx, 1, nb_desc);
-		pkt_len = rte_bswap16(info->length >> 48);
+		if (droq->chip_gen == OTX_EP_CN20XX) {
+			compl.u = rte_bswap64(desc_ring[read_idx].info_ptr);
+			pkt_len = compl.s.pkt_len;
+			read_idx = otx_ep_incr_index(read_idx, 1, nb_desc);
+		} else {
+			info = cnxk_pktmbuf_mtod(mbuf, struct otx_ep_droq_info *);
+			read_idx = otx_ep_incr_index(read_idx, 1, nb_desc);
+			pkt_len = rte_bswap16(info->length >> 48);
+		}
 		mbuf->pkt_len = pkt_len;
 		mbuf->data_len = pkt_len;
 

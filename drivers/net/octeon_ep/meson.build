@@ -11,6 +11,8 @@ sources = files(
         'otx_ep_mbox.c',
         'cnxk_ep_rx.c',
         'cnxk_ep_tx.c',
+        'cn20k_ep_vf.c',
+        'cn20k_ep_mbox.c',
 )
 
 if arch_subdir == 'x86'
