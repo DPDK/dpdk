@@ -9,6 +9,8 @@
 #include "otx_ep_vf.h"
 #include "otx2_ep_vf.h"
 #include "cnxk_ep_vf.h"
+#include "cn20k_ep_vf.h"
+#include "cn20k_ep_mbox.h"
 #include "otx_ep_rxtx.h"
 #include "otx_ep_mbox.h"
 
@@ -16,6 +18,7 @@
 	((struct otx_ep_device *)(_eth_dev)->data->dev_private)
 
 #define OTX_ISM_ENABLE	"ism_enable"
+#define OTX_MAX_RINGS	"max_rings"
 
 static const struct rte_eth_desc_lim otx_ep_rx_desc_lim = {
 	.nb_max		= OTX_EP_MAX_OQ_DESCRIPTORS,
@@ -42,6 +45,7 @@ parse_flag(const char *key, const char *value, void *extra_args)
 static int
 otx_ethdev_parse_devargs(struct rte_devargs *devargs, struct otx_ep_device *otx_epvf)
 {
+	uint8_t max_rings = CN20K_MAX_RINGS_PER_VF;
 	struct rte_kvargs *kvlist;
 	uint8_t ism_enable = 0;
 
@@ -53,10 +57,12 @@ otx_ethdev_parse_devargs(struct rte_devargs *devargs, struct otx_ep_device *otx_
 		goto exit;
 
 	rte_kvargs_process(kvlist, OTX_ISM_ENABLE, &parse_flag, &ism_enable);
+	rte_kvargs_process(kvlist, OTX_MAX_RINGS, &parse_flag, &max_rings);
 	rte_kvargs_free(kvlist);
 
 null_devargs:
 	otx_epvf->ism_ena = !!ism_enable;
+	otx_epvf->sriov_info.rings_per_vf = max_rings;
 
 	return 0;
 
@@ -69,7 +75,8 @@ otx_ep_set_tx_func(struct rte_eth_dev *eth_dev)
 {
 	struct otx_ep_device *otx_epvf = OTX_EP_DEV(eth_dev);
 
-	if (otx_epvf->chip_gen == OTX_EP_CN10XX || otx_epvf->chip_gen == OTX_EP_CN9XX) {
+	if (otx_epvf->chip_gen == OTX_EP_CN10XX || otx_epvf->chip_gen == OTX_EP_CN9XX ||
+	    otx_epvf->chip_gen == OTX_EP_CN20XX) {
 		eth_dev->tx_pkt_burst = &cnxk_ep_xmit_pkts;
 		if (otx_epvf->tx_offloads & RTE_ETH_TX_OFFLOAD_MULTI_SEGS)
 			eth_dev->tx_pkt_burst = &cnxk_ep_xmit_pkts_mseg;
@@ -87,7 +94,7 @@ otx_ep_set_rx_func(struct rte_eth_dev *eth_dev)
 {
 	struct otx_ep_device *otx_epvf = OTX_EP_DEV(eth_dev);
 
-	if (otx_epvf->chip_gen == OTX_EP_CN10XX) {
+	if (otx_epvf->chip_gen == OTX_EP_CN10XX || otx_epvf->chip_gen == OTX_EP_CN20XX) {
 		eth_dev->rx_pkt_burst = &cnxk_ep_recv_pkts;
 #ifdef RTE_ARCH_X86
 		eth_dev->rx_pkt_burst = &cnxk_ep_recv_pkts_sse;
@@ -338,6 +345,11 @@ otx_ep_chip_specific_setup(struct otx_ep_device *otx_epvf)
 		otx_epvf->chip_id = dev_id;
 		ret = cnxk_ep_vf_setup_device(otx_epvf);
 		break;
+	case PCI_DEVID_CN20KA_EP_NET_VF:
+	case PCI_DEVID_CNF20KA_EP_NET_VF:
+		otx_epvf->chip_id = dev_id;
+		ret = cn20k_ep_vf_setup_device(otx_epvf);
+		break;
 	default:
 		otx_ep_err("Unsupported device");
 		ret = -EINVAL;
@@ -384,11 +396,16 @@ otx_epdev_init(struct otx_ep_device *otx_epvf)
 		   otx_epvf->chip_id == PCI_DEVID_CNF10KB_EP_NET_VF) {
 		otx_epvf->eth_dev->rx_pkt_burst = &cnxk_ep_recv_pkts;
 		otx_epvf->chip_gen = OTX_EP_CN10XX;
+	} else if (otx_epvf->chip_id == PCI_DEVID_CN20KA_EP_NET_VF ||
+		   otx_epvf->chip_id == PCI_DEVID_CNF20KA_EP_NET_VF) {
+		otx_epvf->eth_dev->rx_pkt_burst = &cnxk_ep_recv_pkts;
+		otx_epvf->chip_gen = OTX_EP_CN20XX;
 	} else {
 		otx_ep_err("Invalid chip_id");
 		ret = -EINVAL;
 		goto setup_fail;
 	}
+
 	ethdev_queues = (uint32_t)(otx_epvf->sriov_info.rings_per_vf);
 	otx_epvf->max_rx_queues = ethdev_queues;
 	otx_epvf->max_tx_queues = ethdev_queues;
@@ -407,6 +424,7 @@ otx_ep_dev_configure(struct rte_eth_dev *eth_dev)
 	struct rte_eth_rxmode *rxmode;
 	struct rte_eth_txmode *txmode;
 	struct rte_eth_conf *conf;
+	int rc;
 
 	conf = &data->dev_conf;
 	rxmode = &conf->rxmode;
@@ -417,6 +435,20 @@ otx_ep_dev_configure(struct rte_eth_dev *eth_dev)
 		return -EINVAL;
 	}
 
+	if (otx_epvf->chip_gen == OTX_EP_CN20XX) {
+		if (otx_epvf->configured) {
+			otx_ep_cn20k_mbox_free_sdp_rings(otx_epvf, 0, true);
+			otx_epvf->configured = 0;
+		}
+
+		rc = otx_ep_cn20k_mbox_alloc_sdp_rings(otx_epvf, eth_dev->data->nb_rx_queues);
+		if (rc < 0 || rc != eth_dev->data->nb_rx_queues) {
+			otx_ep_err("Failed to allocate the rings");
+			otx_epvf->configured = 0;
+			return rc < 0 ? rc : -EIO;
+		}
+	}
+
 	otx_epvf->fn_list.setup_device_regs(otx_epvf);
 	otx_epvf->fn_list.disable_io_queues(otx_epvf);
 
@@ -425,6 +457,7 @@ otx_ep_dev_configure(struct rte_eth_dev *eth_dev)
 
 	otx_epvf->rx_offloads = rxmode->offloads;
 	otx_epvf->tx_offloads = txmode->offloads;
+	otx_epvf->configured = 1;
 
 	return 0;
 }
@@ -659,8 +692,11 @@ otx_ep_dev_close(struct rte_eth_dev *eth_dev)
 		return 0;
 
 	otx_epvf = OTX_EP_DEV(eth_dev);
-	otx_ep_mbox_send_dev_exit(eth_dev);
-	otx_ep_mbox_uninit(eth_dev);
+
+	if (otx_epvf->chip_gen != OTX_EP_CN20XX) {
+		otx_ep_mbox_send_dev_exit(eth_dev);
+		otx_ep_mbox_uninit(eth_dev);
+	}
 	otx_epvf->fn_list.disable_io_queues(otx_epvf);
 	num_queues = otx_epvf->nb_rx_queues;
 	for (q_no = 0; q_no < num_queues; q_no++) {
@@ -683,6 +719,14 @@ otx_ep_dev_close(struct rte_eth_dev *eth_dev)
 	if (rte_eth_dma_zone_free(eth_dev, "ism", 0)) {
 		otx_ep_err("Failed to delete ISM buffer");
 		return -EINVAL;
+	}
+
+	if (otx_epvf->chip_gen == OTX_EP_CN20XX) {
+		if (otx_epvf->configured) {
+			otx_ep_cn20k_mbox_free_sdp_rings(otx_epvf, 0, true);
+			otx_epvf->configured = 0;
+		}
+		otx_ep_cn20k_mbox_uninit(eth_dev);
 	}
 
 	return 0;
@@ -723,8 +767,14 @@ static const struct eth_dev_ops otx_ep_eth_dev_ops = {
 static int
 otx_ep_eth_dev_uninit(struct rte_eth_dev *eth_dev)
 {
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		otx_ep_mbox_uninit(eth_dev);
+	struct otx_ep_device *otx_epvf = OTX_EP_DEV(eth_dev);
+
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		if (otx_epvf->chip_gen == OTX_EP_CN20XX)
+			otx_ep_cn20k_mbox_uninit(eth_dev);
+		else
+			otx_ep_mbox_uninit(eth_dev);
+	}
 
 	return 0;
 }
@@ -834,7 +884,9 @@ otx_ep_eth_dev_init(struct rte_eth_dev *eth_dev)
 	    otx_epvf->chip_id == PCI_DEVID_CN10KA_EP_NET_VF ||
 	    otx_epvf->chip_id == PCI_DEVID_CN10KB_EP_NET_VF ||
 	    otx_epvf->chip_id == PCI_DEVID_CNF10KA_EP_NET_VF ||
-	    otx_epvf->chip_id == PCI_DEVID_CNF10KB_EP_NET_VF) {
+	    otx_epvf->chip_id == PCI_DEVID_CNF10KB_EP_NET_VF ||
+	    otx_epvf->chip_id == PCI_DEVID_CN20KA_EP_NET_VF ||
+	    otx_epvf->chip_id == PCI_DEVID_CNF20KA_EP_NET_VF) {
 		otx_epvf->pkind = SDP_OTX2_PKIND_FS0;
 		otx_ep_info("using pkind %d", otx_epvf->pkind);
 	} else if (otx_epvf->chip_id == PCI_DEVID_OCTEONTX_EP_VF) {
@@ -846,17 +898,28 @@ otx_ep_eth_dev_init(struct rte_eth_dev *eth_dev)
 		goto exit;
 	}
 
-	if (otx_ep_mbox_init(eth_dev)) {
+	if (otx_epvf->chip_gen == OTX_EP_CN20XX)
+		ret = otx_ep_cn20k_mbox_init(eth_dev);
+	else
+		ret = otx_ep_mbox_init(eth_dev);
+
+	if (ret) {
 		ret = -EINVAL;
 		goto exit;
 	}
 
-	if (otx_ep_eth_dev_query_set_vf_mac(eth_dev,
-				(struct rte_ether_addr *)&vf_mac_addr)) {
+	if (otx_epvf->chip_gen == OTX_EP_CN20XX) {
+		ret = otx_ep_cn20k_mbox_send_ready(otx_epvf);
+		if (ret)
+			goto exit;
+	}
+
+	if (otx_ep_eth_dev_query_set_vf_mac(eth_dev, (struct rte_ether_addr *)&vf_mac_addr)) {
 		otx_ep_err("set mac addr failed");
 		ret = -ENODEV;
 		goto exit;
 	}
+
 	rte_ether_addr_copy(&vf_mac_addr, eth_dev->data->mac_addrs);
 
 exit:
@@ -892,6 +955,8 @@ static const struct rte_pci_id pci_id_otx_ep_map[] = {
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_CAVIUM, PCI_DEVID_CN10KB_EP_NET_VF) },
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_CAVIUM, PCI_DEVID_CNF10KA_EP_NET_VF) },
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_CAVIUM, PCI_DEVID_CNF10KB_EP_NET_VF) },
+	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_CAVIUM, PCI_DEVID_CN20KA_EP_NET_VF) },
+	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_CAVIUM, PCI_DEVID_CNF20KA_EP_NET_VF) },
 	{ .vendor_id = 0, /* sentinel */ }
 };
 
@@ -907,4 +972,5 @@ RTE_PMD_REGISTER_PCI_TABLE(net_otx_ep, pci_id_otx_ep_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_otx_ep, "* igb_uio | vfio-pci");
 RTE_LOG_REGISTER_DEFAULT(otx_net_ep_logtype, NOTICE);
 RTE_PMD_REGISTER_PARAM_STRING(net_otx_ep,
-			      OTX_ISM_ENABLE "=<0|1>");
+			      OTX_ISM_ENABLE "=<0|1> "
+			      OTX_MAX_RINGS "=<1-8>");

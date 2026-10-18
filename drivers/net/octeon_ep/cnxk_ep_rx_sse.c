@@ -17,6 +17,7 @@ hadd(__m128i x)
 static __rte_always_inline void
 cnxk_ep_process_pkts_vec_sse(struct rte_mbuf **rx_pkts, struct otx_ep_droq *droq, uint16_t new_pkts)
 {
+	struct otx_ep_droq_desc *desc_ring = droq->desc_ring;
 	struct rte_mbuf **recv_buf_list = droq->recv_buf_list;
 	uint32_t read_idx = droq->read_idx;
 	struct rte_mbuf *m0, *m1, *m2, *m3;
@@ -32,6 +33,8 @@ cnxk_ep_process_pkts_vec_sse(struct rte_mbuf **rx_pkts, struct otx_ep_droq *droq
 							0xFF, 4, 5, 0xFF, 0xFF, 0, 1);
 		const __m128i cpy_mask = _mm_set_epi8(0xFF, 0xFF, 9, 8, 0xFF, 0xFF, 9, 8, 0xFF,
 						      0xFF, 1, 0, 0xFF, 0xFF, 1, 0);
+		const __m128i cpy_mask1 = _mm_set_epi8(0xFF, 0xFF, 13, 12, 0xFF, 0xFF, 9, 8,
+						       0xFF, 0xFF, 5, 4, 0xFF, 0xFF, 1, 0);
 		__m128i s01, s23;
 
 		idx1 = otx_ep_incr_index(idx0, 1, nb_desc);
@@ -43,13 +46,25 @@ cnxk_ep_process_pkts_vec_sse(struct rte_mbuf **rx_pkts, struct otx_ep_droq *droq
 		m2 = recv_buf_list[idx2];
 		m3 = recv_buf_list[idx3];
 
-		/* Load packet size big-endian. */
-		s01 = _mm_set_epi32(cnxk_pktmbuf_mtod(m3, struct otx_ep_droq_info *)->length >> 48,
-				    cnxk_pktmbuf_mtod(m1, struct otx_ep_droq_info *)->length >> 48,
-				    cnxk_pktmbuf_mtod(m2, struct otx_ep_droq_info *)->length >> 48,
-				    cnxk_pktmbuf_mtod(m0, struct otx_ep_droq_info *)->length >> 48);
-		/* Convert to little-endian. */
-		s01 = _mm_shuffle_epi8(s01, bswap_mask);
+		if (droq->chip_gen == OTX_EP_CN20XX) {
+			/* Load packet size (completion is in big-endian order) */
+			s01 = _mm_set_epi32((uint32_t)rte_bswap64(desc_ring[idx3].info_ptr),
+					    (uint32_t)rte_bswap64(desc_ring[idx2].info_ptr),
+					    (uint32_t)rte_bswap64(desc_ring[idx1].info_ptr),
+					    (uint32_t)rte_bswap64(desc_ring[idx0].info_ptr));
+			s01 = _mm_shuffle_epi8(s01, cpy_mask1);
+		} else {
+			uint32_t p0, p1, p2, p3;
+
+			/* Load packet size big-endian. */
+			p0 = cnxk_pktmbuf_mtod(m0, struct otx_ep_droq_info *)->length >> 48;
+			p1 = cnxk_pktmbuf_mtod(m1, struct otx_ep_droq_info *)->length >> 48;
+			p2 = cnxk_pktmbuf_mtod(m2, struct otx_ep_droq_info *)->length >> 48;
+			p3 = cnxk_pktmbuf_mtod(m3, struct otx_ep_droq_info *)->length >> 48;
+			s01 = _mm_set_epi32(p3, p1, p2, p0);
+			/* Convert to little-endian. */
+			s01 = _mm_shuffle_epi8(s01, bswap_mask);
+		}
 		/* Vertical add, consolidate outside loop */
 		bytes = _mm_add_epi32(bytes, s01);
 		/* Separate into packet length and data length. */

@@ -12,6 +12,7 @@ cnxk_ep_process_pkts_vec_neon(struct rte_mbuf **rx_pkts, struct otx_ep_droq *dro
 				  4, 5, 0xff, 0xff, 4, 5, 0xff, 0xff};
 	const uint8x16_t mask1 = {8,  9,  0xff, 0xff, 8,  9,  0xff, 0xff,
 				  12, 13, 0xff, 0xff, 12, 13, 0xff, 0xff};
+	struct otx_ep_droq_desc *desc_ring = droq->desc_ring;
 	struct rte_mbuf **recv_buf_list = droq->recv_buf_list;
 	uint32_t pidx0, pidx1, pidx2, pidx3;
 	struct rte_mbuf *m0, *m1, *m2, *m3;
@@ -47,29 +48,53 @@ cnxk_ep_process_pkts_vec_neon(struct rte_mbuf **rx_pkts, struct otx_ep_droq *dro
 		m2 = recv_buf_list[idx2];
 		m3 = recv_buf_list[idx3];
 
-		/* Load packet size big-endian. */
-		s01 = vsetq_lane_u32(cnxk_pktmbuf_mtod(m0, struct otx_ep_droq_info *)->length >> 48,
-				     s01, 0);
-		s01 = vsetq_lane_u32(cnxk_pktmbuf_mtod(m1, struct otx_ep_droq_info *)->length >> 48,
-				     s01, 1);
-		s01 = vsetq_lane_u32(cnxk_pktmbuf_mtod(m2, struct otx_ep_droq_info *)->length >> 48,
-				     s01, 2);
-		s01 = vsetq_lane_u32(cnxk_pktmbuf_mtod(m3, struct otx_ep_droq_info *)->length >> 48,
-				     s01, 3);
-		/* Convert to little-endian. */
-		s01 = vrev16q_u8(s01);
+		if (droq->chip_gen == OTX_EP_CN20XX) {
+			uint32x4_t lens;
 
-		/* Vertical add, consolidate outside the loop. */
-		bytes += vaddq_u32(bytes, s01);
-		/* Separate into packet length and data length. */
-		s23 = vqtbl1q_u8(s01, mask1);
-		s01 = vqtbl1q_u8(s01, mask0);
+			/* Load packet size (completion is in big-endian order) */
+			lens = vdupq_n_u32(0);
+			lens = vsetq_lane_u32((uint32_t)rte_bswap64(desc_ring[idx0].info_ptr),
+					      lens, 0);
+			lens = vsetq_lane_u32((uint32_t)rte_bswap64(desc_ring[idx1].info_ptr),
+					      lens, 1);
+			lens = vsetq_lane_u32((uint32_t)rte_bswap64(desc_ring[idx2].info_ptr),
+					      lens, 2);
+			lens = vsetq_lane_u32((uint32_t)rte_bswap64(desc_ring[idx3].info_ptr),
+					      lens, 3);
+			lens = vandq_u32(lens, vdupq_n_u32(0xFFFF));
+			bytes = vaddq_u32(bytes, lens);
 
-		/* Store packet length and data length to mbuf. */
-		*(uint64_t *)&m0->pkt_len = vgetq_lane_u64(s01, 0);
-		*(uint64_t *)&m1->pkt_len = vgetq_lane_u64(s01, 1);
-		*(uint64_t *)&m2->pkt_len = vgetq_lane_u64(s23, 0);
-		*(uint64_t *)&m3->pkt_len = vgetq_lane_u64(s23, 1);
+			m0->pkt_len = m0->data_len = vgetq_lane_u32(lens, 0);
+			m1->pkt_len = m1->data_len = vgetq_lane_u32(lens, 1);
+			m2->pkt_len = m2->data_len = vgetq_lane_u32(lens, 2);
+			m3->pkt_len = m3->data_len = vgetq_lane_u32(lens, 3);
+		} else {
+			uint8x16_t len_vec;
+			uint32_t p0, p1, p2, p3;
+
+			/* Load packet size big-endian. */
+			p0 = cnxk_pktmbuf_mtod(m0, struct otx_ep_droq_info *)->length >> 48;
+			p1 = cnxk_pktmbuf_mtod(m1, struct otx_ep_droq_info *)->length >> 48;
+			p2 = cnxk_pktmbuf_mtod(m2, struct otx_ep_droq_info *)->length >> 48;
+			p3 = cnxk_pktmbuf_mtod(m3, struct otx_ep_droq_info *)->length >> 48;
+
+			s01 = vsetq_lane_u32(p0, s01, 0);
+			s01 = vsetq_lane_u32(p1, s01, 1);
+			s01 = vsetq_lane_u32(p2, s01, 2);
+			s01 = vsetq_lane_u32(p3, s01, 3);
+			/* Convert to little-endian. */
+			len_vec = vrev16q_u8(vreinterpretq_u8_u64(s01));
+			bytes = vaddq_u32(bytes, vreinterpretq_u32_u8(len_vec));
+			/* Separate into packet length and data length. */
+			s23 = vreinterpretq_u64_u8(vqtbl1q_u8(len_vec, mask1));
+			s01 = vreinterpretq_u64_u8(vqtbl1q_u8(len_vec, mask0));
+
+			/* Store packet length and data length to mbuf. */
+			*(uint64_t *)&m0->pkt_len = vgetq_lane_u64(s01, 0);
+			*(uint64_t *)&m1->pkt_len = vgetq_lane_u64(s01, 1);
+			*(uint64_t *)&m2->pkt_len = vgetq_lane_u64(s23, 0);
+			*(uint64_t *)&m3->pkt_len = vgetq_lane_u64(s23, 1);
+		}
 
 		/* Reset rearm data. */
 		*(uint64_t *)&m0->rearm_data = droq->rearm_data;

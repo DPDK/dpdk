@@ -10,6 +10,8 @@
 #include "otx_ep_vf.h"
 #include "otx2_ep_vf.h"
 #include "cnxk_ep_vf.h"
+#include "cn20k_ep_mbox.h"
+#include "cn20k_ep_vf.h"
 #include "otx_ep_mbox.h"
 
 /*
@@ -95,7 +97,11 @@ otx_ep_send_mbox_cmd(struct otx_ep_device *otx_ep,
 		rte_spinlock_unlock(&otx_ep->mbox_lock);
 		return -EOPNOTSUPP;
 	}
-	ret = __otx_ep_send_mbox_cmd(otx_ep, cmd, rsp);
+
+	if (otx_ep->chip_gen == OTX_EP_CN20XX)
+		ret = otx_ep_cn20k_mbox_send_cmd(otx_ep, cmd, rsp);
+	else
+		ret = __otx_ep_send_mbox_cmd(otx_ep, cmd, rsp);
 	rte_spinlock_unlock(&otx_ep->mbox_lock);
 	return ret;
 }
@@ -264,8 +270,12 @@ int otx_ep_mbox_get_link_info(struct rte_eth_dev *eth_dev,
 	struct otx_ep_device *otx_ep =
 		(struct otx_ep_device *)(eth_dev)->data->dev_private;
 	memset(&link_info, 0, sizeof(struct otx_ep_iface_link_info));
-	ret = otx_ep_mbox_bulk_read(otx_ep, OTX_EP_MBOX_CMD_GET_LINK_INFO,
-				      (uint8_t *)&link_info, (int32_t *)&size);
+	if (otx_ep->chip_gen == OTX_EP_CN20XX)
+		ret = otx_ep_cn20k_mbox_bulk_read(otx_ep, OTX_EP_MBOX_CMD_GET_LINK_INFO,
+						  (uint8_t *)&link_info, sizeof(link_info), &size);
+	else
+		ret = otx_ep_mbox_bulk_read(otx_ep, OTX_EP_MBOX_CMD_GET_LINK_INFO,
+					    (uint8_t *)&link_info, (int32_t *)&size);
 	if (ret) {
 		otx_ep_err("Get link info failed");
 		return ret;

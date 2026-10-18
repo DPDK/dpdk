@@ -168,6 +168,10 @@ New Features
   Added ``fdir_buffer_size`` devarg to select the Flow Director table size
   (``64k``, ``128k`` or ``256k``) at probe time. The default remains ``64k``.
 
+* **Updated Marvell octeon_ep ethernet driver.**
+
+  * Added support for CN20K SoC.
+
 * **Updated NVIDIA mlx5 ethernet driver.**
 
   * Increased the maximum number of secondary unicast MAC addresses from 128 to up to 4096

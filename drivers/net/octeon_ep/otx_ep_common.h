@@ -19,12 +19,14 @@
 #define OTX_EP_CN8XX  RTE_BIT32(0)
 #define OTX_EP_CN9XX  RTE_BIT32(1)
 #define OTX_EP_CN10XX RTE_BIT32(2)
+#define OTX_EP_CN20XX RTE_BIT32(3)
 
 #define OTX_EP_NW_PKT_OP               0x1220
 #define OTX_EP_NW_CMD_OP               0x1221
 
 #define OTX_EP_MAX_RINGS_PER_VF        (8)
 #define OTX_EP_CFG_IO_QUEUES        OTX_EP_MAX_RINGS_PER_VF
+#define OTX_EP_16BYTE_INSTR         (16)
 #define OTX_EP_32BYTE_INSTR         (32)
 #define OTX_EP_64BYTE_INSTR         (64)
 /*
@@ -406,6 +408,9 @@ struct otx_ep_droq {
 	 */
 	void *pkts_sent_reg;
 
+	/* Generation */
+	uint32_t chip_gen;
+
 	/* Use ISM memory */
 	uint8_t ism_ena;
 
@@ -572,6 +577,10 @@ struct otx_ep_device {
 
 	/* Use ISM memory */
 	uint8_t ism_ena;
+
+	uint8_t configured;
+
+	struct otx_ep_cn20k_mbox *mbox_info;
 };
 
 int otx_ep_setup_iqs(struct otx_ep_device *otx_ep, uint32_t iq_no,
