@@ -483,7 +483,7 @@ static int bnxt_hwrm_send_message(struct bnxt *bp, void *msg,
 	unsigned int i;
 	struct input *req = msg;
 	struct output *resp = bp->hwrm_cmd_resp_addr;
-	uint32_t *data = msg;
+	const uint8_t *data = msg;
 	uint8_t *bar;
 	uint8_t *valid;
 	uint16_t max_req_len = bp->max_req_len;
@@ -526,7 +526,7 @@ static int bnxt_hwrm_send_message(struct bnxt *bp, void *msg,
 		short_input.req_addr =
 			rte_cpu_to_le_64(bp->hwrm_short_cmd_req_dma_addr);
 
-		data = (uint32_t *)&short_input;
+		data = (const uint8_t *)&short_input;
 		msg_len = sizeof(short_input);
 
 		max_req_len = BNXT_HWRM_SHORT_REQ_LEN;
@@ -534,9 +534,12 @@ static int bnxt_hwrm_send_message(struct bnxt *bp, void *msg,
 
 	/* Write request msg to hwrm channel */
 	for (i = 0; i < msg_len; i += 4) {
+		uint32_t request_word;
+
 		bar = (uint8_t *)bp->bar0 + bar_offset + i;
-		rte_write32(*data, bar);
-		data++;
+		memcpy(&request_word, data, sizeof(request_word));
+		rte_write32(request_word, bar);
+		data += sizeof(request_word);
 	}
 
 	/* Zero the rest of the request space */
