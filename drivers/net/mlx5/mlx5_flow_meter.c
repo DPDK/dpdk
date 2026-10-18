@@ -60,7 +60,11 @@ mlx5_flow_meter_uninit(struct rte_eth_dev *dev)
 		mlx5_free(priv->mtr_bulk.aso);
 		priv->mtr_bulk.aso = NULL;
 		priv->mtr_bulk.size = 0;
-		mlx5_aso_queue_uninit(priv->sh, ASO_OPC_MOD_POLICER);
+		/*
+		 * pools_mng->sq is shared by every port on this device.
+		 * Destroying it here would break meters still in use on
+		 * another port. It is released with the shared context.
+		 */
 	}
 	if (priv->mtr_bulk.action) {
 		mlx5dr_action_destroy(priv->mtr_bulk.action);

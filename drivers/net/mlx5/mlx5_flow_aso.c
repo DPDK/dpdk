@@ -316,7 +316,12 @@ mlx5_aso_mtr_queue_init(struct mlx5_dev_ctx_shared *sh,
 		}
 		hws_pool->nb_sq = nb_queues;
 	}
-	if (pool_mng) {
+	/*
+	 * pools_mng->sq is shared by every port on the device.
+	 * A send-queue id of zero is valid, so the DevX object pointer
+	 * is the indicator that the queue was already created.
+	 */
+	if (pool_mng != NULL && pool_mng->sq.sq_obj.sq == NULL) {
 		if (mlx5_aso_sq_create(cdev, &pool_mng->sq,
 				       sh->tx_uar.obj,
 				       MLX5_ASO_QUEUE_LOG_DESC))
