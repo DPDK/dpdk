@@ -346,10 +346,11 @@ vhost_dev_tx_sw_csum(struct rte_mbuf *mbuf)
 
 	csum = ~csum;
 	/* See RFC768 */
-	if (unlikely((mbuf->packet_type & RTE_PTYPE_L4_UDP) && csum == 0))
+	if (unlikely(csum == 0) &&
+			(mbuf->ol_flags & RTE_MBUF_F_TX_L4_MASK) == RTE_MBUF_F_TX_UDP_CKSUM)
 		csum = 0xffff;
 
-	if (rte_pktmbuf_data_len(mbuf) >= csum_offset + 1)
+	if (rte_pktmbuf_data_len(mbuf) >= csum_offset + sizeof(uint16_t))
 		*rte_pktmbuf_mtod_offset(mbuf, uint16_t *, csum_offset) = csum;
 
 	mbuf->ol_flags &= ~RTE_MBUF_F_TX_L4_MASK;
@@ -389,10 +390,10 @@ vhost_dev_rx_sw_csum(struct rte_mbuf *mbuf)
 
 	csum = ~csum;
 	/* See RFC768 */
-	if (unlikely((ptype & RTE_PTYPE_L4_UDP) && csum == 0))
+	if (unlikely(csum == 0) && (ptype & RTE_PTYPE_L4_MASK) == RTE_PTYPE_L4_UDP)
 		csum = 0xffff;
 
-	if (rte_pktmbuf_data_len(mbuf) >= csum_offset + 1)
+	if (rte_pktmbuf_data_len(mbuf) >= csum_offset + sizeof(uint16_t))
 		*rte_pktmbuf_mtod_offset(mbuf, uint16_t *, csum_offset) = csum;
 
 	mbuf->ol_flags &= ~RTE_MBUF_F_RX_L4_CKSUM_MASK;
