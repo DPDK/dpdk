@@ -78,7 +78,7 @@ struct rte_intr_callback {
 
 struct rte_intr_source {
 	TAILQ_ENTRY(rte_intr_source) next;
-	struct rte_intr_handle *intr_handle; /**< interrupt handle */
+	const struct rte_intr_handle *intr_handle; /**< interrupt handle */
 	struct rte_intr_cb_list callbacks;  /**< user callbacks */
 	uint32_t active;
 };
@@ -511,7 +511,7 @@ rte_intr_callback_register(const struct rte_intr_handle *intr_handle,
 
 	/* check if there is at least one callback registered for the fd */
 	TAILQ_FOREACH(src, &intr_sources, next) {
-		if (rte_intr_fd_get(src->intr_handle) == rte_intr_fd_get(intr_handle)) {
+		if (src->intr_handle == intr_handle) {
 			/* we had no interrupts for this */
 			if (TAILQ_EMPTY(&src->callbacks))
 				wake_thread = 1;
@@ -531,22 +531,12 @@ rte_intr_callback_register(const struct rte_intr_handle *intr_handle,
 			free(callback);
 			callback = NULL;
 		} else {
-			src->intr_handle = rte_intr_instance_dup(intr_handle);
-			if (src->intr_handle == NULL) {
-				EAL_LOG(ERR, "Can not create intr instance");
-				ret = -ENOMEM;
-				free(callback);
-				callback = NULL;
-				free(src);
-				src = NULL;
-			} else {
-				TAILQ_INIT(&src->callbacks);
-				TAILQ_INSERT_TAIL(&(src->callbacks), callback,
-						  next);
-				TAILQ_INSERT_TAIL(&intr_sources, src, next);
-				wake_thread = 1;
-				ret = 0;
-			}
+			src->intr_handle = intr_handle;
+			TAILQ_INIT(&src->callbacks);
+			TAILQ_INSERT_TAIL(&(src->callbacks), callback, next);
+			TAILQ_INSERT_TAIL(&intr_sources, src, next);
+			wake_thread = 1;
+			ret = 0;
 		}
 	}
 
@@ -584,7 +574,7 @@ rte_intr_callback_unregister_pending(const struct rte_intr_handle *intr_handle,
 
 	/* check if the interrupt source for the fd is existent */
 	TAILQ_FOREACH(src, &intr_sources, next) {
-		if (rte_intr_fd_get(src->intr_handle) == rte_intr_fd_get(intr_handle))
+		if (src->intr_handle == intr_handle)
 			break;
 	}
 
@@ -635,7 +625,7 @@ rte_intr_callback_unregister(const struct rte_intr_handle *intr_handle,
 
 	/* check if the interrupt source for the fd is existent */
 	TAILQ_FOREACH(src, &intr_sources, next)
-		if (rte_intr_fd_get(src->intr_handle) == rte_intr_fd_get(intr_handle))
+		if (src->intr_handle == intr_handle)
 			break;
 
 	/* No interrupt source registered for the fd */
@@ -666,7 +656,6 @@ rte_intr_callback_unregister(const struct rte_intr_handle *intr_handle,
 		/* all callbacks for that source are removed. */
 		if (TAILQ_EMPTY(&src->callbacks)) {
 			TAILQ_REMOVE(&intr_sources, src, next);
-			rte_intr_instance_free(src->intr_handle);
 			free(src);
 		}
 	}
@@ -922,7 +911,6 @@ eal_intr_source_remove_and_free(struct rte_intr_source *src)
 	}
 
 	/* Free the interrupt source */
-	rte_intr_instance_free(src->intr_handle);
 	free(src);
 }
 
@@ -1067,7 +1055,6 @@ eal_intr_process_interrupts(struct epoll_event *events, int nfds)
 		/* all callbacks for that source are removed. */
 		if (TAILQ_EMPTY(&src->callbacks)) {
 			TAILQ_REMOVE(&intr_sources, src, next);
-			rte_intr_instance_free(src->intr_handle);
 			free(src);
 		}
 

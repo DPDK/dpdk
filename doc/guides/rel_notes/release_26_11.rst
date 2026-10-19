@@ -416,6 +416,7 @@ API Changes
     to invalid values instead of zero.
   * Added ``rte_intr_fd_close()`` and ``rte_intr_dev_fd_close()``
     helpers to close file descriptors and reset them to -1.
+  * ``rte_intr_unregister_callback_fn`` now receives a ``const`` interrupt handle.
 
 * mempool: When creating a mempool, the cache size can be freely specified
   (although still not exceed the number of elements),

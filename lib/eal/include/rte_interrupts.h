@@ -70,7 +70,7 @@ typedef void (*rte_intr_callback_fn)(void *cb_arg);
  * Function to call after a callback is unregistered.
  * Can be used to close fd and free cb_arg.
  */
-typedef void (*rte_intr_unregister_callback_fn)(struct rte_intr_handle *intr_handle,
+typedef void (*rte_intr_unregister_callback_fn)(const struct rte_intr_handle *intr_handle,
 						void *cb_arg);
 
 /**
@@ -431,21 +431,6 @@ rte_intr_allow_others(struct rte_intr_handle *intr_handle);
 __rte_internal
 int
 rte_intr_cap_multiple(struct rte_intr_handle *intr_handle);
-
-/**
- * @internal
- * Creates a clone of src by allocating a new handle and copying src content.
- *
- * @param src
- *  Source interrupt handle to be cloned.
- *
- * @return
- *  - On success, address of interrupt handle.
- *  - On failure, NULL.
- */
-__rte_internal
-struct rte_intr_handle *
-rte_intr_instance_dup(const struct rte_intr_handle *src);
 
 /**
  * @internal

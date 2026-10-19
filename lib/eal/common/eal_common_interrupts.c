@@ -103,40 +103,6 @@ fail:
 	return NULL;
 }
 
-RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_instance_dup)
-struct rte_intr_handle *rte_intr_instance_dup(const struct rte_intr_handle *src)
-{
-	struct rte_intr_handle *intr_handle;
-
-	if (src == NULL) {
-		EAL_LOG(DEBUG, "Source interrupt instance unallocated");
-		rte_errno = EINVAL;
-		return NULL;
-	}
-
-	intr_handle = rte_intr_instance_alloc(src->alloc_flags);
-	if (intr_handle == NULL)
-		return NULL;
-
-	/* The source may have been grown beyond the default array size. */
-	if (src->nb_intr > intr_handle->nb_intr &&
-			rte_intr_event_list_update(intr_handle, src->nb_intr) != 0) {
-		rte_intr_instance_free(intr_handle);
-		return NULL;
-	}
-
-	intr_handle->fd = src->fd;
-	intr_handle->dev_fd = src->dev_fd;
-	intr_handle->type = src->type;
-	intr_handle->max_intr = src->max_intr;
-	intr_handle->nb_efd = src->nb_efd;
-	intr_handle->efd_counter_size = src->efd_counter_size;
-	memcpy(intr_handle->efds, src->efds, src->nb_intr * sizeof(*src->efds));
-	memcpy(intr_handle->elist, src->elist, src->nb_intr * sizeof(*src->elist));
-
-	return intr_handle;
-}
-
 RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_event_list_update)
 int rte_intr_event_list_update(struct rte_intr_handle *intr_handle, int size)
 {

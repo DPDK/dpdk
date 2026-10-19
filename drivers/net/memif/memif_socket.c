@@ -572,13 +572,14 @@ memif_msg_enq_connected(struct rte_eth_dev *dev)
 }
 
 static void
-memif_intr_unregister_handler(struct rte_intr_handle *intr_handle, void *arg)
+memif_intr_unregister_handler(const struct rte_intr_handle *intr_handle, void *arg)
 {
 	struct memif_msg_queue_elt *elt;
 	struct memif_control_channel *cc = arg;
 
+	RTE_SET_USED(intr_handle);
 	/* close control channel fd */
-	rte_intr_fd_close(intr_handle);
+	rte_intr_fd_close(cc->intr_handle);
 	/* clear message queue */
 	while ((elt = TAILQ_FIRST(&cc->msg_queue)) != NULL) {
 		TAILQ_REMOVE(&cc->msg_queue, elt, next);
