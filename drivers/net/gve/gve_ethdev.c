@@ -1031,6 +1031,24 @@ gve_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		return -EBUSY;
 	}
 
+	/* GQI chains a frame larger than one Rx buffer into a multi-segment
+	 * mbuf. No Rx offload is per-queue here, so check the port offloads.
+	 */
+	if (gve_is_gqi(priv) &&
+	    !(dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_SCATTER)) {
+		for (uint16_t i = 0; i < dev->data->nb_rx_queues; i++) {
+			struct gve_rx_queue *rxq = dev->data->rx_queues[i];
+
+			if (rxq != NULL &&
+			    gve_rx_gqi_needs_scatter(mtu, rxq->rx_buf_len)) {
+				PMD_DRV_LOG(ERR,
+					    "MTU %u needs Rx scatter with %u byte Rx buffers",
+					    mtu, rxq->rx_buf_len);
+				return -EINVAL;
+			}
+		}
+	}
+
 	err = process_priv->ctrl_ops->set_mtu(priv, mtu);
 	if (err) {
 		PMD_DRV_LOG(ERR, "Failed to set mtu as %u err = %d", mtu, err);
