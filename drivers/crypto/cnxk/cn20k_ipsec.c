@@ -31,12 +31,17 @@ cn20k_ipsec_outb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	struct cnxk_ipsec_outb_rlens rlens;
 	struct cn20k_ipsec_sa *sa;
 	union cpt_inst_w4 inst_w4;
+	size_t out_sa_sz;
 	void *out_sa;
 	int ret = 0;
 
 	sa = &sec_sess->sa;
 
-	out_sa = rte_zmalloc("cn20k_cpt", sizeof(struct roc_ow_ipsec_outb_sa), ROC_CPTR_ALIGN);
+	out_sa_sz = sizeof(struct roc_ow_ipsec_outb_sa);
+	if (roc_cpt->ctx_ilen)
+		out_sa_sz = PLT_MAX(out_sa_sz, (size_t)(roc_cpt->ctx_ilen + 1) * ROC_CTX_UNIT_128B);
+
+	out_sa = rte_zmalloc("cn20k_cpt", out_sa_sz, ROC_CPTR_ALIGN);
 	if (out_sa == NULL) {
 		plt_err("Couldn't allocate memory for outbound SA");
 		return -ENOMEM;
@@ -124,7 +129,7 @@ cn20k_ipsec_outb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 		sa_dptr->w0.s.count_glb_octets = 1;
 	}
 
-	memset(out_sa, 0, sizeof(struct roc_ow_ipsec_outb_sa));
+	memset(out_sa, 0, out_sa_sz);
 
 	/* Copy word0 from sa_dptr to populate ctx_push_sz ctx_size fields */
 	memcpy(out_sa, sa_dptr, 8);
@@ -161,12 +166,17 @@ cn20k_ipsec_inb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 	struct roc_ow_ipsec_inb_sa *sa_dptr;
 	struct cn20k_ipsec_sa *sa;
 	union cpt_inst_w4 inst_w4;
+	size_t in_sa_sz;
 	void *in_sa;
 	int ret = 0;
 
 	sa = &sec_sess->sa;
 
-	in_sa = rte_zmalloc("cn20k_cpt", sizeof(struct roc_ow_ipsec_inb_sa), ROC_CPTR_ALIGN);
+	in_sa_sz = sizeof(struct roc_ow_ipsec_inb_sa);
+	if (roc_cpt->ctx_ilen)
+		in_sa_sz = PLT_MAX(in_sa_sz, (size_t)(roc_cpt->ctx_ilen + 1) * ROC_CTX_UNIT_128B);
+
+	in_sa = rte_zmalloc("cn20k_cpt", in_sa_sz, ROC_CPTR_ALIGN);
 	if (in_sa == NULL) {
 		plt_err("Couldn't allocate memory for inbound SA");
 		return -ENOMEM;
@@ -231,7 +241,7 @@ cn20k_ipsec_inb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 		sa_dptr->w0.s.count_glb_octets = 1;
 	}
 
-	memset(in_sa, 0, sizeof(struct roc_ow_ipsec_inb_sa));
+	memset(in_sa, 0, in_sa_sz);
 
 	/* Copy word0 from sa_dptr to populate ctx_push_sz ctx_size fields */
 	memcpy(in_sa, sa_dptr, 8);
