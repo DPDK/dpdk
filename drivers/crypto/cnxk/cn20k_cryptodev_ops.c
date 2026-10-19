@@ -1189,17 +1189,30 @@ again:
 		infl_req = &pend_q->req_queue[head];
 		infl_req->op_flags = 0;
 
-		cnxk_raw_burst_to_iov(vec, &ofs, index, &iov);
+		ret = cnxk_raw_burst_to_iov(vec, &ofs, index, &iov);
+		if (unlikely(ret != 0)) {
+			plt_dp_err("Failed to convert raw to iov: %d", index);
+			if (i == 0 && count == 0) {
+				*enqueue_status = ret;
+				return 0;
+			} else if (i == 0) {
+				goto pend_q_commit;
+			} else {
+				break;
+			}
+		}
 		ret = cn20k_cpt_raw_fill_inst(&iov, qp, dp_ctx, &inst[i], infl_req,
 					      user_data[index]);
 		if (unlikely(ret != 1)) {
 			plt_dp_err("Could not process vec: %d", index);
-			if (i == 0 && count == 0)
-				return -1;
-			else if (i == 0)
+			if (i == 0 && count == 0) {
+				*enqueue_status = -EINVAL;
+				return 0;
+			} else if (i == 0) {
 				goto pend_q_commit;
-			else
+			} else {
 				break;
+			}
 		}
 		pending_queue_advance(&head, pq_mask);
 	}
@@ -1249,7 +1262,11 @@ cn20k_cpt_raw_enqueue(void *qpair, uint8_t *drv_ctx, struct rte_crypto_vec *data
 	if (unlikely(nb_allowed == 0))
 		return -1;
 
-	cnxk_raw_to_iov(data_vec, n_data_vecs, &ofs, iv, digest, aad_or_auth_iv, &iov);
+	ret = cnxk_raw_to_iov(data_vec, n_data_vecs, &ofs, iv, digest, aad_or_auth_iv, &iov);
+	if (unlikely(ret != 0)) {
+		plt_dp_err("Failed to convert raw to iov");
+		return -1;
+	}
 
 	lmt_base = qp->lmtline.lmt_base;
 	io_addr = qp->lmtline.io_addr;
