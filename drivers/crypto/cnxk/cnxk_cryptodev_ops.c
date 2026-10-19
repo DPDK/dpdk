@@ -596,6 +596,7 @@ cnxk_cpt_queue_pair_reset(struct rte_cryptodev *dev, uint16_t qp_id,
 {
 	if (conf == NULL) {
 		struct cnxk_cpt_vf *vf = dev->data->dev_private;
+		struct cnxk_cpt_qp *qp;
 		struct roc_cpt_lf *lf;
 
 		if (vf == NULL)
@@ -603,6 +604,11 @@ cnxk_cpt_queue_pair_reset(struct rte_cryptodev *dev, uint16_t qp_id,
 
 		lf = vf->cpt.lf[qp_id];
 		roc_cpt_lf_reset(lf);
+
+		qp = dev->data->queue_pairs[qp_id];
+		qp->pend_q.head = 0;
+		qp->pend_q.tail = 0;
+
 		roc_cpt_iq_enable(lf);
 
 		if (lf->cpt_cq_ena)
