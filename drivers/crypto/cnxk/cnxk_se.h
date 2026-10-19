@@ -2720,6 +2720,11 @@ prepare_iov_from_pkt(struct rte_mbuf *pkt, struct roc_se_iov_ptr *iovec, uint32_
 		if (!seg_size)
 			break;
 
+		if (unlikely(index >= ROC_MAX_SG_CNT)) {
+			plt_dp_err("Number of segments exceeds max supported (%u)", ROC_MAX_SG_CNT);
+			return 1;
+		}
+
 		iovec->bufs[index].vaddr = seg_data;
 		iovec->bufs[index].size = seg_size;
 
@@ -2775,6 +2780,11 @@ prepare_iov_from_pkt_inplace(struct rte_mbuf *pkt,
 
 		if (!seg_size)
 			break;
+
+		if (unlikely(index >= ROC_MAX_SG_CNT)) {
+			plt_dp_err("Number of segments exceeds max supported (%u)", ROC_MAX_SG_CNT);
+			return 1;
+		}
 
 		iovec->bufs[index].vaddr = seg_data;
 		iovec->bufs[index].size = seg_size;
