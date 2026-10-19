@@ -955,7 +955,7 @@ virtio_rx_offload(struct rte_mbuf *m, struct virtio_net_hdr *hdr)
 			if (likely(csum != 0xffff))
 				csum = ~csum;
 			off = hdr->csum_offset + hdr->csum_start;
-			if (rte_pktmbuf_data_len(m) >= off + 1)
+			if (rte_pktmbuf_data_len(m) >= off + sizeof(uint16_t))
 				*rte_pktmbuf_mtod_offset(m, uint16_t *,
 					off) = csum;
 		}
