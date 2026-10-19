@@ -38,11 +38,23 @@ static const char * const vduse_reqs_str[] = {
 	"VDUSE_GET_VQ_STATE",
 	"VDUSE_SET_STATUS",
 	"VDUSE_UPDATE_IOTLB",
+	"VDUSE_SET_VQ_GROUP_ASID",
 };
 
 #define vduse_req_id_to_str(id) \
 	(id < RTE_DIM(vduse_reqs_str) ? \
 	vduse_reqs_str[id] : "Unknown")
+
+static uint64_t vduse_vq_to_group(struct virtio_net *dev, struct vhost_virtqueue *vq)
+{
+	if (dev->vduse_api_ver < 1)
+		return 0;
+
+	if (vq == dev->cvq)
+		return 1;
+
+	return 0;
+}
 
 static int
 vduse_inject_irq(struct virtio_net *dev, struct vhost_virtqueue *vq)
@@ -271,6 +283,7 @@ vduse_vring_cleanup(struct virtio_net *dev, unsigned int index)
 	vq->size = 0;
 	vq->last_used_idx = 0;
 	vq->last_avail_idx = 0;
+	vq->asid = 0;
 }
 
 /*
@@ -469,6 +482,37 @@ vduse_events_handler(int fd, void *arg, int *close __rte_unused)
 			}
 		}
 
+		resp.result = VDUSE_REQ_RESULT_OK;
+		break;
+	}
+	case VDUSE_SET_VQ_GROUP_ASID: {
+		uint32_t i;
+
+		if (dev->vduse_api_ver < 1) {
+			resp.result = VDUSE_REQ_RESULT_FAILED;
+			break;
+		}
+
+		if (req.vq_group_asid.asid >= RTE_DIM(dev->iotlb)) {
+			VHOST_CONFIG_LOG(dev->ifname, ERR,
+				"Invalid ASID %u for group %u",
+				req.vq_group_asid.asid, req.vq_group_asid.group);
+			resp.result = VDUSE_REQ_RESULT_FAILED;
+			break;
+		}
+
+		VHOST_CONFIG_LOG(dev->ifname, INFO, "\tAssigning ASID %d to group %d",
+				req.vq_group_asid.asid, req.vq_group_asid.group);
+
+		for (i = 0; i < dev->nr_vring; i++) {
+			vq = dev->virtqueue[i];
+
+			if (vduse_vq_to_group(dev, vq) == req.vq_group_asid.group) {
+				vq->asid = req.vq_group_asid.asid;
+				VHOST_CONFIG_LOG(dev->ifname, INFO, "\t\tVQ %d gets ASID %d",
+						i, req.vq_group_asid.asid);
+			}
+		}
 		resp.result = VDUSE_REQ_RESULT_OK;
 		break;
 	}
@@ -782,6 +826,10 @@ vduse_device_create(const char *path, bool compliant_ol_flags, bool extbuf, bool
 		dev_config->features = features;
 		dev_config->vq_num = total_queues;
 		dev_config->vq_align = rte_mem_page_size();
+		if (ver >= 1) {
+			dev_config->ngroups = 2;
+			dev_config->nas = 2;
+		}
 		dev_config->config_size = sizeof(struct virtio_net_config);
 		memcpy(dev_config->config, &vnet_config, sizeof(vnet_config));
 
@@ -870,11 +918,15 @@ vduse_device_create(const char *path, bool compliant_ol_flags, bool extbuf, bool
 		vq = dev->virtqueue[i];
 		vq->reconnect_log = &dev->reconnect_log->vring[i];
 
+		if (i == max_queue_pairs * 2)
+			dev->cvq = vq;
+
 		if (reconnect)
 			continue;
 
 		vq_cfg.index = i;
 		vq_cfg.max_size = 1024;
+		vq_cfg.group = vduse_vq_to_group(dev, vq);
 
 		ret = ioctl(dev->vduse_dev_fd, VDUSE_VQ_SETUP, &vq_cfg);
 		if (ret) {
@@ -882,8 +934,6 @@ vduse_device_create(const char *path, bool compliant_ol_flags, bool extbuf, bool
 			goto out_log_unmap;
 		}
 	}
-
-	dev->cvq = dev->virtqueue[max_queue_pairs * 2];
 
 	ret = fdset_add(vduse.fdset, dev->vduse_dev_fd, vduse_events_handler, NULL, dev);
 	if (ret) {
