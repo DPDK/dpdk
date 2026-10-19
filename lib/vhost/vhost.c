@@ -59,9 +59,9 @@ static const struct vhost_vq_stats_name_off vhost_vq_stat_strings[] = {
 #define VHOST_NB_VQ_STATS RTE_DIM(vhost_vq_stat_strings)
 
 static int
-vhost_iotlb_miss(struct virtio_net *dev, uint64_t iova, uint8_t perm)
+vhost_iotlb_miss(struct virtio_net *dev, int asid, uint64_t iova, uint8_t perm)
 {
-	return dev->backend_ops->iotlb_miss(dev, iova, perm);
+	return dev->backend_ops->iotlb_miss(dev, asid, iova, perm);
 }
 
 uint64_t
@@ -75,7 +75,7 @@ __vhost_iova_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,
 
 	tmp_size = *size;
 
-	vva = vhost_user_iotlb_cache_find(dev, iova, &tmp_size, perm);
+	vva = vhost_user_iotlb_cache_find(dev, vq->asid, iova, &tmp_size, perm);
 	if (tmp_size == *size) {
 		if (dev->flags & VIRTIO_DEV_STATS_ENABLED)
 			vq->stats.iotlb_hits++;
@@ -87,7 +87,7 @@ __vhost_iova_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,
 
 	iova += tmp_size;
 
-	if (!vhost_user_iotlb_pending_miss(dev, iova, perm)) {
+	if (!vhost_user_iotlb_pending_miss(dev, vq->asid, iova, perm)) {
 		/*
 		 * iotlb_lock is read-locked for a full burst,
 		 * but it only protects the iotlb cache.
@@ -97,12 +97,12 @@ __vhost_iova_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		 */
 		vhost_user_iotlb_rd_unlock(vq);
 
-		vhost_user_iotlb_pending_insert(dev, iova, perm);
-		if (vhost_iotlb_miss(dev, iova, perm)) {
+		vhost_user_iotlb_pending_insert(dev, vq->asid, iova, perm);
+		if (vhost_iotlb_miss(dev, vq->asid, iova, perm)) {
 			VHOST_DATA_LOG(dev->ifname, ERR,
 				"IOTLB miss req failed for IOVA 0x%" PRIx64,
 				iova);
-			vhost_user_iotlb_pending_remove(dev, iova, 1, perm);
+			vhost_user_iotlb_pending_remove(dev, vq->asid, iova, 1, perm);
 		}
 
 		vhost_user_iotlb_rd_lock(vq);
@@ -110,7 +110,7 @@ __vhost_iova_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,
 
 	tmp_size = *size;
 	/* Retry in case of VDUSE, as it is synchronous */
-	vva = vhost_user_iotlb_cache_find(dev, iova, &tmp_size, perm);
+	vva = vhost_user_iotlb_cache_find(dev, vq->asid, iova, &tmp_size, perm);
 	if (tmp_size == *size)
 		return vva;
 

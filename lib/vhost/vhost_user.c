@@ -1464,7 +1464,8 @@ vhost_user_set_mem_table(struct virtio_net **pdev,
 
 		/* Flush IOTLB cache as previous HVAs are now invalid */
 		if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
-			vhost_user_iotlb_flush_all(dev);
+			for (i = 0; i < IOTLB_MAX_ASID; i++)
+				vhost_user_iotlb_flush_all(dev, i);
 
 		free_all_mem_regions(dev);
 		rte_free(dev->mem);
@@ -1753,7 +1754,7 @@ vhost_user_rem_mem_reg(struct virtio_net **pdev,
 			&& region->guest_phys_addr == current_region->guest_phys_addr
 			&& region->memory_size == current_region->size) {
 			if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
-				vhost_user_iotlb_cache_remove(dev,
+				vhost_user_iotlb_cache_remove(dev, 0,
 					current_region->guest_phys_addr,
 					current_region->size);
 			remove_guest_pages(dev, current_region);
@@ -2504,7 +2505,7 @@ vhost_user_get_vring_base(struct virtio_net **pdev,
 	ctx->msg.size = sizeof(ctx->msg.payload.state);
 	ctx->fd_num = 0;
 
-	vhost_user_iotlb_flush_all(dev);
+	vhost_user_iotlb_flush_all(dev, vq->asid);
 
 	rte_rwlock_write_lock(&vq->access_lock);
 	vring_invalidate(dev, vq);
@@ -2874,7 +2875,7 @@ vhost_user_iotlb_msg(struct virtio_net **pdev,
 
 		pg_sz = hua_to_alignment(dev->mem, (void *)(uintptr_t)vva);
 
-		vhost_user_iotlb_cache_insert(dev, imsg->iova, vva, 0, len, pg_sz, imsg->perm);
+		vhost_user_iotlb_cache_insert(dev, 0, imsg->iova, vva, 0, len, pg_sz, imsg->perm);
 
 		for (i = 0; i < dev->nr_vring; i++) {
 			struct vhost_virtqueue *vq = dev->virtqueue[i];
@@ -2891,7 +2892,7 @@ vhost_user_iotlb_msg(struct virtio_net **pdev,
 		}
 		break;
 	case VHOST_IOTLB_INVALIDATE:
-		vhost_user_iotlb_cache_remove(dev, imsg->iova, imsg->size);
+		vhost_user_iotlb_cache_remove(dev, 0, imsg->iova, imsg->size);
 
 		for (i = 0; i < dev->nr_vring; i++) {
 			struct vhost_virtqueue *vq = dev->virtqueue[i];
@@ -3490,7 +3491,7 @@ out:
 }
 
 static int
-vhost_user_iotlb_miss(struct virtio_net *dev, uint64_t iova, uint8_t perm)
+vhost_user_iotlb_miss(struct virtio_net *dev, int asid __rte_unused, uint64_t iova, uint8_t perm)
 {
 	int ret;
 	struct vhu_msg_context ctx = {
