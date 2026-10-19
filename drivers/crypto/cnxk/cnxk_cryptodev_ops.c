@@ -535,6 +535,7 @@ cnxk_cpt_queue_pair_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 		/* CQ entry size is 128B(32 << 2) */
 		qp->lf.cq_entry_size = 2;
 		qp->lf.cq_size = nb_desc;
+		qp->lf.cq_all = true;
 	}
 
 	ret = roc_cpt_lf_init(roc_cpt, &qp->lf);

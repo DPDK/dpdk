@@ -704,8 +704,11 @@ cpt_lf_cq_init(struct roc_cpt_lf *lf)
 	/* Disable CPT completion queue */
 	roc_cpt_cq_disable(lf);
 
-	/* Set command queue base address */
-	len = PLT_ALIGN(lf->cq_size * (ROC_CPT_CQ_ENTRY_SIZE_UNIT << lf->cq_entry_size), ROC_ALIGN);
+	/* Set completion queue (CQ) base address */
+	len = lf->cq_size;
+	if (roc_model_is_cn20k() && lf->cq_all)
+		len++;
+	len = PLT_ALIGN(len * (ROC_CPT_CQ_ENTRY_SIZE_UNIT << lf->cq_entry_size), ROC_ALIGN);
 	lf->cq_vaddr = plt_zmalloc(len, ROC_ALIGN);
 	if (lf->cq_vaddr == NULL)
 		return -ENOMEM;

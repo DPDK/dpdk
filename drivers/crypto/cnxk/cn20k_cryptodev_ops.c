@@ -1429,6 +1429,7 @@ cn20k_cpt_sym_raw_dequeue(void *qptr, uint8_t *drv_ctx, int *dequeue_status,
 	if (unlikely(infl_req->op_flags & CPT_OP_FLAGS_METABUF))
 		rte_mempool_put(qp->meta_info.pool, infl_req->mdata);
 
+	pend_q->tail = pq_tail;
 	*dequeue_status = 1;
 exit:
 	return opaque;
