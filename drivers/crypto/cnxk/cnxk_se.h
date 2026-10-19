@@ -3633,10 +3633,19 @@ prepare_iov_from_raw_vec(struct rte_crypto_vec *vec, struct roc_se_iov_ptr *iove
 	return total_len;
 }
 
-static __rte_always_inline void
+static __rte_always_inline int
 cnxk_raw_burst_to_iov(struct rte_crypto_sym_vec *vec, union rte_crypto_sym_ofs *ofs, int index,
 		      struct cnxk_iov *iov)
 {
+	uint32_t dst_num =
+		(vec->dest_sgl == NULL) ? vec->src_sgl[index].num : vec->dest_sgl[index].num;
+
+	if (unlikely(vec->src_sgl[index].num > ROC_MAX_SG_CNT || dst_num > ROC_MAX_SG_CNT)) {
+		plt_dp_err("Number of segments (src: %u, dst: %u) exceeds max supported (%u)",
+			   vec->src_sgl[index].num, dst_num, ROC_MAX_SG_CNT);
+		return -ENOTSUP;
+	}
+
 	iov->iv_buf = vec->iv[index].va;
 	iov->aad_buf = vec->aad[index].va;
 	iov->mac_buf = vec->digest[index].va;
@@ -3658,13 +3667,21 @@ cnxk_raw_burst_to_iov(struct rte_crypto_sym_vec *vec, union rte_crypto_sym_ofs *
 
 	iov->a_head = ofs->ofs.auth.head;
 	iov->a_tail = ofs->ofs.auth.tail;
+
+	return 0;
 }
 
-static __rte_always_inline void
+static __rte_always_inline int
 cnxk_raw_to_iov(struct rte_crypto_vec *data_vec, uint16_t n_vecs, union rte_crypto_sym_ofs *ofs,
 		struct rte_crypto_va_iova_ptr *iv, struct rte_crypto_va_iova_ptr *digest,
 		struct rte_crypto_va_iova_ptr *aad, struct cnxk_iov *iov)
 {
+	if (unlikely(n_vecs > ROC_MAX_SG_CNT)) {
+		plt_dp_err("Number of segments (%u) exceeds max supported (%u)", n_vecs,
+			   ROC_MAX_SG_CNT);
+		return -ENOTSUP;
+	}
+
 	iov->iv_buf = iv->va;
 	iov->aad_buf = aad->va;
 	iov->mac_buf = digest->va;
@@ -3678,6 +3695,8 @@ cnxk_raw_to_iov(struct rte_crypto_vec *data_vec, uint16_t n_vecs, union rte_cryp
 
 	iov->a_head = ofs->ofs.auth.head;
 	iov->a_tail = ofs->ofs.auth.tail;
+
+	return 0;
 }
 
 static inline void
