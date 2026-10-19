@@ -704,6 +704,13 @@ cn20k_cpt_tls12_trim_mac(struct rte_crypto_op *cop, struct cpt_cn20k_res_s *res,
 	pad_val = ((res->spi >> 16) & 0xff);
 	pad_len = pad_val + 1;
 	trim_len = pad_len + mac_len;
+
+	if (trim_len > m_len) {
+		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
+		cop->aux_flags = res->uc_compcode;
+		return;
+	}
+
 	mac_offset = m_len - trim_len;
 	pad_offset = mac_offset + mac_len;
 
