@@ -329,30 +329,7 @@ ice_fdir_counter_release(struct ice_pf *pf)
 }
 
 static struct ice_fdir_counter *
-ice_fdir_counter_shared_search(struct ice_fdir_counter_pool_container
-					*container,
-			       uint32_t id)
-{
-	struct ice_fdir_counter_pool *pool;
-	struct ice_fdir_counter *counter;
-	int i;
-
-	TAILQ_FOREACH(pool, &container->pool_list, next) {
-		for (i = 0; i < ICE_FDIR_COUNTERS_PER_BLOCK; i++) {
-			counter = &pool->counters[i];
-
-			if (counter->shared &&
-			    counter->ref_cnt &&
-			    counter->id == id)
-				return counter;
-		}
-	}
-
-	return NULL;
-}
-
-static struct ice_fdir_counter *
-ice_fdir_counter_alloc(struct ice_pf *pf, uint32_t shared, uint32_t id)
+ice_fdir_counter_alloc(struct ice_pf *pf)
 {
 	struct ice_hw *hw = ICE_PF_TO_HW(pf);
 	struct ice_fdir_info *fdir_info = &pf->fdir;
@@ -360,18 +337,6 @@ ice_fdir_counter_alloc(struct ice_pf *pf, uint32_t shared, uint32_t id)
 				&fdir_info->counter;
 	struct ice_fdir_counter_pool *pool = NULL;
 	struct ice_fdir_counter *counter_free = NULL;
-
-	if (shared) {
-		counter_free = ice_fdir_counter_shared_search(container, id);
-		if (counter_free) {
-			if (counter_free->ref_cnt + 1 == 0) {
-				rte_errno = E2BIG;
-				return NULL;
-			}
-			counter_free->ref_cnt++;
-			return counter_free;
-		}
-	}
 
 	TAILQ_FOREACH(pool, &container->pool_list, next) {
 		counter_free = TAILQ_FIRST(&pool->counter_list);
@@ -385,9 +350,6 @@ ice_fdir_counter_alloc(struct ice_pf *pf, uint32_t shared, uint32_t id)
 		return NULL;
 	}
 
-	counter_free->shared = shared;
-	counter_free->id = id;
-	counter_free->ref_cnt = 1;
 	counter_free->pool = pool;
 
 	/* reset statistic counter value */
@@ -404,17 +366,14 @@ ice_fdir_counter_alloc(struct ice_pf *pf, uint32_t shared, uint32_t id)
 }
 
 static void
-ice_fdir_counter_free(__rte_unused struct ice_pf *pf,
-		      struct ice_fdir_counter *counter)
+ice_fdir_counter_free(struct ice_fdir_counter *counter)
 {
 	if (!counter)
 		return;
 
-	if (--counter->ref_cnt == 0) {
-		struct ice_fdir_counter_pool *pool = counter->pool;
+	struct ice_fdir_counter_pool *pool = counter->pool;
 
-		TAILQ_INSERT_TAIL(&pool->counter_list, counter, next);
-	}
+	TAILQ_INSERT_TAIL(&pool->counter_list, counter, next);
 }
 
 static int
@@ -1626,9 +1585,7 @@ ice_fdir_create_filter(struct ice_adapter *ad,
 
 	/* alloc counter for FDIR */
 	if (filter->input.cnt_ena) {
-		struct rte_flow_action_count *act_count = &filter->act_count;
-
-		filter->counter = ice_fdir_counter_alloc(pf, 0, act_count->id);
+		filter->counter = ice_fdir_counter_alloc(pf);
 		if (!filter->counter) {
 			rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ACTION, NULL,
@@ -1665,7 +1622,7 @@ ice_fdir_create_filter(struct ice_adapter *ad,
 
 free_counter:
 	if (filter->counter) {
-		ice_fdir_counter_free(pf, filter->counter);
+		ice_fdir_counter_free(filter->counter);
 		filter->counter = NULL;
 	}
 
@@ -1721,7 +1678,7 @@ ice_fdir_destroy_filter(struct ice_adapter *ad,
 	is_tun = ice_fdir_is_tunnel_profile(filter->tunnel_type);
 
 	if (filter->counter) {
-		ice_fdir_counter_free(pf, filter->counter);
+		ice_fdir_counter_free(filter->counter);
 		filter->counter = NULL;
 	}
 
@@ -2844,11 +2801,7 @@ ice_fdir_parse_action(struct ice_fdir_filter_conf *filter,
 		}
 		case RTE_FLOW_ACTION_TYPE_COUNT:
 		{
-			const struct rte_flow_action_count *act_count = act->conf;
-
 			filter->input.cnt_ena = ICE_FXD_FLTR_QW0_STAT_ENA_PKTS;
-			rte_memcpy(&filter->act_count, act_count,
-						sizeof(filter->act_count));
 			break;
 		}
 		default:
