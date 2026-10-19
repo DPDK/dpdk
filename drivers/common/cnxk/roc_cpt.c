@@ -1147,7 +1147,20 @@ exit:
 void
 roc_cpt_cq_enable(struct roc_cpt_lf *lf)
 {
+	union cpt_lf_cq_base lf_cq_base = {.u = 0x0};
+	union cpt_lf_cq_size lf_cq_size = {.u = 0x0};
 	union cpt_lf_cq_ctl lf_cq_ctl = {.u = 0x0};
+	uintptr_t addr;
+
+	/* Disable completion queue */
+	roc_cpt_cq_disable(lf);
+
+	/* Reconfigure CQ base and size, same as cpt_lf_cq_init() */
+	addr = (uintptr_t)lf->cq_vaddr;
+	lf_cq_base.s.addr = addr >> 7;
+	plt_write64(lf_cq_base.u, lf->rbase + CPT_LF_CQ_BASE);
+	lf_cq_size.s.size = lf->cq_size;
+	plt_write64(lf_cq_size.u, lf->rbase + CPT_LF_CQ_SIZE);
 
 	lf_cq_ctl.s.ena = 1;
 	lf_cq_ctl.s.dq_ack_ena = lf->dq_ack_ena;
