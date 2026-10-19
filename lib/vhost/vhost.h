@@ -78,7 +78,7 @@ struct vhost_virtqueue;
 
 typedef void (*vhost_iotlb_remove_notify)(uint64_t addr, uint64_t off, uint64_t size);
 
-typedef int (*vhost_iotlb_miss_cb)(struct virtio_net *dev, uint64_t iova, uint8_t perm);
+typedef int (*vhost_iotlb_miss_cb)(struct virtio_net *dev, int asid, uint64_t iova, uint8_t perm);
 
 typedef int (*vhost_vring_inject_irq_cb)(struct virtio_net *dev, struct vhost_virtqueue *vq);
 /**
@@ -212,6 +212,7 @@ struct __rte_cache_aligned vhost_virtqueue {
 	uint16_t		batch_copy_nb_elems;
 	struct batch_copy_elem	*batch_copy_elems;
 	int			numa_node;
+	int			asid;
 	bool			used_wrap_counter;
 	bool			avail_wrap_counter;
 
@@ -367,6 +368,8 @@ struct inflight_mem_info {
 	uint64_t	size;
 };
 
+#define IOTLB_MAX_ASID 2
+
 /**
  * Device structure contains all configuration information relating
  * to the device.
@@ -388,13 +391,7 @@ struct __rte_cache_aligned virtio_net {
 	int			linearbuf;
 	struct vhost_virtqueue	*virtqueue[VHOST_MAX_VRING];
 
-	rte_rwlock_t	iotlb_pending_lock;
-	struct vhost_iotlb_entry *iotlb_pool;
-	TAILQ_HEAD(, vhost_iotlb_entry) iotlb_list;
-	TAILQ_HEAD(, vhost_iotlb_entry) iotlb_pending_list;
-	int				iotlb_cache_nr;
-	rte_spinlock_t	iotlb_free_lock;
-	SLIST_HEAD(, vhost_iotlb_entry) iotlb_free_list;
+	struct vhost_iotlb	*iotlb[IOTLB_MAX_ASID];
 
 	struct inflight_mem_info *inflight_info;
 #define IF_NAME_SZ (PATH_MAX > IFNAMSIZ ? PATH_MAX : IFNAMSIZ)

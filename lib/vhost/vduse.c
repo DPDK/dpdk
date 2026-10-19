@@ -57,7 +57,7 @@ vduse_iotlb_remove_notify(uint64_t addr, uint64_t offset, uint64_t size)
 }
 
 static int
-vduse_iotlb_miss(struct virtio_net *dev, uint64_t iova, uint8_t perm __rte_unused)
+vduse_iotlb_miss(struct virtio_net *dev, int asid, uint64_t iova, uint8_t perm __rte_unused)
 {
 	struct vduse_iotlb_entry entry;
 	uint64_t size, page_size;
@@ -102,7 +102,7 @@ vduse_iotlb_miss(struct virtio_net *dev, uint64_t iova, uint8_t perm __rte_unuse
 	}
 	page_size = (uint64_t)stat.st_blksize;
 
-	vhost_user_iotlb_cache_insert(dev, entry.start, (uint64_t)(uintptr_t)mmap_addr,
+	vhost_user_iotlb_cache_insert(dev, asid, entry.start, (uint64_t)(uintptr_t)mmap_addr,
 		entry.offset, size, page_size, entry.perm);
 
 	ret = 0;
@@ -398,7 +398,8 @@ vduse_device_stop(struct virtio_net *dev)
 	for (i = 0; i < dev->nr_vring; i++)
 		vduse_vring_cleanup(dev, i);
 
-	vhost_user_iotlb_flush_all(dev);
+	for (i = 0; i < IOTLB_MAX_ASID; i++)
+		vhost_user_iotlb_flush_all(dev, i);
 }
 
 static void
@@ -448,7 +449,7 @@ vduse_events_handler(int fd, void *arg, int *close __rte_unused)
 
 		VHOST_CONFIG_LOG(dev->ifname, INFO, "\tIOVA range: %" PRIx64 " - %" PRIx64,
 				(uint64_t)req.iova.start, (uint64_t)req.iova.last);
-		vhost_user_iotlb_cache_remove(dev, req.iova.start,
+		vhost_user_iotlb_cache_remove(dev, 0, req.iova.start,
 				req.iova.last - req.iova.start + 1);
 
 		/* Invalidate vring translations if affected by this range */
