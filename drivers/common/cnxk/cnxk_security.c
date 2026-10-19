@@ -170,6 +170,10 @@ ot_ipsec_sa_common_param_fill(union roc_ot_ipsec_sa_word2 *w2, uint8_t *cipher_k
 	w2->s.spi = ipsec_xfrm->spi;
 
 	if (key != NULL && length != 0) {
+		if (length > ROC_CTX_MAX_CKEY_LEN) {
+			plt_err("Invalid cipher key length");
+			return -EINVAL;
+		}
 		/* Validate key length and set AES key len before copy to avoid overflow */
 		if (w2->s.enc_type == ROC_IE_SA_ENC_AES_CBC ||
 		    w2->s.enc_type == ROC_IE_SA_ENC_AES_CTR ||
@@ -1012,8 +1016,13 @@ on_fill_ipsec_common_sa(struct rte_security_ipsec_xform *ipsec,
 		}
 	}
 
-	if (cipher_key_len != 0)
+	if (cipher_key_len != 0) {
+		if (cipher_key_len > (int)sizeof(common_sa->cipher_key)) {
+			plt_err("Invalid cipher key length");
+			return -EINVAL;
+		}
 		memcpy(common_sa->cipher_key, cipher_key, cipher_key_len);
+	}
 
 	return 0;
 }
@@ -1403,6 +1412,10 @@ ow_ipsec_sa_common_param_fill(union roc_ow_ipsec_sa_word2 *w2, uint8_t *cipher_k
 	w2->s.spi = ipsec_xfrm->spi;
 
 	if (key != NULL && length != 0) {
+		if (length > ROC_CTX_MAX_CKEY_LEN) {
+			plt_err("Invalid cipher key length");
+			return -EINVAL;
+		}
 		/* Validate key length and set AES key len before copy to avoid overflow */
 		if (w2->s.enc_type == ROC_IE_SA_ENC_AES_CBC ||
 		    w2->s.enc_type == ROC_IE_SA_ENC_AES_CTR ||
