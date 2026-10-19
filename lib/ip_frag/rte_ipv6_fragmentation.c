@@ -89,6 +89,14 @@ rte_ipv6_fragment_packet(struct rte_mbuf *pkt_in,
 		return -EINVAL;
 
 	/*
+	 * Check that the first segment is big enough to hold the IPv6
+	 * header; otherwise in_seg_data_pos starts past its end, the
+	 * difference below underflows and the loop never terminates.
+	 */
+	if (unlikely(pkt_in->data_len < sizeof(struct rte_ipv6_hdr)))
+		return -EINVAL;
+
+	/*
 	 * Ensure the IP payload length of all fragments (except the
 	 * last fragment) are a multiple of 8 bytes per RFC2460.
 	 */
