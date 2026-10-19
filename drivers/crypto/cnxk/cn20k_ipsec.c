@@ -131,17 +131,9 @@ cn20k_ipsec_outb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 
 	rte_atomic_thread_fence(rte_memory_order_seq_cst);
 
-	/* Write session using microcode opcode */
 	ret = roc_cpt_ctx_write(lf, sa_dptr, out_sa, sizeof(struct roc_ow_ipsec_outb_sa));
 	if (ret) {
 		plt_err("Could not write outbound session to hardware");
-		goto sa_free;
-	}
-
-	/* Trigger CTX flush so that data is written back to DRAM */
-	ret = roc_cpt_lf_ctx_flush(lf, out_sa, false);
-	if (ret == -EFAULT) {
-		plt_err("Could not flush outbound session");
 		goto sa_free;
 	}
 
@@ -246,17 +238,9 @@ cn20k_ipsec_inb_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 
 	rte_atomic_thread_fence(rte_memory_order_seq_cst);
 
-	/* Write session using microcode opcode */
 	ret = roc_cpt_ctx_write(lf, sa_dptr, in_sa, sizeof(struct roc_ow_ipsec_inb_sa));
 	if (ret) {
 		plt_err("Could not write inbound session to hardware");
-		goto sa_free;
-	}
-
-	/* Trigger CTX flush so that data is written back to DRAM */
-	ret = roc_cpt_lf_ctx_flush(lf, in_sa, true);
-	if (ret == -EFAULT) {
-		plt_err("Could not flush inbound session");
 		goto sa_free;
 	}
 
@@ -313,9 +297,6 @@ cn20k_sec_ipsec_session_destroy(struct cnxk_cpt_qp *qp, struct cn20k_sec_session
 	if (sa->sa_ptr == NULL)
 		return -EINVAL;
 
-	/* Trigger CTX flush to write dirty data back to DRAM */
-	roc_cpt_lf_ctx_flush(lf, sa->in_sa, false);
-
 	ret = -1;
 
 	if (sess->ipsec.is_outbound) {
@@ -339,11 +320,6 @@ cn20k_sec_ipsec_session_destroy(struct cnxk_cpt_qp *qp, struct cn20k_sec_session
 	plt_free(sa_dptr);
 
 	if (ret) {
-		/* MC write_ctx failed. Attempt reload of CTX */
-
-		/* Wait for 1 ms so that flush is complete */
-		rte_delay_ms(1);
-
 		w2 = (union roc_ow_ipsec_sa_word2 *)&sa->in_sa->w2;
 		w2->s.valid = 0;
 
