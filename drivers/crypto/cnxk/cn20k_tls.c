@@ -446,17 +446,9 @@ cn20k_tls_read_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 
 	rte_atomic_thread_fence(rte_memory_order_seq_cst);
 
-	/* Write session using microcode opcode */
 	ret = roc_cpt_ctx_write(lf, sa_dptr, read_sa, sizeof(struct roc_ie_ow_tls_read_sa));
 	if (ret) {
 		plt_err("Could not write read session to hardware");
-		goto sa_dptr_free;
-	}
-
-	/* Trigger CTX flush so that data is written back to DRAM */
-	ret = roc_cpt_lf_ctx_flush(lf, read_sa, true);
-	if (ret == -EFAULT) {
-		plt_err("Could not flush TLS read session to hardware");
 		goto sa_dptr_free;
 	}
 
@@ -782,17 +774,9 @@ cn20k_tls_write_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 
 	rte_atomic_thread_fence(rte_memory_order_seq_cst);
 
-	/* Write session using microcode opcode */
 	ret = roc_cpt_ctx_write(lf, sa_dptr, write_sa, sizeof(struct roc_ie_ow_tls_write_sa));
 	if (ret) {
 		plt_err("Could not write tls write session to hardware");
-		goto sa_dptr_free;
-	}
-
-	/* Trigger CTX flush so that data is written back to DRAM */
-	ret = roc_cpt_lf_ctx_flush(lf, write_sa, false);
-	if (ret == -EFAULT) {
-		plt_err("Could not flush TLS write session to hardware");
 		goto sa_dptr_free;
 	}
 
@@ -895,9 +879,6 @@ cn20k_sec_tls_session_destroy(struct cnxk_cpt_qp *qp, struct cn20k_sec_session *
 	if (tls->sa_ptr == NULL)
 		return -EINVAL;
 
-	/* Trigger CTX flush to write dirty data back to DRAM */
-	roc_cpt_lf_ctx_flush(lf, tls->read_sa, false);
-
 	if (sess->tls_opt.is_write) {
 		sa_dptr = plt_zmalloc(sizeof(struct roc_ie_ow_tls_write_sa), 8);
 		if (sa_dptr != NULL) {
@@ -908,11 +889,6 @@ cn20k_sec_tls_session_destroy(struct cnxk_cpt_qp *qp, struct cn20k_sec_session *
 			plt_free(sa_dptr);
 		}
 		if (ret) {
-			/* MC write_ctx failed. Attempt reload of CTX */
-
-			/* Wait for 1 ms so that flush is complete */
-			rte_delay_ms(1);
-
 			rte_atomic_thread_fence(rte_memory_order_seq_cst);
 
 			/* Trigger CTX reload to fetch new data from DRAM */
@@ -928,11 +904,6 @@ cn20k_sec_tls_session_destroy(struct cnxk_cpt_qp *qp, struct cn20k_sec_session *
 			plt_free(sa_dptr);
 		}
 		if (ret) {
-			/* MC write_ctx failed. Attempt reload of CTX */
-
-			/* Wait for 1 ms so that flush is complete */
-			rte_delay_ms(1);
-
 			rte_atomic_thread_fence(rte_memory_order_seq_cst);
 
 			/* Trigger CTX reload to fetch new data from DRAM */

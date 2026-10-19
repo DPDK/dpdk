@@ -850,8 +850,10 @@ fail:
 int
 roc_cpt_lf_ctx_flush(struct roc_cpt_lf *lf, void *cptr, bool inval)
 {
+	union cpt_lf_ctx_inval ctx_inval;
 	union cpt_lf_ctx_flush reg;
 	union cpt_lf_ctx_err err;
+	uint64_t *sa;
 
 	if (lf == NULL) {
 		plt_err("Could not trigger CTX flush");
@@ -877,6 +879,17 @@ roc_cpt_lf_ctx_flush(struct roc_cpt_lf *lf, void *cptr, bool inval)
 	if (err.s.flush_st_flt) {
 		plt_err("CTX flush could not complete due to store fault");
 		return -EFAULT;
+	}
+
+	if (inval && roc_model_is_cn20k()) {
+		sa = cptr;
+		/* Clear bit 58 aop_valid */
+		sa[0] &= ~(1ULL << ROC_CN20K_CPT_AOP_VALID_BIT);
+		plt_io_wmb();
+
+		ctx_inval.u = 0;
+		ctx_inval.s.cptr = ((uintptr_t)sa) >> 7;
+		plt_write64(ctx_inval.u, lf->rbase + CPT_LF_CTX_INVAL);
 	}
 
 	return 0;
@@ -1265,9 +1278,8 @@ roc_cpt_lmtline_init(struct roc_cpt *roc_cpt, struct roc_cpt_lmtline *lmtline, i
 	return 0;
 }
 
-int
-roc_cpt_ctx_write(struct roc_cpt_lf *lf, void *sa_dptr, void *sa_cptr,
-		  uint16_t sa_len)
+static int
+cpt_cn10k_ctx_write(struct roc_cpt_lf *lf, void *sa_dptr, void *sa_cptr, uint16_t sa_len)
 {
 	union cpt_res_s res, *hw_res;
 	uint64_t lmt_arg, io_addr;
@@ -1278,13 +1290,8 @@ roc_cpt_ctx_write(struct roc_cpt_lf *lf, void *sa_dptr, void *sa_cptr,
 	uint8_t egrp;
 	int i;
 
-	if (!plt_is_aligned(sa_cptr, ROC_CPTR_ALIGN)) {
-		plt_err("Context pointer should be %dB aligned", ROC_CPTR_ALIGN);
-		return -EINVAL;
-	}
-
-	if (lf == NULL) {
-		plt_err("Invalid CPT LF");
+	if (!plt_is_aligned(sa_cptr, 128)) {
+		plt_err("Context pointer should be 128B aligned");
 		return -EINVAL;
 	}
 
@@ -1361,6 +1368,54 @@ roc_cpt_ctx_write(struct roc_cpt_lf *lf, void *sa_dptr, void *sa_cptr,
 	}
 
 	return 0;
+}
+
+static int
+cpt_cn20k_ctx_write(struct roc_cpt_lf *lf, void *sa_dptr, void *sa_cptr, uint16_t sa_len)
+{
+	union cpt_lf_ctx_inval inval;
+	uintptr_t rbase;
+	uint64_t *sa;
+
+	if (!plt_is_aligned(sa_cptr, 256)) {
+		plt_err("Context pointer should be 256B aligned");
+		return -EINVAL;
+	}
+
+	sa = sa_dptr;
+
+	/* Clear bit 58 aop_valid */
+	sa[0] &= ~(1ULL << ROC_CN20K_CPT_AOP_VALID_BIT);
+	memcpy(sa_cptr, sa_dptr, sa_len);
+	plt_io_wmb();
+
+	/* Trigger CTX invalidate */
+	rbase = lf->rbase;
+	inval.u = 0;
+	inval.s.cptr = ((uintptr_t)sa_cptr) >> 7;
+	plt_write64(inval.u, rbase + CPT_LF_CTX_INVAL);
+
+	/* Set bit 58 aop_valid */
+	sa = sa_cptr;
+	sa[0] |= (1ULL << ROC_CN20K_CPT_AOP_VALID_BIT);
+	plt_io_wmb();
+
+	return 0;
+}
+
+int
+roc_cpt_ctx_write(struct roc_cpt_lf *lf, void *sa_dptr, void *sa_cptr,
+		  uint16_t sa_len)
+{
+	if (lf == NULL) {
+		plt_err("Invalid CPT LF");
+		return -EINVAL;
+	}
+
+	if (roc_model_is_cn20k())
+		return cpt_cn20k_ctx_write(lf, sa_dptr, sa_cptr, sa_len);
+
+	return cpt_cn10k_ctx_write(lf, sa_dptr, sa_cptr, sa_len);
 }
 
 void
