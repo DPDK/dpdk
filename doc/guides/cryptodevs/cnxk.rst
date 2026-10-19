@@ -211,6 +211,22 @@ Runtime Config Options
   With the above configuration, CPT initial context fetch size
   will be set to ``4+1`` 128 bytes blocks.
 
+- ``CPT completion queue enable`` (default ``0``)
+
+  Controls whether the CPT completion queue (CQ) is used for all instructions
+  on CN20K. Can be configured during runtime by using ``cq_ena`` ``devargs``
+  parameter. Accepted values are ``0`` and ``1``.
+
+  When set to ``1``, completions of all instructions are reported through the
+  CQ. When set to ``0``, completions are written to the result address
+  (``res_addr``) of the instruction instead.
+
+  For example::
+
+      -a 0002:20:00.1,cq_ena=1
+
+  With the above configuration, CPT completions are reported through the CPT CQ.
+
 Debugging Options
 -----------------
 
