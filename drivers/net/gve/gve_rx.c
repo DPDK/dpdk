@@ -297,6 +297,16 @@ gve_rx_queue_release(struct rte_eth_dev *dev, uint16_t qid)
 	dev->data->rx_queues[qid] = NULL;
 }
 
+static uint16_t
+gve_rx_buf_len_gqi(struct rte_mempool *pool)
+{
+	uint32_t mbuf_len =
+		rte_pktmbuf_data_room_size(pool) - RTE_PKTMBUF_HEADROOM;
+
+	return RTE_MIN((uint16_t)GVE_RX_MAX_BUF_SIZE_GQI,
+		       RTE_ALIGN_FLOOR(mbuf_len, GVE_RX_BUF_ALIGN_GQI));
+}
+
 int
 gve_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 		uint16_t nb_desc, unsigned int socket_id,
@@ -306,13 +316,26 @@ gve_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 	const struct rte_memzone *mz;
 	struct gve_rx_queue *rxq;
 	uint16_t free_thresh;
-	uint32_t mbuf_len;
+	uint16_t rx_buf_len;
+	uint64_t offloads;
 	int err = 0;
 
 	/* Ring size is required to be a power of two. */
 	if (!rte_is_power_of_2(nb_desc)) {
 		PMD_DRV_LOG(ERR, "Invalid ring size %u. GVE ring size must be a power of 2.",
 			    nb_desc);
+		return -EINVAL;
+	}
+
+	/* A frame larger than one Rx buffer is chained into a multi-segment
+	 * mbuf, which the application must have asked for.
+	 */
+	offloads = dev->data->dev_conf.rxmode.offloads | conf->offloads;
+	rx_buf_len = gve_rx_buf_len_gqi(pool);
+	if (!(offloads & RTE_ETH_RX_OFFLOAD_SCATTER) &&
+	    gve_rx_gqi_needs_scatter(dev->data->mtu, rx_buf_len)) {
+		PMD_DRV_LOG(ERR, "MTU %u needs Rx scatter with %u byte Rx buffers",
+			    dev->data->mtu, rx_buf_len);
 		return -EINVAL;
 	}
 
@@ -351,11 +374,7 @@ gve_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 	rxq->hw = hw;
 	rxq->ntfy_addr = &hw->db_bar[rte_be_to_cpu_32(hw->irq_dbs[rxq->ntfy_id].id)];
 
-	mbuf_len =
-		rte_pktmbuf_data_room_size(rxq->mpool) - RTE_PKTMBUF_HEADROOM;
-	rxq->rx_buf_len =
-		RTE_MIN((uint16_t)GVE_RX_MAX_BUF_SIZE_GQI,
-			RTE_ALIGN_FLOOR(mbuf_len, GVE_RX_BUF_ALIGN_GQI));
+	rxq->rx_buf_len = rx_buf_len;
 
 	/* Allocate software ring */
 	rxq->sw_ring = rte_zmalloc_socket("gve rx sw ring", sizeof(struct rte_mbuf *) * nb_desc,
