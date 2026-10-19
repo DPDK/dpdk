@@ -2670,6 +2670,7 @@ prepare_iov_from_pkt(struct rte_mbuf *pkt, struct roc_se_iov_ptr *iovec, uint32_
 		     const bool is_aead, const bool is_sg_ver2)
 {
 	uint16_t index = 0;
+	uint16_t nb_segs = 0;
 	void *seg_data = NULL;
 	int32_t seg_size = 0;
 
@@ -2678,6 +2679,8 @@ prepare_iov_from_pkt(struct rte_mbuf *pkt, struct roc_se_iov_ptr *iovec, uint32_
 		return 0;
 	}
 
+	nb_segs = pkt->nb_segs;
+
 	if (!start_offset) {
 		seg_data = rte_pktmbuf_mtod(pkt, void *);
 		seg_size = pkt->data_len;
@@ -2685,12 +2688,24 @@ prepare_iov_from_pkt(struct rte_mbuf *pkt, struct roc_se_iov_ptr *iovec, uint32_
 		while (start_offset >= pkt->data_len) {
 			start_offset -= pkt->data_len;
 			pkt = pkt->next;
+			nb_segs--;
+
+			if (unlikely(pkt == NULL)) {
+				plt_dp_err("Start offset beyond end of packet");
+				return 1;
+			}
 		}
 
 		seg_data = rte_pktmbuf_mtod_offset(pkt, void *, start_offset);
 		seg_size = pkt->data_len - start_offset;
 		if (!seg_size)
 			return 1;
+	}
+
+	if (unlikely(nb_segs > ROC_MAX_SG_CNT)) {
+		plt_dp_err("Number of segments (%u) exceeds max supported (%u)", nb_segs,
+			   ROC_MAX_SG_CNT);
+		return 1;
 	}
 
 	/* first seg */
@@ -2717,7 +2732,7 @@ prepare_iov_from_pkt(struct rte_mbuf *pkt, struct roc_se_iov_ptr *iovec, uint32_
 	return 0;
 }
 
-static __rte_always_inline void
+static __rte_always_inline uint32_t
 prepare_iov_from_pkt_inplace(struct rte_mbuf *pkt,
 			     struct roc_se_fc_params *param, uint32_t *flags)
 {
@@ -2725,6 +2740,12 @@ prepare_iov_from_pkt_inplace(struct rte_mbuf *pkt,
 	void *seg_data = NULL;
 	uint32_t seg_size = 0;
 	struct roc_se_iov_ptr *iovec;
+
+	if (unlikely(pkt->nb_segs > ROC_MAX_SG_CNT)) {
+		plt_dp_err("Number of segments (%u) exceeds max supported (%u)", pkt->nb_segs,
+			   ROC_MAX_SG_CNT);
+		return 1;
+	}
 
 	seg_data = rte_pktmbuf_mtod(pkt, void *);
 	seg_size = pkt->data_len;
@@ -2740,7 +2761,7 @@ prepare_iov_from_pkt_inplace(struct rte_mbuf *pkt,
 
 		param->bufs[0].vaddr = seg_data;
 		param->bufs[0].size = seg_size;
-		return;
+		return 0;
 	}
 	iovec = param->src_iov;
 	iovec->bufs[index].vaddr = seg_data;
@@ -2764,7 +2785,7 @@ prepare_iov_from_pkt_inplace(struct rte_mbuf *pkt,
 	}
 
 	iovec->buf_cnt = index;
-	return;
+	return 0;
 }
 
 static __rte_always_inline int
@@ -2816,7 +2837,11 @@ fill_sm_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 
 	if (m_dst == NULL) {
 		fc_params.dst_iov = fc_params.src_iov = (void *)src;
-		prepare_iov_from_pkt_inplace(m_src, &fc_params, &flags);
+		if (unlikely(prepare_iov_from_pkt_inplace(m_src, &fc_params, &flags))) {
+			plt_dp_err("Prepare inplace src iov failed");
+			ret = -EINVAL;
+			goto err_exit;
+		}
 	} else {
 		/* Out of place processing */
 		fc_params.src_iov = (void *)src;
@@ -3017,7 +3042,11 @@ fill_fc_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 		 */
 		fc_params.dst_iov = fc_params.src_iov = (void *)src;
 
-		prepare_iov_from_pkt_inplace(m_src, &fc_params, &flags);
+		if (unlikely(prepare_iov_from_pkt_inplace(m_src, &fc_params, &flags))) {
+			plt_dp_err("Prepare inplace src iov failed");
+			ret = -EINVAL;
+			goto err_exit;
+		}
 
 	} else {
 		/* Out of place processing */
@@ -3165,7 +3194,11 @@ fill_pdcp_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 
 	if (likely(m_dst == NULL || m_src == m_dst)) {
 		fc_params.dst_iov = fc_params.src_iov = (void *)src;
-		prepare_iov_from_pkt_inplace(m_src, &fc_params, &flags);
+		if (unlikely(prepare_iov_from_pkt_inplace(m_src, &fc_params, &flags))) {
+			plt_dp_err("Prepare inplace src iov failed");
+			ret = -EINVAL;
+			goto err_exit;
+		}
 	} else {
 		/* Out of place processing */
 
@@ -3298,7 +3331,11 @@ fill_pdcp_chain_params(struct rte_crypto_op *cop, struct cnxk_se_sess *sess,
 
 	if (likely((m_dst == NULL || m_dst == m_src)) && inplace) {
 		fc_params.dst_iov = fc_params.src_iov = (void *)src;
-		prepare_iov_from_pkt_inplace(m_src, &fc_params, &flags);
+		if (unlikely(prepare_iov_from_pkt_inplace(m_src, &fc_params, &flags))) {
+			plt_dp_err("Could not prepare inplace src iov");
+			ret = -EINVAL;
+			goto err_exit;
+		}
 	} else {
 		/* Out of place processing */
 		fc_params.src_iov = (void *)src;
