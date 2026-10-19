@@ -108,6 +108,8 @@ struct crypto_adpter_info {
 struct cnxk_cpt_qp {
 	struct roc_cpt_lf lf;
 	/**< Crypto LF */
+	bool inst_cq_ena;
+	/**< Set CQ enable bit on instructions */
 	struct pending_queue pend_q;
 	/**< Pending queue */
 	struct roc_cpt_lmtline lmtline;

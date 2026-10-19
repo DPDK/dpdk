@@ -704,10 +704,12 @@ cpt_lf_cq_init(struct roc_cpt_lf *lf)
 	/* Disable CPT completion queue */
 	roc_cpt_cq_disable(lf);
 
-	/* Set completion queue (CQ) base address */
-	len = lf->cq_size;
-	if (roc_model_is_cn20k() && lf->cq_all)
-		len++;
+	/* Set completion queue (CQ) base address.
+	 * On CN20K the pending-queue pointer (req_queue) is always positioned
+	 * at cq_vaddr + 1 entry so that the hardware-managed reserved slot
+	 * sits at cq_vaddr[0].  Allocate the extra entry unconditionally.
+	 */
+	len = lf->cq_size + 1;
 	len = PLT_ALIGN(len * (ROC_CPT_CQ_ENTRY_SIZE_UNIT << lf->cq_entry_size), ROC_ALIGN);
 	lf->cq_vaddr = plt_zmalloc(len, ROC_ALIGN);
 	if (lf->cq_vaddr == NULL)

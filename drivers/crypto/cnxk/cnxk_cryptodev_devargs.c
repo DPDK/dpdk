@@ -14,6 +14,7 @@
 #define CNXK_RX_INJECT_QP      "rx_inject_qp"
 #define CNXK_CPT_CTX_ILEN      "ctx_ilen"
 #define CNXK_MAX_CPT_CTX_ILEN  7
+#define CNXK_CPT_CQ_ENA	       "cq_ena"
 
 static int
 parse_rx_inject_qp(const char *key, const char *value, void *extra_args)
@@ -82,6 +83,21 @@ parse_cpt_ctx_ilen(const char *key, const char *value, void *extra_args)
 	return 0;
 }
 
+static int
+parse_cpt_cq_ena(const char *key, const char *value, void *extra_args)
+{
+	RTE_SET_USED(key);
+	uint32_t val;
+
+	val = atoi(value);
+	if (val > 1)
+		return -EINVAL;
+
+	*(bool *)extra_args = val ? true : false;
+
+	return 0;
+}
+
 int
 cnxk_cpt_parse_devargs(struct rte_devargs *devargs, struct cnxk_cpt_vf *vf)
 {
@@ -89,6 +105,7 @@ cnxk_cpt_parse_devargs(struct rte_devargs *devargs, struct cnxk_cpt_vf *vf)
 	struct rte_kvargs *kvlist;
 	uint16_t rx_inject_qp;
 	uint16_t ctx_ilen = 0;
+	bool cq_ena = false;
 	int rc;
 
 	/* Set to max value as default so that the feature is disabled by default. */
@@ -126,16 +143,25 @@ cnxk_cpt_parse_devargs(struct rte_devargs *devargs, struct cnxk_cpt_vf *vf)
 		goto exit;
 	}
 
+	rc = rte_kvargs_process(kvlist, CNXK_CPT_CQ_ENA, parse_cpt_cq_ena, &cq_ena);
+	if (rc < 0) {
+		plt_err("cq_ena should be 0 or 1");
+		rte_kvargs_free(kvlist);
+		goto exit;
+	}
+
 	rte_kvargs_free(kvlist);
 
 null_devargs:
 	vf->max_qps_limit = max_qps_limit;
 	vf->rx_inject_qp = rx_inject_qp;
 	vf->cpt.ctx_ilen = ctx_ilen;
+	vf->cq_ena = cq_ena;
 	return 0;
 
 exit:
 	return -EINVAL;
 }
 
-RTE_PMD_REGISTER_PARAM_STRING(crypto_cnxk, CNXK_MAX_QPS_LIMIT "=<1-63>");
+RTE_PMD_REGISTER_PARAM_STRING(crypto_cnxk, CNXK_MAX_QPS_LIMIT "=<1-63> " CNXK_CPT_CQ_ENA
+							      "=<0-1> " CNXK_CPT_CTX_ILEN "=<0-7>");

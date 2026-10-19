@@ -39,6 +39,7 @@ struct cnxk_cpt_vf {
 	uint16_t max_qps_limit;
 	uint16_t rx_inject_qp;
 	uint8_t ctx_ilen;
+	bool cq_ena;
 };
 
 uint64_t cnxk_cpt_default_ff_get(void);
