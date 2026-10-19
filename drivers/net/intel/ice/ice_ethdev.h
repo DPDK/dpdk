@@ -389,7 +389,6 @@ struct ice_fdir_filter_conf {
 	enum ice_fdir_tunnel_type tunnel_type;
 
 	struct ice_fdir_counter *counter; /* flow specific counter context */
-	struct rte_flow_action_count act_count;
 
 	uint64_t input_set_o; /* used for non-tunnel or tunnel outer fields */
 	uint64_t input_set_i; /* only for tunnel inner fields */
@@ -431,9 +430,6 @@ struct ice_fdir_counter_pool;
 struct ice_fdir_counter {
 	TAILQ_ENTRY(ice_fdir_counter) next;
 	struct ice_fdir_counter_pool *pool;
-	uint8_t shared;
-	uint32_t ref_cnt;
-	uint32_t id;
 	uint64_t hits;
 	uint64_t bytes;
 	uint32_t hw_index;
