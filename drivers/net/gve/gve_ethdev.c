@@ -897,6 +897,11 @@ gve_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
 
 	dev_info->rx_offload_capa = RTE_ETH_RX_OFFLOAD_RSS_HASH;
+	/* GQI receives a frame larger than one Rx buffer as a chain of
+	 * buffers (gve_rx_burst follows GVE_RXF_PKT_CONT).
+	 */
+	if (gve_is_gqi(priv))
+		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_SCATTER;
 	if (priv->clk_read_type != GVE_DEV_CLK_UNSUPPORTED &&
 	    priv->nic_ts_report_mz != NULL)
 		dev_info->rx_offload_capa |= RTE_ETH_RX_OFFLOAD_TIMESTAMP;
