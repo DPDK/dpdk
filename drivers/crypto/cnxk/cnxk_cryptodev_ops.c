@@ -1294,7 +1294,7 @@ rte_pmd_cnxk_crypto_cptr_get(struct rte_pmd_cnxk_crypto_sess *rte_sess)
 		if (roc_model_is_cn20k()) {
 			struct cn20k_sec_session *sec_sess = PLT_PTR_CAST(rte_sess->sec_sess);
 
-			return PLT_PTR_CAST(&sec_sess->sa);
+			return PLT_PTR_CAST(sec_sess->sa.sa_ptr);
 		}
 
 		if (roc_model_is_cn10k()) {
