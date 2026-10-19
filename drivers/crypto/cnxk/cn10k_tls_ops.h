@@ -260,6 +260,12 @@ process_tls_read(struct rte_crypto_op *cop, struct cn10k_sec_session *sess,
 		uint32_t dlen;
 		int i;
 
+		if (unlikely(pkt_len < tail_len)) {
+			plt_dp_err("Invalid TLS record: pkt_len %d < tail_len %d", pkt_len,
+				   tail_len);
+			return -EINVAL;
+		}
+
 		if (unlikely(m_src->nb_segs > ROC_SG1_MAX_PTRS)) {
 			plt_dp_err("Exceeds max supported components. Reduce segments");
 			return -1;
@@ -319,6 +325,12 @@ process_tls_read(struct rte_crypto_op *cop, struct cn10k_sec_session *sess,
 		union cpt_inst_w6 cpt_inst_w6;
 		uint32_t g_size_bytes;
 		int i;
+
+		if (unlikely(pkt_len < tail_len)) {
+			plt_dp_err("Invalid TLS record: pkt_len %d < tail_len %d", pkt_len,
+				   tail_len);
+			return -EINVAL;
+		}
 
 		if (unlikely(m_src->nb_segs > ROC_SG2_MAX_PTRS)) {
 			plt_dp_err("Exceeds max supported components. Reduce segments");
