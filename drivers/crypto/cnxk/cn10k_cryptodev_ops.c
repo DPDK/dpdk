@@ -943,7 +943,7 @@ cn10k_cpt_tls12_trim_mac(struct rte_crypto_op *cop, struct cpt_cn10k_res_s *res,
 	pad_len = pad_val + 1;
 	trim_len = pad_len + mac_len;
 
-	if (trim_len > m_len) {
+	if (trim_len > m_len || m_len > mbuf->pkt_len) {
 		cop->status = RTE_CRYPTO_OP_STATUS_ERROR;
 		cop->aux_flags = res->uc_compcode;
 		return;
