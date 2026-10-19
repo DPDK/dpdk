@@ -71,7 +71,7 @@ vduse_iotlb_remove_notify(uint64_t addr, uint64_t offset, uint64_t size)
 static int
 vduse_iotlb_miss(struct virtio_net *dev, int asid, uint64_t iova, uint8_t perm __rte_unused)
 {
-	struct vduse_iotlb_entry entry;
+	struct vduse_iotlb_entry_v2 entry = {};
 	uint64_t size, page_size;
 	struct stat stat;
 	void *mmap_addr;
@@ -79,8 +79,13 @@ vduse_iotlb_miss(struct virtio_net *dev, int asid, uint64_t iova, uint8_t perm _
 
 	entry.start = iova;
 	entry.last = iova + 1;
+	entry.asid = asid;
 
-	ret = ioctl(dev->vduse_dev_fd, VDUSE_IOTLB_GET_FD, &entry);
+	if (dev->vduse_api_ver < 1) {
+		ret = ioctl(dev->vduse_dev_fd, VDUSE_IOTLB_GET_FD, &entry);
+	} else {
+		ret = ioctl(dev->vduse_dev_fd, VDUSE_IOTLB_GET_FD2, &entry);
+	}
 	if (ret < 0) {
 		VHOST_CONFIG_LOG(dev->ifname, ERR, "Failed to get IOTLB entry for 0x%" PRIx64,
 				iova);
@@ -90,6 +95,7 @@ vduse_iotlb_miss(struct virtio_net *dev, int asid, uint64_t iova, uint8_t perm _
 	fd = ret;
 
 	VHOST_CONFIG_LOG(dev->ifname, DEBUG, "New IOTLB entry:");
+	VHOST_CONFIG_LOG(dev->ifname, DEBUG, "\tASID: %d", entry.asid);
 	VHOST_CONFIG_LOG(dev->ifname, DEBUG, "\tIOVA: %" PRIx64 " - %" PRIx64,
 			(uint64_t)entry.start, (uint64_t)entry.last);
 	VHOST_CONFIG_LOG(dev->ifname, DEBUG, "\toffset: %" PRIx64, (uint64_t)entry.offset);
@@ -458,27 +464,48 @@ vduse_events_handler(int fd, void *arg, int *close __rte_unused)
 		break;
 	case VDUSE_UPDATE_IOTLB: {
 		struct vhost_iotlb_msg imsg;
+		uint64_t start, last;
+		uint32_t asid;
 		uint32_t i;
 
-		VHOST_CONFIG_LOG(dev->ifname, INFO, "\tIOVA range: %" PRIx64 " - %" PRIx64,
-				(uint64_t)req.iova.start, (uint64_t)req.iova.last);
-		vhost_user_iotlb_cache_remove(dev, 0, req.iova.start,
-				req.iova.last - req.iova.start + 1);
+		if (dev->vduse_api_ver < 1) {
+			start = req.iova.start;
+			last = req.iova.last;
+			asid = 0;
+		} else {
+			start = req.iova_v2.start;
+			last = req.iova_v2.last;
+			asid = req.iova_v2.asid;
+		}
+
+		if (asid >= RTE_DIM(dev->iotlb)) {
+			VHOST_CONFIG_LOG(dev->ifname, ERR,
+				"Invalid ASID %u in IOTLB update", asid);
+			resp.result = VDUSE_REQ_RESULT_FAILED;
+			break;
+		}
+
+		VHOST_CONFIG_LOG(dev->ifname, INFO, "\t(ASID %d) IOVA range: %" PRIx64 " - %" PRIx64,
+			asid, start, last);
+		vhost_user_iotlb_cache_remove(dev, asid, start, last - start + 1);
 
 		/* Invalidate vring translations if affected by this range */
-		imsg.iova = req.iova.start;
-		imsg.size = req.iova.last - req.iova.start + 1;
+		imsg.iova = start;
+		imsg.size = last - start + 1;
 
 		for (i = 0; i < dev->nr_vring; i++) {
-			vq = dev->virtqueue[i];
+		        vq = dev->virtqueue[i];
 
 			if (!vq)
 				continue;
 
+			if ((uint32_t)vq->asid != asid)
+				continue;
+
 			if (is_vring_iotlb(dev, vq, &imsg)) {
-				rte_rwlock_write_lock(&vq->access_lock);
-				vring_invalidate(dev, vq);
-				rte_rwlock_write_unlock(&vq->access_lock);
+			        rte_rwlock_write_lock(&vq->access_lock);
+			        vring_invalidate(dev, vq);
+			        rte_rwlock_write_unlock(&vq->access_lock);
 			}
 		}
 
