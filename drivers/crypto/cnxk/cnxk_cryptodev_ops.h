@@ -227,7 +227,7 @@ static __rte_always_inline bool
 hw_ctx_cache_enable(void)
 {
 	return roc_errata_cpt_hang_on_mixed_ctx_val() || roc_model_is_cn10ka_b0() ||
-	       roc_model_is_cn10kb_a0();
+	       roc_model_is_cn10kb_a0() || roc_model_is_cn20k();
 }
 
 static inline uint64_t
