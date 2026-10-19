@@ -249,19 +249,25 @@ tls_read_sa_fill(struct roc_ie_ow_tls_read_sa *read_sa,
 	if (crypto_xfrm->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
 		length = crypto_xfrm->aead.key.length;
 		if (crypto_xfrm->aead.algo == RTE_CRYPTO_AEAD_AES_GCM) {
+			if (length != 16 && length != 32)
+				return -EINVAL;
 			read_sa->w2.s.cipher_select = ROC_IE_OW_TLS_CIPHER_AES_GCM;
 			if (length == 16)
 				read_sa->w2.s.aes_key_len = ROC_IE_OW_TLS_AES_KEY_LEN_128;
 			else
 				read_sa->w2.s.aes_key_len = ROC_IE_OW_TLS_AES_KEY_LEN_256;
-		}
-
-		if (crypto_xfrm->aead.algo == RTE_CRYPTO_AEAD_CHACHA20_POLY1305) {
+		} else if (crypto_xfrm->aead.algo == RTE_CRYPTO_AEAD_CHACHA20_POLY1305) {
+			if (length != 32)
+				return -EINVAL;
 			read_sa->w2.s.cipher_select = ROC_IE_OW_TLS_CIPHER_CHACHA_POLY;
 			read_sa->w2.s.aes_key_len = ROC_IE_OW_TLS_AES_KEY_LEN_256;
+		} else {
+			return -EINVAL;
 		}
 
 		key = crypto_xfrm->aead.key.data;
+		if (key == NULL)
+			return -EINVAL;
 		memcpy(cipher_key, key, length);
 
 		if (tls_ver == RTE_SECURITY_VERSION_TLS_1_2)
@@ -286,6 +292,8 @@ tls_read_sa_fill(struct roc_ie_ow_tls_read_sa *read_sa,
 		if (cipher_xfrm->cipher.algo == RTE_CRYPTO_CIPHER_3DES_CBC) {
 			read_sa->w2.s.cipher_select = ROC_IE_OW_TLS_CIPHER_3DES;
 			length = cipher_xfrm->cipher.key.length;
+			if (length != 24)
+				return -EINVAL;
 		} else if (cipher_xfrm->cipher.algo == RTE_CRYPTO_CIPHER_AES_CBC) {
 			read_sa->w2.s.cipher_select = ROC_IE_OW_TLS_CIPHER_AES_CBC;
 			length = cipher_xfrm->cipher.key.length;
@@ -300,6 +308,8 @@ tls_read_sa_fill(struct roc_ie_ow_tls_read_sa *read_sa,
 		}
 
 		key = cipher_xfrm->cipher.key.data;
+		if (key == NULL || length == 0)
+			return -EINVAL;
 		memcpy(cipher_key, key, length);
 	}
 
@@ -576,18 +586,25 @@ tls_write_sa_fill(struct roc_ie_ow_tls_write_sa *write_sa,
 	if (crypto_xfrm->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
 		length = crypto_xfrm->aead.key.length;
 		if (crypto_xfrm->aead.algo == RTE_CRYPTO_AEAD_AES_GCM) {
+			if (length != 16 && length != 32)
+				return -EINVAL;
 			write_sa->w2.s.cipher_select = ROC_IE_OW_TLS_CIPHER_AES_GCM;
 			if (length == 16)
 				write_sa->w2.s.aes_key_len = ROC_IE_OW_TLS_AES_KEY_LEN_128;
 			else
 				write_sa->w2.s.aes_key_len = ROC_IE_OW_TLS_AES_KEY_LEN_256;
-		}
-		if (crypto_xfrm->aead.algo == RTE_CRYPTO_AEAD_CHACHA20_POLY1305) {
+		} else if (crypto_xfrm->aead.algo == RTE_CRYPTO_AEAD_CHACHA20_POLY1305) {
+			if (length != 32)
+				return -EINVAL;
 			write_sa->w2.s.cipher_select = ROC_IE_OW_TLS_CIPHER_CHACHA_POLY;
 			write_sa->w2.s.aes_key_len = ROC_IE_OW_TLS_AES_KEY_LEN_256;
+		} else {
+			return -EINVAL;
 		}
 
 		key = crypto_xfrm->aead.key.data;
+		if (key == NULL)
+			return -EINVAL;
 		memcpy(cipher_key, key, length);
 
 		if (tls_ver == RTE_SECURITY_VERSION_TLS_1_2)
@@ -612,6 +629,8 @@ tls_write_sa_fill(struct roc_ie_ow_tls_write_sa *write_sa,
 		if (cipher_xfrm->cipher.algo == RTE_CRYPTO_CIPHER_3DES_CBC) {
 			write_sa->w2.s.cipher_select = ROC_IE_OW_TLS_CIPHER_3DES;
 			length = cipher_xfrm->cipher.key.length;
+			if (length != 24)
+				return -EINVAL;
 		} else if (cipher_xfrm->cipher.algo == RTE_CRYPTO_CIPHER_AES_CBC) {
 			write_sa->w2.s.cipher_select = ROC_IE_OW_TLS_CIPHER_AES_CBC;
 			length = cipher_xfrm->cipher.key.length;
@@ -626,10 +645,9 @@ tls_write_sa_fill(struct roc_ie_ow_tls_write_sa *write_sa,
 		}
 
 		key = cipher_xfrm->cipher.key.data;
-		if (key != NULL && length != 0) {
-			/* Copy encryption key */
-			memcpy(cipher_key, key, length);
-		}
+		if (key == NULL)
+			return -EINVAL;
+		memcpy(cipher_key, key, length);
 	}
 
 	if (auth_xfrm != NULL) {
@@ -716,7 +734,6 @@ cn20k_tls_write_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 		plt_err("Couldn't allocate memory for WRITE SA");
 		return -ENOMEM;
 	}
-	tls->write_sa = write_sa;
 
 	/* Allocate memory to be used as dptr for CPT ucode WRITE_SA op */
 	sa_dptr = plt_zmalloc(sizeof(struct roc_ie_ow_tls_write_sa), 8);
@@ -782,6 +799,9 @@ cn20k_tls_write_sa_create(struct roc_cpt *roc_cpt, struct roc_cpt_lf *lf,
 
 	rte_atomic_thread_fence(rte_memory_order_seq_cst);
 
+	if (tls->write_sa != NULL)
+		rte_free(tls->write_sa);
+	tls->write_sa = write_sa;
 sa_dptr_free:
 	plt_free(sa_dptr);
 sa_cptr_free:
@@ -833,6 +853,10 @@ cn20k_tls_record_session_update(struct cnxk_cpt_vf *vf, struct cnxk_cpt_qp *qp,
 
 	if (conf->tls_record.type == RTE_SECURITY_TLS_SESS_TYPE_READ)
 		return -ENOTSUP;
+
+	ret = cnxk_tls_xform_verify(&conf->tls_record, conf->crypto_xform);
+	if (ret)
+		return ret;
 
 	roc_cpt = &vf->cpt;
 	ret = cn20k_tls_write_sa_create(roc_cpt, &qp->lf, &conf->tls_record, conf->crypto_xform,
