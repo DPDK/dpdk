@@ -456,6 +456,15 @@ gve_is_gqi(struct gve_priv *priv)
 		priv->queue_format == GVE_GQI_QPL_FORMAT;
 }
 
+/* GQI places GVE_RX_PAD bytes ahead of the frame in its first Rx buffer
+ * and chains the rest of a larger frame into further buffers.
+ */
+static inline bool
+gve_rx_gqi_needs_scatter(uint16_t mtu, uint16_t rx_buf_len)
+{
+	return (uint32_t)mtu + RTE_ETHER_HDR_LEN + GVE_RX_PAD > rx_buf_len;
+}
+
 static inline bool
 gve_get_admin_queue_ok(struct gve_priv *priv)
 {
