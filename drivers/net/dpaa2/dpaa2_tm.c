@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause
- * Copyright 2020-2024 NXP
+ * Copyright 2020-2026 NXP
  */
 
 #include <rte_ethdev.h>
@@ -10,13 +10,19 @@
 #include "dpaa2_pmd_logs.h"
 #include <dpaa2_hw_dpio.h>
 
-#define DPAA2_BURST_MAX	(64 * 1024)
-
 #define DPAA2_SHAPER_MIN_RATE 0
 #define DPAA2_SHAPER_MAX_RATE 107374182400ull
 #define DPAA2_WEIGHT_MAX 24701
 #define DPAA2_PKT_ADJUST_LEN_MIN 0
 #define DPAA2_PKT_ADJUST_LEN_MAX 0x7ff
+
+static inline uint32_t dpaa2_get_burst_max(struct dpaa2_dev_priv *priv)
+{
+	if (dpaa2_dev_cmp_dpni_ver(priv, 8, 7) >= 0)
+		return (dpaa2_svr_family == SVR_LX2160A) ? 229375 : 0xF7FF;
+
+	return 0xF7FF;
+}
 
 int
 dpaa2_tm_init(struct rte_eth_dev *dev)
@@ -283,7 +289,7 @@ dpaa2_shaper_profile_add(struct rte_eth_dev *dev, uint32_t shaper_profile_id,
 				RTE_TM_ERROR_TYPE_SHAPER_PROFILE_PEAK_RATE,
 				NULL, "committed rate is out of range\n");
 
-	if (params->committed.size > DPAA2_BURST_MAX)
+	if (params->committed.size > dpaa2_get_burst_max(priv))
 		return -rte_tm_error_set(error, EINVAL,
 				RTE_TM_ERROR_TYPE_SHAPER_PROFILE_PEAK_SIZE,
 				NULL, "committed size is out of range\n");
@@ -293,7 +299,7 @@ dpaa2_shaper_profile_add(struct rte_eth_dev *dev, uint32_t shaper_profile_id,
 				RTE_TM_ERROR_TYPE_SHAPER_PROFILE_PEAK_RATE,
 				NULL, "Peak rate is out of range\n");
 
-	if (params->peak.size > DPAA2_BURST_MAX)
+	if (params->peak.size > dpaa2_get_burst_max(priv))
 		return -rte_tm_error_set(error, EINVAL,
 				RTE_TM_ERROR_TYPE_SHAPER_PROFILE_PEAK_SIZE,
 				NULL, "Peak size is out of range\n");
