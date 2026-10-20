@@ -410,20 +410,33 @@ install_to_dp(struct rte_trie_tbl *dp, const struct rte_ipv6_addr *ledge,
 			break;
 	}
 
+	/*
+	 * A range covering a whole tbl8 is a single entry one level up.
+	 * Write that entry rather than build a tbl8 only to recycle it.
+	 */
+	if (common_bytes >= TBL24_BYTES) {
+		for (i = common_bytes; i <= IPV6_MAX_IDX; i++) {
+			if (ledge->a[i] != 0 || redge.a[i] != UINT8_MAX)
+				break;
+		}
+		if (i > IPV6_MAX_IDX)
+			common_bytes--;
+	}
+
 	ret = build_common_root(dp, ledge, common_bytes, &common_root_tbl);
 	if (unlikely(ret != 0))
 		return ret;
 	/*first uncommon tbl8 byte idx*/
 	uint8_t first_tbl8_byte = RTE_MAX(common_bytes, TBL24_BYTES);
 
-	for (i = IPV6_MAX_IDX; i > first_tbl8_byte; i--) {
+	for (i = IPV6_MAX_IDX; i >= first_tbl8_byte + !(common_bytes < 3); i--) {
 		if (ledge->a[i] != 0)
 			break;
 	}
 
 	llen = i - first_tbl8_byte + (common_bytes < 3);
 
-	for (i = IPV6_MAX_IDX; i > first_tbl8_byte; i--) {
+	for (i = IPV6_MAX_IDX; i >= first_tbl8_byte + !(common_bytes < 3); i--) {
 		if (redge.a[i] != UINT8_MAX)
 			break;
 	}
