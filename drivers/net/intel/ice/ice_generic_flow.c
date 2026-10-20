@@ -2209,22 +2209,15 @@ ice_pattern_is_supported(__rte_unused struct ice_adapter *ad,
 	return false;
 }
 
-struct ice_pattern_match_item *
+int
 ice_search_pattern_match_item(struct ice_adapter *ad,
 			      const struct rte_flow_item pattern[],
 			      struct ice_pattern_match_item *array,
 			      uint32_t array_len,
+			      struct ice_pattern_match_item *match,
 			      struct rte_flow_error *error)
 {
-	struct ice_pattern_match_item *pattern_match_item;
 	uint16_t i = 0;
-
-	pattern_match_item = calloc(1, sizeof(struct ice_pattern_match_item));
-	if (!pattern_match_item) {
-		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
-				NULL, "Failed to allocate memory.");
-		return NULL;
-	}
 
 	if (!ice_pattern_is_supported(ad, pattern))
 		goto unsupported;
@@ -2232,22 +2225,14 @@ ice_search_pattern_match_item(struct ice_adapter *ad,
 	for (i = 0; i < array_len; i++) {
 		if (ice_match_pattern(array[i].pattern_list,
 				      pattern)) {
-			pattern_match_item->input_set_mask_o =
-				array[i].input_set_mask_o;
-			pattern_match_item->input_set_mask_i =
-				array[i].input_set_mask_i;
-			pattern_match_item->pattern_list =
-				array[i].pattern_list;
-			pattern_match_item->meta = array[i].meta;
-			return pattern_match_item;
+			*match = array[i];
+			return 0;
 		}
 	}
 
 unsupported:
-	rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
+	return rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
 			   pattern, "Unsupported pattern");
-	free(pattern_match_item);
-	return NULL;
 }
 
 static bool

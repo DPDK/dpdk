@@ -1755,7 +1755,7 @@ ice_switch_parse_pattern_action(struct ice_adapter *ad,
 	uint16_t vlan_num = 0;
 	enum ice_sw_tunnel_type tun_type =
 			ICE_NON_TUN;
-	struct ice_pattern_match_item *pattern_match_item = NULL;
+	struct ice_pattern_match_item pattern_match_item;
 	struct ci_flow_attr_check_param attr_param = {
 		.allow_priority = true,
 	};
@@ -1848,10 +1848,9 @@ ice_switch_parse_pattern_action(struct ice_adapter *ad,
 		goto error;
 	}
 
-	pattern_match_item =
-		ice_search_pattern_match_item(ad, pattern, array, array_len,
-					      error);
-	if (!pattern_match_item) {
+	ret = ice_search_pattern_match_item(ad, pattern, array, array_len,
+					    &pattern_match_item, error);
+	if (ret != 0) {
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 				   "Invalid input pattern");
@@ -1859,7 +1858,7 @@ ice_switch_parse_pattern_action(struct ice_adapter *ad,
 	}
 
 	if (!ice_switch_parse_pattern(pattern, error, list, &lkups_num,
-				   &tun_type, pattern_match_item)) {
+				   &tun_type, &pattern_match_item)) {
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
 				   pattern,
@@ -1890,14 +1889,11 @@ ice_switch_parse_pattern_action(struct ice_adapter *ad,
 		rte_free(sw_meta_ptr);
 	}
 
-	free(pattern_match_item);
-
 	return 0;
 
 error:
 	rte_free(list);
 	rte_free(sw_meta_ptr);
-	free(pattern_match_item);
 
 	return -rte_errno;
 }
