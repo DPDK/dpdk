@@ -1904,7 +1904,7 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 	struct ice_parser_result rslt;
 	uint8_t item_num = 0;
 
-	for (item = pattern; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
+	ICE_FLOW_FOREACH_ITEM(item, pattern) {
 		if (item->type == RTE_FLOW_ITEM_TYPE_VXLAN)
 			tunnel_type = ICE_FDIR_TUNNEL_TYPE_VXLAN;
 		if (item->type == RTE_FLOW_ITEM_TYPE_L2TPV2)
@@ -1922,7 +1922,7 @@ ice_fdir_parse_pattern(__rte_unused struct ice_adapter *ad,
 	/* This loop parse flow pattern and distinguish Non-tunnel and tunnel
 	 * flow. input_set_i is used for inner part.
 	 */
-	for (item = pattern; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
+	ICE_FLOW_FOREACH_ITEM(item, pattern) {
 		item_type = item->type;
 
 		if (item->last && !(item_type == RTE_FLOW_ITEM_TYPE_IPV4 ||
@@ -2065,7 +2065,7 @@ raw_error:
 			if (!rte_is_zero_ether_addr(&eth_mask->hdr.src_addr))
 				*input_set |= ICE_INSET_SMAC;
 
-			next_type = (item + 1)->type;
+			next_type = ice_pattern_skip_void(item + 1)->type;
 			/* Ignore this field except for ICE_FLTR_PTYPE_NON_IP_L2 */
 			if (eth_mask->hdr.ether_type == RTE_BE16(0xffff) &&
 			    next_type == RTE_FLOW_ITEM_TYPE_END) {
@@ -2470,8 +2470,6 @@ raw_error:
 				p_v6->dst_port = sctp_spec->hdr.dst_port;
 				p_v6->src_port = sctp_spec->hdr.src_port;
 			}
-			break;
-		case RTE_FLOW_ITEM_TYPE_VOID:
 			break;
 		case RTE_FLOW_ITEM_TYPE_VXLAN:
 			l3 = RTE_FLOW_ITEM_TYPE_END;

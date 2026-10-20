@@ -569,6 +569,20 @@ struct ice_flow_parser_node {
 void ice_register_flow_engine(struct ice_flow_engine *engine);
 int ice_flow_init(struct ice_adapter *ad);
 void ice_flow_uninit(struct ice_adapter *ad);
+
+static inline const struct rte_flow_item *
+ice_pattern_skip_void(const struct rte_flow_item *item)
+{
+	while (item->type == RTE_FLOW_ITEM_TYPE_VOID)
+		item++;
+	return item;
+}
+
+#define ICE_FLOW_FOREACH_ITEM(item, pattern) \
+	for ((item) = ice_pattern_skip_void(pattern); \
+	     (item)->type != RTE_FLOW_ITEM_TYPE_END; \
+	     (item) = ice_pattern_skip_void((item) + 1))
+
 struct ice_pattern_match_item *
 ice_search_pattern_match_item(struct ice_adapter *ad,
 			      const struct rte_flow_item pattern[],

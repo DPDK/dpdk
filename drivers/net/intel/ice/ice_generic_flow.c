@@ -2109,16 +2109,15 @@ static bool
 ice_match_pattern(enum rte_flow_item_type *item_array,
 		const struct rte_flow_item *pattern)
 {
-	const struct rte_flow_item *item = pattern;
+	const struct rte_flow_item *item;
 
-	while ((*item_array == item->type) &&
-	       (*item_array != RTE_FLOW_ITEM_TYPE_END)) {
+	ICE_FLOW_FOREACH_ITEM(item, pattern) {
+		if (*item_array != item->type)
+			return false;
 		item_array++;
-		item++;
 	}
 
-	return (*item_array == RTE_FLOW_ITEM_TYPE_END &&
-		item->type == RTE_FLOW_ITEM_TYPE_END);
+	return *item_array == RTE_FLOW_ITEM_TYPE_END;
 }
 
 struct ice_ptype_match {
