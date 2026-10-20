@@ -1106,6 +1106,7 @@ int dpni_set_tx_shaping(struct fsl_mc_io *mc_io,
 {
 	struct dpni_cmd_set_tx_shaping *cmd_params;
 	struct mc_command cmd = { 0 };
+	uint32_t tx_cr_burst, tx_er_burst;
 	int coupled, lni_shaper;
 	uint8_t channel_id;
 	uint16_t oal;
@@ -1115,10 +1116,16 @@ int dpni_set_tx_shaping(struct fsl_mc_io *mc_io,
 					  cmd_flags,
 					  token);
 	cmd_params = (struct dpni_cmd_set_tx_shaping *)cmd.params;
+	tx_cr_burst = tx_cr_shaper->max_burst_size;
+	tx_er_burst = tx_er_shaper->max_burst_size;
 	cmd_params->tx_cr_max_burst_size =
-		cpu_to_le16(tx_cr_shaper->max_burst_size);
+		cpu_to_le16(DPNI_BURST_LO(tx_cr_burst));
 	cmd_params->tx_er_max_burst_size =
-		cpu_to_le16(tx_er_shaper->max_burst_size);
+		cpu_to_le16(DPNI_BURST_LO(tx_er_burst));
+	cmd_params->tx_cr_max_burst_size_hi =
+		cpu_to_le16(DPNI_BURST_HI(tx_cr_burst));
+	cmd_params->tx_er_max_burst_size_hi =
+		cpu_to_le16(DPNI_BURST_HI(tx_er_burst));
 	cmd_params->tx_cr_rate_limit =
 		cpu_to_le32(tx_cr_shaper->rate_limit);
 	cmd_params->tx_er_rate_limit =
