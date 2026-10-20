@@ -175,6 +175,7 @@ tbl8_alloc(struct rte_trie_tbl *dp, uint64_t nh)
 	/*Init tbl8 entries with nexthop from tbl24*/
 	write_to_dp((void *)tbl8_ptr, nh, dp->nh_sz,
 		TRIE_TBL8_GRP_NUM_ENT);
+	dp->cur_tbl8s++;
 	return tbl8_idx;
 }
 
@@ -243,6 +244,7 @@ tbl8_recycle(struct rte_trie_tbl *dp, void *par, uint64_t tbl8_idx)
 		break;
 	}
 
+	dp->cur_tbl8s--;
 	if (dp->v == NULL) {
 		tbl8_cleanup_and_free(dp, tbl8_idx);
 	} else if (dp->rcu_mode == RTE_FIB6_QSBR_MODE_SYNC) {
@@ -508,6 +510,18 @@ modify_dp(struct rte_trie_tbl *dp, struct rte_rib6 *rib,
 	if (next_hop > get_max_nh(dp->nh_sz))
 		return -EINVAL;
 
+	/*
+	 * Check if we can safely allocate new tbl8s further in process of modifying the dataplane.
+	 */
+	uint32_t tbl8s_in_defer_queue = dp->tbl8_pool_pos - dp->cur_tbl8s;
+	if (dp->rsvd_tbl8s + tbl8s_in_defer_queue > dp->number_tbl8s) {
+		rte_rcu_qsbr_dq_reclaim(dp->dq, dp->tbl8_pool_pos - dp->cur_tbl8s,
+			NULL, NULL, NULL);
+		tbl8s_in_defer_queue = dp->tbl8_pool_pos - dp->cur_tbl8s;
+		if (dp->rsvd_tbl8s + tbl8s_in_defer_queue > dp->number_tbl8s)
+			return -ENOSPC;
+	}
+
 	ledge = *ip;
 	do {
 		tmp = rte_rib6_get_nxt(rib, ip, depth, tmp,
@@ -624,6 +638,7 @@ trie_modify(struct rte_fib6 *fib, const struct rte_ipv6_addr *ip,
 			rte_rib6_remove(rib, &ip_masked, depth);
 			return -ENOSPC;
 		}
+		dp->rsvd_tbl8s += new_levels;
 
 		rte_rib6_set_nh(node, next_hop);
 		parent = rte_rib6_lookup_parent(node);
@@ -634,11 +649,11 @@ trie_modify(struct rte_fib6 *fib, const struct rte_ipv6_addr *ip,
 		}
 		ret = modify_dp(dp, rib, &ip_masked, depth, next_hop);
 		if (ret != 0) {
+			dp->rsvd_tbl8s -= new_levels;
 			rte_rib6_remove(rib, &ip_masked, depth);
 			return ret;
 		}
 successfully_added:
-		dp->rsvd_tbl8s += new_levels;
 		return 0;
 	case RTE_FIB6_DEL:
 		if (node == NULL)
