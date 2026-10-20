@@ -30,6 +30,9 @@ static int32_t test_drift_compression(void);
 static int32_t test_drift_multilevel(void);
 static int32_t test_drift_stress(void);
 static int32_t test_drift_tight_pool(void);
+static int32_t test_tbl8_install_peak(void);
+static int32_t test_tbl8_install_peak_dq(void);
+static int32_t test_tbl8_dq_modify(void);
 
 #define MAX_ROUTES	(1 << 16)
 /** Maximum number of tbl8 for 2-byte entries */
@@ -929,6 +932,246 @@ test_drift_tight_pool(void)
 	return TEST_SUCCESS;
 }
 
+/*
+ * Byte-aligned prefixes must not take a temporary tbl8: a /32 fits a pool of
+ * one, a /24 and a /16 still fit once the pool is full, and the /32 can be
+ * deleted from a full pool, giving its tbl8 back to a following /25.
+ */
+static int32_t
+test_tbl8_install_peak(void)
+{
+	struct rte_ipv6_addr aligned = RTE_IPV6(0x2001, 0x0db8, 0, 0, 0, 0, 0, 0);
+	struct rte_ipv6_addr p24 = RTE_IPV6(0x2002, 0x0100, 0, 0, 0, 0, 0, 0);
+	struct rte_ipv6_addr p16 = RTE_IPV6(0x2003, 0, 0, 0, 0, 0, 0, 0);
+	struct rte_ipv6_addr unaligned = RTE_IPV6(0xfc00, 0, 0, 0, 0, 0, 0, 0);
+	struct rte_fib6_conf config = { 0 };
+	struct rte_fib6 *fib;
+	uint64_t nh;
+	int ret;
+
+	config.max_routes = 16;
+	config.default_nh = 0;
+	config.type = RTE_FIB6_TRIE;
+	config.trie.nh_sz = RTE_FIB6_TRIE_2B;
+	config.trie.num_tbl8 = 1;
+
+	fib = rte_fib6_create("peak", SOCKET_ID_ANY, &config);
+	RTE_TEST_ASSERT(fib != NULL, "Failed to create FIB\n");
+
+	ret = rte_fib6_add(fib, &aligned, 33, 1);
+	RTE_TEST_ASSERT(ret == -ENOSPC, "/33 needs 2 Tbl8s, can not fit pool of 1 (ret=%d)\n", ret);
+	rte_fib6_lookup_bulk(fib, &aligned, &nh, 1);
+	RTE_TEST_ASSERT(nh == 0, "empty table lookup got nh=%u\n", (unsigned int)nh);
+
+	ret = rte_fib6_add(fib, &aligned, 32, 1);
+	RTE_TEST_ASSERT(ret == 0, "/32 must fit pool of 1 (ret=%d)\n", ret);
+	rte_fib6_lookup_bulk(fib, &aligned, &nh, 1);
+	RTE_TEST_ASSERT(nh == 1, "/32 lookup got nh=%u\n", (unsigned int)nh);
+
+	/* the pool is full, prefixes up to /24 need no tbl8 at all */
+	ret = rte_fib6_add(fib, &p24, 24, 2);
+	RTE_TEST_ASSERT(ret == 0, "/24 must fit full pool (ret=%d)\n", ret);
+	rte_fib6_lookup_bulk(fib, &p24, &nh, 1);
+	RTE_TEST_ASSERT(nh == 2, "/24 lookup got nh=%u\n", (unsigned int)nh);
+	ret = rte_fib6_add(fib, &p16, 16, 3);
+	RTE_TEST_ASSERT(ret == 0, "/16 must fit full pool (ret=%d)\n", ret);
+	rte_fib6_lookup_bulk(fib, &p16, &nh, 1);
+	RTE_TEST_ASSERT(nh == 3, "/16 lookup got nh=%u\n", (unsigned int)nh);
+
+	ret = rte_fib6_add(fib, &unaligned, 25, 4);
+	RTE_TEST_ASSERT(ret == -ENOSPC,
+		"/25 in full pool expected -ENOSPC, got %d\n", ret);
+	rte_fib6_lookup_bulk(fib, &unaligned, &nh, 1);
+	RTE_TEST_ASSERT(nh == 0,
+		"rejected /25 must leave the dataplane clean, got nh=%u\n",
+		(unsigned int)nh);
+
+	ret = rte_fib6_delete(fib, &aligned, 32);
+	RTE_TEST_ASSERT(ret == 0,
+		"/32 delete from full pool failed (ret=%d)\n", ret);
+	rte_fib6_lookup_bulk(fib, &aligned, &nh, 1);
+	RTE_TEST_ASSERT(nh == 0, "deleted /32 lookup got nh=%u\n",
+		(unsigned int)nh);
+
+	ret = rte_fib6_add(fib, &unaligned, 25, 4);
+	RTE_TEST_ASSERT(ret == 0,
+		"/25 must fit pool of 1 after /32 delete (ret=%d)\n", ret);
+	rte_fib6_lookup_bulk(fib, &unaligned, &nh, 1);
+	RTE_TEST_ASSERT(nh == 4, "/25 lookup got nh=%u\n", (unsigned int)nh);
+
+	rte_fib6_free(fib);
+	return TEST_SUCCESS;
+}
+
+/*
+ * In QSBR defer mode a freed group stays out of the pool until reclaimed, so
+ * rsvd_tbl8s underestimates occupancy. A /40 needing two groups must be
+ * refused by physical count without leaking, so a following /25 needing one
+ * group fits.
+ */
+static int32_t
+test_tbl8_install_peak_dq(void)
+{
+	struct rte_ipv6_addr a = RTE_IPV6(0x2001, 0x0db8, 0, 0, 0, 0, 0, 0);
+	struct rte_ipv6_addr b = RTE_IPV6(0xfc00, 0, 0, 0, 0, 0, 0, 0);
+	struct rte_ipv6_addr c = RTE_IPV6(0xfd00, 0, 0, 0, 0, 0, 0, 0);
+	struct rte_fib6_rcu_config rcu_cfg = { 0 };
+	struct rte_fib6_conf config = { 0 };
+	struct rte_rcu_qsbr *v;
+	struct rte_fib6 *fib;
+	uint64_t nh;
+	size_t sz;
+	int ret;
+
+	config.max_routes = 16;
+	config.default_nh = 0;
+	config.type = RTE_FIB6_TRIE;
+	config.trie.nh_sz = RTE_FIB6_TRIE_2B;
+	config.trie.num_tbl8 = 2;
+
+	fib = rte_fib6_create("peak_dq", SOCKET_ID_ANY, &config);
+	RTE_TEST_ASSERT(fib != NULL, "Failed to create FIB\n");
+
+	sz = rte_rcu_qsbr_get_memsize(1);
+	v = rte_zmalloc_socket(NULL, sz, RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+	RTE_TEST_ASSERT(v != NULL, "Can not allocate RCU\n");
+	ret = rte_rcu_qsbr_init(v, 1);
+	RTE_TEST_ASSERT(ret == 0, "Can not init RCU\n");
+	rcu_cfg.v = v;
+	rcu_cfg.mode = RTE_FIB6_QSBR_MODE_DQ;
+	ret = rte_fib6_rcu_qsbr_add(fib, &rcu_cfg);
+	RTE_TEST_ASSERT(ret == 0, "Can not attach RCU (ret=%d)\n", ret);
+
+	/* an online reader that never reports quiescence blocks reclamation */
+	rte_rcu_qsbr_thread_register(v, 0);
+	rte_rcu_qsbr_thread_online(v, 0);
+
+	ret = rte_fib6_add(fib, &b, 25, 1);
+	RTE_TEST_ASSERT(ret == 0, "/25 add failed (ret=%d)\n", ret);
+	ret = rte_fib6_delete(fib, &b, 25);
+	RTE_TEST_ASSERT(ret == 0, "/25 delete failed (ret=%d)\n", ret);
+	/* the /25 group is now deferred, still physically out of the pool */
+
+	ret = rte_fib6_add(fib, &a, 40, 2);
+	RTE_TEST_ASSERT(ret == -ENOSPC,
+		"/40 must be rejected while a group is deferred, got %d\n",
+		ret);
+	rte_fib6_lookup_bulk(fib, &a, &nh, 1);
+	RTE_TEST_ASSERT(nh == 0,
+		"rejected /40 must leave the dataplane clean, got nh=%u\n",
+		(unsigned int)nh);
+
+	/* a second /25 needs one group: it fits only if the /40 leaked nothing */
+	ret = rte_fib6_add(fib, &c, 25, 3);
+	RTE_TEST_ASSERT(ret == 0,
+		"2nd /25 rejected: /40 leaked a group under defer (ret=%d)\n",
+		ret);
+	rte_fib6_lookup_bulk(fib, &c, &nh, 1);
+	RTE_TEST_ASSERT(nh == 3, "2nd /25 lookup got nh=%u\n", (unsigned int)nh);
+
+	rte_rcu_qsbr_thread_offline(v, 0);
+	rte_rcu_qsbr_thread_unregister(v, 0);
+	rte_fib6_free(fib);
+	rte_free(v);
+	return TEST_SUCCESS;
+}
+
+/*
+ * In QSBR defer mode, changing or deleting a prefix may need tbl8 groups for
+ * its more specifics while the groups they used are still deferred. The
+ * update must be refused before it touches the dataplane, and succeed once
+ * the deferred groups are reclaimed.
+ */
+static int32_t
+test_tbl8_dq_modify(void)
+{
+	struct rte_ipv6_addr p24 = RTE_IPV6(0x2001, 0x0d00, 0, 0, 0, 0, 0, 0);
+	struct rte_ipv6_addr p32 = RTE_IPV6(0x2001, 0x0db8, 0, 0, 0, 0, 0, 0);
+	struct rte_ipv6_addr p33 = RTE_IPV6(0x2001, 0x0dff, 0, 0, 0, 0, 0, 0);
+	struct rte_fib6_rcu_config rcu_cfg = { 0 };
+	struct rte_fib6_conf config = { 0 };
+	struct rte_rcu_qsbr *v;
+	struct rte_fib6 *fib;
+	uint64_t nh;
+	size_t sz;
+	int ret;
+
+	config.max_routes = 16;
+	config.default_nh = 0;
+	config.type = RTE_FIB6_TRIE;
+	config.trie.nh_sz = RTE_FIB6_TRIE_2B;
+	config.trie.num_tbl8 = 3;
+
+	fib = rte_fib6_create(__func__, SOCKET_ID_ANY, &config);
+	RTE_TEST_ASSERT(fib != NULL, "Failed to create FIB\n");
+
+	sz = rte_rcu_qsbr_get_memsize(1);
+	v = rte_zmalloc_socket(NULL, sz, RTE_CACHE_LINE_SIZE, SOCKET_ID_ANY);
+	RTE_TEST_ASSERT(v != NULL, "Can not allocate RCU\n");
+	ret = rte_rcu_qsbr_init(v, 1);
+	RTE_TEST_ASSERT(ret == 0, "Can not init RCU\n");
+	rcu_cfg.v = v;
+	rcu_cfg.mode = RTE_FIB6_QSBR_MODE_DQ;
+	ret = rte_fib6_rcu_qsbr_add(fib, &rcu_cfg);
+	RTE_TEST_ASSERT(ret == 0, "Can not attach RCU (ret=%d)\n", ret);
+
+	/* an online reader that never reports quiescence blocks reclamation */
+	rte_rcu_qsbr_thread_register(v, 0);
+	rte_rcu_qsbr_thread_online(v, 0);
+
+	ret = rte_fib6_add(fib, &p24, 24, 3);
+	RTE_TEST_ASSERT(ret == 0, "/24 add failed (ret=%d)\n", ret);
+	ret = rte_fib6_add(fib, &p32, 32, 5);
+	RTE_TEST_ASSERT(ret == 0, "/32 add failed (ret=%d)\n", ret);
+	ret = rte_fib6_add(fib, &p33, 33, 5);
+	RTE_TEST_ASSERT(ret == 0, "/33 add failed (ret=%d)\n", ret);
+
+	/*
+	 * Moving the /32 and /33 to the /24 next hop frees their two groups,
+	 * which stay deferred. One group is left in the pool.
+	 */
+	ret = rte_fib6_add(fib, &p32, 32, 3);
+	RTE_TEST_ASSERT(ret == 0, "/32 next hop change failed (ret=%d)\n", ret);
+	ret = rte_fib6_add(fib, &p33, 33, 3);
+	RTE_TEST_ASSERT(ret == 0, "/33 next hop change failed (ret=%d)\n", ret);
+
+	/* changing or deleting the /24 needs two groups for the /32 and /33 */
+	ret = rte_fib6_add(fib, &p24, 24, 7);
+	RTE_TEST_ASSERT(ret == -ENOSPC,
+		"/24 next hop change expected -ENOSPC, got %d\n", ret);
+	rte_fib6_lookup_bulk(fib, &p24, &nh, 1);
+	RTE_TEST_ASSERT(nh == 3,
+		"rejected /24 change must leave the dataplane intact, got nh=%u\n",
+		(unsigned int)nh);
+
+	ret = rte_fib6_delete(fib, &p24, 24);
+	RTE_TEST_ASSERT(ret == -ENOSPC,
+		"/24 delete expected -ENOSPC, got %d\n", ret);
+	rte_fib6_lookup_bulk(fib, &p24, &nh, 1);
+	RTE_TEST_ASSERT(nh == 3,
+		"rejected /24 delete must leave the dataplane intact, got nh=%u\n",
+		(unsigned int)nh);
+
+	/* the reader reports quiescence, the deferred groups can be reclaimed */
+	rte_rcu_qsbr_quiescent(v, 0);
+
+	ret = rte_fib6_delete(fib, &p24, 24);
+	RTE_TEST_ASSERT(ret == 0, "/24 delete failed (ret=%d)\n", ret);
+	rte_fib6_lookup_bulk(fib, &p24, &nh, 1);
+	RTE_TEST_ASSERT(nh == 0, "deleted /24 lookup got nh=%u\n",
+		(unsigned int)nh);
+	rte_fib6_lookup_bulk(fib, &p32, &nh, 1);
+	RTE_TEST_ASSERT(nh == 3, "/32 lookup got nh=%u\n", (unsigned int)nh);
+	rte_fib6_lookup_bulk(fib, &p33, &nh, 1);
+	RTE_TEST_ASSERT(nh == 3, "/33 lookup got nh=%u\n", (unsigned int)nh);
+
+	rte_rcu_qsbr_thread_offline(v, 0);
+	rte_rcu_qsbr_thread_unregister(v, 0);
+	rte_fib6_free(fib);
+	rte_free(v);
+	return TEST_SUCCESS;
+}
+
 static struct unit_test_suite fib6_fast_tests = {
 	.suite_name = "fib6 autotest",
 	.setup = NULL,
@@ -946,6 +1189,9 @@ static struct unit_test_suite fib6_fast_tests = {
 	TEST_CASE(test_drift_multilevel),
 	TEST_CASE(test_drift_stress),
 	TEST_CASE(test_drift_tight_pool),
+	TEST_CASE(test_tbl8_install_peak),
+	TEST_CASE(test_tbl8_install_peak_dq),
+	TEST_CASE(test_tbl8_dq_modify),
 	TEST_CASES_END()
 	}
 };
