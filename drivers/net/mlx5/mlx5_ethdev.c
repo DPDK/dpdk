@@ -925,7 +925,7 @@ mlx5_hairpin_cap_get(struct rte_eth_dev *dev, struct rte_eth_hairpin_cap *cap)
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_hca_attr *hca_attr;
 
-	if (!mlx5_devx_obj_ops_en(priv->sh)) {
+	if (!mlx5_devx_obj_ops_en(priv)) {
 		rte_errno = ENOTSUP;
 		return -rte_errno;
 	}

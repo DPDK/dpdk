@@ -1364,7 +1364,7 @@ continue_dev_start:
 		SAVE_RTE_ERRNO_AND_STOP(ret, dev);
 		goto error;
 	}
-	if (mlx5_devx_obj_ops_en(priv->sh) &&
+	if (mlx5_devx_obj_ops_en(priv) &&
 	    priv->obj_ops.lb_dummy_queue_create) {
 		ret = priv->obj_ops.lb_dummy_queue_create(dev);
 		if (ret) {

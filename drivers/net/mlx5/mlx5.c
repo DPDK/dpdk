@@ -1588,7 +1588,7 @@ mlx5_shared_dev_ctx_args_config(struct mlx5_dev_ctx_shared *sh,
 		config->tx_typical_pkt_sz = 0;
 	}
 	/* Check for LRO support. */
-	if (mlx5_devx_obj_ops_en(sh) && sh->cdev->config.hca_attr.lro_cap) {
+	if (mlx5_devx_available(sh) && sh->cdev->config.hca_attr.lro_cap) {
 		/* TBD check tunnel lro caps. */
 		config->lro_allowed = 1;
 		DRV_LOG(DEBUG, "LRO is allowed.");
