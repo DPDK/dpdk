@@ -102,6 +102,18 @@ iavf_tm_conf_uninit(struct rte_eth_dev *dev)
 	vf->qtc_map = NULL;
 }
 
+/* qos_cap and the TM lists exist only if the PF grants VIRTCHNL_VF_OFFLOAD_QOS. */
+static int
+iavf_tm_qos_check(struct iavf_info *vf, struct rte_tm_error *error)
+{
+	if (vf->qos_cap != NULL)
+		return 0;
+
+	error->type = RTE_TM_ERROR_TYPE_CAPABILITIES;
+	error->message = "VF has no QoS capability";
+	return -ENOTSUP;
+}
+
 static inline struct iavf_tm_node *
 iavf_tm_node_search(struct rte_eth_dev *dev,
 		    uint32_t node_id, enum iavf_tm_node_type *node_type)
@@ -279,11 +291,17 @@ iavf_tm_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 	struct iavf_tm_shaper_profile *shaper_profile = NULL;
 	struct iavf_tm_node *tm_node;
 	struct iavf_tm_node *parent_node;
-	uint16_t tc_nb = vf->qos_cap->num_elem;
+	uint16_t tc_nb;
 	int ret;
 
 	if (!params || !error)
 		return -EINVAL;
+
+	ret = iavf_tm_qos_check(vf, error);
+	if (ret)
+		return ret;
+
+	tc_nb = vf->qos_cap->num_elem;
 
 	/* if already committed */
 	if (vf->tm_conf.committed) {
@@ -524,6 +542,10 @@ iavf_shaper_profile_add(struct rte_eth_dev *dev,
 	if (!profile || !error)
 		return -EINVAL;
 
+	ret = iavf_tm_qos_check(vf, error);
+	if (ret)
+		return ret;
+
 	ret = iavf_shaper_profile_param_check(profile, error);
 	if (ret)
 		return ret;
@@ -588,11 +610,17 @@ iavf_tm_capabilities_get(struct rte_eth_dev *dev,
 			 struct rte_tm_error *error)
 {
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
-	uint16_t tc_nb = vf->qos_cap->num_elem;
+	uint16_t tc_nb;
+	int ret;
 
 	if (!cap || !error)
 		return -EINVAL;
 
+	ret = iavf_tm_qos_check(vf, error);
+	if (ret)
+		return ret;
+
+	tc_nb = vf->qos_cap->num_elem;
 	if (tc_nb > vf->vf_res->num_queue_pairs)
 		return -EINVAL;
 
@@ -744,9 +772,14 @@ iavf_node_capabilities_get(struct rte_eth_dev *dev,
 	enum iavf_tm_node_type node_type;
 	struct virtchnl_qos_cap_elem tc_cap;
 	struct iavf_tm_node *tm_node;
+	int ret;
 
 	if (!cap || !error)
 		return -EINVAL;
+
+	ret = iavf_tm_qos_check(vf, error);
+	if (ret)
+		return ret;
 
 	if (node_id == RTE_TM_NODE_ID_NULL) {
 		error->type = RTE_TM_ERROR_TYPE_NODE_ID;
