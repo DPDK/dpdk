@@ -4383,6 +4383,13 @@ dpaa2_flow_verify_action(struct dpaa2_dev_priv *priv,
 		switch (actions[j].type) {
 		case RTE_FLOW_ACTION_TYPE_QUEUE:
 			dest_queue = actions[j].conf;
+			if (dest_queue->index >= MAX_RX_QUEUES ||
+				!priv->rx_vq[dest_queue->index]) {
+				DPAA2_PMD_ERR("Invalid FSQ index(%d)",
+					dest_queue->index);
+
+				return -EINVAL;
+			}
 			rxq = priv->rx_vq[dest_queue->index];
 			if (attr->group != rxq->tc_index) {
 				DPAA2_PMD_ERR("FSQ(%d.%d) not in TC[%d]",
@@ -4445,6 +4452,7 @@ dpaa2_configure_flow_fs_action(struct dpaa2_dev_priv *priv,
 	struct dpaa2_dev_priv *dest_priv;
 	const struct rte_flow_action_queue *dest_queue;
 	struct dpaa2_queue *dest_q;
+	uint64_t flc = 0;
 
 	memset(&flow->fs_action_cfg, 0,
 		sizeof(struct dpni_fs_action_cfg));
@@ -4452,7 +4460,41 @@ dpaa2_configure_flow_fs_action(struct dpaa2_dev_priv *priv,
 
 	if (flow->action_type == RTE_FLOW_ACTION_TYPE_QUEUE) {
 		dest_queue = rte_action->conf;
+		if (dest_queue->index >= MAX_RX_QUEUES ||
+			!priv->rx_vq[dest_queue->index]) {
+			DPAA2_PMD_ERR("Invalid FSQ index(%d)",
+				dest_queue->index);
+
+			return -EINVAL;
+		}
 		dest_q = priv->rx_vq[dest_queue->index];
+		if (flow->tc_id != dest_q->tc_index) {
+			DPAA2_PMD_ERR("RXQ[%d](%d.%d) not in TC[%d]",
+				dest_queue->index,
+				dest_q->tc_index, dest_q->flow_id,
+				flow->tc_id);
+
+			return -EINVAL;
+		}
+		flow->fs_action_cfg.options =
+			DPNI_FS_OPT_SET_FLC | DPNI_FS_OPT_SET_STASH_CONTROL;
+
+		if (dest_q->data_stashing_off) {
+			dpaa2_flc_stashing_set(DPAA2_FLC_DATA_STASHING,
+				0, &flc);
+		} else {
+			dpaa2_flc_stashing_set(DPAA2_FLC_DATA_STASHING,
+				1, &flc);
+		}
+		if ((dpaa2_svr_family & 0xffff0000) != SVR_LX2160A) {
+			dpaa2_flc_stashing_set(DPAA2_FLC_ANNO_STASHING,
+				1, &flc);
+		}
+
+		flc |= ((uint64_t)1) << DPAA2_FS_FLC_FS_MARK_OFFSET;
+		flc |= ((uint64_t)dest_q->tc_index) << DPAA2_FS_FLC_TC_OFFSET;
+		flc |= ((uint64_t)dest_q->flow_id) << DPAA2_FS_FLC_FLOW_OFFSET;
+		flow->fs_action_cfg.flc = flc;
 		flow->fs_action_cfg.flow_id = dest_q->flow_id;
 	} else if (flow->action_type == RTE_FLOW_ACTION_TYPE_PORT_ID ||
 		   flow->action_type == RTE_FLOW_ACTION_TYPE_REPRESENTED_PORT) {
