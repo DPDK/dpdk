@@ -226,6 +226,10 @@ New Features
   along with the corresponding ``pss_salt`` field in ``rte_crypto_rsa_op_param``
   to carry it per sign operation.
 
+* **Updated Intel QuickAssist Technology (QAT) crypto driver.**
+
+  * Added support for Gen 6 QAT devices.
+
 * **Added AMD AE4DMA DMA PMD.**
 
   Added a new dmadev driver for the AMD AE4DMA hardware DMA engine.

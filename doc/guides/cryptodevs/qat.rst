@@ -28,6 +28,7 @@ poll mode crypto driver support for the following hardware accelerator devices:
 * ``Intel QuickAssist Technology 4xxx``
 * ``Intel QuickAssist Technology 300xx``
 * ``Intel QuickAssist Technology 420xx``
+* ``Intel QuickAssist Technology 6xxx``
 * ``Intel QuickAssist Technology apfxx``
 
 
@@ -142,6 +143,7 @@ Limitations
   generations in the same process if planning to use for GCM.
 * The mixed algo feature on GEN2 is not supported by all kernel drivers. Check
   the notes under the Available Kernel Drivers table below for specific details.
+* Chained cipher and hash operations are not supported on GEN6 devices.
 * Out-of-place is not supported for combined Crypto-CRC DOCSIS security
   protocol.
 * ``RTE_CRYPTO_CIPHER_DES_DOCSISBPI`` is not supported for combined Crypto-CRC
@@ -182,6 +184,7 @@ poll mode crypto driver support for the following hardware accelerator devices:
 * ``Intel QuickAssist Technology 401xxx``
 * ``Intel QuickAssist Technology 300xx``
 * ``Intel QuickAssist Technology 420xx``
+* ``Intel QuickAssist Technology 6xxx``
 
 The QAT ASYM PMD has support for:
 
@@ -482,6 +485,8 @@ to see the full table)
    | Yes | No  | No  | 4   | 402xx    | IDZ/ N/A      | qat_4xxx      | 4xxx       | 4944   | 2    | 4945   | 16     |
    +-----+-----+-----+-----+----------+---------------+---------------+------------+--------+------+--------+--------+
    | Yes | Yes | Yes | 5   | 420xx    | linux/6.8+    | qat_420xx     | 420xx      | 4946   | 2    | 4947   | 16     |
+   +-----+-----+-----+-----+----------+---------------+---------------+------------+--------+------+--------+--------+
+   | Yes | Yes | No  | 6   | 6xxx     | linux/6.16+   | qat_6xxx      | 6xxx       | 4948   | 1    | 4949   | 16     |
    +-----+-----+-----+-----+----------+---------------+---------------+------------+--------+------+--------+--------+
 
 * Note: Symmetric mixed crypto algorithms feature on Gen 2 works only with IDZ driver version 4.9.0+
