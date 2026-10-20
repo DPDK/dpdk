@@ -26,8 +26,11 @@
 static char *dpaa2_flow_control_log;
 static int dpaa2_sp_loaded = -1;
 
+/* Default size of a key */
+#define DPNI_DEFAULT_KEY_SIZE 24
+
 enum dpaa2_flow_entry_size {
-	DPAA2_FLOW_ENTRY_MIN_SIZE = (DPNI_MAX_KEY_SIZE / 2),
+	DPAA2_FLOW_ENTRY_MIN_SIZE = DPNI_DEFAULT_KEY_SIZE,
 	DPAA2_FLOW_ENTRY_MAX_SIZE = DPNI_MAX_KEY_SIZE
 };
 
@@ -4519,7 +4522,7 @@ dpaa2_configure_flow_fs_action(struct dpaa2_dev_priv *priv,
 }
 
 static inline uint16_t
-dpaa2_flow_entry_size(uint16_t key_max_size)
+dpaa2_flow_entry_size(struct dpaa2_dev_priv *priv, uint16_t key_max_size)
 {
 	if (key_max_size > DPAA2_FLOW_ENTRY_MAX_SIZE) {
 		DPAA2_PMD_ERR("Key size(%d) > max(%d)",
@@ -4529,11 +4532,11 @@ dpaa2_flow_entry_size(uint16_t key_max_size)
 		return 0;
 	}
 
-	if (key_max_size > DPAA2_FLOW_ENTRY_MIN_SIZE)
+	if (key_max_size > DPAA2_FLOW_ENTRY_MIN_SIZE ||
+			dpaa2_dev_cmp_dpni_ver(priv, 8, 7) < 0)
 		return DPAA2_FLOW_ENTRY_MAX_SIZE;
 
-	/* Current MC only support fixed entry size(56)*/
-	return DPAA2_FLOW_ENTRY_MAX_SIZE;
+	return DPAA2_FLOW_ENTRY_MIN_SIZE;
 }
 
 static inline int
@@ -4595,7 +4598,7 @@ dpaa2_configure_fs_rss_table(struct dpaa2_dev_priv *priv,
 	}
 
 	key_max_size = tc_extract->key_profile.key_max_size;
-	entry_size = dpaa2_flow_entry_size(key_max_size);
+	entry_size = dpaa2_flow_entry_size(priv, key_max_size);
 
 	dpaa2_flow_fs_extracts_log(priv, tc_id);
 	ret = dpkg_prepare_key_cfg(&tc_extract->dpkg,
@@ -4690,7 +4693,7 @@ dpaa2_configure_qos_table(struct dpaa2_dev_priv *priv,
 	}
 
 	key_max_size = qos_extract->key_profile.key_max_size;
-	entry_size = dpaa2_flow_entry_size(key_max_size);
+	entry_size = dpaa2_flow_entry_size(priv, key_max_size);
 
 	dpaa2_flow_qos_extracts_log(priv);
 
@@ -4981,11 +4984,11 @@ dpaa2_generic_flow_set(struct dpaa2_dev_flow *flow,
 
 	qos_key_extract = &priv->extract.qos_key_extract;
 	key_size = qos_key_extract->key_profile.key_max_size;
-	flow->qos_rule.key_size = dpaa2_flow_entry_size(key_size);
+	flow->qos_rule.key_size = dpaa2_flow_entry_size(priv, key_size);
 
 	tc_key_extract = &priv->extract.tc_key_extract[flow->tc_id];
 	key_size = tc_key_extract->key_profile.key_max_size;
-	flow->fs_rule.key_size = dpaa2_flow_entry_size(key_size);
+	flow->fs_rule.key_size = dpaa2_flow_entry_size(priv, key_size);
 
 	/* Let's parse action on matching traffic */
 	end_of_list = 0;
