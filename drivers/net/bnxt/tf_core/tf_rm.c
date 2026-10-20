@@ -450,13 +450,13 @@ tf_rm_create_db(struct tf *tfp,
 	struct tf_session *tfs;
 	struct tf_dev_info *dev;
 	int i, j;
-	uint16_t max_types, hcapi_items, *req_cnt;
+	uint16_t max_types, hcapi_items, *req_cnt = NULL;
 	struct tfp_calloc_parms cparms;
-	struct tf_rm_resc_req_entry *query;
+	struct tf_rm_resc_req_entry *query = NULL;
 	enum tf_rm_resc_resv_strategy resv_strategy;
-	struct tf_rm_resc_req_entry *req;
-	struct tf_rm_resc_entry *resv;
-	struct tf_rm_new_db *rm_db;
+	struct tf_rm_resc_req_entry *req = NULL;
+	struct tf_rm_resc_entry *resv = NULL;
+	struct tf_rm_new_db *rm_db = NULL;
 	struct tf_rm_element *db;
 	uint32_t pool_size;
 
@@ -494,7 +494,7 @@ tf_rm_create_db(struct tf *tfp,
 				       &resv_strategy,
 				       NULL);
 	if (rc)
-		return rc;
+		goto free_bufs;
 
 	/* Copy requested counts (alloc_cnt) from tf_open_session() to local
 	 * copy (req_cnt) so that it can be updated if required.
@@ -504,7 +504,7 @@ tf_rm_create_db(struct tf *tfp,
 	cparms.size = sizeof(uint16_t);
 	rc = tfp_calloc(&cparms);
 	if (rc)
-		return rc;
+		goto free_bufs;
 
 	req_cnt = (uint16_t *)cparms.mem_va;
 
@@ -534,7 +534,8 @@ tf_rm_create_db(struct tf *tfp,
 
 	if (hcapi_items == 0) {
 		parms->rm_db = NULL;
-		return -ENOMEM;
+		rc = -ENOMEM;
+		goto free_bufs;
 	}
 
 	/* Alloc request, alignment already set */
@@ -542,14 +543,14 @@ tf_rm_create_db(struct tf *tfp,
 	cparms.size = sizeof(struct tf_rm_resc_req_entry);
 	rc = tfp_calloc(&cparms);
 	if (rc)
-		return rc;
+		goto free_bufs;
 	req = (struct tf_rm_resc_req_entry *)cparms.mem_va;
 
 	/* Alloc reservation, alignment and nitems already set */
 	cparms.size = sizeof(struct tf_rm_resc_entry);
 	rc = tfp_calloc(&cparms);
 	if (rc)
-		return rc;
+		goto free_bufs;
 	resv = (struct tf_rm_resc_entry *)cparms.mem_va;
 
 	/* Build the request */
@@ -586,7 +587,8 @@ tf_rm_create_db(struct tf *tfp,
 					hcapi_type, type_str,
 					req_cnt[i],
 					query[hcapi_type].max);
-				return -EINVAL;
+				rc = -EINVAL;
+				goto free_bufs;
 			}
 		}
 	}
@@ -600,22 +602,24 @@ tf_rm_create_db(struct tf *tfp,
 				       req,
 				       resv);
 	if (rc)
-		return rc;
+		goto free_bufs;
 
 	/* Build the RM DB per the request */
 	cparms.nitems = 1;
 	cparms.size = sizeof(struct tf_rm_new_db);
 	rc = tfp_calloc(&cparms);
 	if (rc)
-		return rc;
+		goto free_bufs;
 	rm_db = (void *)cparms.mem_va;
 
 	/* Build the DB within RM DB */
 	cparms.nitems = parms->num_elements;
 	cparms.size = sizeof(struct tf_rm_element);
 	rc = tfp_calloc(&cparms);
-	if (rc)
-		return rc;
+	if (rc) {
+		tfp_free((void *)rm_db);
+		goto free_bufs;
+	}
 	rm_db->db = (struct tf_rm_element *)cparms.mem_va;
 
 	db = rm_db->db;
@@ -721,12 +725,14 @@ tf_rm_create_db(struct tf *tfp,
 	rm_db->module = parms->module;
 	*parms->rm_db = (void *)rm_db;
 
+	tfp_free((void *)query);
 	tfp_free((void *)req);
 	tfp_free((void *)resv);
 	tfp_free((void *)req_cnt);
 	return 0;
 
  fail:
+	tfp_free((void *)query);
 	tfp_free((void *)req);
 	tfp_free((void *)resv);
 	tfp_free((void *)db->pool);
@@ -736,6 +742,14 @@ tf_rm_create_db(struct tf *tfp,
 	parms->rm_db = NULL;
 
 	return -EINVAL;
+
+ free_bufs:
+	tfp_free((void *)query);
+	tfp_free((void *)req);
+	tfp_free((void *)resv);
+	tfp_free((void *)req_cnt);
+
+	return rc;
 }
 
 int
