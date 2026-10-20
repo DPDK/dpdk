@@ -462,6 +462,7 @@ ice_acl_hw_set_conf(struct ice_pf *pf, struct ice_fdir_fltr *input,
 					 acts, act_cnt, &hw_entry);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "Fail to add entry.");
+			rte_bitmap_set(pf->acl.slots, slot_id);
 			return ret;
 		}
 		rule->entry_id[entry_idx] = entry_id;
@@ -469,6 +470,7 @@ ice_acl_hw_set_conf(struct ice_pf *pf, struct ice_fdir_fltr *input,
 	} else {
 		PMD_DRV_LOG(ERR, "Exceed the maximum entry number(%d)"
 			    " HW supported!", MAX_ACL_NORMAL_ENTRIES);
+		rte_bitmap_set(pf->acl.slots, slot_id);
 		return -1;
 	}
 
