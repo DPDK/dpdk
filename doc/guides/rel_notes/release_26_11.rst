@@ -422,6 +422,12 @@ Removed Items
   Applications configuring VMDq pools on bnxt now get zero pools reported,
   matching no VMDq hardware support.
 
+* net/dpaa2: Removed ``DPAA2_FLOW_CONTROL_MISS_FLOW`` environment variable.
+  The flow steering miss queue now defaults to the last Rx queue
+  configured in the traffic class.
+  Users who previously redirected unmatched frames to a specific queue
+  via this variable must use the flow API instead.
+
 * vhost: Removed async (DMA-accelerated) data path.
 
   The experimental async data path API has been removed from the vhost library.
