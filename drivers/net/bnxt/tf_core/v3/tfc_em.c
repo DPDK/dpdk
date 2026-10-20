@@ -21,8 +21,6 @@
 #include "sys_util.h"
 #include "tfc_util.h"
 
-#include "tfc_debug.h"
-
 #define TFC_EM_DYNAMIC_BUCKET_RECORD_SIZE 1
 
 /* Enable cache configuration */
@@ -724,6 +722,175 @@ static void bucket_decode(uint32_t *bucket_ptr,
 			bucket_info->valid = true;
 		}
 	}
+}
+
+int tfc_mpc_table_read(struct tfc *tfcp,
+		       uint8_t tsid,
+		       enum cfa_dir dir,
+		       uint32_t type,
+		       uint32_t offset,
+		       uint8_t words,
+		       uint8_t *data,
+		       uint8_t debug)
+{
+	int rc = 0;
+	uint8_t tx_msg[TFC_MPC_MAX_TX_BYTES];
+	uint8_t rx_msg[TFC_MPC_MAX_RX_BYTES];
+	uint16_t msg_count = BNXT_MPC_COMP_MSG_COUNT;
+	int i;
+	uint32_t buff_len;
+	struct cfa_mpc_data_obj fields_cmd[CFA_BLD_MPC_READ_CMD_MAX_FLD];
+	struct cfa_mpc_data_obj fields_cmp[CFA_BLD_MPC_READ_CMP_MAX_FLD];
+	struct bnxt_mpc_mbuf mpc_msg_in;
+	struct bnxt_mpc_mbuf mpc_msg_out;
+	enum cfa_scope_type scope_type;
+	struct cfa_bld_mpcinfo *mpc_info;
+	uint64_t host_address;
+	uint8_t discard_data[128];
+	uint32_t set;
+	uint32_t way;
+	bool valid;
+
+	tfo_mpcinfo_get(tfcp->tfo, &mpc_info);
+
+	rc = tfo_ts_get(tfcp->tfo, tsid, &scope_type, NULL, &valid, NULL);
+	if (rc != 0) {
+		PMD_DRV_LOG_LINE(ERR, "failed to get tsid: %s", strerror(-rc));
+		return -EINVAL;
+	}
+	if (!valid) {
+		PMD_DRV_LOG_LINE(ERR, "tsid not allocated %d", tsid);
+		return -EINVAL;
+	}
+
+	/* Check that data pointer is word aligned */
+	if (((uint64_t)data)  & 0x1fULL) {
+		PMD_DRV_LOG_LINE(ERR, "Table read data pointer not word aligned");
+		return -EINVAL;
+	}
+
+	host_address = (uint64_t)rte_mem_virt2iova(data);
+
+	/* Check that MPC APIs are bound */
+	if (mpc_info->mpcops == NULL) {
+		PMD_DRV_LOG_LINE(ERR, "MPC not initialized");
+		return -EINVAL;
+	}
+
+	set =  offset & 0x7ff;
+	way = (offset >> 12)  & 0xf;
+
+	if (debug)
+		PMD_DRV_LOG_LINE(ERR,
+				 "Debug read table type:%s %d words32B at way:%d set:%d debug:%d words32B",
+				 (type  == 0 ? "Lookup" : "Action"),
+				 words, way, set, debug);
+	else
+		PMD_DRV_LOG_LINE(ERR,
+				 "Reading table type:%s %d words32B at offset %d words32B",
+				 (type  == 0 ? "Lookup" : "Action"),
+				 words, offset);
+
+	/* Create MPC EM insert command using builder */
+	for (i = 0; i < CFA_BLD_MPC_READ_CMD_MAX_FLD; i++)
+		fields_cmd[i].field_id = INVALID_U16;
+
+	fields_cmd[CFA_BLD_MPC_READ_CMD_OPAQUE_FLD].field_id =
+		CFA_BLD_MPC_READ_CMD_OPAQUE_FLD;
+	fields_cmd[CFA_BLD_MPC_READ_CMD_OPAQUE_FLD].val = 0xAA;
+
+	fields_cmd[CFA_BLD_MPC_READ_CMD_TABLE_TYPE_FLD].field_id =
+		CFA_BLD_MPC_READ_CMD_TABLE_TYPE_FLD;
+	fields_cmd[CFA_BLD_MPC_READ_CMD_TABLE_TYPE_FLD].val = (type == 0 ?
+	       CFA_BLD_MPC_HW_TABLE_TYPE_LOOKUP : CFA_BLD_MPC_HW_TABLE_TYPE_ACTION);
+
+	fields_cmd[CFA_BLD_MPC_READ_CMD_TABLE_SCOPE_FLD].field_id =
+		CFA_BLD_MPC_READ_CMD_TABLE_SCOPE_FLD;
+	fields_cmd[CFA_BLD_MPC_READ_CMD_TABLE_SCOPE_FLD].val =
+		(debug ? way : tsid);
+
+	fields_cmd[CFA_BLD_MPC_READ_CMD_DATA_SIZE_FLD].field_id =
+		CFA_BLD_MPC_READ_CMD_DATA_SIZE_FLD;
+	fields_cmd[CFA_BLD_MPC_READ_CMD_DATA_SIZE_FLD].val = words;
+
+	fields_cmd[CFA_BLD_MPC_READ_CMD_TABLE_INDEX_FLD].field_id =
+		CFA_BLD_MPC_READ_CMD_TABLE_INDEX_FLD;
+	fields_cmd[CFA_BLD_MPC_READ_CMD_TABLE_INDEX_FLD].val =
+		(debug ? set : offset);
+
+	fields_cmd[CFA_BLD_MPC_READ_CMD_HOST_ADDRESS_FLD].field_id =
+		CFA_BLD_MPC_READ_CMD_HOST_ADDRESS_FLD;
+	fields_cmd[CFA_BLD_MPC_READ_CMD_HOST_ADDRESS_FLD].val = host_address;
+
+	if (debug) {
+		fields_cmd[CFA_BLD_MPC_READ_CMD_CACHE_OPTION_FLD].field_id =
+		CFA_BLD_MPC_READ_CMD_CACHE_OPTION_FLD;
+		fields_cmd[CFA_BLD_MPC_READ_CMD_CACHE_OPTION_FLD].val = debug; /* Debug read */
+	}
+
+	buff_len = TFC_MPC_MAX_TX_BYTES;
+
+	rc = mpc_info->mpcops->cfa_bld_mpc_build_cache_read(tx_msg,
+							    &buff_len,
+							    fields_cmd);
+
+	if (rc) {
+		PMD_DRV_LOG_LINE(ERR, "Action read build failed: %d", rc);
+		goto cleanup;
+	}
+
+	/* Send MPC */
+	mpc_msg_in.chnl_id = (dir == CFA_DIR_TX ?
+			      HWRM_RING_ALLOC_INPUT_MPC_CHNLS_TYPE_TE_CFA :
+			      HWRM_RING_ALLOC_INPUT_MPC_CHNLS_TYPE_RE_CFA);
+	mpc_msg_in.msg_data = &tx_msg[16];
+	mpc_msg_in.msg_size = 16;
+	mpc_msg_out.cmp_type = CMPL_BASE_TYPE_MID_PATH_SHORT;
+	mpc_msg_out.msg_data = &rx_msg[16];
+	mpc_msg_out.msg_size = TFC_MPC_MAX_RX_BYTES;
+
+	rc = tfc_mpc_send(tfcp->bp,
+			  &mpc_msg_in,
+			  &mpc_msg_out,
+			  &msg_count,
+			  TFC_MPC_TABLE_READ,
+			  NULL);
+
+	if (rc) {
+		PMD_DRV_LOG_LINE(ERR, "Table read MPC send failed: %d", rc);
+		goto cleanup;
+	}
+
+		/* Process response */
+	for (i = 0; i < CFA_BLD_MPC_READ_CMP_MAX_FLD; i++)
+		fields_cmp[i].field_id = INVALID_U16;
+
+	fields_cmp[CFA_BLD_MPC_READ_CMP_STATUS_FLD].field_id =
+		CFA_BLD_MPC_READ_CMP_STATUS_FLD;
+
+	rc = mpc_info->mpcops->cfa_bld_mpc_parse_cache_read(rx_msg,
+							    mpc_msg_out.msg_size,
+							    discard_data,
+							    words * TFC_MPC_BYTES_PER_WORD,
+							    fields_cmp);
+
+	if (rc) {
+		PMD_DRV_LOG_LINE(ERR, "Table read parse failed: %d", rc);
+		goto cleanup;
+	}
+
+	if (fields_cmp[CFA_BLD_MPC_READ_CMP_STATUS_FLD].val != CFA_BLD_MPC_OK) {
+		PMD_DRV_LOG_LINE(ERR, "Table read failed with status code:%d",
+				 (uint32_t)fields_cmp[CFA_BLD_MPC_READ_CMP_STATUS_FLD].val);
+		rc = -1;
+		goto cleanup;
+	}
+
+	return 0;
+
+ cleanup:
+
+	return rc;
 }
 
 int tfc_em_delete_entries_by_pool_id(struct tfc *tfcp,
