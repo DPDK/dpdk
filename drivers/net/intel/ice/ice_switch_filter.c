@@ -489,8 +489,7 @@ ice_switch_parse_pattern(const struct rte_flow_item pattern[],
 	    *tun_type == ICE_NON_TUN_QINQ)
 		qinq_valid = 1;
 
-	for (item = pattern; item->type !=
-			RTE_FLOW_ITEM_TYPE_END; item++) {
+	ICE_FLOW_FOREACH_ITEM(item, pattern) {
 		if (item->last) {
 			rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ITEM,
@@ -1378,9 +1377,6 @@ ice_switch_parse_pattern(const struct rte_flow_item pattern[],
 			gtpu_psc_valid = 1;
 			break;
 
-		case RTE_FLOW_ITEM_TYPE_VOID:
-			break;
-
 		default:
 			rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ITEM, pattern,
@@ -1805,7 +1801,7 @@ ice_switch_parse_pattern_action(struct ice_adapter *ad,
 		return -rte_errno;
 	}
 
-	for (; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
+	ICE_FLOW_FOREACH_ITEM(item, pattern) {
 		item_num++;
 		if (item->type == RTE_FLOW_ITEM_TYPE_ETH) {
 			const struct rte_flow_item_eth *eth_mask;

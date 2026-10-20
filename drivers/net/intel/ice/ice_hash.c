@@ -624,7 +624,7 @@ ice_hash_parse_pattern(const struct rte_flow_item pattern[], uint64_t *phint,
 	const struct rte_flow_item *item = pattern;
 	const struct rte_flow_item_gtp_psc *psc;
 
-	for (item = pattern; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
+	ICE_FLOW_FOREACH_ITEM(item, pattern) {
 		if (item->last) {
 			rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ITEM, item,
@@ -1235,8 +1235,10 @@ ice_hash_parse_pattern_action(__rte_unused struct ice_adapter *ad,
 		goto error;
 
 	if (phint == ICE_PHINT_RAW) {
+		const struct rte_flow_item *raw_item = ice_pattern_skip_void(pattern);
+
 		rss_meta_ptr->raw.raw_ena = true;
-		ret = ice_hash_parse_raw_pattern(ad, pattern, error, rss_meta_ptr);
+		ret = ice_hash_parse_raw_pattern(ad, raw_item, error, rss_meta_ptr);
 		if (ret) {
 			rte_flow_error_set(error, EINVAL,
 					   RTE_FLOW_ERROR_TYPE_ITEM, NULL,

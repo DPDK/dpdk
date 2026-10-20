@@ -664,7 +664,7 @@ ice_acl_parse_pattern(__rte_unused struct ice_adapter *ad,
 	uint64_t input_set = ICE_INSET_NONE;
 	uint8_t flow_type = ICE_FLTR_PTYPE_NONF_NONE;
 
-	for (item = pattern; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
+	ICE_FLOW_FOREACH_ITEM(item, pattern) {
 		item_type = item->type;
 
 		switch (item_type) {
@@ -896,8 +896,6 @@ ice_acl_parse_pattern(__rte_unused struct ice_adapter *ad,
 						sctp_mask->hdr.dst_port;
 				}
 			}
-			break;
-		case RTE_FLOW_ITEM_TYPE_VOID:
 			break;
 		default:
 			rte_flow_error_set(error, EINVAL,
