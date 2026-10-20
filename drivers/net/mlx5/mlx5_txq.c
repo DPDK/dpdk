@@ -695,19 +695,17 @@ mlx5_txq_obj_verify(struct rte_eth_dev *dev)
  *
  * @param txq_ctrl
  *   Pointer to Tx queue control structure.
- * @param devx
- *   If the calculation is used for Devx queue.
  *
  * @return
  *   The number of WQEBB.
  */
 static int
-txq_calc_wqebb_cnt(struct mlx5_txq_ctrl *txq_ctrl, bool devx)
+txq_calc_wqebb_cnt(struct mlx5_txq_ctrl *txq_ctrl)
 {
 	unsigned int wqe_size;
 	const unsigned int desc = 1 << txq_ctrl->txq.elts_n;
 
-	if (devx) {
+	if (mlx5_devx_obj_ops_en(txq_ctrl->priv)) {
 		wqe_size = txq_ctrl->txq.tso_en ?
 			   RTE_ALIGN(txq_ctrl->max_tso_header, MLX5_WSEG_SIZE) : 0;
 		wqe_size += MLX5_WQE_CSEG_SIZE +
@@ -1171,7 +1169,7 @@ mlx5_txq_new(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	tmpl->txq.idx = idx;
 	txq_set_params(tmpl);
 	txq_adjust_params(tmpl);
-	wqebb_cnt = txq_calc_wqebb_cnt(tmpl, !!mlx5_devx_obj_ops_en(priv->sh));
+	wqebb_cnt = txq_calc_wqebb_cnt(tmpl);
 	max_wqe = mlx5_dev_get_max_wq_size(priv->sh);
 	if (wqebb_cnt > max_wqe) {
 		DRV_LOG(ERR,
@@ -1721,7 +1719,7 @@ int mlx5_map_aggr_tx_affinity(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 	struct mlx5_priv *priv;
 
 	priv = dev->data->dev_private;
-	if (!mlx5_devx_obj_ops_en(priv->sh)) {
+	if (!mlx5_devx_obj_ops_en(priv)) {
 		DRV_LOG(ERR, "Tx affinity mapping isn't supported by Verbs API.");
 		rte_errno = ENOTSUP;
 		return -rte_errno;

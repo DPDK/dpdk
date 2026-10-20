@@ -58,7 +58,7 @@ mlx5_devx_extq_port_validate(uint16_t port_id)
 		rte_errno = ENOTSUP;
 		return -rte_errno;
 	}
-	if (!mlx5_devx_obj_ops_en(priv->sh)) {
+	if (!mlx5_devx_obj_ops_en(priv)) {
 		DRV_LOG(ERR,
 			"Port %u external queue isn't supported by Verbs API.",
 			port_id);
@@ -1754,4 +1754,5 @@ struct mlx5_obj_ops mlx5_devx_obj_ops = {
 	.txq_obj_release = mlx5_txq_devx_obj_release,
 	.lb_dummy_queue_create = NULL,
 	.lb_dummy_queue_release = NULL,
+	.devx = true,
 };

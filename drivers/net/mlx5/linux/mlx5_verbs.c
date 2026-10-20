@@ -1242,4 +1242,5 @@ struct mlx5_obj_ops mlx5_ibv_obj_ops = {
 	.txq_obj_release = mlx5_txq_ibv_obj_release,
 	.lb_dummy_queue_create = NULL,
 	.lb_dummy_queue_release = NULL,
+	.devx = false,
 };

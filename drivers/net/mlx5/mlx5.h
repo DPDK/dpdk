@@ -1862,6 +1862,7 @@ struct mlx5_obj_ops {
 	void (*txq_obj_release)(struct mlx5_txq_obj *txq_obj);
 	int (*lb_dummy_queue_create)(struct rte_eth_dev *dev);
 	void (*lb_dummy_queue_release)(struct rte_eth_dev *dev);
+	bool devx; /* True when these are DevX object operations. */
 };
 
 enum mlx5_ctrl_flow_type {
@@ -2241,27 +2242,35 @@ mlx5_flow_action_job_init(struct mlx5_priv *priv, uint32_t queue,
 #endif
 
 /**
- * Indicates whether HW objects operations can be created by DevX.
+ * Indicates whether DevX is available on the device.
  *
- * This function is used for both:
- *  Before creation - deciding whether to create HW objects operations by DevX.
- *  After creation - indicator if HW objects operations were created by DevX.
+ * Availability does not mean DevX object operations were selected.
  *
  * @param sh
  *   Pointer to shared device context.
  *
  * @return
- *   True if HW objects were created by DevX, False otherwise.
+ *   True if DevX is available, false otherwise.
  */
 static inline bool
-mlx5_devx_obj_ops_en(struct mlx5_dev_ctx_shared *sh)
+mlx5_devx_available(struct mlx5_dev_ctx_shared *sh)
 {
-	/*
-	 * When advanced DR API is available and DV flow is supported and
-	 * DevX is supported, HW objects operations are created by DevX.
-	 */
-	return (sh->cdev->config.devx && sh->config.dv_flow_en &&
-		sh->dev_cap.dest_tir);
+	return sh->cdev->config.devx;
+}
+
+/**
+ * Indicates whether the port uses DevX object operations.
+ *
+ * @param priv
+ *   Pointer to port private data.
+ *
+ * @return
+ *   True if DevX object operations are selected, false otherwise.
+ */
+static inline bool
+mlx5_devx_obj_ops_en(struct mlx5_priv *priv)
+{
+	return priv->obj_ops.devx;
 }
 
 /**

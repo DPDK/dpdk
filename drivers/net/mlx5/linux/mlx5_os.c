@@ -1446,31 +1446,6 @@ err_secondary:
 		err = ENOMEM;
 		goto error;
 	}
-	/*
-	 * When user configures remote PD and CTX and device creates RxQ by
-	 * DevX, external RxQ is both supported and requested.
-	 */
-	if (mlx5_imported_pd_and_ctx(sh->cdev) && mlx5_devx_obj_ops_en(sh)) {
-		priv->ext_rxqs = mlx5_malloc(MLX5_MEM_ZERO | MLX5_MEM_RTE,
-					     sizeof(struct mlx5_external_q) *
-					     MLX5_MAX_EXT_RX_QUEUES, 0,
-					     SOCKET_ID_ANY);
-		if (priv->ext_rxqs == NULL) {
-			DRV_LOG(ERR, "Fail to allocate external RxQ array.");
-			err = ENOMEM;
-			goto error;
-		}
-		priv->ext_txqs = mlx5_malloc(MLX5_MEM_ZERO | MLX5_MEM_RTE,
-					     sizeof(struct mlx5_external_q) *
-					     MLX5_MAX_EXT_TX_QUEUES, 0,
-					     SOCKET_ID_ANY);
-		if (priv->ext_txqs == NULL) {
-			DRV_LOG(ERR, "Fail to allocate external TxQ array.");
-			err = ENOMEM;
-			goto error;
-		}
-		DRV_LOG(DEBUG, "External queue is supported.");
-	}
 	priv->sh = sh;
 	priv->dev_port = spawn->phys_port;
 	priv->pci_dev = spawn->pci_dev;
@@ -1822,7 +1797,8 @@ err_secondary:
 	}
 	/* Create context for virtual machine VLAN workaround. */
 	priv->vmwa_context = mlx5_vlan_vmwa_init(eth_dev, spawn->ifindex);
-	if (mlx5_devx_obj_ops_en(sh)) {
+	/* Linux DevX object operations also require DV flow and Dest TIR. */
+	if (mlx5_devx_available(sh) && sh->config.dv_flow_en && sh->dev_cap.dest_tir) {
 		priv->obj_ops = mlx5_devx_obj_ops;
 		mlx5_queue_counter_id_prepare(eth_dev);
 		priv->obj_ops.lb_dummy_queue_create =
@@ -1837,8 +1813,32 @@ err_secondary:
 	} else {
 		priv->obj_ops = mlx5_ibv_obj_ops;
 	}
-	if (sh->config.tx_pp &&
-	    priv->obj_ops.txq_obj_new != mlx5_txq_devx_obj_new) {
+	/*
+	 * When user configures remote PD and CTX and device creates RxQ by
+	 * DevX, external RxQ is both supported and requested.
+	 */
+	if (mlx5_imported_pd_and_ctx(sh->cdev) && mlx5_devx_obj_ops_en(priv)) {
+		priv->ext_rxqs = mlx5_malloc(MLX5_MEM_ZERO | MLX5_MEM_RTE,
+					     sizeof(struct mlx5_external_q) *
+					     MLX5_MAX_EXT_RX_QUEUES, 0,
+					     SOCKET_ID_ANY);
+		if (priv->ext_rxqs == NULL) {
+			DRV_LOG(ERR, "Fail to allocate external RxQ array.");
+			err = ENOMEM;
+			goto error;
+		}
+		priv->ext_txqs = mlx5_malloc(MLX5_MEM_ZERO | MLX5_MEM_RTE,
+					     sizeof(struct mlx5_external_q) *
+					     MLX5_MAX_EXT_TX_QUEUES, 0,
+					     SOCKET_ID_ANY);
+		if (priv->ext_txqs == NULL) {
+			DRV_LOG(ERR, "Fail to allocate external TxQ array.");
+			err = ENOMEM;
+			goto error;
+		}
+		DRV_LOG(DEBUG, "External queue is supported.");
+	}
+	if (sh->config.tx_pp && !mlx5_devx_obj_ops_en(priv)) {
 		/*
 		 * HAVE_MLX5DV_DEVX_UAR_OFFSET is required to support
 		 * packet pacing and already checked above.
