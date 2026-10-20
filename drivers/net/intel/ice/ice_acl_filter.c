@@ -998,7 +998,7 @@ ice_acl_parse(struct ice_adapter *ad,
 	};
 	struct ice_pf *pf = &ad->pf;
 	struct ice_acl_conf *filter = &pf->acl.conf;
-	struct ice_pattern_match_item *item = NULL;
+	struct ice_pattern_match_item item;
 	uint64_t input_set;
 	int ret;
 
@@ -1012,33 +1012,29 @@ ice_acl_parse(struct ice_adapter *ad,
 	if (ret)
 		return ret;
 
-	item = ice_search_pattern_match_item(ad, pattern, array, array_len,
-					     error);
-	if (!item)
-		return -rte_errno;
+	ret = ice_search_pattern_match_item(ad, pattern, array, array_len,
+					     &item, error);
+	if (ret != 0)
+		return ret;
 
 	ret = ice_acl_parse_pattern(ad, pattern, error, filter);
 	if (ret)
-		goto error;
+		return ret;
 	input_set = filter->input_set;
-	if (!input_set || input_set & ~item->input_set_mask_o) {
-		rte_flow_error_set(error, EINVAL,
+	if (!input_set || input_set & ~item.input_set_mask_o) {
+		return rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
 				   pattern,
 				   "Invalid input set");
-		ret = -rte_errno;
-		goto error;
 	}
 
 	ret = ice_acl_parse_action(&parsed_actions, filter, error);
 	if (ret)
-		goto error;
+		return ret;
 
 	if (meta)
 		*meta = filter;
 
-error:
-	free(item);
 	return ret;
 }
 

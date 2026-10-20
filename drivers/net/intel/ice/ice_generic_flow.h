@@ -583,11 +583,12 @@ ice_pattern_skip_void(const struct rte_flow_item *item)
 	     (item)->type != RTE_FLOW_ITEM_TYPE_END; \
 	     (item) = ice_pattern_skip_void((item) + 1))
 
-struct ice_pattern_match_item *
+int
 ice_search_pattern_match_item(struct ice_adapter *ad,
 			      const struct rte_flow_item pattern[],
 			      struct ice_pattern_match_item *array,
 			      uint32_t array_len,
+			      struct ice_pattern_match_item *match,
 			      struct rte_flow_error *error);
 int
 ice_flow_redirect(struct ice_adapter *ad,
