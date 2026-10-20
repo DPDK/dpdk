@@ -22,7 +22,7 @@ Some of these, in turn, will be used to configure the PACKET_MMAP settings.
 *   ``iface`` - name of the Kernel interface to attach to (required);
 *   ``qpairs`` - number of Rx and Tx queues (optional, default 1);
 *   ``qdisc_bypass`` - set PACKET_QDISC_BYPASS option in AF_PACKET (optional,
-    disabled by default);
+    enabled by default);
 *   ``fanout_mode`` - set fanout algorithm.
     Possible choices: hash, lb, cpu, rollover, rnd, qm (optional, default hash);
 *   ``ignore_outgoing`` - ``rte_eth_rx_burst()`` returns only incoming packets
@@ -84,7 +84,7 @@ framecnt=512):
 
 .. code-block:: console
 
-    --vdev=eth_af_packet0,iface=tap0,blocksz=4096,framesz=2048,framecnt=512,qpairs=1,qdisc_bypass=0,fanout_mode=hash
+    --vdev=eth_af_packet0,iface=tap0,blocksz=4096,framesz=2048,framecnt=512,qpairs=1,qdisc_bypass=1,fanout_mode=hash
 
 Features and Limitations
 ------------------------
