@@ -32,7 +32,7 @@ M: Stephen Hemminger <stephen@networkplumber.org>
 T: git://dpdk.org/next/dpdk-next-net
 
 Next-net-brcm Tree
-M: Ajit Khaparde <ajit.khaparde@broadcom.com>
+M: Kishore Padmanabha <kishore.padmanabha@broadcom.com>
 T: git://dpdk.org/next/dpdk-next-net-brcm
 
 Next-net-intel Tree
