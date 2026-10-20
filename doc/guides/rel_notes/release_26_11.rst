@@ -177,6 +177,11 @@ New Features
 
   * Added the inner IP header to the RSS hash so tunneled traffic is
     distributed across the Rx queues.
+  * Removed ``DPAA2_FLOW_CONTROL_MISS_FLOW`` environment variable. The
+    flow steering miss queue now defaults to the last Rx queue configured
+    in the traffic class. Users who previously redirected unmatched
+    frames to a specific queue via this variable must use the rte_flow
+    API instead.
 
 * **Updated NXP ENETC4 PMD.**
 
