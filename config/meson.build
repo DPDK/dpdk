@@ -378,6 +378,12 @@ if cc.has_argument('-Wno-comma')
     no_comma_cflag = '-Wno-comma'
 endif
 
+# GCC's string/memory access warnings are flow-insensitive without
+# optimization and produce false positives on dead paths of inlined code.
+if get_option('optimization') == '0' and cc.get_id() == 'gcc'
+    global_cflags += ['-Wno-stringop-overflow', '-Wno-stringop-overread']
+endif
+
 foreach arg: global_cflags
     if cc.has_argument(arg)
         add_project_arguments(arg, language: 'c')
