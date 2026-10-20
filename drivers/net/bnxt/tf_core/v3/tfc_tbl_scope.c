@@ -571,6 +571,7 @@ static int tbl_scope_pools_create(struct tfc *tfcp, uint8_t tsid,
 				  struct tbl_scope_pools_create_parms *parms)
 {
 	int rc;
+	int err;
 	int dir;
 	enum cfa_region_type region;
 	uint32_t tpm_db_size;
@@ -611,8 +612,10 @@ static int tbl_scope_pools_create(struct tfc *tfcp, uint8_t tsid,
 	for (region = 0; region < CFA_REGION_TYPE_MAX; region++) {
 		for (dir = 0; dir < CFA_DIR_MAX; dir++) {
 			tpms[dir][region] = rte_zmalloc("TPM", tpm_db_size, 0);
-			if (tpms[dir][region] == NULL)
+			if (tpms[dir][region] == NULL) {
+				rc = -ENOMEM;
 				goto cleanup;
+			}
 
 			rc = cfa_tpm_open(tpms[dir][region], tpm_db_size, parms->max_pools);
 			if (rc)
@@ -634,6 +637,8 @@ static int tbl_scope_pools_create(struct tfc *tfcp, uint8_t tsid,
 	return rc;
 
  cleanup:
+	/* Keep the error that got us here; the calls below overwrite rc */
+	err = rc;
 	if (tim) {
 		for (region = 0; region < CFA_REGION_TYPE_MAX; region++) {
 			for (dir = 0; dir < CFA_DIR_MAX; dir++) {
@@ -663,7 +668,7 @@ static int tbl_scope_pools_create(struct tfc *tfcp, uint8_t tsid,
 		}
 	}
 
-	return rc;
+	return err;
 }
 
 /**
