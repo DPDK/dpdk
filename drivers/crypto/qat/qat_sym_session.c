@@ -378,6 +378,15 @@ qat_get_cipher_xform(struct rte_crypto_sym_xform *xform)
 	return NULL;
 }
 
+static inline uint8_t qat_check_ucs(enum qat_device_gen qat_dev_gen)
+{
+	return (qat_dev_gen == QAT_GEN4 ||
+			qat_dev_gen == QAT_GEN5 ||
+			qat_dev_gen == QAT_GEN6 ||
+			qat_dev_gen == QAT_VQAT);
+}
+
+
 int
 qat_sym_session_configure_cipher(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform,
@@ -416,9 +425,7 @@ qat_sym_session_configure_cipher(struct rte_cryptodev *dev,
 			goto error_out;
 		}
 		session->qat_mode = ICP_QAT_HW_CIPHER_CTR_MODE;
-		if (qat_dev_gen == QAT_GEN4 || qat_dev_gen == QAT_GEN5 ||
-				qat_dev_gen == QAT_VQAT)
-			session->is_ucs = 1;
+		session->is_ucs = qat_check_ucs(qat_dev_gen);
 		break;
 	case RTE_CRYPTO_CIPHER_SNOW3G_UEA2:
 		if (qat_sym_validate_snow3g_key(cipher_xform->key.length,
@@ -968,8 +975,7 @@ qat_sym_session_configure_auth(struct rte_cryptodev *dev,
 			session->auth_iv.length = AES_GCM_J0_LEN;
 		else
 			session->is_iv12B = 1;
-		if (qat_dev_gen == QAT_GEN4 || qat_dev_gen == QAT_GEN5 ||
-				qat_dev_gen == QAT_VQAT) {
+		if (qat_check_ucs(qat_dev_gen)) {
 			session->is_cnt_zero = 1;
 			session->is_ucs = 1;
 		}
@@ -1133,10 +1139,7 @@ qat_sym_session_configure_aead(struct rte_cryptodev *dev,
 		}
 		session->qat_mode = ICP_QAT_HW_CIPHER_CTR_MODE;
 		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_GALOIS_128;
-
-		if (qat_dev_gen == QAT_GEN4 || qat_dev_gen == QAT_GEN5 ||
-				qat_dev_gen == QAT_VQAT)
-			session->is_ucs = 1;
+		session->is_ucs = qat_check_ucs(qat_dev_gen);
 		if (session->cipher_iv.length == 0) {
 			session->cipher_iv.length = AES_GCM_J0_LEN;
 			break;
@@ -1155,16 +1158,12 @@ qat_sym_session_configure_aead(struct rte_cryptodev *dev,
 		}
 		session->qat_mode = ICP_QAT_HW_CIPHER_CTR_MODE;
 		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_AES_CBC_MAC;
-		if (qat_dev_gen == QAT_GEN4 || qat_dev_gen == QAT_GEN5 ||
-				qat_dev_gen == QAT_VQAT)
-			session->is_ucs = 1;
+		session->is_ucs = qat_check_ucs(qat_dev_gen);
 		break;
 	case RTE_CRYPTO_AEAD_CHACHA20_POLY1305:
 		if (aead_xform->key.length != ICP_QAT_HW_CHACHAPOLY_KEY_SZ)
 			return -EINVAL;
-		if (qat_dev_gen == QAT_GEN4 || qat_dev_gen == QAT_GEN5 ||
-				qat_dev_gen == QAT_VQAT)
-			session->is_ucs = 1;
+		session->is_ucs = qat_check_ucs(qat_dev_gen);
 		session->qat_cipher_alg =
 				ICP_QAT_HW_CIPHER_ALGO_CHACHA20_POLY1305;
 		qat_sym_session_handle_single_pass(session,
@@ -2006,7 +2005,7 @@ int qat_sym_cd_cipher_set(struct qat_sym_session *cdesc,
 	return 0;
 }
 
-static int qat_sym_cd_auth_set(struct qat_sym_session *cdesc,
+static int qat_sym_cd_auth_set_gen1(struct qat_sym_session *cdesc,
 		const uint8_t *authkey,
 		uint32_t authkeylen,
 		uint32_t aad_length,
@@ -2037,7 +2036,7 @@ static int qat_sym_cd_auth_set(struct qat_sym_session *cdesc,
 		ICP_QAT_FW_COMN_CURR_ID_SET(hash_cd_ctrl,
 					ICP_QAT_FW_SLICE_AUTH);
 		ICP_QAT_FW_COMN_NEXT_ID_SET(hash_cd_ctrl,
-					ICP_QAT_FW_SLICE_DRAM_WR);
+				ICP_QAT_FW_SLICE_DRAM_WR);
 		cdesc->cd_cur_ptr = (uint8_t *)&cdesc->cd;
 	} else if (cdesc->qat_cmd == ICP_QAT_FW_LA_CMD_HASH_CIPHER) {
 		ICP_QAT_FW_COMN_CURR_ID_SET(hash_cd_ctrl,
@@ -2135,8 +2134,7 @@ static int qat_sym_cd_auth_set(struct qat_sym_session *cdesc,
 			qat_hash_get_block_size(cdesc->qat_hash_alg);
 		auth_param->hash_state_sz = (hash_cd_ctrl->outer_prefix_sz +
 			auth_param->u2.inner_prefix_sz) >> 3;
-		if (qat_dev_gen == QAT_GEN4 || qat_dev_gen == QAT_GEN5 ||
-				qat_dev_gen == QAT_VQAT) {
+		if (qat_check_ucs(qat_dev_gen)) {
 			ICP_QAT_FW_HASH_FLAG_MODE2_SET(
 				hash_cd_ctrl->hash_flags,
 				QAT_FW_LA_MODE2);
@@ -2459,6 +2457,22 @@ static int qat_sym_cd_auth_set(struct qat_sym_session *cdesc,
 	return 0;
 }
 
+static int qat_sym_cd_auth_set(struct qat_sym_session *cdesc,
+		const uint8_t *authkey,
+		uint32_t authkeylen,
+		uint32_t aad_length,
+		uint32_t digestsize,
+		unsigned int operation,
+		enum qat_device_gen qat_dev_gen)
+{
+	if (qat_dev_gen == QAT_GEN6)
+		return qat_sym_cd_auth_set_gen6(cdesc, authkey, authkeylen,
+				aad_length, digestsize, operation);
+
+	return qat_sym_cd_auth_set_gen1(cdesc, authkey, authkeylen,
+			aad_length, digestsize, operation, qat_dev_gen);
+}
+
 int qat_sym_validate_aes_key(int key_len, enum icp_qat_hw_cipher_algo *alg)
 {
 	switch (key_len) {
@@ -2653,6 +2667,7 @@ qat_sym_cd_crc_set(struct qat_sym_session *cdesc,
 		break;
 	case QAT_GEN4:
 	case QAT_GEN5:
+	case QAT_GEN6:
 		crc_cfg.mode = ICP_QAT_HW_CIPHER_ECB_MODE;
 		crc_cfg.algo = ICP_QAT_HW_CIPHER_ALGO_NULL;
 		crc_cfg.hash_cmp_val = 0;

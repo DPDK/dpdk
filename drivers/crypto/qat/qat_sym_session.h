@@ -205,6 +205,14 @@ qat_sym_sesssion_init_common_hdr(struct qat_sym_session *session,
 					enum qat_sym_proto_flag proto_flags);
 
 int
+qat_sym_cd_auth_set_gen6(struct qat_sym_session *cdesc,
+		const uint8_t *authkey,
+		uint32_t authkeylen,
+		uint32_t aad_length,
+		uint32_t digestsize,
+		unsigned int operation);
+
+int
 qat_sym_validate_aes_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
 int
 qat_sym_validate_aes_docsisbpi_key(int key_len,

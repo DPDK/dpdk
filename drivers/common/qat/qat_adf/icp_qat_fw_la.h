@@ -473,7 +473,12 @@ struct icp_qat_fw_la_cipher_20_req_params {
 	uint32_t   spc_aad_sz;
 	uint64_t   spc_aad_addr;
 	uint64_t   spc_auth_res_addr;
-	uint8_t    reserved[3];
+	union {
+		uint8_t    reserved[3];
+		struct {
+			uint8_t hmac_sz;
+		};
+	};
 	uint8_t    spc_auth_res_sz;
 };
 

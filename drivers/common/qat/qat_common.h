@@ -34,6 +34,7 @@ enum qat_device_gen {
 	QAT_GEN3,
 	QAT_GEN4,
 	QAT_GEN5,
+	QAT_GEN6,
 	QAT_GEN_LCE,
 	QAT_VQAT,
 	QAT_N_GENS

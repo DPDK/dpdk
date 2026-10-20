@@ -71,6 +71,9 @@ static const struct rte_pci_id pci_id_qat_map[] = {
 			RTE_PCI_DEVICE(0x8086, 0x4947),
 		},
 		{
+			RTE_PCI_DEVICE(0x8086, 0x4949),
+		},
+		{
 			RTE_PCI_DEVICE(0x8086, 0x1454),
 		},
 		{
@@ -152,6 +155,8 @@ pick_gen(const struct rte_pci_device *pci_dev)
 		return QAT_GEN4;
 	case 0x4947:
 		return QAT_GEN5;
+	case 0x4949:
+		return QAT_GEN6;
 	case 0x1454:
 		return QAT_GEN_LCE;
 	case 0x0da5:
