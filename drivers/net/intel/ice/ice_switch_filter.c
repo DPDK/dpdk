@@ -178,12 +178,6 @@
 	ICE_SW_INSET_GTPU_IPV6 | ICE_INSET_TCP_SRC_PORT | \
 	ICE_INSET_TCP_DST_PORT)
 
-struct sw_meta {
-	struct ice_adv_lkup_elem *list;
-	uint16_t lkups_num;
-	struct ice_adv_rule_info rule_info;
-};
-
 enum ice_sw_fltr_status {
 	ICE_SW_FLTR_ADDED,
 	ICE_SW_FLTR_RMV_FAILED_ON_RIDRECT,
@@ -291,7 +285,7 @@ ice_pattern_match_item ice_switch_supported_pattern[] = {
 
 static int
 ice_switch_create(struct ice_adapter *ad,
-		struct rte_flow *flow,
+		struct rte_flow *flow __rte_unused,
 		void *meta,
 		struct rte_flow_error *error)
 {
@@ -299,13 +293,10 @@ ice_switch_create(struct ice_adapter *ad,
 	struct ice_pf *pf = &ad->pf;
 	struct ice_hw *hw = ICE_PF_TO_HW(pf);
 	struct ice_rule_query_data rule_added = {0};
-	struct ice_switch_filter_conf *filter_conf_ptr;
-	struct ice_adv_lkup_elem *list =
-		((struct sw_meta *)meta)->list;
-	uint16_t lkups_cnt =
-		((struct sw_meta *)meta)->lkups_num;
-	struct ice_adv_rule_info *rule_info =
-		&((struct sw_meta *)meta)->rule_info;
+	struct ice_switch_filter_conf *filter_conf_ptr = meta;
+	struct ice_adv_lkup_elem *list = filter_conf_ptr->lkups;
+	uint16_t lkups_cnt = filter_conf_ptr->lkups_num;
+	struct ice_adv_rule_info *rule_info = &filter_conf_ptr->rule_info;
 
 	if (lkups_cnt > ICE_MAX_CHAIN_WORDS) {
 		rte_flow_error_set(error, EINVAL,
@@ -329,26 +320,11 @@ ice_switch_create(struct ice_adapter *ad,
 
 	ret = ice_add_adv_rule(hw, list, lkups_cnt, rule_info, &rule_added);
 	if (!ret) {
-		filter_conf_ptr = rte_zmalloc("ice_switch_filter",
-			sizeof(struct ice_switch_filter_conf), 0);
-		if (!filter_conf_ptr) {
-			rte_flow_error_set(error, EINVAL,
-				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
-				   "No memory for ice_switch_filter");
-			goto error;
-		}
-
 		filter_conf_ptr->sw_query_data = rule_added;
 
 		filter_conf_ptr->vsi_num =
 			ice_get_hw_vsi_num(hw, rule_info->sw_act.vsi_handle);
-		filter_conf_ptr->lkups = list;
-		filter_conf_ptr->lkups_num = lkups_cnt;
-		filter_conf_ptr->rule_info = *rule_info;
-
 		filter_conf_ptr->fltr_status = ICE_SW_FLTR_ADDED;
-
-		flow->rule = filter_conf_ptr;
 	} else {
 		if (ice_dcf_adminq_need_retry(ad))
 			ret = -EAGAIN;
@@ -361,26 +337,18 @@ ice_switch_create(struct ice_adapter *ad,
 		goto error;
 	}
 
-	rte_free(meta);
 	return 0;
 
 error:
-	rte_free(list);
-	rte_free(meta);
-
 	return -rte_errno;
 }
 
 static inline void
-ice_switch_filter_rule_free(struct rte_flow *flow)
+ice_switch_filter_rule_free(void *rule)
 {
-	struct ice_switch_filter_conf *filter_conf_ptr =
-		(struct ice_switch_filter_conf *)flow->rule;
+	struct ice_switch_filter_conf *filter_conf_ptr = rule;
 
-	if (filter_conf_ptr)
-		rte_free(filter_conf_ptr->lkups);
-
-	rte_free(filter_conf_ptr);
+	rte_free(filter_conf_ptr->lkups);
 }
 
 static int
@@ -401,8 +369,6 @@ ice_switch_destroy(struct ice_adapter *ad,
 			RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 			"no such flow"
 			" create by switch filter");
-
-		ice_switch_filter_rule_free(flow);
 
 		return -rte_errno;
 	}
@@ -427,7 +393,6 @@ ice_switch_destroy(struct ice_adapter *ad,
 		return -rte_errno;
 	}
 
-	ice_switch_filter_rule_free(flow);
 	return ret;
 }
 
@@ -1746,7 +1711,7 @@ ice_switch_parse_pattern_action(struct ice_adapter *ad,
 {
 	struct ice_pf *pf = &ad->pf;
 	int ret = 0;
-	struct sw_meta *sw_meta_ptr = NULL;
+	struct ice_switch_filter_conf *filter = NULL;
 	struct ice_adv_rule_info rule_info;
 	struct ice_adv_lkup_elem *list = NULL;
 	uint16_t lkups_num = 0;
@@ -1839,12 +1804,11 @@ ice_switch_parse_pattern_action(struct ice_adapter *ad,
 		return -rte_errno;
 	}
 
-	sw_meta_ptr =
-		rte_zmalloc(NULL, sizeof(*sw_meta_ptr), 0);
-	if (!sw_meta_ptr) {
+	filter = rte_zmalloc("ice_switch_filter", sizeof(*filter), 0);
+	if (filter == NULL) {
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
-				   "No memory for sw_pattern_meta_ptr");
+				   "No memory for ice_switch_filter");
 		goto error;
 	}
 
@@ -1879,21 +1843,16 @@ ice_switch_parse_pattern_action(struct ice_adapter *ad,
 	if (ret)
 		goto error;
 
-	if (meta) {
-		*meta = sw_meta_ptr;
-		((struct sw_meta *)*meta)->list = list;
-		((struct sw_meta *)*meta)->lkups_num = lkups_num;
-		((struct sw_meta *)*meta)->rule_info = rule_info;
-	} else {
-		rte_free(list);
-		rte_free(sw_meta_ptr);
-	}
+	filter->lkups = list;
+	filter->lkups_num = lkups_num;
+	filter->rule_info = rule_info;
+	*meta = filter;
 
 	return 0;
 
 error:
 	rte_free(list);
-	rte_free(sw_meta_ptr);
+	rte_free(filter);
 
 	return -rte_errno;
 }

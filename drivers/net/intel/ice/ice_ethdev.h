@@ -465,7 +465,6 @@ struct ice_fdir_info {
 	void *prg_pkt;                 /* memory for fdir program packet */
 	uint64_t dma_addr;             /* physic address of packet memory*/
 	const struct rte_memzone *mz;
-	struct ice_fdir_filter_conf conf;
 
 	struct ice_fdir_filter_conf **hash_map;
 	struct rte_hash *hash_table;
@@ -502,7 +501,6 @@ struct ice_acl_conf {
  * A structure used to define fields of ACL related info.
  */
 struct ice_acl_info {
-	struct ice_acl_conf conf;
 	struct rte_bitmap *slots;
 	uint64_t hw_entry_id[MAX_ACL_NORMAL_ENTRIES];
 };

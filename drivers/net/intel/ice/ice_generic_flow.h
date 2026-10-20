@@ -519,7 +519,13 @@ typedef int (*engine_query_t)(struct ice_adapter *ad,
 typedef int(*engine_redirect_t)(struct ice_adapter *ad,
 				struct rte_flow *flow,
 				struct ice_flow_redirect *redirect);
-typedef void (*engine_free_t) (struct rte_flow *flow);
+/* Free nested rule allocations only, without accessing hardware resources. */
+typedef void (*engine_free_t)(void *rule);
+/*
+ * Parsers return an allocated final rule through meta on success, and clean up
+ * their own allocations on failure. The generic layer owns successful results,
+ * including during validation; engine create/destroy callbacks must not free them.
+ */
 typedef int (*parse_pattern_action_t)(struct ice_adapter *ad,
 		struct ice_pattern_match_item *array,
 		uint32_t array_len,
