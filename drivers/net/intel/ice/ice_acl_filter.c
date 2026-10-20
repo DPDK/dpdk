@@ -46,6 +46,7 @@
 	ICE_INSET_SCTP_SRC_PORT | ICE_INSET_SCTP_DST_PORT)
 
 struct acl_rule {
+	struct ice_acl_conf conf;
 	enum ice_fltr_ptype flow_type;
 	uint64_t entry_id[4];
 };
@@ -504,42 +505,24 @@ ice_acl_hw_rem_conf(struct ice_pf *pf, struct acl_rule *rule, int32_t entry_idx)
 
 static int
 ice_acl_create_filter(struct ice_adapter *ad,
-		      struct rte_flow *flow,
+		      struct rte_flow *flow __rte_unused,
 		      void *meta,
 		      struct rte_flow_error *error)
 {
-	struct ice_acl_conf *filter = meta;
+	struct acl_rule *rule = meta;
+	struct ice_acl_conf *filter = &rule->conf;
 	enum ice_fltr_ptype flow_type = filter->input.flow_type;
 	struct ice_flow_action acts[1];
 	struct ice_pf *pf = &ad->pf;
-	struct ice_fdir_fltr *input;
-	struct acl_rule *rule;
+	struct ice_fdir_fltr input_buf = {0};
+	struct ice_fdir_fltr *input = &input_buf;
 	int ret;
-
-	rule = rte_zmalloc("acl_rule", sizeof(*rule), 0);
-	if (!rule) {
-		rte_flow_error_set(error, ENOMEM,
-				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
-				   "Failed to allocate memory for acl rule");
-		return -rte_errno;
-	}
-
-	input = rte_zmalloc("acl_entry", sizeof(*input), 0);
-	if (!input) {
-		rte_flow_error_set(error, ENOMEM,
-				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
-				   "Failed to allocate memory for acl input");
-		ret = -rte_errno;
-		goto err_acl_input_alloc;
-	}
 
 	ret = ice_acl_set_input_set(filter, input);
 	if (ret) {
-		rte_flow_error_set(error, -ret,
+		return rte_flow_error_set(error, -ret,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 				   "failed to set input set.");
-		ret = -rte_errno;
-		goto err_acl_set_input;
 	}
 
 	if (filter->input.dest_ctl == ICE_FLTR_PRGM_DESC_DEST_DROP_PKT) {
@@ -558,11 +541,9 @@ ice_acl_create_filter(struct ice_adapter *ad,
 	input->acl_fltr = true;
 	ret = ice_acl_hw_set_conf(pf, input, acts, rule, flow_type, 0);
 	if (ret) {
-		rte_flow_error_set(error, -ret,
+		return rte_flow_error_set(error, -ret,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 				   "failed to set hw configure.");
-		ret = -rte_errno;
-		return ret;
 	}
 
 	if (flow_type == ICE_FLTR_PTYPE_NONF_IPV4_OTHER ||
@@ -582,7 +563,6 @@ ice_acl_create_filter(struct ice_adapter *ad,
 	}
 
 	rule->flow_type = flow_type;
-	flow->rule = rule;
 	return 0;
 
 err_acl_hw_set_conf_sctp:
@@ -591,10 +571,6 @@ err_acl_hw_set_conf_tcp:
 	ice_acl_hw_rem_conf(pf, rule, 2);
 err_acl_hw_set_conf_udp:
 	ice_acl_hw_rem_conf(pf, rule, 1);
-err_acl_set_input:
-	rte_free(input);
-err_acl_input_alloc:
-	rte_free(rule);
 	return ret;
 }
 
@@ -635,16 +611,7 @@ ice_acl_destroy_filter(struct ice_adapter *ad,
 		break;
 	}
 
-	flow->rule = NULL;
-	rte_free(rule);
 	return ret;
-}
-
-static void
-ice_acl_filter_free(struct rte_flow *flow)
-{
-	rte_free(flow->rule);
-	flow->rule = NULL;
 }
 
 static int
@@ -996,13 +963,11 @@ ice_acl_parse(struct ice_adapter *ad,
 		.check = ice_acl_parse_action_check,
 		.driver_ctx = ad,
 	};
-	struct ice_pf *pf = &ad->pf;
-	struct ice_acl_conf *filter = &pf->acl.conf;
+	struct acl_rule *rule;
+	struct ice_acl_conf *filter;
 	struct ice_pattern_match_item item;
 	uint64_t input_set;
 	int ret;
-
-	memset(filter, 0, sizeof(*filter));
 
 	ret = ci_flow_check_attr(attr, NULL, error);
 	if (ret)
@@ -1017,24 +982,35 @@ ice_acl_parse(struct ice_adapter *ad,
 	if (ret != 0)
 		return ret;
 
+	rule = rte_zmalloc("acl_rule", sizeof(*rule), 0);
+	if (rule == NULL) {
+		return rte_flow_error_set(error, ENOMEM,
+				RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				"Failed to allocate memory for acl rule");
+	}
+	filter = &rule->conf;
+
 	ret = ice_acl_parse_pattern(ad, pattern, error, filter);
 	if (ret)
-		return ret;
+		goto error;
 	input_set = filter->input_set;
 	if (!input_set || input_set & ~item.input_set_mask_o) {
-		return rte_flow_error_set(error, EINVAL,
+		ret = rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
 				   pattern,
 				   "Invalid input set");
+		goto error;
 	}
 
 	ret = ice_acl_parse_action(&parsed_actions, filter, error);
 	if (ret)
-		return ret;
+		goto error;
 
-	if (meta)
-		*meta = filter;
+	*meta = rule;
+	return 0;
 
+error:
+	rte_free(rule);
 	return ret;
 }
 
@@ -1122,7 +1098,6 @@ ice_flow_engine ice_acl_engine = {
 	.uninit = ice_acl_uninit,
 	.create = ice_acl_create_filter,
 	.destroy = ice_acl_destroy_filter,
-	.free = ice_acl_filter_free,
 	.name = "acl",
 	.type = ICE_FLOW_ENGINE_ACL,
 	.rule_size = sizeof(struct acl_rule),

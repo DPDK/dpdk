@@ -1537,14 +1537,14 @@ ice_fdir_entry_del(struct ice_pf *pf, struct ice_fdir_fltr_pattern *key)
 
 static int
 ice_fdir_create_filter(struct ice_adapter *ad,
-		       struct rte_flow *flow,
+		       struct rte_flow *flow __rte_unused,
 		       void *meta,
 		       struct rte_flow_error *error)
 {
 	struct ice_pf *pf = &ad->pf;
 	struct ice_fdir_filter_conf *filter = meta;
 	struct ice_fdir_info *fdir_info = &pf->fdir;
-	struct ice_fdir_filter_conf *entry, *node;
+	struct ice_fdir_filter_conf *node;
 	struct ice_fdir_fltr_pattern key;
 	bool is_tun;
 	int ret;
@@ -1579,12 +1579,12 @@ ice_fdir_create_filter(struct ice_adapter *ad,
 			ret = ice_flow_set_hw_prof(hw, main_vsi, ctrl_vsi,
 						   &filter->prof, ICE_BLK_FD);
 			if (ret)
-				goto error;
+				return -rte_errno;
 		}
 
 		ret = ice_fdir_add_del_raw(pf, filter, true);
 		if (ret)
-			goto error;
+			return -rte_errno;
 
 		if (!fv_found) {
 			for (i = 0; i < filter->prof.fv_num; i++) {
@@ -1600,14 +1600,6 @@ ice_fdir_create_filter(struct ice_adapter *ad,
 		if (filter->mark_flag == 1)
 			ice_fdir_rx_parsing_enable(ad, 1);
 
-		entry = rte_zmalloc("fdir_entry", sizeof(*entry), 0);
-		if (!entry)
-			goto error;
-
-		memcpy(entry, filter, sizeof(*filter));
-
-		flow->rule = entry;
-
 		return 0;
 	}
 
@@ -1620,14 +1612,6 @@ ice_fdir_create_filter(struct ice_adapter *ad,
 		return -rte_errno;
 	}
 
-	entry = rte_zmalloc("fdir_entry", sizeof(*entry), 0);
-	if (!entry) {
-		rte_flow_error_set(error, ENOMEM,
-				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
-				   "Failed to allocate memory");
-		return -rte_errno;
-	}
-
 	is_tun = ice_fdir_is_tunnel_profile(filter->tunnel_type);
 
 	ret = ice_fdir_input_set_conf(pf, filter->input.flow_type,
@@ -1637,7 +1621,7 @@ ice_fdir_create_filter(struct ice_adapter *ad,
 		rte_flow_error_set(error, -ret,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 				   "Profile configure failed.");
-		goto free_entry;
+		return -rte_errno;
 	}
 
 	/* alloc counter for FDIR */
@@ -1649,13 +1633,13 @@ ice_fdir_create_filter(struct ice_adapter *ad,
 			rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ACTION, NULL,
 					"Failed to alloc FDIR counter.");
-			goto free_entry;
+			return -rte_errno;
 		}
 		filter->input.cnt_index = filter->counter->hw_index;
 	}
 
 	/* Reserve the software entry before installing the hardware rule. */
-	ret = ice_fdir_entry_insert(pf, entry, &key);
+	ret = ice_fdir_entry_insert(pf, filter, &key);
 	if (ret) {
 		rte_flow_error_set(error, -ret,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
@@ -1675,8 +1659,6 @@ ice_fdir_create_filter(struct ice_adapter *ad,
 	if (filter->mark_flag == 1)
 		ice_fdir_rx_parsing_enable(ad, 1);
 
-	memcpy(entry, filter, sizeof(*entry));
-	flow->rule = entry;
 	ice_fdir_cnt_update(pf, filter->input.flow_type, is_tun, true);
 
 	return 0;
@@ -1687,12 +1669,6 @@ free_counter:
 		filter->counter = NULL;
 	}
 
-free_entry:
-	rte_free(entry);
-	return -rte_errno;
-
-error:
-	rte_free(filter->pkt_buf);
 	return -rte_errno;
 }
 
@@ -1738,11 +1714,6 @@ ice_fdir_destroy_filter(struct ice_adapter *ad,
 
 		if (filter->mark_flag == 1)
 			ice_fdir_rx_parsing_enable(ad, 0);
-
-		flow->rule = NULL;
-
-		rte_free(filter->pkt_buf);
-		rte_free(filter);
 
 		return 0;
 	}
@@ -1795,11 +1766,15 @@ ice_fdir_destroy_filter(struct ice_adapter *ad,
 	if (filter->mark_flag == 1)
 		ice_fdir_rx_parsing_enable(ad, 0);
 
-	flow->rule = NULL;
-
-	rte_free(filter);
-
 	return 0;
+}
+
+static void
+ice_fdir_filter_free(void *rule)
+{
+	struct ice_fdir_filter_conf *filter = rule;
+
+	rte_free(filter->pkt_buf);
 }
 
 static int
@@ -1850,6 +1825,7 @@ static struct ice_flow_engine ice_fdir_engine = {
 	.create = ice_fdir_create_filter,
 	.destroy = ice_fdir_destroy_filter,
 	.query_count = ice_fdir_query_count,
+	.free = ice_fdir_filter_free,
 	.name = "fdir",
 	.type = ICE_FLOW_ENGINE_FDIR,
 	.rule_size = sizeof(struct ice_fdir_filter_conf),
@@ -2814,12 +2790,10 @@ raw_error:
 }
 
 static int
-ice_fdir_parse_action(struct ice_adapter *ad,
+ice_fdir_parse_action(struct ice_fdir_filter_conf *filter,
 		const struct ci_flow_actions *actions,
 		struct rte_flow_error *error)
 {
-	struct ice_pf *pf = &ad->pf;
-	struct ice_fdir_filter_conf *filter = &pf->fdir.conf;
 	bool dest_set = false;
 	size_t i;
 
@@ -3021,8 +2995,7 @@ ice_fdir_parse(struct ice_adapter *ad,
 		.driver_ctx = ad,
 		.rss_queues_contig = true,
 	};
-	struct ice_pf *pf = &ad->pf;
-	struct ice_fdir_filter_conf *filter = &pf->fdir.conf;
+	struct ice_fdir_filter_conf *filter;
 	struct ice_pattern_match_item item;
 	uint64_t input_set;
 	bool raw = false;
@@ -3031,8 +3004,6 @@ ice_fdir_parse(struct ice_adapter *ad,
 	ret = ci_flow_check_attr(attr, NULL, error);
 	if (ret)
 		return ret;
-
-	memset(filter, 0, sizeof(*filter));
 
 	ret = ci_flow_check_actions(actions, &param, &parsed_actions, error);
 	if (ret)
@@ -3043,6 +3014,13 @@ ice_fdir_parse(struct ice_adapter *ad,
 
 	if (ret != 0)
 		return ret;
+
+	filter = rte_zmalloc("ice_fdir_rule", sizeof(*filter), 0);
+	if (filter == NULL) {
+		return rte_flow_error_set(error, ENOMEM,
+				RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				"Failed to allocate FDIR rule");
+	}
 
 	ret = ice_fdir_parse_pattern(ad, pattern, error, filter);
 	if (ret)
@@ -3066,20 +3044,16 @@ ice_fdir_parse(struct ice_adapter *ad,
 		goto error;
 	}
 
-	ret = ice_fdir_parse_action(ad, &parsed_actions, error);
+	ret = ice_fdir_parse_action(filter, &parsed_actions, error);
 	if (ret)
 		goto error;
 
-	/* if meta is NULL we're validating so the flow won't be stored */
-	if (meta) {
-		*meta = filter;
-	} else if (filter->pkt_buf != NULL) {
-		rte_free(filter->pkt_buf);
-	}
+	*meta = filter;
 
 	return ret;
 error:
 	rte_free(filter->pkt_buf);
+	rte_free(filter);
 	return ret;
 }
 

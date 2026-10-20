@@ -2020,6 +2020,14 @@ ice_flow_init(struct ice_adapter *ad)
 	return 0;
 }
 
+static void
+ice_flow_rule_free(struct ice_flow_engine *engine, void *rule)
+{
+	if (engine->free != NULL)
+		engine->free(rule);
+	rte_free(rule);
+}
+
 void
 ice_flow_uninit(struct ice_adapter *ad)
 {
@@ -2041,8 +2049,7 @@ ice_flow_uninit(struct ice_adapter *ad)
 	/* Remove all flows */
 	while ((p_flow = TAILQ_FIRST(&pf->flow_list))) {
 		TAILQ_REMOVE(&pf->flow_list, p_flow, node);
-		if (p_flow->engine->free)
-			p_flow->engine->free(p_flow);
+		ice_flow_rule_free(p_flow->engine, p_flow->rule);
 		rte_free(p_flow);
 	}
 
@@ -2262,7 +2269,13 @@ ice_parse_engine_create(struct ice_adapter *ad,
 
 	RTE_ASSERT(parser->engine->create != NULL);
 
-	return parser->engine->create(ad, flow, meta, error) == 0;
+	if (parser->engine->create(ad, flow, meta, error) != 0) {
+		ice_flow_rule_free(parser->engine, meta);
+		return false;
+	}
+
+	flow->rule = meta;
+	return true;
 }
 
 static bool
@@ -2274,6 +2287,8 @@ ice_parse_engine_validate(struct ice_adapter *ad,
 		const struct rte_flow_action actions[],
 		struct rte_flow_error *error)
 {
+	void *meta = NULL;
+	int ret;
 
 	if (ICE_FLOW_ENGINE_DISABLED(ad->disabled_engine_mask,
 				     parser->engine->type)) {
@@ -2283,11 +2298,14 @@ ice_parse_engine_validate(struct ice_adapter *ad,
 		return false;
 	}
 
-	return parser->parse_pattern_action(ad,
+	ret = parser->parse_pattern_action(ad,
 					    parser->array,
 					    parser->array_len,
 					    pattern, actions, attr,
-					    NULL, error) >= 0;
+					    &meta, error);
+	if (ret >= 0)
+		ice_flow_rule_free(parser->engine, meta);
+	return ret >= 0;
 }
 
 static struct ice_flow_parser *get_flow_parser(uint32_t group)
@@ -2447,6 +2465,7 @@ ice_flow_destroy(struct rte_eth_dev *dev,
 	ret = flow->engine->destroy(ad, flow, error);
 	if (!ret) {
 		TAILQ_REMOVE(&pf->flow_list, flow, node);
+		ice_flow_rule_free(flow->engine, flow->rule);
 		rte_free(flow);
 	} else {
 		PMD_DRV_LOG(ERR, "Failed to destroy flow");
