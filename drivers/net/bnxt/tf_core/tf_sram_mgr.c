@@ -710,6 +710,15 @@ int tf_sram_mgr_alloc(void *sram_handle,
 		}
 		block_id = index;
 		block = tf_sram_alloc_block(slice_list, block_id);
+		if (unlikely(!block)) {
+			fparms.index = index;
+			fparms.subtype = parms->tbl_type;
+			fparms.rm_db = parms->rm_db;
+			tf_rm_free(&fparms);
+			fparms.index = next_index;
+			tf_rm_free(&fparms);
+			return -ENOMEM;
+		}
 
 	} else {
 		/* Block exists
