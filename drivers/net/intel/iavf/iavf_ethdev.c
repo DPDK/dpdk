@@ -2794,14 +2794,6 @@ iavf_uninit_vf(struct rte_eth_dev *dev)
 	rte_free(vf->proto_xtr);
 	vf->proto_xtr = NULL;
 
-	/*
-	 * Drop the committed queue/TC bandwidth mapping so a subsequent
-	 * iavf_init_vf() (e.g. after a device reset) starts with runtime
-	 * Rx/Tx queue setup available again (see iavf_dev_info_get()).
-	 */
-	rte_free(vf->qtc_map);
-	vf->qtc_map = NULL;
-
 	rte_free(vf->rss_lut);
 	vf->rss_lut = NULL;
 	rte_free(vf->rss_key);
