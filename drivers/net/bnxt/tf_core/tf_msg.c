@@ -1243,6 +1243,16 @@ tf_msg_tcam_entry_get(struct tf *tfp,
 			    strerror(-rc));
 		return rc;
 	}
+	if (resp.key_size * 2 > sizeof(resp.dev_data) ||
+	    resp.result_offset + resp.result_size > sizeof(resp.dev_data)) {
+		rc = -EINVAL;
+		TFP_DRV_LOG(ERR,
+			    "%s: FW data out of bounds key_size(%d) result_offset(%d) result_size(%d), rc:%s\n",
+			    tf_dir_2_str(parms->dir), resp.key_size,
+			    resp.result_offset, resp.result_size,
+			    strerror(-rc));
+		return rc;
+	}
 	parms->key_size = resp.key_size;
 	parms->result_size = resp.result_size;
 	tfp_memcpy(parms->key, resp.dev_data, resp.key_size);
