@@ -2052,58 +2052,6 @@ ice_flow_uninit(struct ice_adapter *ad)
 	}
 }
 
-/* Find the first VOID or non-VOID item pointer */
-static const struct rte_flow_item *
-ice_find_first_item(const struct rte_flow_item *item, bool is_void)
-{
-	bool is_find;
-
-	while (item->type != RTE_FLOW_ITEM_TYPE_END) {
-		if (is_void)
-			is_find = item->type == RTE_FLOW_ITEM_TYPE_VOID;
-		else
-			is_find = item->type != RTE_FLOW_ITEM_TYPE_VOID;
-		if (is_find)
-			break;
-		item++;
-	}
-	return item;
-}
-
-/* Skip all VOID items of the pattern */
-static void
-ice_pattern_skip_void_item(struct rte_flow_item *items,
-			const struct rte_flow_item *pattern)
-{
-	uint32_t cpy_count = 0;
-	const struct rte_flow_item *pb = pattern, *pe = pattern;
-
-	for (;;) {
-		/* Find a non-void item first */
-		pb = ice_find_first_item(pb, false);
-		if (pb->type == RTE_FLOW_ITEM_TYPE_END) {
-			pe = pb;
-			break;
-		}
-
-		/* Find a void item */
-		pe = ice_find_first_item(pb + 1, true);
-
-		cpy_count = pe - pb;
-		memcpy(items, pb, sizeof(struct rte_flow_item) * cpy_count);
-
-		items += cpy_count;
-
-		if (pe->type == RTE_FLOW_ITEM_TYPE_END) {
-			break;
-		}
-
-		pb = pe + 1;
-	}
-	/* Copy the END item. */
-	memcpy(items, pe, sizeof(struct rte_flow_item));
-}
-
 /* Check if the pattern matches a supported item type array */
 static bool
 ice_match_pattern(enum rte_flow_item_type *item_array,
@@ -2269,41 +2217,21 @@ ice_search_pattern_match_item(struct ice_adapter *ad,
 			      struct rte_flow_error *error)
 {
 	struct ice_pattern_match_item *pattern_match_item;
-	/* need free by each filter */
-	struct rte_flow_item *items; /* used for pattern without VOID items */
-	uint32_t item_num = 0; /* non-void item number */
 	uint16_t i = 0;
 
-	/* Get the non-void item number of pattern */
-	while ((pattern + i)->type != RTE_FLOW_ITEM_TYPE_END) {
-		if ((pattern + i)->type != RTE_FLOW_ITEM_TYPE_VOID)
-			item_num++;
-		i++;
-	}
-	item_num++;
-
-	items = calloc(item_num, sizeof(struct rte_flow_item));
-	if (!items) {
-		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_ITEM_NUM,
-				   NULL, "No memory for PMD internal items.");
-		return NULL;
-	}
 	pattern_match_item = calloc(1, sizeof(struct ice_pattern_match_item));
 	if (!pattern_match_item) {
 		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
 				NULL, "Failed to allocate memory.");
-		free(items);
 		return NULL;
 	}
-
-	ice_pattern_skip_void_item(items, pattern);
 
 	if (!ice_pattern_is_supported(ad, pattern))
 		goto unsupported;
 
 	for (i = 0; i < array_len; i++) {
 		if (ice_match_pattern(array[i].pattern_list,
-				      items)) {
+				      pattern)) {
 			pattern_match_item->input_set_mask_o =
 				array[i].input_set_mask_o;
 			pattern_match_item->input_set_mask_i =
@@ -2311,7 +2239,6 @@ ice_search_pattern_match_item(struct ice_adapter *ad,
 			pattern_match_item->pattern_list =
 				array[i].pattern_list;
 			pattern_match_item->meta = array[i].meta;
-			free(items);
 			return pattern_match_item;
 		}
 	}
@@ -2319,7 +2246,6 @@ ice_search_pattern_match_item(struct ice_adapter *ad,
 unsupported:
 	rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
 			   pattern, "Unsupported pattern");
-	free(items);
 	free(pattern_match_item);
 	return NULL;
 }
