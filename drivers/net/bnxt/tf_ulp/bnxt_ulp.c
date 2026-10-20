@@ -480,7 +480,10 @@ bnxt_ulp_port_init(struct bnxt *bp)
 	/* Make sure that custom header data is selected */
 	if (dev_id > BNXT_ULP_DEVICE_ID_WH_PLUS) {
 		struct bnxt_vnic_info *vnic = bp->vnic_info;
-		vnic->metadata_format = HWRM_VNIC_UPDATE_INPUT_METADATA_FORMAT_TYPE_3;
+		if (dev_id == BNXT_ULP_DEVICE_ID_THOR2)
+			vnic->metadata_format = HWRM_VNIC_UPDATE_INPUT_METADATA_FORMAT_TYPE_3;
+		else
+			vnic->metadata_format = HWRM_VNIC_UPDATE_INPUT_METADATA_FORMAT_TYPE_1;
 		rc = bnxt_hwrm_vnic_update(bp,
 					vnic,
 					HWRM_VNIC_UPDATE_INPUT_ENABLES_METADATA_FORMAT_TYPE_VALID);
