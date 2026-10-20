@@ -1654,8 +1654,18 @@ ice_fdir_create_filter(struct ice_adapter *ad,
 		filter->input.cnt_index = filter->counter->hw_index;
 	}
 
+	/* Reserve the software entry before installing the hardware rule. */
+	ret = ice_fdir_entry_insert(pf, entry, &key);
+	if (ret) {
+		rte_flow_error_set(error, -ret,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Insert entry to table failed.");
+		goto free_counter;
+	}
+
 	ret = ice_fdir_add_del_filter(pf, filter, true);
 	if (ret) {
+		ice_fdir_entry_del(pf, &key);
 		rte_flow_error_set(error, -ret,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 				   "Add filter rule failed.");
@@ -1666,14 +1676,6 @@ ice_fdir_create_filter(struct ice_adapter *ad,
 		ice_fdir_rx_parsing_enable(ad, 1);
 
 	memcpy(entry, filter, sizeof(*entry));
-	ret = ice_fdir_entry_insert(pf, entry, &key);
-	if (ret) {
-		rte_flow_error_set(error, -ret,
-				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
-				   "Insert entry to table failed.");
-		goto free_entry;
-	}
-
 	flow->rule = entry;
 	ice_fdir_cnt_update(pf, filter->input.flow_type, is_tun, true);
 
