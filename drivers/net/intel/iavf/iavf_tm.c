@@ -867,15 +867,15 @@ static int iavf_hierarchy_commit(struct rte_eth_dev *dev,
 		}
 		q_tc_mapping->tc[tm_node->tc].req.queue_count++;
 
+		q_bw->cfg[node_committed].queue_id = tm_node->id;
+		q_bw->cfg[node_committed].tc = tm_node->tc;
 		if (tm_node->shaper_profile) {
-			q_bw->cfg[node_committed].queue_id = tm_node->id;
 			q_bw->cfg[node_committed].shaper.peak =
 			tm_node->shaper_profile->profile.peak.rate /
 			1000 * IAVF_BITS_PER_BYTE;
 			q_bw->cfg[node_committed].shaper.committed =
 			tm_node->shaper_profile->profile.committed.rate /
 			1000 * IAVF_BITS_PER_BYTE;
-			q_bw->cfg[node_committed].tc = tm_node->tc;
 		}
 
 		node_committed++;
