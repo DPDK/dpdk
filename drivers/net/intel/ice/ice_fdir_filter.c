@@ -3023,7 +3023,7 @@ ice_fdir_parse(struct ice_adapter *ad,
 	};
 	struct ice_pf *pf = &ad->pf;
 	struct ice_fdir_filter_conf *filter = &pf->fdir.conf;
-	struct ice_pattern_match_item *item = NULL;
+	struct ice_pattern_match_item item;
 	uint64_t input_set;
 	bool raw = false;
 	int ret;
@@ -3038,17 +3038,17 @@ ice_fdir_parse(struct ice_adapter *ad,
 	if (ret)
 		return ret;
 
-	item = ice_search_pattern_match_item(ad, pattern, array, array_len,
-					     error);
+	ret = ice_search_pattern_match_item(ad, pattern, array, array_len,
+					     &item, error);
 
-	if (!item)
-		return -rte_errno;
+	if (ret != 0)
+		return ret;
 
 	ret = ice_fdir_parse_pattern(ad, pattern, error, filter);
 	if (ret)
 		goto error;
 
-	if (item->pattern_list[0] == RTE_FLOW_ITEM_TYPE_RAW)
+	if (item.pattern_list[0] == RTE_FLOW_ITEM_TYPE_RAW)
 		raw = true;
 
 	input_set = filter->input_set_o | filter->input_set_i;
@@ -3056,8 +3056,8 @@ ice_fdir_parse(struct ice_adapter *ad,
 
 	if (!input_set ||
 	    (filter->input_set_o &
-	     ~(item->input_set_mask_o | ICE_INSET_ETHERTYPE)) ||
-	    (filter->input_set_i & ~item->input_set_mask_i)) {
+	     ~(item.input_set_mask_o | ICE_INSET_ETHERTYPE)) ||
+	    (filter->input_set_i & ~item.input_set_mask_i)) {
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ITEM_SPEC,
 				   pattern,
@@ -3077,11 +3077,9 @@ ice_fdir_parse(struct ice_adapter *ad,
 		rte_free(filter->pkt_buf);
 	}
 
-	free(item);
 	return ret;
 error:
 	rte_free(filter->pkt_buf);
-	free(item);
 	return ret;
 }
 

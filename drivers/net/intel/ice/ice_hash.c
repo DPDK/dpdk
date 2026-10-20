@@ -1201,7 +1201,7 @@ ice_hash_parse_pattern_action(__rte_unused struct ice_adapter *ad,
 		.check = ice_hash_parse_action_check,
 	};
 	const struct rte_flow_action_rss *rss;
-	struct ice_pattern_match_item *pattern_match_item;
+	struct ice_pattern_match_item pattern_match_item;
 	struct ice_rss_meta *rss_meta_ptr;
 	uint64_t phint = ICE_PHINT_NONE;
 	int ret = 0;
@@ -1223,12 +1223,10 @@ ice_hash_parse_pattern_action(__rte_unused struct ice_adapter *ad,
 	}
 
 	/* Check rss supported pattern and find matched pattern. */
-	pattern_match_item = ice_search_pattern_match_item(ad, pattern, array,
-							   array_len, error);
-	if (!pattern_match_item) {
-		ret = -rte_errno;
+	ret = ice_search_pattern_match_item(ad, pattern, array, array_len,
+					   &pattern_match_item, error);
+	if (ret != 0)
 		goto error;
-	}
 
 	ret = ice_hash_parse_pattern(pattern, &phint, error);
 	if (ret)
@@ -1248,7 +1246,7 @@ ice_hash_parse_pattern_action(__rte_unused struct ice_adapter *ad,
 	}
 
 	rss = parsed_actions.actions[0]->conf;
-	ret = ice_hash_parse_rss_action(pattern_match_item, rss, phint,
+	ret = ice_hash_parse_rss_action(&pattern_match_item, rss, phint,
 				rss_meta_ptr, error);
 
 error:
@@ -1256,7 +1254,6 @@ error:
 		*meta = rss_meta_ptr;
 	else
 		rte_free(rss_meta_ptr);
-	free(pattern_match_item);
 
 	return ret;
 }
