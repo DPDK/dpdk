@@ -1088,9 +1088,9 @@ tfc_msg_tcam_alloc_set(struct tfc *tfcp, uint16_t fid, uint16_t sid,
 		data = &req.dev_data[0];
 	}
 
-	memcpy(&data[0], &key, key_size * sizeof(uint32_t));
-	memcpy(&data[key_size], &mask, key_size * sizeof(uint32_t));
-	memcpy(&data[key_size * 2], &remap, remap_size * sizeof(uint32_t));
+	memcpy(&data[0], key, key_size);
+	memcpy(&data[key_size], mask, key_size);
+	memcpy(&data[key_size * 2], remap, remap_size);
 	rc = bnxt_hwrm_tf_message_direct(bp, false, HWRM_TFC_TCAM_ALLOC_SET,
 					 &req, sizeof(req), &resp, sizeof(resp));
 
