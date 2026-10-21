@@ -285,14 +285,14 @@ ice_pattern_match_item ice_switch_supported_pattern[] = {
 
 static int
 ice_switch_create(struct ice_adapter *ad,
-		void *meta,
+		void *flow_rule,
 		struct rte_flow_error *error)
 {
 	int ret = 0;
 	struct ice_pf *pf = &ad->pf;
 	struct ice_hw *hw = ICE_PF_TO_HW(pf);
 	struct ice_rule_query_data rule_added = {0};
-	struct ice_switch_filter_conf *filter_conf_ptr = meta;
+	struct ice_switch_filter_conf *filter_conf_ptr = flow_rule;
 	struct ice_adv_lkup_elem *list = filter_conf_ptr->lkups;
 	uint16_t lkups_cnt = filter_conf_ptr->lkups_num;
 	struct ice_adv_rule_info *rule_info = &filter_conf_ptr->rule_info;
@@ -1705,7 +1705,7 @@ ice_switch_parse_pattern_action(struct ice_adapter *ad,
 		const struct rte_flow_item pattern[],
 		const struct rte_flow_action actions[],
 		const struct rte_flow_attr *attr,
-		void **meta,
+		void **flow_rule,
 		struct rte_flow_error *error)
 {
 	struct ice_pf *pf = &ad->pf;
@@ -1845,7 +1845,7 @@ ice_switch_parse_pattern_action(struct ice_adapter *ad,
 	filter->lkups = list;
 	filter->lkups_num = lkups_num;
 	filter->rule_info = rule_info;
-	*meta = filter;
+	*flow_rule = filter;
 
 	return 0;
 
