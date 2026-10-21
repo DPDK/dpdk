@@ -919,7 +919,7 @@ For devices bound to Linux kernel drivers, they may be referred to by interface 
 
     if not b_flag and not status_flag:
         print("Error: No action specified for devices. "
-              "Please give a --bind, --ubind or --status option",
+              "Please give a --bind, --unbind or --status option",
               file=sys.stderr)
         parser.print_usage()
         sys.exit(1)
