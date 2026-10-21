@@ -478,8 +478,8 @@ mlx5_rxq_create_devx_cq_resources(struct mlx5_rxq_priv *rxq)
 			break;
 		}
 		DRV_LOG(DEBUG,
-			"Port %u Rx CQE compression is enabled, format %d.",
-			port_id, priv->config.cqe_comp_fmt);
+			"Port %u Rx queue %u CQE compression is enabled, format %u (configured %u)",
+			port_id, rxq->idx, rxq_data->mcqe_format, priv->config.cqe_comp_fmt);
 		/*
 		 * For vectorized Rx, it must not be doubled in order to
 		 * make cq_ci and rq_ci aligned.
