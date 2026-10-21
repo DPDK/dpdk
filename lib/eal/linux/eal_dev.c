@@ -366,7 +366,7 @@ rte_dev_event_monitor_start(void)
 	ret = rte_intr_callback_register(intr_handle, dev_uev_handler, NULL);
 
 	if (ret) {
-		close(rte_intr_fd_get(intr_handle));
+		rte_intr_fd_close(intr_handle);
 		goto exit;
 	}
 
@@ -406,7 +406,7 @@ rte_dev_event_monitor_stop(void)
 		goto exit;
 	}
 
-	close(rte_intr_fd_get(intr_handle));
+	rte_intr_fd_close(intr_handle);
 	rte_intr_instance_free(intr_handle);
 	intr_handle = NULL;
 	ret = 0;
