@@ -208,14 +208,16 @@ static inline void os_schedule_work(struct dlb2_hw *hw)
 
 	dlb2_dev = container_of(hw, struct dlb2_dev, hw);
 
+	dlb2_dev->worker_launched = true;
+
 	ret = rte_thread_create_internal_control(&complete_queue_map_unmap_thread,
 			"dlb-qunmap", dlb2_complete_queue_map_unmap, dlb2_dev);
-	if (ret)
+	if (ret != 0) {
 		DLB2_ERR(dlb2_dev,
 			 "Could not create queue complete map/unmap thread, err=%d\n",
 			 ret);
-	else
-		dlb2_dev->worker_launched = true;
+		dlb2_dev->worker_launched = false;
+	}
 }
 
 /**
