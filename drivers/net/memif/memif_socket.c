@@ -638,7 +638,7 @@ memif_disconnect(struct rte_eth_dev *dev)
 							pmd->cc,
 							memif_intr_unregister_handler);
 			} else if (ret > 0) {
-				close(rte_intr_fd_get(ih));
+				rte_intr_fd_close(ih);
 				rte_intr_instance_free(ih);
 				rte_free(pmd->cc);
 			}
@@ -962,6 +962,8 @@ memif_listener_handler(void *arg)
 	if (cc != NULL) {
 		rte_intr_callback_unregister(cc->intr_handle, memif_intr_handler,
 					 cc);
+		/* fd is closed below, clear reference here. */
+		rte_intr_fd_set(cc->intr_handle, -1);
 		rte_intr_instance_free(cc->intr_handle);
 		rte_free(cc);
 	}
@@ -1060,6 +1062,8 @@ memif_socket_create(char *key, uint8_t listener, bool is_abstract, uid_t owner_u
  error:
 	MIF_LOG(ERR, "Failed to setup socket %s: %s", key, strerror(errno));
 	if (sock != NULL) {
+		/* fd is closed below, clear reference here. */
+		rte_intr_fd_set(sock->intr_handle, -1);
 		rte_intr_instance_free(sock->intr_handle);
 		rte_free(sock);
 	}
@@ -1118,8 +1122,7 @@ memif_socket_init(struct rte_eth_dev *dev, const char *socket_filename)
 			if (socket->listener) {
 				rte_intr_callback_unregister(socket->intr_handle,
 					memif_listener_handler, socket);
-				close(rte_intr_fd_get(socket->intr_handle));
-				rte_intr_fd_set(socket->intr_handle, -1);
+				rte_intr_fd_close(socket->intr_handle);
 				rte_intr_instance_free(socket->intr_handle);
 			}
 			rte_free(socket);
@@ -1191,8 +1194,7 @@ memif_socket_remove_device(struct rte_eth_dev *dev)
 		if (pmd->role != MEMIF_ROLE_CLIENT) {
 			rte_intr_callback_unregister(socket->intr_handle, memif_listener_handler,
 				socket);
-			close(rte_intr_fd_get(socket->intr_handle));
-			rte_intr_fd_set(socket->intr_handle, -1);
+			rte_intr_fd_close(socket->intr_handle);
 			rte_intr_instance_free(socket->intr_handle);
 		}
 		rte_free(socket);
@@ -1290,6 +1292,8 @@ memif_connect_client(struct rte_eth_dev *dev)
 		sockfd = -1;
 	}
 	if (pmd->cc != NULL) {
+		/* fd is closed above, clear reference here. */
+		rte_intr_fd_set(pmd->cc->intr_handle, -1);
 		rte_intr_instance_free(pmd->cc->intr_handle);
 		rte_free(pmd->cc);
 		pmd->cc = NULL;
