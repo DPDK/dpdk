@@ -387,6 +387,8 @@ sxe2_intr_handler_create(int32_t fd, rte_intr_callback_fn cb, void *cb_arg)
 
 	return tmp_intr_handle;
 err:
+	/* fd is not owned by this function, only clear reference here. */
+	rte_intr_fd_set(tmp_intr_handle, -1);
 	rte_intr_instance_free(tmp_intr_handle);
 	return NULL;
 }
