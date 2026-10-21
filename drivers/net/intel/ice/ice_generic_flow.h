@@ -506,7 +506,6 @@ struct ice_flow_redirect {
 typedef int (*engine_init_t)(struct ice_adapter *ad);
 typedef void (*engine_uninit_t)(struct ice_adapter *ad);
 typedef int (*engine_create_t)(struct ice_adapter *ad,
-		struct rte_flow *flow,
 		void *meta,
 		struct rte_flow_error *error);
 typedef int (*engine_destroy_t)(struct ice_adapter *ad,

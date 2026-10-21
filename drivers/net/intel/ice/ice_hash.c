@@ -82,7 +82,6 @@ ice_hash_init(struct ice_adapter *ad);
 
 static int
 ice_hash_create(struct ice_adapter *ad,
-		struct rte_flow *flow,
 		void *meta,
 		struct rte_flow_error *error);
 
@@ -1314,7 +1313,6 @@ update_symm:
 
 static int
 ice_hash_create(struct ice_adapter *ad,
-		struct rte_flow *flow __rte_unused,
 		void *meta,
 		struct rte_flow_error *error)
 {

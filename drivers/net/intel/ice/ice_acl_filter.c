@@ -505,7 +505,6 @@ ice_acl_hw_rem_conf(struct ice_pf *pf, struct acl_rule *rule, int32_t entry_idx)
 
 static int
 ice_acl_create_filter(struct ice_adapter *ad,
-		      struct rte_flow *flow __rte_unused,
 		      void *meta,
 		      struct rte_flow_error *error)
 {
