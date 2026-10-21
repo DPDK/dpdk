@@ -1051,7 +1051,7 @@ memif_socket_create(char *key, uint8_t listener, bool is_abstract, uid_t owner_u
 		if (ret < 0) {
 			MIF_LOG(ERR, "Failed to register interrupt "
 				"callback for listener socket");
-			return NULL;
+			goto error;
 		}
 	}
 
@@ -1115,6 +1115,14 @@ memif_socket_init(struct rte_eth_dev *dev, const char *socket_filename)
 		ret = rte_hash_add_key_data(hash, key, socket);
 		if (ret < 0) {
 			MIF_LOG(ERR, "Failed to add socket to socket hash.");
+			if (socket->listener) {
+				rte_intr_callback_unregister(socket->intr_handle,
+					memif_listener_handler, socket);
+				close(rte_intr_fd_get(socket->intr_handle));
+				rte_intr_fd_set(socket->intr_handle, -1);
+				rte_intr_instance_free(socket->intr_handle);
+			}
+			rte_free(socket);
 			return ret;
 		}
 	}
@@ -1180,8 +1188,13 @@ memif_socket_remove_device(struct rte_eth_dev *dev)
 				MIF_LOG(ERR, "Failed to remove socket file: %s",
 					socket->filename);
 		}
-		if (pmd->role != MEMIF_ROLE_CLIENT)
+		if (pmd->role != MEMIF_ROLE_CLIENT) {
+			rte_intr_callback_unregister(socket->intr_handle, memif_listener_handler,
+				socket);
+			close(rte_intr_fd_get(socket->intr_handle));
+			rte_intr_fd_set(socket->intr_handle, -1);
 			rte_intr_instance_free(socket->intr_handle);
+		}
 		rte_free(socket);
 	}
 }
