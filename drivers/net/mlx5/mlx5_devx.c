@@ -526,6 +526,7 @@ mlx5_rxq_create_devx_cq_resources(struct mlx5_rxq_priv *rxq)
 			return -ret;
 		}
 	}
+	DRV_LOG(DEBUG, "Port %u Rx queue %u cqn=%u", port_id, rxq->idx, rxq_data->cqn);
 	return 0;
 }
 
