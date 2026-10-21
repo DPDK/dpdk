@@ -1796,6 +1796,8 @@ mana_reset_exit(struct mana_priv *priv)
 		else
 			DRV_LOG(DEBUG, "%d intr callback(s) removed", ret);
 
+		/* fd is owned by ibverbs, only clear reference here. */
+		rte_intr_fd_set(priv->intr_handle, -1);
 		rte_intr_instance_free(priv->intr_handle);
 		priv->intr_handle = NULL;
 	}
@@ -1915,6 +1917,8 @@ mana_intr_uninstall(struct mana_priv *priv)
 		return ret;
 	}
 
+	/* fd is owned by ibverbs, only clear reference here. */
+	rte_intr_fd_set(priv->intr_handle, -1);
 	rte_intr_instance_free(priv->intr_handle);
 	priv->intr_handle = NULL;
 
