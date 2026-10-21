@@ -1496,7 +1496,6 @@ ice_fdir_entry_del(struct ice_pf *pf, struct ice_fdir_fltr_pattern *key)
 
 static int
 ice_fdir_create_filter(struct ice_adapter *ad,
-		       struct rte_flow *flow __rte_unused,
 		       void *meta,
 		       struct rte_flow_error *error)
 {
