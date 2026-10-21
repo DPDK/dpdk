@@ -285,7 +285,6 @@ ice_pattern_match_item ice_switch_supported_pattern[] = {
 
 static int
 ice_switch_create(struct ice_adapter *ad,
-		struct rte_flow *flow __rte_unused,
 		void *meta,
 		struct rte_flow_error *error)
 {

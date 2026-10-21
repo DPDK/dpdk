@@ -2269,7 +2269,7 @@ ice_parse_engine_create(struct ice_adapter *ad,
 
 	RTE_ASSERT(parser->engine->create != NULL);
 
-	if (parser->engine->create(ad, flow, meta, error) != 0) {
+	if (parser->engine->create(ad, meta, error) != 0) {
 		ice_flow_rule_free(parser->engine, meta);
 		return false;
 	}
