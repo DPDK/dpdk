@@ -505,10 +505,10 @@ ice_acl_hw_rem_conf(struct ice_pf *pf, struct acl_rule *rule, int32_t entry_idx)
 
 static int
 ice_acl_create_filter(struct ice_adapter *ad,
-		      void *meta,
+		      void *flow_rule,
 		      struct rte_flow_error *error)
 {
-	struct acl_rule *rule = meta;
+	struct acl_rule *rule = flow_rule;
 	struct ice_acl_conf *filter = &rule->conf;
 	enum ice_fltr_ptype flow_type = filter->input.flow_type;
 	struct ice_flow_action acts[1];
@@ -948,7 +948,7 @@ ice_acl_parse(struct ice_adapter *ad,
 	       const struct rte_flow_item pattern[],
 	       const struct rte_flow_action actions[],
 	       const struct rte_flow_attr *attr,
-	       void **meta,
+	       void **flow_rule,
 	       struct rte_flow_error *error)
 {
 	struct ci_flow_actions parsed_actions = {0};
@@ -1005,7 +1005,7 @@ ice_acl_parse(struct ice_adapter *ad,
 	if (ret)
 		goto error;
 
-	*meta = rule;
+	*flow_rule = rule;
 	return 0;
 
 error:

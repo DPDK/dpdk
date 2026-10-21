@@ -1496,11 +1496,11 @@ ice_fdir_entry_del(struct ice_pf *pf, struct ice_fdir_fltr_pattern *key)
 
 static int
 ice_fdir_create_filter(struct ice_adapter *ad,
-		       void *meta,
+		       void *flow_rule,
 		       struct rte_flow_error *error)
 {
 	struct ice_pf *pf = &ad->pf;
-	struct ice_fdir_filter_conf *filter = meta;
+	struct ice_fdir_filter_conf *filter = flow_rule;
 	struct ice_fdir_info *fdir_info = &pf->fdir;
 	struct ice_fdir_filter_conf *node;
 	struct ice_fdir_fltr_pattern key;
@@ -2928,7 +2928,7 @@ ice_fdir_parse(struct ice_adapter *ad,
 	       const struct rte_flow_item pattern[],
 	       const struct rte_flow_action actions[],
 	       const struct rte_flow_attr *attr,
-	       void **meta,
+	       void **flow_rule,
 	       struct rte_flow_error *error)
 {
 	struct ci_flow_actions parsed_actions = {0};
@@ -3000,7 +3000,7 @@ ice_fdir_parse(struct ice_adapter *ad,
 	if (ret)
 		goto error;
 
-	*meta = filter;
+	*flow_rule = filter;
 
 	return ret;
 error:
