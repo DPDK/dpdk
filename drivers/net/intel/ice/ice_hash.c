@@ -656,7 +656,7 @@ static int
 ice_hash_parse_raw_pattern(struct ice_adapter *ad,
 				const struct rte_flow_item *item,
 				struct rte_flow_error *error,
-				struct ice_hash_flow_cfg *meta)
+				struct ice_hash_flow_cfg *rss_conf)
 {
 	const struct rte_flow_item_raw *raw_spec, *raw_mask;
 	struct ice_parser_profile prof;
@@ -744,7 +744,7 @@ ice_hash_parse_raw_pattern(struct ice_adapter *ad,
 	if (ret)
 		goto free_mem;
 
-	memcpy(&meta->rss_cfg.raw.prof, &prof, sizeof(prof));
+	memcpy(&rss_conf->rss_cfg.raw.prof, &prof, sizeof(prof));
 
 free_mem:
 	free(pkt_buf);
@@ -1122,7 +1122,7 @@ ice_hash_parse_action_check(const struct ci_flow_actions *actions,
 static int
 ice_hash_parse_rss_action(struct ice_pattern_match_item *pattern_match_item,
 		const struct rte_flow_action_rss *rss,
-		uint64_t pattern_hint, struct ice_hash_flow_cfg *rss_meta,
+		uint64_t pattern_hint, struct ice_hash_flow_cfg *rss_conf,
 		struct rte_flow_error *error)
 {
 	struct ice_rss_hash_cfg *cfg = pattern_match_item->meta;
@@ -1135,7 +1135,7 @@ ice_hash_parse_rss_action(struct ice_pattern_match_item *pattern_match_item,
 					RTE_FLOW_ERROR_TYPE_ACTION_CONF, rss,
 					"XOR hash function is only supported for empty pattern");
 		}
-		rss_meta->simple_xor = true;
+		rss_conf->simple_xor = true;
 		return 0;
 	}
 
@@ -1145,7 +1145,7 @@ ice_hash_parse_rss_action(struct ice_pattern_match_item *pattern_match_item,
 
 	/* If pattern type is raw, no need to refine rss type */
 	if (pattern_hint == ICE_PHINT_RAW) {
-		rss_meta->rss_cfg.raw.symm = symm;
+		rss_conf->rss_cfg.raw.symm = symm;
 		return 0;
 	}
 	cfg->symm = symm;
@@ -1162,8 +1162,8 @@ ice_hash_parse_rss_action(struct ice_pattern_match_item *pattern_match_item,
 				RTE_FLOW_ERROR_TYPE_ACTION_CONF,
 				rss, "RSS type not supported");
 
-	rss_meta->rss_cfg.hash = *cfg;
-	ice_refine_hash_cfg(&rss_meta->rss_cfg.hash,
+	rss_conf->rss_cfg.hash = *cfg;
+	ice_refine_hash_cfg(&rss_conf->rss_cfg.hash,
 			    rss_type, pattern_hint);
 
 	return 0;
@@ -1190,7 +1190,7 @@ ice_hash_parse_pattern_action(__rte_unused struct ice_adapter *ad,
 	};
 	const struct rte_flow_action_rss *rss;
 	struct ice_pattern_match_item pattern_match_item;
-	struct ice_hash_flow_cfg *rss_meta_ptr;
+	struct ice_hash_flow_cfg *rss_conf;
 	uint64_t phint = ICE_PHINT_NONE;
 	int ret = 0;
 
@@ -1202,11 +1202,11 @@ ice_hash_parse_pattern_action(__rte_unused struct ice_adapter *ad,
 	if (ret)
 		return ret;
 
-	rss_meta_ptr = rte_zmalloc(NULL, sizeof(*rss_meta_ptr), 0);
-	if (!rss_meta_ptr) {
+	rss_conf = rte_zmalloc(NULL, sizeof(*rss_conf), 0);
+	if (!rss_conf) {
 		rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
-				"No memory for rss_meta_ptr");
+				"No memory for RSS configuration");
 		return -ENOMEM;
 	}
 
@@ -1223,8 +1223,8 @@ ice_hash_parse_pattern_action(__rte_unused struct ice_adapter *ad,
 	if (phint == ICE_PHINT_RAW) {
 		const struct rte_flow_item *raw_item = ice_pattern_skip_void(pattern);
 
-		rss_meta_ptr->rss_cfg.raw.raw_ena = true;
-		ret = ice_hash_parse_raw_pattern(ad, raw_item, error, rss_meta_ptr);
+		rss_conf->rss_cfg.raw.raw_ena = true;
+		ret = ice_hash_parse_raw_pattern(ad, raw_item, error, rss_conf);
 		if (ret) {
 			rte_flow_error_set(error, EINVAL,
 					   RTE_FLOW_ERROR_TYPE_ITEM, NULL,
@@ -1235,13 +1235,13 @@ ice_hash_parse_pattern_action(__rte_unused struct ice_adapter *ad,
 
 	rss = parsed_actions.actions[0]->conf;
 	ret = ice_hash_parse_rss_action(&pattern_match_item, rss, phint,
-				rss_meta_ptr, error);
+				rss_conf, error);
 
 error:
 	if (!ret)
-		*flow_rule = rss_meta_ptr;
+		*flow_rule = rss_conf;
 	else
-		rte_free(rss_meta_ptr);
+		rte_free(rss_conf);
 
 	return ret;
 }
