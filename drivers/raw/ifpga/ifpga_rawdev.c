@@ -1421,6 +1421,8 @@ ifpga_unregister_msix_irq(struct ifpga_rawdev *dev, enum ifpga_irq_type type,
 			type == IFPGA_FME_IRQ ? "FME" : "AFU",
 			type == IFPGA_FME_IRQ ? 0 : vec_start);
 	} else {
+		/* fd was pointing to efd[0] which is closed by rte_intr_efd_disable(). */
+		rte_intr_fd_set(*intr_handle, -1);
 		rte_intr_instance_free(*intr_handle);
 		*intr_handle = NULL;
 	}
