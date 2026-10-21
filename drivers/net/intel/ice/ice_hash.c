@@ -82,7 +82,7 @@ ice_hash_init(struct ice_adapter *ad);
 
 static int
 ice_hash_create(struct ice_adapter *ad,
-		void *meta,
+		void *flow_rule,
 		struct rte_flow_error *error);
 
 static int
@@ -100,7 +100,7 @@ ice_hash_parse_pattern_action(struct ice_adapter *ad,
 			const struct rte_flow_item pattern[],
 			const struct rte_flow_action actions[],
 			const struct rte_flow_attr *attr,
-			void **meta,
+			void **flow_rule,
 			struct rte_flow_error *error);
 
 /* Rss configuration template */
@@ -1176,7 +1176,7 @@ ice_hash_parse_pattern_action(__rte_unused struct ice_adapter *ad,
 			const struct rte_flow_item pattern[],
 			const struct rte_flow_action actions[],
 			const struct rte_flow_attr *attr,
-			void **meta,
+			void **flow_rule,
 			struct rte_flow_error *error)
 {
 	struct ci_flow_actions parsed_actions = {0};
@@ -1239,7 +1239,7 @@ ice_hash_parse_pattern_action(__rte_unused struct ice_adapter *ad,
 
 error:
 	if (!ret)
-		*meta = rss_meta_ptr;
+		*flow_rule = rss_meta_ptr;
 	else
 		rte_free(rss_meta_ptr);
 
@@ -1313,7 +1313,7 @@ update_symm:
 
 static int
 ice_hash_create(struct ice_adapter *ad,
-		void *meta,
+		void *flow_rule,
 		struct rte_flow_error *error)
 {
 	struct ice_pf *pf = &ad->pf;
@@ -1321,7 +1321,7 @@ ice_hash_create(struct ice_adapter *ad,
 	struct ice_vsi *vsi = pf->main_vsi;
 	int ret;
 	uint32_t reg;
-	struct ice_hash_flow_cfg *filter_ptr = meta;
+	struct ice_hash_flow_cfg *filter_ptr = flow_rule;
 
 	if (filter_ptr->simple_xor) {
 		/* Enable registers for simple_xor hash function. */

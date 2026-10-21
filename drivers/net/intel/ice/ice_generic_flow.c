@@ -2251,7 +2251,7 @@ ice_parse_engine_create(struct ice_adapter *ad,
 		const struct rte_flow_action actions[],
 		struct rte_flow_error *error)
 {
-	void *meta = NULL;
+	void *flow_rule = NULL;
 
 	if (ICE_FLOW_ENGINE_DISABLED(ad->disabled_engine_mask,
 				     parser->engine->type)) {
@@ -2264,17 +2264,17 @@ ice_parse_engine_create(struct ice_adapter *ad,
 	if (parser->parse_pattern_action(ad,
 					 parser->array,
 					 parser->array_len,
-					 pattern, actions, attr, &meta, error) < 0)
+					 pattern, actions, attr, &flow_rule, error) < 0)
 		return false;
 
 	RTE_ASSERT(parser->engine->create != NULL);
 
-	if (parser->engine->create(ad, meta, error) != 0) {
-		ice_flow_rule_free(parser->engine, meta);
+	if (parser->engine->create(ad, flow_rule, error) != 0) {
+		ice_flow_rule_free(parser->engine, flow_rule);
 		return false;
 	}
 
-	flow->rule = meta;
+	flow->rule = flow_rule;
 	return true;
 }
 
@@ -2287,7 +2287,7 @@ ice_parse_engine_validate(struct ice_adapter *ad,
 		const struct rte_flow_action actions[],
 		struct rte_flow_error *error)
 {
-	void *meta = NULL;
+	void *flow_rule = NULL;
 	int ret;
 
 	if (ICE_FLOW_ENGINE_DISABLED(ad->disabled_engine_mask,
@@ -2302,9 +2302,9 @@ ice_parse_engine_validate(struct ice_adapter *ad,
 					    parser->array,
 					    parser->array_len,
 					    pattern, actions, attr,
-					    &meta, error);
+					    &flow_rule, error);
 	if (ret >= 0)
-		ice_flow_rule_free(parser->engine, meta);
+		ice_flow_rule_free(parser->engine, flow_rule);
 	return ret >= 0;
 }
 

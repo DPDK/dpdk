@@ -506,7 +506,7 @@ struct ice_flow_redirect {
 typedef int (*engine_init_t)(struct ice_adapter *ad);
 typedef void (*engine_uninit_t)(struct ice_adapter *ad);
 typedef int (*engine_create_t)(struct ice_adapter *ad,
-		void *meta,
+		void *flow_rule,
 		struct rte_flow_error *error);
 typedef int (*engine_destroy_t)(struct ice_adapter *ad,
 		struct rte_flow *flow,
@@ -521,7 +521,7 @@ typedef int(*engine_redirect_t)(struct ice_adapter *ad,
 /* Free nested rule allocations only, without accessing hardware resources. */
 typedef void (*engine_free_t)(void *rule);
 /*
- * Parsers return an allocated final rule through meta on success, and clean up
+ * Parsers return an allocated final rule through flow_rule on success, and clean up
  * their own allocations on failure. The generic layer owns successful results,
  * including during validation; engine create/destroy callbacks must not free them.
  */
@@ -531,7 +531,7 @@ typedef int (*parse_pattern_action_t)(struct ice_adapter *ad,
 		const struct rte_flow_item pattern[],
 		const struct rte_flow_action actions[],
 		const struct rte_flow_attr *attr,
-		void **meta,
+		void **flow_rule,
 		struct rte_flow_error *error);
 
 /* Struct to store engine created. */
