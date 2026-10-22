@@ -195,6 +195,7 @@ cpfl_repr_dev_info_get(struct rte_eth_dev *ethdev,
 		       struct rte_eth_dev_info *dev_info)
 {
 	struct cpfl_repr *repr = CPFL_DEV_TO_REPR(ethdev);
+	struct cpfl_adapter_ext *adapter = repr->itf.adapter;
 
 	dev_info->device = ethdev->device;
 	dev_info->max_mac_addrs = 1;
@@ -203,7 +204,8 @@ cpfl_repr_dev_info_get(struct rte_eth_dev *ethdev,
 	dev_info->min_rx_bufsize = CPFL_MIN_BUF_SIZE;
 	dev_info->max_rx_pktlen = CPFL_MAX_FRAME_SIZE;
 
-	dev_info->flow_type_rss_offloads = CPFL_RSS_OFFLOAD_ALL;
+	if (adapter->base.caps.rss_caps != 0)
+		dev_info->flow_type_rss_offloads = CPFL_RSS_OFFLOAD_ALL;
 
 	dev_info->rx_offload_capa =
 		RTE_ETH_RX_OFFLOAD_VLAN_STRIP		|
