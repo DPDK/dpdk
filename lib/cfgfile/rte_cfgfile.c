@@ -97,16 +97,16 @@ _strip(char *str, unsigned len)
 	if (len == 0)
 		return 0;
 
-	if (isspace(str[len-1])) {
+	if (isspace((unsigned char)str[len-1])) {
 		/* strip trailing whitespace */
-		while (newlen > 0 && isspace(str[newlen - 1]))
+		while (newlen > 0 && isspace((unsigned char)str[newlen - 1]))
 			str[--newlen] = '\0';
 	}
 
-	if (isspace(str[0])) {
+	if (isspace((unsigned char)str[0])) {
 		/* strip leading whitespace */
 		int i, start = 1;
-		while (isspace(str[start]) && start < newlen)
+		while (isspace((unsigned char)str[start]) && start < newlen)
 			start++
 			; /* do nothing */
 		newlen -= start;
