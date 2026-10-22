@@ -489,6 +489,9 @@ API Changes
 
   * DCB modes (Rx ``RTE_ETH_MQ_RX_DCB_FLAG``, Tx ``RTE_ETH_MQ_TX_DCB``/``RTE_ETH_MQ_TX_VMDQ_DCB``)
     are rejected if the driver has no ``get_dcb_info`` callback.
+  * RSS mode (Rx ``RTE_ETH_MQ_RX_RSS_FLAG``) is rejected with more than
+    one Rx queue if the driver reports no ``flow_type_rss_offloads``,
+    and ignored with a single Rx queue.
   * VMDq modes (Rx ``RTE_ETH_MQ_RX_VMDQ_FLAG``,
     Tx ``RTE_ETH_MQ_TX_VMDQ_DCB``/``RTE_ETH_MQ_TX_VMDQ_ONLY``) are rejected
     if the driver reports no VMDq pool.

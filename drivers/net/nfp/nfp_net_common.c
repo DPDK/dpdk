@@ -373,13 +373,6 @@ nfp_net_configure(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
-	/* Checking RX mode */
-	if ((rxmode->mq_mode & RTE_ETH_MQ_RX_RSS_FLAG) != 0 &&
-			(hw->super.cap & NFP_NET_CFG_CTRL_RSS_ANY) == 0) {
-		PMD_DRV_LOG(ERR, "RSS not supported.");
-		return -EINVAL;
-	}
-
 	/* Checking MTU set */
 	if (rxmode->mtu > hw->max_mtu + NFP_ETH_OVERHEAD) {
 		PMD_DRV_LOG(ERR, "MTU (%u) larger than the maximum possible frame size (%u).",

@@ -426,8 +426,11 @@ ethdev_process(const char *name, struct ethdev_config *params)
 	if (rss) {
 		uint64_t rss_hf = RTE_ETH_RSS_IP | RTE_ETH_RSS_TCP | RTE_ETH_RSS_UDP;
 
-		port_conf.rxmode.mq_mode = RTE_ETH_MQ_RX_RSS;
-		port_conf.rx_adv_conf.rss_conf.rss_hf = rss_hf & port_info.flow_type_rss_offloads;
+		rss_hf &= port_info.flow_type_rss_offloads;
+		if (rss_hf != 0) {
+			port_conf.rxmode.mq_mode = RTE_ETH_MQ_RX_RSS;
+			port_conf.rx_adv_conf.rss_conf.rss_hf = rss_hf;
+		}
 	}
 
 	numa_node = rte_eth_dev_socket_id(port_id);

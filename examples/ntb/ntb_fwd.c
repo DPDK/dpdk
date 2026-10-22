@@ -1312,6 +1312,8 @@ main(int argc, char **argv)
 
 		eth_pconf.rx_adv_conf.rss_conf.rss_hf &=
 				ethdev_info.flow_type_rss_offloads;
+		if (eth_pconf.rx_adv_conf.rss_conf.rss_hf == 0)
+			eth_pconf.rxmode.mq_mode = RTE_ETH_MQ_RX_NONE;
 		ret = rte_eth_dev_configure(eth_port_id, num_queues,
 					    num_queues, &eth_pconf);
 		if (ret)

@@ -133,9 +133,8 @@ cnxk_rep_representor_info_get(struct rte_eth_dev *ethdev, struct rte_eth_represe
 }
 
 static int
-rep_eth_conf_chk(const struct rte_eth_conf *conf, uint16_t nb_rx_queues)
+rep_eth_conf_chk(const struct rte_eth_conf *conf)
 {
-	const struct rte_eth_rss_conf *rss_conf;
 	int ret = 0;
 
 	if (conf->link_speeds != 0) {
@@ -144,24 +143,10 @@ rep_eth_conf_chk(const struct rte_eth_conf *conf, uint16_t nb_rx_queues)
 	}
 
 	switch (conf->rxmode.mq_mode) {
-	case RTE_ETH_MQ_RX_RSS:
-		if (nb_rx_queues != 1) {
-			plt_err("Rx RSS is not supported with %u queues", nb_rx_queues);
-			ret = -EINVAL;
-			break;
-		}
-
-		rss_conf = &conf->rx_adv_conf.rss_conf;
-		if (rss_conf->rss_key != NULL || rss_conf->rss_key_len != 0 ||
-		    rss_conf->rss_hf != 0) {
-			plt_err("Rx RSS configuration is not supported");
-			ret = -EINVAL;
-		}
-		break;
 	case RTE_ETH_MQ_RX_NONE:
 		break;
 	default:
-		plt_err("Rx mode MQ modes other than RSS not supported");
+		plt_err("Rx mode MQ modes other than none not supported");
 		ret = -EINVAL;
 		break;
 	}
@@ -205,7 +190,7 @@ cnxk_rep_dev_configure(struct rte_eth_dev *ethdev)
 	struct rte_eth_dev_data *ethdev_data = ethdev->data;
 	int rc = -1;
 
-	rc = rep_eth_conf_chk(&ethdev_data->dev_conf, ethdev_data->nb_rx_queues);
+	rc = rep_eth_conf_chk(&ethdev_data->dev_conf);
 	if (rc)
 		goto fail;
 

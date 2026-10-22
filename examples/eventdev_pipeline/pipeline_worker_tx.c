@@ -683,6 +683,8 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 
 	port_conf.rx_adv_conf.rss_conf.rss_hf &=
 		dev_info.flow_type_rss_offloads;
+	if (port_conf.rx_adv_conf.rss_conf.rss_hf == 0)
+		port_conf.rxmode.mq_mode = RTE_ETH_MQ_RX_NONE;
 	if (port_conf.rx_adv_conf.rss_conf.rss_hf !=
 			port_conf_default.rx_adv_conf.rss_conf.rss_hf) {
 		printf("Port %u modified RSS hash function based on hardware support,"

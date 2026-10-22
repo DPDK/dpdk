@@ -228,6 +228,8 @@ smp_port_init(uint16_t port, struct rte_mempool *mbuf_pool,
 
 	rss_hf_tmp = port_conf.rx_adv_conf.rss_conf.rss_hf;
 	port_conf.rx_adv_conf.rss_conf.rss_hf &= info.flow_type_rss_offloads;
+	if (port_conf.rx_adv_conf.rss_conf.rss_hf == 0)
+		port_conf.rxmode.mq_mode = RTE_ETH_MQ_RX_NONE;
 	if (port_conf.rx_adv_conf.rss_conf.rss_hf != rss_hf_tmp) {
 		printf("Port %u modified RSS hash function based on hardware support,"
 			"requested:%#"PRIx64" configured:%#"PRIx64"\n",

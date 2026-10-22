@@ -752,9 +752,6 @@ cpfl_dev_configure(struct rte_eth_dev *dev)
 			PMD_INIT_LOG(ERR, "Failed to init rss");
 			return ret;
 		}
-	} else if (conf->rxmode.mq_mode == RTE_ETH_MQ_RX_RSS) {
-		PMD_INIT_LOG(ERR, "RSS is not supported.");
-		return -ENOTSUP;
 	}
 
 	vport->max_pkt_len =
