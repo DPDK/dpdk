@@ -1227,7 +1227,7 @@ ice_nvm_access_get_features(struct ice_nvm_access_cmd *cmd,
 		return ICE_ERR_NO_MEMORY;
 
 	/* Initialize the data buffer to zeros */
-	ice_memset(data, 0, cmd->data_size, ICE_NONDMA_MEM);
+	ice_memset(data, 0, sizeof(union ice_nvm_access_data), ICE_NONDMA_MEM);
 
 	/* Fill in the features data */
 	data->drv_features.major = ICE_NVM_ACCESS_MAJOR_VER;
@@ -1342,7 +1342,7 @@ ice_nvm_access_read(struct ice_hw *hw, struct ice_nvm_access_cmd *cmd,
 	ice_debug(hw, ICE_DBG_TRACE, "%s\n", __func__);
 
 	/* Always initialize the output data, even on failure */
-	ice_memset(data, 0, cmd->data_size, ICE_NONDMA_MEM);
+	ice_memset(data, 0, sizeof(union ice_nvm_access_data), ICE_NONDMA_MEM);
 
 	/* Make sure this is a valid read/write access request */
 	status = ice_validate_nvm_rw_reg(cmd);
