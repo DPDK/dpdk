@@ -756,6 +756,7 @@ struct ice_hw_common_caps {
 	bool tx_sched_topo_comp_mode_en;
 	/* Support for OROM update in Recovery Mode */
 	bool orom_recovery_update;
+	bool pqc_cert_provisioning;
 	bool next_cluster_id_support;
 };
 
@@ -1628,8 +1629,10 @@ struct ice_aq_get_set_rss_lut_params {
 #define ICE_SR_EMP_SR_SETTINGS_PTR		0x48
 #define ICE_SR_CONFIGURATION_METADATA_PTR	0x4D
 #define ICE_SR_IMMEDIATE_VALUES_PTR		0x4E
-#define ICE_SR_LINK_DEFAULT_OVERRIDE_PTR	0x134
+#define ICE_SR_PQC_MANIFEST_BANK_PTR		0x80
+#define ICE_SR_PQC_MANIFEST_BANK_SIZE		0x81
 #define ICE_SR_POR_REGISTERS_AUTOLOAD_PTR	0x118
+#define ICE_SR_LINK_DEFAULT_OVERRIDE_PTR	0x134
 
 /* CSS Header words */
 #define ICE_NVM_CSS_HDR_LEN_L			0x02
