@@ -1585,6 +1585,13 @@ struct ice_aq_get_set_rss_lut_params {
 #define ICE_SR_PBA_BLOCK_PTR			0x16
 #define ICE_SR_BOOT_CFG_PTR			0x132
 #define ICE_SR_NVM_WOL_CFG			0x19
+/* WoL Feature Config - PFA TLV types, one per PF.
+ * TLV IDs: 0x000E for PF0, 0x010E for PF1, ..., 0x070E for PF7.
+ * Read via ice_get_pfa_module_tlv() + ice_read_sr_word().
+ */
+#define ICE_WOL_FEATURE_DISABLE			0x01
+#define ICE_WOL_FEATURE_ENABLE			0x02
+#define ICE_WOL_FEATURE(pf)			(0x0E + (pf) * 0x100)
 #define ICE_NVM_OROM_VER_OFF			0x02
 #define ICE_SR_NVM_DEV_STARTER_VER		0x18
 #define ICE_SR_ALTERNATE_SAN_MAC_ADDR_PTR	0x27
@@ -1633,6 +1640,8 @@ struct ice_aq_get_set_rss_lut_params {
 #define ICE_SR_PQC_MANIFEST_BANK_SIZE		0x81
 #define ICE_SR_POR_REGISTERS_AUTOLOAD_PTR	0x118
 #define ICE_SR_LINK_DEFAULT_OVERRIDE_PTR	0x134
+#define ICE_SR_HII_PORT_DISABLE_BY_FUNC_PTR	0x139
+#define ICE_SR_HII_PORT_DISABLE_RDE_WOL_OVRD	BIT(8)
 
 /* CSS Header words */
 #define ICE_NVM_CSS_HDR_LEN_L			0x02
