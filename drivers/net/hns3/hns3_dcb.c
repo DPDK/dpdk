@@ -1840,7 +1840,6 @@ int
 hns3_check_dev_mq_mode(struct rte_eth_dev *dev)
 {
 	enum rte_eth_rx_mq_mode rx_mq_mode = dev->data->dev_conf.rxmode.mq_mode;
-	enum rte_eth_tx_mq_mode tx_mq_mode = dev->data->dev_conf.txmode.mq_mode;
 	struct hns3_hw *hw = HNS3_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
 	struct rte_eth_dcb_rx_conf *dcb_rx_conf;
@@ -1848,14 +1847,6 @@ hns3_check_dev_mq_mode(struct rte_eth_dev *dev)
 	uint8_t num_tc;
 	int max_tc = 0;
 	int i;
-
-	if (((uint32_t)rx_mq_mode & RTE_ETH_MQ_RX_VMDQ_FLAG) ||
-	    (tx_mq_mode == RTE_ETH_MQ_TX_VMDQ_DCB ||
-	     tx_mq_mode == RTE_ETH_MQ_TX_VMDQ_ONLY)) {
-		hns3_err(hw, "VMDQ is not supported, rx_mq_mode = %d, tx_mq_mode = %d.",
-			 rx_mq_mode, tx_mq_mode);
-		return -EOPNOTSUPP;
-	}
 
 	dcb_rx_conf = &dev->data->dev_conf.rx_adv_conf.dcb_rx_conf;
 	dcb_tx_conf = &dev->data->dev_conf.tx_adv_conf.dcb_tx_conf;

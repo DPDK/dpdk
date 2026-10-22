@@ -6655,11 +6655,6 @@ i40e_vmdq_setup(struct rte_eth_dev *dev)
 	 */
 	i40e_pf_disable_irq0(hw);
 
-	if ((pf->flags & I40E_FLAG_VMDQ) == 0) {
-		PMD_INIT_LOG(ERR, "FW doesn't support VMDQ");
-		return -ENOTSUP;
-	}
-
 	conf_vsis = conf->rx_adv_conf.vmdq_rx_conf.nb_queue_pools;
 	if (conf_vsis > pf->max_nb_vmdq_vsi) {
 		PMD_INIT_LOG(ERR, "VMDQ config: %u, max support:%u",
