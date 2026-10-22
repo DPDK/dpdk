@@ -28,7 +28,7 @@ changed_files()
 
 has_code_change() # <pattern>
 {
-	test -n "$(git log --format='%h' -S"$1" $trusted_commit..)"
+	test -n "$(git log --format='%h' -G"$1" $trusted_commit..)"
 }
 
 has_file_change() # <pattern>
