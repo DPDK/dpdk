@@ -723,9 +723,11 @@ struct ice_hw_common_caps {
 #define ICE_WOL_SUPPORT_M		BIT(0)
 #define ICE_ACPI_PROG_MTHD_M		BIT(1)
 #define ICE_PROXY_SUPPORT_M		BIT(2)
+#define ICE_RDE_WOL_OVERRIDE_M		BIT(3)
 	u8 apm_wol_support;
 	u8 acpi_prog_mthd;
 	u8 proxy_support;
+	u8 rde_wol_override_support;
 	bool sec_rev_disabled;
 	bool update_disabled;
 	bool nvm_unified_update;
