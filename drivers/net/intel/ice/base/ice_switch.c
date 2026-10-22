@@ -8254,7 +8254,7 @@ ice_add_adv_recipe(struct ice_hw *hw, struct ice_adv_lkup_elem *lkups,
 	struct ice_recp_grp_entry *r_tmp;
 	struct ice_sw_fv_list_entry *tmp;
 	struct ice_sw_recipe *rm;
-	u8 i;
+	u16 i;
 	int status = ICE_SUCCESS;
 
 	if (!ice_is_prof_rule(rinfo->tun_type) && !lkups_cnt)
