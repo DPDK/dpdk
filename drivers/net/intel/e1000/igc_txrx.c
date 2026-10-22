@@ -991,23 +991,10 @@ igc_dev_mq_rx_configure(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
-	switch (dev->data->dev_conf.rxmode.mq_mode) {
-	case RTE_ETH_MQ_RX_RSS:
-		igc_rss_configure(dev);
-		break;
-	case RTE_ETH_MQ_RX_NONE:
-		/*
-		 * configure RSS register for following,
-		 * then disable the RSS logic
-		 */
-		igc_rss_configure(dev);
+	igc_rss_configure(dev);
+	if (dev->data->dev_conf.rxmode.mq_mode != RTE_ETH_MQ_RX_RSS)
 		igc_rss_disable(dev);
-		break;
-	default:
-		PMD_DRV_LOG(ERR, "rx mode(%d) not supported!",
-			dev->data->dev_conf.rxmode.mq_mode);
-		return -EINVAL;
-	}
+
 	return 0;
 }
 

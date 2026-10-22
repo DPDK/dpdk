@@ -1485,17 +1485,6 @@ cnxk_nix_configure(struct rte_eth_dev *eth_dev)
 		goto fail_configure;
 	}
 
-	if (rxmode->mq_mode != RTE_ETH_MQ_RX_NONE &&
-	    rxmode->mq_mode != RTE_ETH_MQ_RX_RSS) {
-		plt_err("Unsupported mq rx mode %d", rxmode->mq_mode);
-		goto fail_configure;
-	}
-
-	if (txmode->mq_mode != RTE_ETH_MQ_TX_NONE) {
-		plt_err("Unsupported mq tx mode %d", txmode->mq_mode);
-		goto fail_configure;
-	}
-
 	/* Free the resources allocated from the previous configure */
 	if (dev->configured == 1) {
 		/* Unregister queue irq's */

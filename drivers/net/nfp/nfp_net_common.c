@@ -357,21 +357,13 @@ nfp_net_configure(struct rte_eth_dev *dev)
 	struct nfp_net_hw *hw;
 	struct rte_eth_conf *dev_conf;
 	struct rte_eth_rxmode *rxmode;
-	struct rte_eth_txmode *txmode;
 
 	hw = nfp_net_get_hw(dev);
 	dev_conf = &dev->data->dev_conf;
 	rxmode = &dev_conf->rxmode;
-	txmode = &dev_conf->txmode;
 
 	if ((rxmode->mq_mode & RTE_ETH_MQ_RX_RSS_FLAG) != 0)
 		rxmode->offloads |= RTE_ETH_RX_OFFLOAD_RSS_HASH;
-
-	/* Checking TX mode */
-	if (txmode->mq_mode != RTE_ETH_MQ_TX_NONE) {
-		PMD_DRV_LOG(ERR, "TX mq_mode DCB and VMDq not supported.");
-		return -EINVAL;
-	}
 
 	/* Checking MTU set */
 	if (rxmode->mtu > hw->max_mtu + NFP_ETH_OVERHEAD) {

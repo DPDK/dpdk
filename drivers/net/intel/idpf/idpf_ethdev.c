@@ -650,12 +650,6 @@ idpf_dev_configure(struct rte_eth_dev *dev)
 		return -ENOTSUP;
 	}
 
-	if (conf->txmode.mq_mode != RTE_ETH_MQ_TX_NONE) {
-		PMD_INIT_LOG(ERR, "Multi-queue TX mode %d is not supported",
-			     conf->txmode.mq_mode);
-		return -ENOTSUP;
-	}
-
 	if (conf->lpbk_mode != 0) {
 		PMD_INIT_LOG(ERR, "Loopback operation mode %d is not supported",
 			     conf->lpbk_mode);

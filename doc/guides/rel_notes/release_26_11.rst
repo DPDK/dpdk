@@ -495,6 +495,7 @@ API Changes
   * VMDq modes (Rx ``RTE_ETH_MQ_RX_VMDQ_FLAG``,
     Tx ``RTE_ETH_MQ_TX_VMDQ_DCB``/``RTE_ETH_MQ_TX_VMDQ_ONLY``) are rejected
     if the driver reports no VMDq pool.
+  * Unknown Rx and Tx modes are rejected.
 
 * ethdev: Updated VMDq related API.
 

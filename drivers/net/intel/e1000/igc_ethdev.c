@@ -344,29 +344,10 @@ static const struct eth_dev_ops eth_igc_ops = {
 static int
 igc_check_mq_mode(struct rte_eth_dev *dev)
 {
-	enum rte_eth_rx_mq_mode rx_mq_mode = dev->data->dev_conf.rxmode.mq_mode;
-	enum rte_eth_tx_mq_mode tx_mq_mode = dev->data->dev_conf.txmode.mq_mode;
-
 	if (RTE_ETH_DEV_SRIOV(dev).active != 0) {
 		PMD_INIT_LOG(ERR, "SRIOV is not supported.");
 		return -EINVAL;
 	}
-
-	if (rx_mq_mode != RTE_ETH_MQ_RX_NONE &&
-		rx_mq_mode != RTE_ETH_MQ_RX_RSS) {
-		/* RSS together with VMDq not supported*/
-		PMD_INIT_LOG(ERR, "RX mode %d is not supported.",
-				rx_mq_mode);
-		return -EINVAL;
-	}
-
-	/* To no break software that set invalid mode, only display
-	 * warning if invalid mode is used.
-	 */
-	if (tx_mq_mode != RTE_ETH_MQ_TX_NONE)
-		PMD_INIT_LOG(WARNING,
-			"TX mode %d is not supported. Due to meaningless in this driver, just ignore",
-			tx_mq_mode);
 
 	return 0;
 }

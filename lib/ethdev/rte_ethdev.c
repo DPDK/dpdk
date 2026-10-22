@@ -1526,6 +1526,23 @@ rte_eth_dev_configure(uint16_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 		goto rollback;
 	}
 
+#define RX_MQ_MODE_KNOWN_FLAGS \
+	(RTE_ETH_MQ_RX_RSS_FLAG | RTE_ETH_MQ_RX_DCB_FLAG | RTE_ETH_MQ_RX_VMDQ_FLAG)
+
+	if ((dev_conf->rxmode.mq_mode & ~RX_MQ_MODE_KNOWN_FLAGS) != 0) {
+		RTE_ETHDEV_LOG_LINE(ERR, "Ethdev port_id=%u invalid rx mq_mode 0x%x",
+			port_id, dev_conf->rxmode.mq_mode);
+		ret = -EINVAL;
+		goto rollback;
+	}
+
+	if (dev_conf->txmode.mq_mode > RTE_ETH_MQ_TX_VMDQ_ONLY) {
+		RTE_ETHDEV_LOG_LINE(ERR, "Ethdev port_id=%u invalid tx mq_mode %u",
+			port_id, dev_conf->txmode.mq_mode);
+		ret = -EINVAL;
+		goto rollback;
+	}
+
 	if (dev_info.flow_type_rss_offloads == 0 &&
 			(dev_conf->rxmode.mq_mode & RTE_ETH_MQ_RX_RSS_FLAG) != 0) {
 		if (nb_rx_q > 1) {

@@ -85,18 +85,8 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 
 	bp->nr_vnics = 0;
 
-	/* Multi-queue mode */
-	switch (dev_conf->rxmode.mq_mode) {
-	case RTE_ETH_MQ_RX_NONE:
-	case RTE_ETH_MQ_RX_RSS:
-		pools = bp->rx_cosq_cnt ? bp->rx_cosq_cnt : pools;
-		break;
-	default:
-		PMD_DRV_LOG_LINE(ERR, "Unsupported mq_mode %d",
-				 dev_conf->rxmode.mq_mode);
-		return -EINVAL;
-	}
-
+	if (bp->rx_cosq_cnt)
+		pools = bp->rx_cosq_cnt;
 	pools = RTE_MIN(pools, bp->rx_cp_nr_rings);
 	nb_q_per_grp = bp->rx_cp_nr_rings / pools;
 	PMD_DRV_LOG_LINE(DEBUG, "pools = %u nb_q_per_grp = %u",

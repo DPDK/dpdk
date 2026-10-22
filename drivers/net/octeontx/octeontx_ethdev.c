@@ -494,16 +494,6 @@ octeontx_dev_configure(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
-	if (txmode->mq_mode) {
-		octeontx_log_err("tx mq_mode DCB or VMDq not supported");
-		return -EINVAL;
-	}
-
-	if (rxmode->mq_mode != RTE_ETH_MQ_RX_NONE) {
-		octeontx_log_err("unsupported rx qmode %d", rxmode->mq_mode);
-		return -EINVAL;
-	}
-
 	if (!(txmode->offloads & RTE_ETH_TX_OFFLOAD_MT_LOCKFREE)) {
 		PMD_INIT_LOG(NOTICE, "cant disable lockfree tx");
 		txmode->offloads |= RTE_ETH_TX_OFFLOAD_MT_LOCKFREE;

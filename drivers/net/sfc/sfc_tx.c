@@ -314,15 +314,6 @@ sfc_tx_check_mode(struct sfc_adapter *sa, const struct rte_eth_txmode *txmode)
 	uint64_t dev_tx_offload_cap = sfc_tx_get_dev_offload_caps(sa);
 	int rc = 0;
 
-	switch (txmode->mq_mode) {
-	case RTE_ETH_MQ_TX_NONE:
-		break;
-	default:
-		sfc_err(sa, "Tx multi-queue mode %u not supported",
-			txmode->mq_mode);
-		rc = EINVAL;
-	}
-
 	if ((dev_tx_offload_cap & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE) != 0 &&
 	    (txmode->offloads & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE) == 0) {
 		sfc_err(sa, "There is no FAST_FREE flag in the attempted Tx mode configuration");

@@ -707,12 +707,6 @@ cpfl_dev_configure(struct rte_eth_dev *dev)
 		return -ENOTSUP;
 	}
 
-	if (conf->txmode.mq_mode != RTE_ETH_MQ_TX_NONE) {
-		PMD_INIT_LOG(ERR, "Multi-queue TX mode %d is not supported",
-			     conf->txmode.mq_mode);
-		return -ENOTSUP;
-	}
-
 	if (conf->lpbk_mode != 0) {
 		PMD_INIT_LOG(ERR, "Loopback operation mode %d is not supported",
 			     conf->lpbk_mode);
@@ -737,13 +731,6 @@ cpfl_dev_configure(struct rte_eth_dev *dev)
 	if (conf->intr_conf.rmv != 0) {
 		PMD_INIT_LOG(ERR, "RMV interrupt is not supported");
 		return -ENOTSUP;
-	}
-
-	if (conf->rxmode.mq_mode != RTE_ETH_MQ_RX_RSS &&
-	    conf->rxmode.mq_mode != RTE_ETH_MQ_RX_NONE) {
-		PMD_INIT_LOG(ERR, "RX mode %d is not supported.",
-			     conf->rxmode.mq_mode);
-		return -EINVAL;
 	}
 
 	if (base->caps.rss_caps != 0 && dev->data->nb_rx_queues != 0) {
