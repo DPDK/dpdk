@@ -1668,21 +1668,14 @@ sfc_rx_qinit_info(struct sfc_adapter *sa, sfc_sw_index_t sw_index,
 static int
 sfc_rx_check_mode(struct sfc_adapter *sa, struct rte_eth_rxmode *rxmode)
 {
-	struct sfc_adapter_shared * const sas = sfc_sa2shared(sa);
 	uint64_t offloads_supported = sfc_rx_get_dev_offload_caps(sa) |
 				      sfc_rx_get_queue_offload_caps(sa);
-	struct sfc_rss *rss = &sas->rss;
 	int rc = 0;
 
 	switch (rxmode->mq_mode) {
 	case RTE_ETH_MQ_RX_NONE:
-		/* No special checks are required */
-		break;
 	case RTE_ETH_MQ_RX_RSS:
-		if (rss->context_type == EFX_RX_SCALE_UNAVAILABLE) {
-			sfc_err(sa, "RSS is not available");
-			rc = EINVAL;
-		}
+		/* No special checks are required */
 		break;
 	default:
 		sfc_err(sa, "Rx multi-queue mode %u not supported",

@@ -118,6 +118,9 @@ init_port(uint16_t port_num)
 		port_conf.txmode.offloads |=
 			RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
 
+	if (dev_info.flow_type_rss_offloads == 0)
+		port_conf.rxmode.mq_mode = RTE_ETH_MQ_RX_NONE;
+
 	/*
 	 * Standard DPDK port initialisation - config port, then set up
 	 * rx and tx rings.

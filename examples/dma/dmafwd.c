@@ -922,6 +922,8 @@ port_init(uint16_t portid, struct rte_mempool *mbuf_pool)
 
 	local_port_conf.rx_adv_conf.rss_conf.rss_hf &=
 		dev_info.flow_type_rss_offloads;
+	if (local_port_conf.rx_adv_conf.rss_conf.rss_hf == 0)
+		local_port_conf.rxmode.mq_mode = RTE_ETH_MQ_RX_NONE;
 	ret = rte_eth_dev_configure(portid, nb_queues, 1, &local_port_conf);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Cannot configure device:"

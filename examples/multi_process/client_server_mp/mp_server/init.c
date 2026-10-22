@@ -91,7 +91,7 @@ static int
 init_port(uint16_t port_num)
 {
 	/* for port configuration all features are off by default */
-	const struct rte_eth_conf port_conf = {
+	struct rte_eth_conf port_conf = {
 		.rxmode = {
 			.mq_mode = RTE_ETH_MQ_RX_RSS
 		}
@@ -99,12 +99,20 @@ init_port(uint16_t port_num)
 	const uint16_t rx_rings = 1, tx_rings = num_clients;
 	uint16_t rx_ring_size = RTE_MP_RX_DESC_DEFAULT;
 	uint16_t tx_ring_size = RTE_MP_TX_DESC_DEFAULT;
+	struct rte_eth_dev_info dev_info;
 
 	uint16_t q;
 	int retval;
 
 	printf("Port %u init ... ", port_num);
 	fflush(stdout);
+
+	retval = rte_eth_dev_info_get(port_num, &dev_info);
+	if (retval != 0)
+		return retval;
+
+	if (dev_info.flow_type_rss_offloads == 0)
+		port_conf.rxmode.mq_mode = RTE_ETH_MQ_RX_NONE;
 
 	/* Standard DPDK port initialisation - config port, then set up
 	 * rx and tx rings */

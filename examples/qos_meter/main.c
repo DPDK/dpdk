@@ -336,6 +336,8 @@ main(int argc, char **argv)
 		conf.txmode.offloads |= RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
 
 	conf.rx_adv_conf.rss_conf.rss_hf &= dev_info.flow_type_rss_offloads;
+	if (conf.rx_adv_conf.rss_conf.rss_hf == 0)
+		conf.rxmode.mq_mode = RTE_ETH_MQ_RX_NONE;
 	if (conf.rx_adv_conf.rss_conf.rss_hf !=
 			port_conf.rx_adv_conf.rss_conf.rss_hf) {
 		printf("Port %u modified RSS hash function based on hardware support,"
@@ -382,6 +384,8 @@ main(int argc, char **argv)
 		conf.txmode.offloads |= RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE;
 
 	conf.rx_adv_conf.rss_conf.rss_hf &= dev_info.flow_type_rss_offloads;
+	if (conf.rx_adv_conf.rss_conf.rss_hf == 0)
+		conf.rxmode.mq_mode = RTE_ETH_MQ_RX_NONE;
 	if (conf.rx_adv_conf.rss_conf.rss_hf !=
 			port_conf.rx_adv_conf.rss_conf.rss_hf) {
 		printf("Port %u modified RSS hash function based on hardware support,"

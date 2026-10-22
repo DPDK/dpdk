@@ -2016,6 +2016,8 @@ port_init(uint16_t portid, uint64_t req_rx_offloads, uint64_t req_tx_offloads,
 
 	local_port_conf.rx_adv_conf.rss_conf.rss_hf &=
 		dev_info.flow_type_rss_offloads;
+	if (local_port_conf.rx_adv_conf.rss_conf.rss_hf == 0)
+		local_port_conf.rxmode.mq_mode = RTE_ETH_MQ_RX_NONE;
 	if (local_port_conf.rx_adv_conf.rss_conf.rss_hf !=
 			port_conf.rx_adv_conf.rss_conf.rss_hf) {
 		printf("Port %u modified RSS hash function based on hardware support,"
