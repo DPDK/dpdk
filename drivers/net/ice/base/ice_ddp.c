@@ -519,7 +519,7 @@ ice_download_pkg_config_seg(struct ice_hw *hw, struct ice_pkg_hdr *pkg_hdr,
 	bufs = ice_find_buf_table(seg);
 	buf_count = LE32_TO_CPU(bufs->buf_count);
 
-	if (start >= buf_count || start + count > buf_count)
+	if (start >= buf_count || count > buf_count - start)
 		return ICE_DDP_PKG_ERR;
 
 	state = ice_dwnld_cfg_bufs_no_lock(hw, bufs->buf_array, start, count,
@@ -843,6 +843,7 @@ enum ice_ddp_state ice_get_pkg_info(struct ice_hw *hw)
 	struct ice_aqc_get_pkg_info_resp *pkg_info;
 	u16 size;
 	u32 i;
+	u32 pkg_count;
 
 	size = ice_struct_size(pkg_info, pkg_info, ICE_PKG_CNT);
 	pkg_info = (struct ice_aqc_get_pkg_info_resp *)ice_malloc(hw, size);
@@ -854,7 +855,8 @@ enum ice_ddp_state ice_get_pkg_info(struct ice_hw *hw)
 		goto init_pkg_free_alloc;
 	}
 
-	for (i = 0; i < LE32_TO_CPU(pkg_info->count); i++) {
+	pkg_count = min(LE32_TO_CPU(pkg_info->count), (u32)ICE_PKG_CNT);
+	for (i = 0; i < pkg_count; i++) {
 #define ICE_PKG_FLAG_COUNT	4
 		char flags[ICE_PKG_FLAG_COUNT + 1] = { 0 };
 		u8 place = 0;
@@ -966,6 +968,7 @@ ice_enum_labels(struct ice_seg *ice_seg, u32 type, struct ice_pkg_enum *state,
 enum ice_ddp_state ice_verify_pkg(struct ice_pkg_hdr *pkg, u32 len)
 {
 	u32 seg_count;
+	u32 off;
 	u32 i;
 
 	if (len < ice_struct_size(pkg, seg_offset, 1))
@@ -988,17 +991,18 @@ enum ice_ddp_state ice_verify_pkg(struct ice_pkg_hdr *pkg, u32 len)
 
 	/* all segments must fit within length */
 	for (i = 0; i < seg_count; i++) {
-		u32 off = LE32_TO_CPU(pkg->seg_offset[i]);
 		struct ice_generic_seg_hdr *seg;
 
+		off = LE32_TO_CPU(pkg->seg_offset[i]);
+
 		/* segment header must fit */
-		if (len < off + sizeof(*seg))
+		if (len < off || len - off < sizeof(*seg))
 			return ICE_DDP_PKG_INVALID_FILE;
 
 		seg = (struct ice_generic_seg_hdr *)((u8 *)pkg + off);
 
 		/* segment body must fit */
-		if (len < off + LE32_TO_CPU(seg->seg_size))
+		if (len < off || len - off < LE32_TO_CPU(seg->seg_size))
 			return ICE_DDP_PKG_INVALID_FILE;
 	}
 
@@ -1059,7 +1063,7 @@ ice_chk_pkg_compat(struct ice_hw *hw, struct ice_pkg_hdr *ospkg,
 	struct ice_aqc_get_pkg_info_resp *pkg;
 	enum ice_ddp_state state;
 	u16 size;
-	u32 i;
+	u32 i, pkg_count;
 
 	/* Check package version compatibility */
 	state = ice_chk_pkg_version(&hw->pkg_ver);
@@ -1087,7 +1091,8 @@ ice_chk_pkg_compat(struct ice_hw *hw, struct ice_pkg_hdr *ospkg,
 		goto fw_ddp_compat_free_alloc;
 	}
 
-	for (i = 0; i < LE32_TO_CPU(pkg->count); i++) {
+	pkg_count = min(LE32_TO_CPU(pkg->count), (u32)ICE_PKG_CNT);
+	for (i = 0; i < pkg_count; i++) {
 		/* loop till we find the NVM package */
 		if (!pkg->pkg_info[i].is_in_nvm)
 			continue;
