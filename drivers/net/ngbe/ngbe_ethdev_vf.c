@@ -475,7 +475,6 @@ ngbevf_dev_info_get(struct rte_eth_dev *dev,
 	dev_info->max_mac_addrs = hw->mac.num_rar_entries;
 	dev_info->max_hash_mac_addrs = NGBE_VMDQ_NUM_UC_MAC;
 	dev_info->max_vfs = pci_dev->max_vfs;
-	dev_info->max_vmdq_pools = RTE_ETH_64_POOLS;
 	dev_info->rx_queue_offload_capa = ngbe_get_rx_queue_offloads(dev);
 	dev_info->rx_offload_capa = (ngbe_get_rx_port_offloads(dev) |
 				     dev_info->rx_queue_offload_capa);
