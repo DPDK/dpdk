@@ -469,6 +469,10 @@ xsc_ethdev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	info->if_index = priv->ifindex;
 	info->speed_capa = priv->xdev->link_speed_capa;
 	info->hash_key_size = XSC_RSS_HASH_KEY_LEN;
+	info->flow_type_rss_offloads = RTE_ETH_RSS_IP | RTE_ETH_RSS_UDP |
+		RTE_ETH_RSS_TCP | RTE_ETH_RSS_L3_SRC_ONLY |
+		RTE_ETH_RSS_L3_DST_ONLY | RTE_ETH_RSS_L4_SRC_ONLY |
+		RTE_ETH_RSS_L4_DST_ONLY | RTE_ETH_RSS_LEVEL_INNERMOST;
 	info->tx_desc_lim.nb_seg_max = 8;
 	info->tx_desc_lim.nb_mtu_seg_max = 8;
 	info->switch_info.name = dev->data->name;
