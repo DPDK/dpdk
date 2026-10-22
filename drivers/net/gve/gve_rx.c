@@ -139,12 +139,21 @@ gve_rx(struct gve_rx_queue *rxq, volatile struct gve_rx_desc *rxd, uint16_t rx_i
 	struct rte_mbuf *rxe;
 
 	if (ctx->drop_pkt)
-		goto finish_frag;
+		goto drop_frag;
 
 	if (rxd->flags_seq & GVE_RXF_ERR) {
 		ctx->drop_pkt = true;
 		rxq->stats.errors++;
-		goto finish_frag;
+		goto drop_frag;
+	}
+
+	/* The device chains a frame larger than one Rx buffer whatever MTU
+	 * it was given, so drop it unless the application enabled scatter.
+	 */
+	if (is_first_frag && !is_last_frag && !rxq->scatter) {
+		ctx->drop_pkt = true;
+		rxq->stats.errors++;
+		goto drop_frag;
 	}
 
 	if (is_first_frag)
@@ -171,6 +180,12 @@ gve_rx(struct gve_rx_queue *rxq, volatile struct gve_rx_desc *rxd, uint16_t rx_i
 		}
 	}
 
+	goto finish_frag;
+
+drop_frag:
+	/* The refill puts a new mbuf in this slot, so free the old one. */
+	rte_pktmbuf_free(rxq->sw_ring[rx_id]);
+	rxq->sw_ring[rx_id] = NULL;
 finish_frag:
 	ctx->total_frags++;
 	return is_last_frag;
@@ -375,6 +390,7 @@ gve_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 	rxq->ntfy_addr = &hw->db_bar[rte_be_to_cpu_32(hw->irq_dbs[rxq->ntfy_id].id)];
 
 	rxq->rx_buf_len = rx_buf_len;
+	rxq->scatter = !!(offloads & RTE_ETH_RX_OFFLOAD_SCATTER);
 
 	/* Allocate software ring */
 	rxq->sw_ring = rte_zmalloc_socket("gve rx sw ring", sizeof(struct rte_mbuf *) * nb_desc,
