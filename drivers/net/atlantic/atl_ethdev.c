@@ -1106,8 +1106,6 @@ atl_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_vfs = pci_dev->max_vfs;
 
 	dev_info->max_hash_mac_addrs = 0;
-	dev_info->max_vmdq_pools = 0;
-	dev_info->vmdq_queue_num = 0;
 
 	dev_info->rx_offload_capa = ATL_RX_OFFLOADS;
 
