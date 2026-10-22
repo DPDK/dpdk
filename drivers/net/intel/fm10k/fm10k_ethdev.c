@@ -411,7 +411,6 @@ static int
 fm10k_check_mq_mode(struct rte_eth_dev *dev)
 {
 	enum rte_eth_rx_mq_mode rx_mq_mode = dev->data->dev_conf.rxmode.mq_mode;
-	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_eth_vmdq_rx_conf *vmdq_conf;
 	uint16_t nb_rx_q = dev->data->nb_rx_queues;
 
@@ -424,11 +423,6 @@ fm10k_check_mq_mode(struct rte_eth_dev *dev)
 
 	if (!(rx_mq_mode & RTE_ETH_MQ_RX_VMDQ_FLAG))
 		return 0;
-
-	if (hw->mac.type == fm10k_mac_vf) {
-		PMD_INIT_LOG(ERR, "VMDQ mode is not supported in VF.");
-		return -EINVAL;
-	}
 
 	/* Check VMDQ queue pool number */
 	if (vmdq_conf->nb_queue_pools >
@@ -1386,7 +1380,8 @@ fm10k_dev_infos_get(struct rte_eth_dev *dev,
 	dev_info->max_vfs            = pdev->max_vfs;
 	dev_info->vmdq_pool_base     = 0;
 	dev_info->vmdq_queue_base    = 0;
-	dev_info->max_vmdq_pools     = RTE_ETH_32_POOLS;
+	if (hw->mac.type != fm10k_mac_vf)
+		dev_info->max_vmdq_pools = RTE_ETH_32_POOLS;
 	dev_info->vmdq_queue_num     = FM10K_MAX_QUEUES_PF;
 	dev_info->rx_queue_offload_capa = fm10k_get_rx_queue_offloads_capa(dev);
 	dev_info->rx_offload_capa = fm10k_get_rx_port_offloads_capa(dev) |
