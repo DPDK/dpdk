@@ -200,6 +200,8 @@ check_mq_caps() # <driver>
 	[ -d $code ] || return 0
 	[ -f $doc ] || return 0
 
+	check_mq_cap $1 "DCB" "get_dcb_info" '\.get_dcb_info[[:space:]]*=' \
+		'RTE_ETH_MQ_(RX|TX).*DCB'
 	check_mq_cap $1 "VMDq" "max_vmdq_pools" 'max_vmdq_pools[[:space:]]*=' \
 		'RTE_ETH_MQ_(RX|TX).*VMDQ'
 }
@@ -220,7 +222,7 @@ if has_code_change 'RTE_FLOW_.*_TYPE_' ||
 		check_rte_flow $driver
 	done
 fi
-if has_code_change 'max_vmdq_pools|RTE_ETH_MQ_.*VMDQ' ||
+if has_code_change 'get_dcb_info|max_vmdq_pools|RTE_ETH_MQ_.*DCB|RTE_ETH_MQ_.*VMDQ' ||
 		has_file_change 'doc/guides/nics/features'; then
 	for driver in $(changed_net_drivers); do
 		check_mq_caps $driver

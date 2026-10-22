@@ -485,11 +485,16 @@ API Changes
   * Removed the ``unused`` field.
   * Changed the ``objs`` array from fixed size to variable size.
 
+* ethdev: Updated multi-queue mode validation at port configuration time:
+
+  * DCB modes (Rx ``RTE_ETH_MQ_RX_DCB_FLAG``, Tx ``RTE_ETH_MQ_TX_DCB``/``RTE_ETH_MQ_TX_VMDQ_DCB``)
+    are rejected if the driver has no ``get_dcb_info`` callback.
+  * VMDq modes (Rx ``RTE_ETH_MQ_RX_VMDQ_FLAG``,
+    Tx ``RTE_ETH_MQ_TX_VMDQ_DCB``/``RTE_ETH_MQ_TX_VMDQ_ONLY``) are rejected
+    if the driver reports no VMDq pool.
+
 * ethdev: Updated VMDq related API.
 
-  * At port configuration time, the number of VMDq pools advertised by a driver
-    is now used to validate VMDq related Rx and Tx modes
-    (``RTE_ETH_MQ_RX_VMDQ_FLAG``, ``RTE_ETH_MQ_TX_VMDQ_DCB``, ``RTE_ETH_MQ_TX_VMDQ_ONLY``).
   * A check was added in ``rte_eth_dev_mac_addr_add`` to validate that
     the ``pool`` parameter is 0 when VMDq is not configured.
   * The ``RTE_ETH_NUM_RECEIVE_MAC_ADDR`` and ``RTE_ETH_VMDQ_NUM_UC_HASH_ARRAY`` macros

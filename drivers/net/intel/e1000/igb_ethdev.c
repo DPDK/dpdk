@@ -1144,12 +1144,6 @@ igb_check_mq_mode(struct rte_eth_dev *dev)
 	uint16_t nb_rx_q = dev->data->nb_rx_queues;
 	uint16_t nb_tx_q = dev->data->nb_tx_queues;
 
-	if ((rx_mq_mode & RTE_ETH_MQ_RX_DCB_FLAG) ||
-	    tx_mq_mode == RTE_ETH_MQ_TX_DCB ||
-	    tx_mq_mode == RTE_ETH_MQ_TX_VMDQ_DCB) {
-		PMD_INIT_LOG(ERR, "DCB mode is not supported.");
-		return -EINVAL;
-	}
 	if (RTE_ETH_DEV_SRIOV(dev).active != 0) {
 		/* Check multi-queue mode.
 		 * To no break software we accept RTE_ETH_MQ_RX_NONE as this might

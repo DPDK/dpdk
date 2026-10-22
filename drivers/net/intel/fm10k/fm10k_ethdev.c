@@ -416,11 +416,6 @@ fm10k_check_mq_mode(struct rte_eth_dev *dev)
 
 	vmdq_conf = &dev->data->dev_conf.rx_adv_conf.vmdq_rx_conf;
 
-	if (rx_mq_mode & RTE_ETH_MQ_RX_DCB_FLAG) {
-		PMD_INIT_LOG(ERR, "DCB mode is not supported.");
-		return -EINVAL;
-	}
-
 	if (!(rx_mq_mode & RTE_ETH_MQ_RX_VMDQ_FLAG))
 		return 0;
 
