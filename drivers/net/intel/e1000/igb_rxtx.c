@@ -2113,41 +2113,6 @@ igb_rss_configure(struct rte_eth_dev *dev)
 	igb_hw_rss_hash_set(hw, &rss_conf);
 }
 
-/*
- * Check if the mac type support VMDq or not.
- * Return 1 if it supports, otherwise, return 0.
- */
-static int
-igb_is_vmdq_supported(const struct rte_eth_dev *dev)
-{
-	const struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-
-	switch (hw->mac.type) {
-	case e1000_82576:
-	case e1000_82580:
-	case e1000_i350:
-		return 1;
-	case e1000_82540:
-	case e1000_82541:
-	case e1000_82542:
-	case e1000_82543:
-	case e1000_82544:
-	case e1000_82545:
-	case e1000_82546:
-	case e1000_82547:
-	case e1000_82571:
-	case e1000_82572:
-	case e1000_82573:
-	case e1000_82574:
-	case e1000_82583:
-	case e1000_i210:
-	case e1000_i211:
-	default:
-		PMD_INIT_LOG(ERR, "Cannot support VMDq feature");
-		return 0;
-	}
-}
-
 static int
 igb_vmdq_rx_hw_configure(struct rte_eth_dev *dev)
 {
@@ -2160,10 +2125,6 @@ igb_vmdq_rx_hw_configure(struct rte_eth_dev *dev)
 
 	hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	cfg = &dev->data->dev_conf.rx_adv_conf.vmdq_rx_conf;
-
-	/* Check if mac type can support VMDq, return value of 0 means NOT support */
-	if (igb_is_vmdq_supported(dev) == 0)
-		return -1;
 
 	igb_rss_disable(dev);
 
