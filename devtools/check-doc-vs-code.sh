@@ -161,10 +161,54 @@ check_rte_flow() # <driver>
 	fi
 }
 
+has_doc_feature() # <ini_file> <feature>
+{
+	grep -q "^$2[[:space:]]*=[[:space:]]*[YP]" "$1"
+}
+
+# check if any doc for a code directory has a feature
+any_doc_has_feature() # <code_dir> <feature>
+{
+	for drv in $(docs_for_code $1); do
+		d=$rootdir/doc/guides/nics/features/$drv.ini
+		if has_doc_feature "$d" "$2"; then
+			return 0
+		fi
+	done
+	return 1
+}
+
+check_mq_cap() # <driver> <feature> <indicator> <code_pattern> <mq_pattern>
+{
+	if has_doc_feature "$doc" "$2"; then
+		# doc claims feature, code must have it
+		git grep -qE "$4" -- "$code" ||
+			error "$2 documented but $3 not set for $1"
+	elif ! any_doc_has_feature "$code" "$2"; then
+		# check code->doc only if no doc for the code directory has the feature
+		! git grep -qE "$4" -- "$code" ||
+			error "$3 set but $2 not documented for $1"
+		! git grep -qE "$5" -- "$code" ||
+			error "$2 mq_mode referenced but $2 not documented for $1"
+	fi
+}
+
+check_mq_caps() # <driver>
+{
+	code=$(driver_code_dir $1)
+	doc=$rootdir/doc/guides/nics/features/$1.ini
+	[ -d $code ] || return 0
+	[ -f $doc ] || return 0
+
+	check_mq_cap $1 "VMDq" "max_vmdq_pools" 'max_vmdq_pools[[:space:]]*=' \
+		'RTE_ETH_MQ_(RX|TX).*VMDQ'
+}
+
 if [ -z "$trusted_commit" ]; then
 	# check all
 	for driver in $(all_net_drivers); do
 		check_rte_flow $driver
+		check_mq_caps $driver
 	done
 	exit $result
 fi
@@ -174,6 +218,12 @@ if has_code_change 'RTE_FLOW_.*_TYPE_' ||
 		has_file_change 'doc/guides/nics/features'; then
 	for driver in $(changed_net_drivers); do
 		check_rte_flow $driver
+	done
+fi
+if has_code_change 'max_vmdq_pools|RTE_ETH_MQ_.*VMDQ' ||
+		has_file_change 'doc/guides/nics/features'; then
+	for driver in $(changed_net_drivers); do
+		check_mq_caps $driver
 	done
 fi
 exit $result
