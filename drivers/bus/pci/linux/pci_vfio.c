@@ -1189,8 +1189,6 @@ pci_vfio_ioport_map(struct rte_pci_device *dev, int bar,
 
 		vfio_dev_fd = rte_intr_dev_fd_get(dev->intr_handle);
 		if (vfio_dev_fd < 0) {
-			return -1;
-		} else if (vfio_dev_fd == 0) {
 			if (dev_vfio_setup_device(rte_pci_get_sysfs_path(), pci_addr,
 					&vfio_dev_fd) != 0)
 				return -1;
