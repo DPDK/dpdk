@@ -38,24 +38,38 @@ has_file_change() # <pattern>
 
 changed_net_drivers()
 {
-	net_paths='drivers/net/|doc/guides/nics/features/'
 	[ -n "$drivers" ] ||
 		drivers=$(changed_files |
-			sed -rn "s,^($net_paths)([^./]*).*,\2,p" |
+			sed -rn '
+				s,^drivers/net/intel/([^/]*).*,\1,p; t
+				s,^drivers/net/([^/]*).*,\1,p; t
+				s,^doc/guides/nics/features/([^.]*).*,\1,p' |
 			sort -u)
 	echo "$drivers"
 }
 
 all_net_drivers()
 {
-	find $rootdir/drivers/net -mindepth 1 -maxdepth 1 -type d |
-	sed 's,.*/,,' |
-	sort
+	find $rootdir/drivers/net -name meson.build |
+	sed -rn '
+		s,.*drivers/net/intel/([^/]*).*,\1,p; t
+		s,.*drivers/net/([^/]*).*,\1,p' |
+	sort -u
+}
+
+# give back a driver directory for a doc/driver name
+driver_code_dir() # <driver_name>
+{
+	if [ -d $rootdir/drivers/net/intel/$1 ]; then
+		echo "$rootdir/drivers/net/intel/$1"
+	else
+		echo "$rootdir/drivers/net/$1"
+	fi
 }
 
 check_rte_flow() # <driver>
 {
-	code=$rootdir/drivers/net/$1
+	code=$(driver_code_dir $1)
 	doc=$rootdir/doc/guides/nics/features/$1.ini
 	[ -d $code ] || return 0
 	[ -f $doc ] || return 0
