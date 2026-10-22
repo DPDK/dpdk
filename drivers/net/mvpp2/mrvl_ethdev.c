@@ -483,13 +483,6 @@ mrvl_dev_configure(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
-	if (dev->data->dev_conf.rxmode.mq_mode != RTE_ETH_MQ_RX_NONE &&
-	    dev->data->dev_conf.rxmode.mq_mode != RTE_ETH_MQ_RX_RSS) {
-		MRVL_LOG(INFO, "Unsupported rx multi queue mode %d",
-			dev->data->dev_conf.rxmode.mq_mode);
-		return -EINVAL;
-	}
-
 	if (dev->data->dev_conf.rxmode.mtu > priv->max_mtu) {
 		MRVL_LOG(ERR, "MTU %u is larger than max_mtu %u",
 			 dev->data->dev_conf.rxmode.mtu,

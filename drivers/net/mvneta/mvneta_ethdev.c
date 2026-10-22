@@ -120,13 +120,6 @@ mvneta_dev_configure(struct rte_eth_dev *dev)
 	struct mvneta_priv *priv = dev->data->dev_private;
 	struct neta_ppio_params *ppio_params;
 
-	if (dev->data->dev_conf.rxmode.mq_mode != RTE_ETH_MQ_RX_NONE) {
-		MVNETA_LOG(INFO, "Unsupported RSS and rx multi queue mode %d",
-			dev->data->dev_conf.rxmode.mq_mode);
-		if (dev->data->nb_rx_queues > 1)
-			return -EINVAL;
-	}
-
 	if (dev->data->dev_conf.txmode.offloads & RTE_ETH_TX_OFFLOAD_MULTI_SEGS)
 		priv->multiseg = 1;
 

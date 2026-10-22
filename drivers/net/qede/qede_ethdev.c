@@ -1289,11 +1289,6 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 		DP_NOTICE(edev, false,
 			  "Invalid devargs supplied, requested change will not take effect\n");
 
-	if (!(rxmode->mq_mode == RTE_ETH_MQ_RX_NONE ||
-	      rxmode->mq_mode == RTE_ETH_MQ_RX_RSS)) {
-		DP_ERR(edev, "Unsupported multi-queue mode\n");
-		return -ENOTSUP;
-	}
 	/* Flow director mode check */
 	if (qede_check_fdir_support(eth_dev))
 		return -ENOTSUP;

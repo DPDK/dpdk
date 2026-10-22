@@ -1665,23 +1665,11 @@ sfc_rx_qinit_info(struct sfc_adapter *sa, sfc_sw_index_t sw_index,
 	return 0;
 }
 
-static int
+static void
 sfc_rx_check_mode(struct sfc_adapter *sa, struct rte_eth_rxmode *rxmode)
 {
 	uint64_t offloads_supported = sfc_rx_get_dev_offload_caps(sa) |
 				      sfc_rx_get_queue_offload_caps(sa);
-	int rc = 0;
-
-	switch (rxmode->mq_mode) {
-	case RTE_ETH_MQ_RX_NONE:
-	case RTE_ETH_MQ_RX_RSS:
-		/* No special checks are required */
-		break;
-	default:
-		sfc_err(sa, "Rx multi-queue mode %u not supported",
-			rxmode->mq_mode);
-		rc = EINVAL;
-	}
 
 	/*
 	 * Requested offloads are validated against supported by ethdev,
@@ -1699,8 +1687,6 @@ sfc_rx_check_mode(struct sfc_adapter *sa, struct rte_eth_rxmode *rxmode)
 		sfc_warn(sa, "Rx outer IPv4 checksum offload cannot be disabled - always on");
 		rxmode->offloads |= RTE_ETH_RX_OFFLOAD_OUTER_IPV4_CKSUM;
 	}
-
-	return rc;
 }
 
 /**
@@ -1759,9 +1745,7 @@ sfc_rx_configure(struct sfc_adapter *sa)
 	sfc_log_init(sa, "nb_rx_queues=%u (old %u)",
 		     nb_rx_queues, sas->ethdev_rxq_count);
 
-	rc = sfc_rx_check_mode(sa, &dev_conf->rxmode);
-	if (rc != 0)
-		goto fail_check_mode;
+	sfc_rx_check_mode(sa, &dev_conf->rxmode);
 
 	if (nb_rxq_total == sas->rxq_count) {
 		reconfigure = true;
@@ -1872,8 +1856,6 @@ fail_rxqs_realloc:
 fail_rxqs_ctrl_alloc:
 fail_rxqs_alloc:
 	sfc_rx_close(sa);
-
-fail_check_mode:
 	sfc_log_init(sa, "failed %d", rc);
 	return rc;
 }

@@ -142,20 +142,6 @@ rep_eth_conf_chk(const struct rte_eth_conf *conf)
 		ret = -EINVAL;
 	}
 
-	switch (conf->rxmode.mq_mode) {
-	case RTE_ETH_MQ_RX_NONE:
-		break;
-	default:
-		plt_err("Rx mode MQ modes other than none not supported");
-		ret = -EINVAL;
-		break;
-	}
-
-	if (conf->txmode.mq_mode != RTE_ETH_MQ_TX_NONE) {
-		plt_err("Tx mode MQ modes not supported");
-		ret = -EINVAL;
-	}
-
 	if (conf->lpbk_mode != 0) {
 		plt_err("loopback not supported");
 		ret = -EINVAL;

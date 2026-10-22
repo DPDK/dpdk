@@ -1038,25 +1038,6 @@ zxdh_dev_configure(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
-	if (rxmode->mq_mode != RTE_ETH_MQ_RX_RSS && rxmode->mq_mode != RTE_ETH_MQ_RX_NONE) {
-		PMD_DRV_LOG(ERR, "Unsupported Rx multi queue mode %d", rxmode->mq_mode);
-		return -EINVAL;
-	}
-
-	if (txmode->mq_mode != RTE_ETH_MQ_TX_NONE) {
-		PMD_DRV_LOG(ERR, "Unsupported Tx multi queue mode %d", txmode->mq_mode);
-		return -EINVAL;
-	}
-	if (rxmode->mq_mode != RTE_ETH_MQ_RX_RSS && rxmode->mq_mode != RTE_ETH_MQ_RX_NONE) {
-		PMD_DRV_LOG(ERR, "Unsupported Rx multi queue mode %d", rxmode->mq_mode);
-		return -EINVAL;
-	}
-
-	if (txmode->mq_mode != RTE_ETH_MQ_TX_NONE) {
-		PMD_DRV_LOG(ERR, "Unsupported Tx multi queue mode %d", txmode->mq_mode);
-		return -EINVAL;
-	}
-
 	ret = zxdh_features_update(hw, rxmode, txmode);
 	if (ret < 0)
 		return ret;

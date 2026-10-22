@@ -389,20 +389,6 @@ sfc_repr_check_conf(struct sfc_repr *sr, const struct rte_eth_conf *conf)
 		ret = -EINVAL;
 	}
 
-	switch (conf->rxmode.mq_mode) {
-	case RTE_ETH_MQ_RX_NONE:
-		break;
-	default:
-		sfcr_err(sr, "Rx mode MQ modes other than none not supported");
-		ret = -EINVAL;
-		break;
-	}
-
-	if (conf->txmode.mq_mode != RTE_ETH_MQ_TX_NONE) {
-		sfcr_err(sr, "Tx mode MQ modes not supported");
-		ret = -EINVAL;
-	}
-
 	if (conf->lpbk_mode != 0) {
 		sfcr_err(sr, "loopback not supported");
 		ret = -EINVAL;

@@ -892,7 +892,7 @@ nicvf_configure_rss(struct rte_eth_dev *dev)
 {
 	struct nicvf *nic = nicvf_pmd_priv(dev);
 	uint64_t rsshf;
-	int ret = -EINVAL;
+	int ret;
 
 	rsshf = nicvf_rss_ethdev_to_nic(nic,
 			dev->data->dev_conf.rx_adv_conf.rss_conf.rss_hf);
@@ -901,10 +901,10 @@ nicvf_configure_rss(struct rte_eth_dev *dev)
 		    dev->data->nb_rx_queues,
 		    dev->data->dev_conf.lpbk_mode, rsshf);
 
-	if (dev->data->dev_conf.rxmode.mq_mode == RTE_ETH_MQ_RX_NONE)
-		ret = nicvf_rss_term(nic);
-	else if (dev->data->dev_conf.rxmode.mq_mode == RTE_ETH_MQ_RX_RSS)
+	if (dev->data->dev_conf.rxmode.mq_mode == RTE_ETH_MQ_RX_RSS)
 		ret = nicvf_rss_config(nic, dev->data->nb_rx_queues, rsshf);
+	else
+		ret = nicvf_rss_term(nic);
 	if (ret)
 		PMD_INIT_LOG(ERR, "Failed to configure RSS %d", ret);
 
@@ -1990,7 +1990,6 @@ nicvf_dev_configure(struct rte_eth_dev *dev)
 	struct rte_eth_dev_data *data = dev->data;
 	struct rte_eth_conf *conf = &data->dev_conf;
 	struct rte_eth_rxmode *rxmode = &conf->rxmode;
-	struct rte_eth_txmode *txmode = &conf->txmode;
 	struct nicvf *nic = nicvf_pmd_priv(dev);
 	uint8_t cqcount;
 
@@ -2001,17 +2000,6 @@ nicvf_dev_configure(struct rte_eth_dev *dev)
 
 	if (!rte_eal_has_hugepages()) {
 		PMD_INIT_LOG(INFO, "Huge page is not configured");
-		return -EINVAL;
-	}
-
-	if (txmode->mq_mode) {
-		PMD_INIT_LOG(INFO, "Tx mq_mode DCB or VMDq not supported");
-		return -EINVAL;
-	}
-
-	if (rxmode->mq_mode != RTE_ETH_MQ_RX_NONE &&
-		rxmode->mq_mode != RTE_ETH_MQ_RX_RSS) {
-		PMD_INIT_LOG(INFO, "Unsupported rx qmode %d", rxmode->mq_mode);
 		return -EINVAL;
 	}
 

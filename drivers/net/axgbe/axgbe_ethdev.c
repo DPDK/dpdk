@@ -354,20 +354,6 @@ axgbe_dev_configure(struct rte_eth_dev *dev)
 }
 
 static int
-axgbe_dev_rx_mq_config(struct rte_eth_dev *dev)
-{
-	struct axgbe_port *pdata = dev->data->dev_private;
-
-	if (dev->data->dev_conf.rxmode.mq_mode == RTE_ETH_MQ_RX_RSS)
-		pdata->rss_enable = 1;
-	else if (dev->data->dev_conf.rxmode.mq_mode == RTE_ETH_MQ_RX_NONE)
-		pdata->rss_enable = 0;
-	else
-		return  -1;
-	return 0;
-}
-
-static int
 axgbe_dev_start(struct rte_eth_dev *dev)
 {
 	struct axgbe_port *pdata = dev->data->dev_private;
@@ -379,11 +365,8 @@ axgbe_dev_start(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	/* Multiqueue RSS */
-	ret = axgbe_dev_rx_mq_config(dev);
-	if (ret) {
-		PMD_DRV_LOG_LINE(ERR, "Unable to config RX MQ");
-		return ret;
-	}
+	pdata->rss_enable = dev->data->dev_conf.rxmode.mq_mode == RTE_ETH_MQ_RX_RSS;
+
 	ret = axgbe_phy_reset(pdata);
 	if (ret) {
 		PMD_DRV_LOG_LINE(ERR, "phy reset failed");
