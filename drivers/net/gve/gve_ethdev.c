@@ -459,16 +459,68 @@ err_tx:
 	return ret;
 }
 
+/* GQI chains a frame larger than one Rx buffer into a multi-segment
+ * mbuf. No Rx offload is per-queue here, so check the port offloads.
+ */
+static int
+gve_rx_check_scatter(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	struct gve_priv *priv = dev->data->dev_private;
+	uint16_t i;
+
+	if (!gve_is_gqi(priv) ||
+	    (dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_SCATTER))
+		return 0;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		struct gve_rx_queue *rxq = dev->data->rx_queues[i];
+
+		if (rxq != NULL && gve_rx_gqi_needs_scatter(mtu, rxq->rx_buf_len)) {
+			PMD_DRV_LOG(ERR, "MTU %u needs Rx scatter with %u byte Rx buffers",
+				    mtu, rxq->rx_buf_len);
+			return -EINVAL;
+		}
+	}
+
+	return 0;
+}
+
 static int
 gve_dev_start(struct rte_eth_dev *dev)
 {
 	struct gve_process_private *process_priv = dev->process_private;
-	struct gve_priv *priv;
+	struct gve_priv *priv = dev->data->dev_private;
+	uint16_t i;
 	int ret;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
 		PMD_DRV_LOG(WARNING, "Cannot start device in secondary.");
 		return -EPERM;
+	}
+
+	/* rte_eth_dev_configure() sets the MTU and the Rx offloads without
+	 * calling mtu_set, and keeps Rx queues already set up, so check them
+	 * again and give the device the MTU the check was made against.
+	 */
+	ret = gve_rx_check_scatter(dev, dev->data->mtu);
+	if (ret != 0)
+		return ret;
+
+	ret = process_priv->ctrl_ops->set_mtu(priv, dev->data->mtu);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Failed to set MTU %u: %d", dev->data->mtu, ret);
+		return ret;
+	}
+
+	/* The device chains frames up to its own MTU, not the one it was
+	 * given; the Rx path drops them unless scatter is on.
+	 */
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		struct gve_rx_queue *rxq = dev->data->rx_queues[i];
+
+		if (rxq != NULL)
+			rxq->scatter = !!(dev->data->dev_conf.rxmode.offloads &
+					  RTE_ETH_RX_OFFLOAD_SCATTER);
 	}
 
 	ret = gve_start_queues(dev);
@@ -480,7 +532,6 @@ gve_dev_start(struct rte_eth_dev *dev)
 	dev->data->dev_started = 1;
 	gve_link_update(dev, 0);
 
-	priv = dev->data->dev_private;
 	/* No stats available yet for Dqo. */
 	if (gve_is_gqi(priv)) {
 		ret = gve_alloc_stats_report(priv,
@@ -1031,23 +1082,9 @@ gve_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		return -EBUSY;
 	}
 
-	/* GQI chains a frame larger than one Rx buffer into a multi-segment
-	 * mbuf. No Rx offload is per-queue here, so check the port offloads.
-	 */
-	if (gve_is_gqi(priv) &&
-	    !(dev->data->dev_conf.rxmode.offloads & RTE_ETH_RX_OFFLOAD_SCATTER)) {
-		for (uint16_t i = 0; i < dev->data->nb_rx_queues; i++) {
-			struct gve_rx_queue *rxq = dev->data->rx_queues[i];
-
-			if (rxq != NULL &&
-			    gve_rx_gqi_needs_scatter(mtu, rxq->rx_buf_len)) {
-				PMD_DRV_LOG(ERR,
-					    "MTU %u needs Rx scatter with %u byte Rx buffers",
-					    mtu, rxq->rx_buf_len);
-				return -EINVAL;
-			}
-		}
-	}
+	err = gve_rx_check_scatter(dev, mtu);
+	if (err != 0)
+		return err;
 
 	err = process_priv->ctrl_ops->set_mtu(priv, mtu);
 	if (err) {

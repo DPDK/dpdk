@@ -263,6 +263,8 @@ struct gve_rx_queue {
 	struct rte_mbuf **refill_bufs;
 
 	uint8_t is_gqi_qpl;
+	/* the port enabled RTE_ETH_RX_OFFLOAD_SCATTER (GQI) */
+	bool scatter;
 	bool timestamp_enabled;
 };
 
