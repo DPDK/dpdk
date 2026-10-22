@@ -4014,32 +4014,30 @@ static int
 ice_sched_bw_to_rl_profile(struct ice_hw *hw, u32 bw,
 			   struct ice_aqc_rl_profile_elem *profile)
 {
-	s64 bytes_per_sec, ts_rate, mv_tmp;
-	int status = ICE_ERR_PARAM;
+	u32 ts_freq = hw->psm_clk_freq / ICE_RL_PROF_TS_MULTIPLIER;
+	u64 bytes_per_sec, ts_rate, mv_tmp;
+	int i, status = ICE_ERR_PARAM;
 	bool found = false;
 	s32 encode = 0;
-	s64 mv = 0;
-	s32 i;
+	u64 mv = 0;
 
 	/* Bw settings range is from 0.5Mb/sec to 100Gb/sec */
 	if (bw < ICE_SCHED_MIN_BW || bw > ICE_SCHED_MAX_BW)
 		return status;
 
 	/* Bytes per second from Kbps */
-	bytes_per_sec = DIV_S64((s64)bw * 1000, BITS_PER_BYTE);
+	bytes_per_sec = DIV_U64((u64)bw * 1000, BITS_PER_BYTE);
 
 	/* encode is 6 bits but really useful are 5 bits */
 	for (i = 0; i < 64; i++) {
 		u64 pow_result = BIT_ULL(i);
 
-		ts_rate = DIV_S64((s64)hw->psm_clk_freq,
-				  pow_result * ICE_RL_PROF_TS_MULTIPLIER);
-		if (ts_rate <= 0)
+		ts_rate = DIV_U64(ts_freq, pow_result);
+		if (ts_rate == 0)
 			continue;
 
 		/* Multiplier value */
-		mv_tmp = DIV_S64(bytes_per_sec * ICE_RL_PROF_MULTIPLIER,
-				 ts_rate);
+		mv_tmp = DIV_U64(bytes_per_sec * ICE_RL_PROF_MULTIPLIER, ts_rate);
 
 		/* Round to the nearest ICE_RL_PROF_MULTIPLIER */
 		mv = round_up_64bit(mv_tmp, ICE_RL_PROF_MULTIPLIER);
