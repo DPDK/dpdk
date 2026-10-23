@@ -389,6 +389,7 @@ rte_intr_efd_enable(struct rte_intr_handle *intr_handle, uint32_t nb_efd);
  * @internal
  * It disables the packet I/O interrupt event.
  * It deletes registered eventfds and closes the open fds.
+ * All event fd entries in use are reset to -1.
  *
  * @param intr_handle
  *   Pointer to the interrupt handle.
@@ -605,12 +606,16 @@ rte_intr_efd_counter_size_get(const struct rte_intr_handle *intr_handle);
  * @internal
  * Set the event fd array index with the given fd.
  *
+ * Entries still holding a valid fd when the instance is freed are reported
+ * as leaks, so callers managing the array themselves must reset entries
+ * to -1 once the fd is closed or no longer referenced.
+ *
  * @param intr_handle
  *  pointer to the interrupt handle.
  * @param index
  *  efds array index to be set
  * @param fd
- *  event fd
+ *  event fd, or -1 to clear the entry
  *
  * @return
  *  - On success, zero.
