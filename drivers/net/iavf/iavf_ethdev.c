@@ -1006,8 +1006,6 @@ iavf_dev_start(struct rte_eth_dev *dev)
 	if (adapter->closed)
 		return -1;
 
-	adapter->stopped = 0;
-
 	vf->max_pkt_len = dev->data->mtu + IAVF_ETH_OVERHEAD;
 	vf->num_queue_pairs = RTE_MAX(dev->data->nb_rx_queues,
 				      dev->data->nb_tx_queues);
@@ -1084,6 +1082,8 @@ iavf_dev_start(struct rte_eth_dev *dev)
 		goto error;
 	}
 
+	adapter->stopped = 0;
+
 	/* An explicit start supersedes any pending deferred start */
 	vf->start_pending = false;
 
@@ -1106,12 +1106,12 @@ iavf_dev_stop(struct rte_eth_dev *dev)
 	if (adapter->closed)
 		return -1;
 
+	if (adapter->stopped == 1)
+		return 0;
+
 	if (!(vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR) &&
 	    dev->data->dev_conf.intr_conf.rxq != 0)
 		rte_intr_disable(intr_handle);
-
-	if (adapter->stopped == 1)
-		return 0;
 
 	/* Disable the interrupt for Rx */
 	rte_intr_efd_disable(intr_handle);
