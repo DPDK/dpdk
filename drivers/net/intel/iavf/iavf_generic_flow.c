@@ -2134,10 +2134,11 @@ iavf_parse_engine_validate(struct iavf_adapter *ad,
 			rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_HANDLE,
 				NULL, "Validation failed");
-			break;
+			return NULL;
 		}
+		return engine;
 	}
-	return engine;
+	return NULL;
 }
 
 
