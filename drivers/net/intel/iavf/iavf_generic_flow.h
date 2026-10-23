@@ -481,6 +481,7 @@ enum iavf_flow_engine_type {
 	IAVF_FLOW_ENGINE_FDIR,
 	IAVF_FLOW_ENGINE_HASH,
 	IAVF_FLOW_ENGINE_FSUB,
+	IAVF_FLOW_ENGINE_IPSEC_EGRESS,
 	IAVF_FLOW_ENGINE_MAX,
 };
 
@@ -503,7 +504,6 @@ TAILQ_HEAD(iavf_engine_list, iavf_flow_engine);
 /* Struct to store flow created. */
 struct rte_flow {
 	TAILQ_ENTRY(rte_flow) node;
-	bool is_ipsec_egress_flow;
 	struct iavf_flow_engine *engine;
 	void *rule;
 };
