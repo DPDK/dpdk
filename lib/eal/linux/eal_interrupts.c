@@ -1607,7 +1607,11 @@ rte_intr_efd_disable(struct rte_intr_handle *intr_handle)
 	uint32_t i;
 
 	rte_intr_free_epoll_fd(intr_handle);
-	if (rte_intr_max_intr_get(intr_handle) > rte_intr_nb_efd_get(intr_handle)) {
+	/* Only eventfds created by rte_intr_efd_enable() for MSI-X are owned
+	 * by the handle. In other modes the entries reference fds owned by
+	 * the device or the driver and must not be closed here.
+	 */
+	if (rte_intr_type_get(intr_handle) == RTE_INTR_HANDLE_VFIO_MSIX) {
 		for (i = 0; i < (uint32_t)rte_intr_nb_efd_get(intr_handle); i++)
 			close(rte_intr_efds_index_get(intr_handle, i));
 	}
