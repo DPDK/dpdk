@@ -254,6 +254,8 @@ i40e_fdir_setup(struct i40e_pf *pf)
 			I40E_FDIR_PKT_LEN * i;
 	}
 
+	pf->fdir.prg_mz = mz;
+
 	pf->fdir.match_counter_index = I40E_COUNTER_INDEX_FDIR(hw->pf_id);
 	pf->fdir.fdir_actual_cnt = 0;
 	pf->fdir.fdir_guarantee_free_space =
@@ -304,6 +306,8 @@ i40e_fdir_teardown(struct i40e_pf *pf)
 	pf->fdir.rxq = NULL;
 	i40e_tx_queue_release(pf->fdir.txq);
 	pf->fdir.txq = NULL;
+	rte_memzone_free(pf->fdir.prg_mz);
+	pf->fdir.prg_mz = NULL;
 	i40e_vsi_release(vsi);
 	pf->fdir.fdir_vsi = NULL;
 }
