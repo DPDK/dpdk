@@ -1092,6 +1092,46 @@ test_af_packet_multi_queue(void)
 }
 
 /*
+ * Test: Fanout modes
+ */
+static int
+test_af_packet_fanout_modes(void)
+{
+	static const char * const modes[] = {
+		"hash", "lb", "cpu", "rollover", "rnd", "qm",
+	};
+	uint16_t test_port;
+	char devargs[256];
+	unsigned int i;
+	int ret;
+
+	if (!tap_created) {
+		printf("SKIPPED: TAP interface not available (need root)\n");
+		return TEST_SKIPPED;
+	}
+
+	for (i = 0; i < RTE_DIM(modes); i++) {
+		snprintf(devargs, sizeof(devargs), "iface=%s,qpairs=2,fanout_mode=%s",
+			 TAP_DEV_NAME, modes[i]);
+
+		ret = rte_vdev_init("net_af_packet_fanout", devargs);
+		TEST_ASSERT(ret == 0,
+			    "Failed to create af_packet sockets with fanout_mode=%s: %d",
+			    modes[i], ret);
+
+		ret = rte_eth_dev_get_port_by_name("net_af_packet_fanout", &test_port);
+		if (ret == 0)
+			rte_eth_dev_close(test_port);
+		rte_vdev_uninit("net_af_packet_fanout");
+		TEST_ASSERT(ret == 0,
+			    "af_packet port with fanout_mode=%s has no port id: %d",
+			    modes[i], ret);
+	}
+
+	return TEST_SUCCESS;
+}
+
+/*
  * Multi-threaded test context
  */
 struct mt_test_ctx {
@@ -1364,6 +1404,7 @@ static struct unit_test_suite af_packet_test_suite = {
 		TEST_CASE(test_af_packet_frame_config),
 		TEST_CASE(test_af_packet_qdisc_bypass),
 		TEST_CASE(test_af_packet_multi_queue),
+		TEST_CASE(test_af_packet_fanout_modes),
 		TEST_CASE(test_af_packet_invalid_ignore_outgoing),
 		TEST_CASE(test_af_packet_ignore_outgoing_single_queue),
 		TEST_CASE(test_af_packet_ignore_outgoing_multi_queue),
