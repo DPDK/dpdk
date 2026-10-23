@@ -1556,31 +1556,44 @@ RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_efd_enable)
 int
 rte_intr_efd_enable(struct rte_intr_handle *intr_handle, uint32_t nb_efd)
 {
-	uint32_t i;
-	int fd;
 	uint32_t n = RTE_MIN(nb_efd, (uint32_t)RTE_MAX_RXTX_INTR_VEC_ID);
+	int ret;
 
 	assert(nb_efd != 0);
 
 	if (rte_intr_type_get(intr_handle) == RTE_INTR_HANDLE_VFIO_MSIX) {
-		for (i = 0; i < n; i++) {
-			fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+		if (rte_intr_nb_efd_get(intr_handle) != 0) {
+			EAL_LOG(ERR, "Interrupt eventfds are already enabled");
+			return -EBUSY;
+		}
+
+		for (uint32_t i = 0; i < n; i++) {
+			int fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
+
 			if (fd < 0) {
+				ret = -errno;
 				EAL_LOG(ERR,
 					"can't setup eventfd, error %i (%s)",
 					errno, strerror(errno));
-				return -errno;
+				goto error;
 			}
 
-			if (rte_intr_efds_index_set(intr_handle, i, fd))
-				return -rte_errno;
+			/* Record each eventfd as it is created so that the
+			 * error path can close exactly those that exist.
+			 */
+			if (rte_intr_efds_index_set(intr_handle, i, fd) ||
+					rte_intr_nb_efd_set(intr_handle, i + 1)) {
+				ret = -rte_errno;
+				close(fd);
+				rte_intr_efds_index_set(intr_handle, i, -1);
+				goto error;
+			}
 		}
 
-		if (rte_intr_nb_efd_set(intr_handle, n))
-			return -rte_errno;
-
-		if (rte_intr_max_intr_set(intr_handle, NB_OTHER_INTR + n))
-			return -rte_errno;
+		if (rte_intr_max_intr_set(intr_handle, NB_OTHER_INTR + n)) {
+			ret = -rte_errno;
+			goto error;
+		}
 	} else if (rte_intr_type_get(intr_handle) == RTE_INTR_HANDLE_VDEV) {
 		/* only check, initialization would be done in vdev driver.*/
 		if ((uint64_t)rte_intr_efd_counter_size_get(intr_handle) >
@@ -1598,6 +1611,15 @@ rte_intr_efd_enable(struct rte_intr_handle *intr_handle, uint32_t nb_efd)
 	}
 
 	return 0;
+
+error:
+	for (int i = 0; i < rte_intr_nb_efd_get(intr_handle); i++) {
+		close(rte_intr_efds_index_get(intr_handle, i));
+		rte_intr_efds_index_set(intr_handle, i, -1);
+	}
+	rte_intr_nb_efd_set(intr_handle, 0);
+
+	return ret;
 }
 
 RTE_EXPORT_INTERNAL_SYMBOL(rte_intr_efd_disable)
