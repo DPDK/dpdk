@@ -2091,7 +2091,10 @@ cn10k_20k_crypto_caps_update(struct rte_cryptodev_capabilities cnxk_caps[])
 			caps->sym.auth.key_size.increment = 16;
 			caps->sym.auth.digest_size.max = 16;
 			caps->sym.auth.digest_size.increment = 4;
-			caps->sym.auth.iv_size.max = 25;
+			if (roc_model_is_cn20k())
+				caps->sym.auth.iv_size.max = 16;
+			else
+				caps->sym.auth.iv_size.max = 25;
 			caps->sym.auth.iv_size.increment = 1;
 		}
 	}
