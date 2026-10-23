@@ -58,12 +58,6 @@ struct iavf_hash_match_type {
 	uint64_t pattern_hint;
 };
 
-struct iavf_rss_meta {
-	struct virtchnl_proto_hdrs proto_hdrs;
-	enum virtchnl_rss_algorithm rss_algorithm;
-	bool raw_ena;
-};
-
 struct iavf_hash_flow_cfg {
 	struct virtchnl_rss_cfg *rss_cfg;
 	bool simple_xor;
@@ -79,8 +73,6 @@ iavf_hash_destroy(struct iavf_adapter *ad, struct rte_flow *flow,
 		  struct rte_flow_error *error);
 static void
 iavf_hash_uninit_parser(struct iavf_adapter *ad);
-static void
-iavf_hash_free(struct rte_flow *flow);
 static int
 iavf_hash_parse_pattern_action(struct iavf_adapter *ad,
 			       struct iavf_pattern_match_item *array,
@@ -682,7 +674,6 @@ static struct iavf_flow_engine iavf_hash_engine = {
 	.create = iavf_hash_create,
 	.destroy = iavf_hash_destroy,
 	.uninit = iavf_hash_uninit_parser,
-	.free = iavf_hash_free,
 	.name = "hash",
 	.type = IAVF_FLOW_ENGINE_HASH,
 	.rule_size = sizeof(struct virtchnl_rss_cfg),
@@ -886,7 +877,7 @@ iavf_hash_parse_pattern(const struct rte_flow_item pattern[], uint64_t *phint,
 static int
 iavf_hash_parse_raw_pattern(const struct rte_flow_item *item,
 			struct rte_flow_error *error,
-			struct iavf_rss_meta *meta)
+			struct virtchnl_rss_cfg *rss_cfg)
 {
 	const struct rte_flow_item_raw *raw_spec, *raw_mask;
 	uint16_t spec_len, pkt_len;
@@ -958,9 +949,9 @@ iavf_hash_parse_raw_pattern(const struct rte_flow_item *item,
 			msk_buf[j] = tmp_val * 16 + tmp_c - '0';
 	}
 
-	memcpy(meta->proto_hdrs.raw.spec, pkt_buf, pkt_len);
-	memcpy(meta->proto_hdrs.raw.mask, msk_buf, pkt_len);
-	meta->proto_hdrs.raw.pkt_len = pkt_len;
+	memcpy(rss_cfg->proto_hdrs.raw.spec, pkt_buf, pkt_len);
+	memcpy(rss_cfg->proto_hdrs.raw.mask, msk_buf, pkt_len);
+	rss_cfg->proto_hdrs.raw.pkt_len = pkt_len;
 
 	rte_free(pkt_buf);
 	rte_free(msk_buf);
@@ -1433,12 +1424,12 @@ iavf_any_invalid_rss_type(enum rte_eth_hash_function rss_func,
 static int
 iavf_hash_parse_rss_type(struct iavf_pattern_match_item *match_item,
 		const struct rte_flow_action_rss *rss,
-		uint64_t pattern_hint, struct iavf_rss_meta *rss_meta,
+		uint64_t pattern_hint, struct virtchnl_rss_cfg *rss_cfg,
 		struct rte_flow_error *error)
 {
 	uint64_t rss_type;
 
-	rss_meta->rss_algorithm = rss->func == RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ ?
+	rss_cfg->rss_algorithm = rss->func == RTE_ETH_HASH_FUNCTION_SYMMETRIC_TOEPLITZ ?
 		VIRTCHNL_RSS_ALG_TOEPLITZ_SYMMETRIC :
 		VIRTCHNL_RSS_ALG_TOEPLITZ_ASYMMETRIC;
 
@@ -1458,9 +1449,9 @@ iavf_hash_parse_rss_type(struct iavf_pattern_match_item *match_item,
 				"RSS type not supported");
 	}
 
-	memcpy(&rss_meta->proto_hdrs, match_item->meta, sizeof(struct virtchnl_proto_hdrs));
+	memcpy(&rss_cfg->proto_hdrs, match_item->meta, sizeof(rss_cfg->proto_hdrs));
 
-	iavf_refine_proto_hdrs(&rss_meta->proto_hdrs, rss_type, pattern_hint);
+	iavf_refine_proto_hdrs(&rss_cfg->proto_hdrs, rss_type, pattern_hint);
 
 	return 0;
 }
@@ -1526,7 +1517,7 @@ iavf_hash_parse_pattern_action(struct iavf_adapter *ad,
 	};
 	const struct rte_flow_action_rss *rss;
 	struct iavf_pattern_match_item *pattern_match_item;
-	struct iavf_rss_meta *rss_meta_ptr;
+	struct virtchnl_rss_cfg *rss_cfg;
 	uint64_t phint = IAVF_PHINT_NONE;
 	int ret = 0;
 
@@ -1538,12 +1529,12 @@ iavf_hash_parse_pattern_action(struct iavf_adapter *ad,
 	if (ret)
 		return ret;
 
-	rss_meta_ptr = rte_zmalloc(NULL, sizeof(*rss_meta_ptr), 0);
-	if (!rss_meta_ptr) {
+	rss_cfg = rte_zmalloc("iavf_rss_rule", sizeof(*rss_cfg), 0);
+	if (rss_cfg == NULL) {
 		rte_flow_error_set(error, ENOMEM,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
-				   "No memory for rss_meta_ptr");
-		return -ENOMEM;
+				   "No memory for RSS rule.");
+		return -rte_errno;
 	}
 
 	/* Check rss supported pattern and find matched pattern. */
@@ -1560,8 +1551,7 @@ iavf_hash_parse_pattern_action(struct iavf_adapter *ad,
 		goto error;
 
 	if (phint == IAVF_PHINT_RAW) {
-		rss_meta_ptr->raw_ena = true;
-		ret = iavf_hash_parse_raw_pattern(pattern, error, rss_meta_ptr);
+		ret = iavf_hash_parse_raw_pattern(pattern, error, rss_cfg);
 		if (ret) {
 			rte_flow_error_set(error, EINVAL,
 					   RTE_FLOW_ERROR_TYPE_ITEM, NULL,
@@ -1571,13 +1561,13 @@ iavf_hash_parse_pattern_action(struct iavf_adapter *ad,
 	}
 
 	rss = parsed_actions.actions[0]->conf;
-	ret = iavf_hash_parse_rss_type(pattern_match_item, rss, phint, rss_meta_ptr, error);
+	ret = iavf_hash_parse_rss_type(pattern_match_item, rss, phint, rss_cfg, error);
 
 error:
 	if (!ret && meta)
-		*meta = rss_meta_ptr;
+		*meta = rss_cfg;
 	else
-		rte_free(rss_meta_ptr);
+		rte_free(rss_cfg);
 
 	rte_free(pattern_match_item);
 
@@ -1585,26 +1575,12 @@ error:
 }
 
 static int
-iavf_hash_create(__rte_unused struct iavf_adapter *ad,
-		 __rte_unused struct rte_flow *flow, void *meta,
-		 __rte_unused struct rte_flow_error *error)
+iavf_hash_create(struct iavf_adapter *ad,
+		 struct rte_flow *flow, void *meta,
+		 struct rte_flow_error *error)
 {
-	struct iavf_rss_meta *rss_meta = (struct iavf_rss_meta *)meta;
-	struct virtchnl_rss_cfg *rss_cfg;
+	struct virtchnl_rss_cfg *rss_cfg = meta;
 	int ret = 0;
-
-	rss_cfg = rte_zmalloc("iavf rss rule",
-			      sizeof(struct virtchnl_rss_cfg), 0);
-	if (!rss_cfg) {
-		rte_flow_error_set(error, ENOMEM,
-				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
-				   "No memory for rss rule");
-		rte_free(meta);
-		return -ENOMEM;
-	}
-
-	rss_cfg->proto_hdrs = rss_meta->proto_hdrs;
-	rss_cfg->rss_algorithm = rss_meta->rss_algorithm;
 
 	ret = iavf_add_del_rss_cfg(ad, rss_cfg, true);
 	if (!ret) {
@@ -1614,12 +1590,8 @@ iavf_hash_create(__rte_unused struct iavf_adapter *ad,
 		rte_flow_error_set(error, -ret,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 				   "Failed to add rss rule.");
-		rte_free(rss_cfg);
-		rte_free(meta);
 		return -rte_errno;
 	}
-
-	rte_free(meta);
 
 	return ret;
 }
@@ -1633,22 +1605,19 @@ iavf_hash_destroy(__rte_unused struct iavf_adapter *ad,
 	struct virtchnl_rss_cfg *rss_cfg;
 	int ret = 0;
 
+	if (vf->vf_reset)
+		return 0;
+
 	rss_cfg = (struct virtchnl_rss_cfg *)flow->rule;
 
-	if (!vf->vf_reset) {
-		ret = iavf_add_del_rss_cfg(ad, rss_cfg, false);
-		if (ret) {
-			PMD_DRV_LOG(ERR, "fail to del RSS configure");
-			rte_flow_error_set(error, -ret,
-					   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
-					   "Failed to delete rss rule.");
-			return -rte_errno;
-		}
+	ret = iavf_add_del_rss_cfg(ad, rss_cfg, false);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "fail to del RSS configure");
+		rte_flow_error_set(error, -ret,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Failed to delete rss rule.");
+		return -rte_errno;
 	}
-
-	flow->rule = NULL;
-	rte_free(rss_cfg);
-
 	return ret;
 }
 
@@ -1676,10 +1645,4 @@ iavf_hash_uninit(struct iavf_adapter *ad)
 	rss_conf = &ad->dev_data->dev_conf.rx_adv_conf.rss_conf;
 	if (iavf_rss_hash_set(ad, rss_conf->rss_hf, false))
 		PMD_DRV_LOG(ERR, "fail to delete default RSS");
-}
-
-static void
-iavf_hash_free(struct rte_flow *flow)
-{
-	rte_free(flow->rule);
 }
