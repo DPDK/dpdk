@@ -46,6 +46,13 @@ static int iavf_flow_dev_dump(struct rte_eth_dev *dev,
 		FILE *file,
 		struct rte_flow_error *error);
 
+static void
+iavf_flow_free(struct rte_flow *flow)
+{
+	rte_free(flow->rule);
+	rte_free(flow);
+}
+
 const struct rte_flow_ops iavf_flow_ops = {
 	.validate = iavf_flow_validate,
 	.create = iavf_flow_create,
@@ -1856,9 +1863,7 @@ iavf_flow_uninit(struct iavf_adapter *ad)
 	/* Remove all flows */
 	while ((p_flow = TAILQ_FIRST(&vf->flow_list))) {
 		TAILQ_REMOVE(&vf->flow_list, p_flow, node);
-		if (p_flow->engine->free)
-			p_flow->engine->free(p_flow);
-		rte_free(p_flow);
+		iavf_flow_free(p_flow);
 	}
 
 	/* Cleanup parser list */
@@ -2092,6 +2097,7 @@ iavf_parse_engine_create(struct iavf_adapter *ad,
 	void *meta = NULL;
 
 	RTE_TAILQ_FOREACH_SAFE(parser_node, parser_list, node, temp) {
+		meta = NULL;
 		if (parser_node->parser->parse_pattern_action(ad,
 				parser_node->parser->array,
 				parser_node->parser->array_len,
@@ -2101,8 +2107,17 @@ iavf_parse_engine_create(struct iavf_adapter *ad,
 		engine = parser_node->parser->engine;
 
 		RTE_ASSERT(engine->create != NULL);
-		if (!(engine->create(ad, flow, meta, error)))
+		if (engine->create(ad, flow, meta, error) == 0) {
+			if (flow->rule != meta)
+				rte_free(meta);
 			return engine;
+		}
+
+		if (flow->rule != NULL && flow->rule != meta)
+			rte_free(flow->rule);
+		rte_free(meta);
+		flow->rule = NULL;
+		meta = NULL;
 	}
 	return NULL;
 }
@@ -2120,8 +2135,10 @@ iavf_parse_engine_validate(struct iavf_adapter *ad,
 	struct iavf_flow_parser_node *parser_node;
 	void *temp;
 	void *meta = NULL;
+	int ret;
 
 	RTE_TAILQ_FOREACH_SAFE(parser_node, parser_list, node, temp) {
+		meta = NULL;
 		if (parser_node->parser->parse_pattern_action(ad,
 				parser_node->parser->array,
 				parser_node->parser->array_len,
@@ -2130,13 +2147,18 @@ iavf_parse_engine_validate(struct iavf_adapter *ad,
 
 		engine = parser_node->parser->engine;
 		if (engine->validation == NULL) {
+			rte_free(meta);
+			meta = NULL;
 			rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_HANDLE,
 				NULL, "Validation not support");
 			continue;
 		}
 
-		if (engine->validation(ad, flow, meta, error)) {
+		ret = engine->validation(ad, flow, meta, error);
+		rte_free(meta);
+		meta = NULL;
+		if (ret != 0) {
 			rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_HANDLE,
 				NULL, "Validation failed");
@@ -2238,7 +2260,7 @@ iavf_flow_create(struct rte_eth_dev *dev,
 			&engine, iavf_parse_engine_create, error);
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR, "Failed to create flow");
-		rte_free(flow);
+		iavf_flow_free(flow);
 		flow = NULL;
 		goto free_flow;
 	}
@@ -2308,7 +2330,7 @@ iavf_flow_destroy(struct rte_eth_dev *dev,
 
 	if (!ret) {
 		TAILQ_REMOVE(&vf->flow_list, flow, node);
-		rte_free(flow);
+		iavf_flow_free(flow);
 	} else {
 		PMD_DRV_LOG(ERR, "Failed to destroy flow");
 	}

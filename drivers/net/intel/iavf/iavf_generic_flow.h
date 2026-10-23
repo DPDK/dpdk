@@ -465,7 +465,6 @@ typedef int (*engine_query_t)(struct iavf_adapter *ad,
 		struct rte_flow *flow,
 		struct rte_flow_query_count *count,
 		struct rte_flow_error *error);
-typedef void (*engine_free_t) (struct rte_flow *flow);
 typedef int (*parse_pattern_action_t)(struct iavf_adapter *ad,
 		struct iavf_pattern_match_item *array,
 		uint32_t array_len,
@@ -494,7 +493,6 @@ struct iavf_flow_engine {
 	engine_create_t create;
 	engine_destroy_t destroy;
 	engine_query_t query_count;
-	engine_free_t free;
 	const char *name;
 	enum iavf_flow_engine_type type;
 	size_t rule_size;

@@ -353,36 +353,20 @@ iavf_fdir_create(struct iavf_adapter *ad,
 		struct rte_flow_error *error)
 {
 	struct iavf_fdir_conf *filter = meta;
-	struct iavf_fdir_conf *rule;
 	int ret;
-
-	rule = rte_zmalloc("fdir_entry", sizeof(*rule), 0);
-	if (!rule) {
-		rte_flow_error_set(error, ENOMEM,
-				RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
-				"Failed to allocate memory for fdir rule");
-		return -rte_errno;
-	}
 
 	ret = iavf_fdir_add(ad, filter);
 	if (ret) {
-		rte_flow_error_set(error, -ret,
+		return rte_flow_error_set(error, -ret,
 				RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 				"Failed to add filter rule.");
-		goto free_entry;
 	}
 
 	if (filter->mark_flag == 1)
 		iavf_fdir_rx_proc_enable(ad, 1);
 
-	memcpy(rule, filter, sizeof(*rule));
-	flow->rule = rule;
-
+	flow->rule = filter;
 	return 0;
-
-free_entry:
-	rte_free(rule);
-	return -rte_errno;
 }
 
 static int
@@ -405,9 +389,6 @@ iavf_fdir_destroy(struct iavf_adapter *ad,
 
 	if (filter->mark_flag == 1)
 		iavf_fdir_rx_proc_enable(ad, 0);
-
-	flow->rule = NULL;
-	rte_free(filter);
 
 	return 0;
 }
@@ -1444,14 +1425,19 @@ iavf_fdir_action_check_qregion(struct iavf_adapter *ad,
 	return 0;
 }
 
+struct iavf_fdir_parse_ctx {
+	struct iavf_adapter *ad;
+	struct iavf_fdir_conf *filter;
+};
+
 static int
 iavf_fdir_parse_action_check(const struct ci_flow_actions *actions,
 		const struct ci_flow_actions_check_param *param,
 		struct rte_flow_error *error)
 {
-	struct iavf_adapter *ad = param->driver_ctx;
-	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(ad);
-	struct iavf_fdir_conf *filter = &vf->fdir.conf;
+	struct iavf_fdir_parse_ctx *ctx = param->driver_ctx;
+	struct iavf_adapter *ad = ctx->ad;
+	struct iavf_fdir_conf *filter = ctx->filter;
 	uint32_t dest_num = 0, mark_num = 0;
 	size_t i, number = 0;
 	bool has_drop = false;
@@ -1557,6 +1543,8 @@ iavf_fdir_parse(struct iavf_adapter *ad,
 		struct rte_flow_error *error)
 {
 	struct ci_flow_actions parsed_actions = {0};
+	struct iavf_fdir_conf *filter;
+	struct iavf_fdir_parse_ctx ctx;
 	struct ci_flow_actions_check_param param = {
 		.allowed_types = (enum rte_flow_action_type[]){
 			RTE_FLOW_ACTION_TYPE_PASSTHRU,
@@ -1568,38 +1556,52 @@ iavf_fdir_parse(struct iavf_adapter *ad,
 		},
 		.max_actions = 2,
 		.check = iavf_fdir_parse_action_check,
-		.driver_ctx = ad,
 		.rss_queues_contig = true,
 	};
-	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(ad);
-	struct iavf_fdir_conf *filter = &vf->fdir.conf;
 	struct iavf_pattern_match_item *item = NULL;
 	int ret;
 
-	memset(filter, 0, sizeof(*filter));
+	filter = rte_zmalloc("iavf_fdir_meta", sizeof(*filter), 0);
+	if (filter == NULL) {
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Failed to allocate FDIR metadata.");
+		return -rte_errno;
+	}
+
+	ctx.ad = ad;
+	ctx.filter = filter;
+	param.driver_ctx = &ctx;
 
 	ret = ci_flow_check_attr(attr, NULL, error);
 	if (ret)
-		return ret;
+		goto error;
 
 	ret = ci_flow_check_actions(actions, &param, &parsed_actions, error);
 	if (ret)
-		return ret;
+		goto error;
 
 	item = iavf_search_pattern_match_item(pattern, array, array_len, error);
-	if (!item)
-		return -rte_errno;
+	if (item == NULL) {
+		ret = -rte_errno;
+		goto error;
+	}
 
 	ret = iavf_fdir_parse_pattern(ad, pattern, item->input_set_mask,
 				      error, filter);
 	if (ret)
 		goto error;
 
-	if (meta)
+	rte_free(item);
+	if (meta != NULL)
 		*meta = filter;
+	else
+		rte_free(filter);
+	return ret;
 
 error:
 	rte_free(item);
+	rte_free(filter);
 	return ret;
 }
 
