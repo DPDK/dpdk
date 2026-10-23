@@ -1852,6 +1852,7 @@ flow_cleanup:
 
 
 static struct iavf_flow_parser iavf_ipsec_flow_parser;
+static struct iavf_flow_parser iavf_ipsec_egress_flow_parser;
 
 static int
 iavf_ipsec_flow_init(struct iavf_adapter *ad)
@@ -1943,14 +1944,6 @@ iavf_ipsec_flow_destroy(struct iavf_adapter *ad,
 	return 0;
 }
 
-static struct iavf_flow_engine iavf_ipsec_flow_engine = {
-	.init = iavf_ipsec_flow_init,
-	.uninit = iavf_ipsec_flow_uninit,
-	.create = iavf_ipsec_flow_create,
-	.destroy = iavf_ipsec_flow_destroy,
-	.type = IAVF_FLOW_ENGINE_IPSEC_CRYPTO,
-};
-
 static int
 iavf_ipsec_flow_parse(struct iavf_adapter *ad,
 		      struct iavf_pattern_match_item *array,
@@ -1981,6 +1974,111 @@ iavf_ipsec_flow_parse(struct iavf_adapter *ad,
 	return ret;
 }
 
+/*
+ * Inline crypto egress flows only associate Tx traffic with a security
+ * session; nothing is programmed in hardware, so the engine owns no rule.
+ */
+static int
+iavf_ipsec_egress_flow_init(struct iavf_adapter *ad)
+{
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(ad);
+
+	if (!vf->vf_res)
+		return -EINVAL;
+
+	if (!(vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_INLINE_IPSEC_CRYPTO))
+		return -ENOTSUP;
+
+	return iavf_register_parser(&iavf_ipsec_egress_flow_parser, ad);
+}
+
+static void
+iavf_ipsec_egress_flow_uninit(struct iavf_adapter *ad)
+{
+	iavf_unregister_parser(&iavf_ipsec_egress_flow_parser, ad);
+}
+
+static int
+iavf_ipsec_egress_flow_create(__rte_unused struct iavf_adapter *ad,
+		struct rte_flow *flow,
+		__rte_unused void *meta,
+		__rte_unused struct rte_flow_error *error)
+{
+	flow->rule = NULL;
+	return 0;
+}
+
+static int
+iavf_ipsec_egress_flow_destroy(__rte_unused struct iavf_adapter *ad,
+		__rte_unused struct rte_flow *flow,
+		__rte_unused struct rte_flow_error *error)
+{
+	return 0;
+}
+
+/* The pattern is not used, as there is nothing to match in hardware. */
+static int
+iavf_ipsec_egress_flow_parse(__rte_unused struct iavf_adapter *ad,
+		__rte_unused struct iavf_pattern_match_item *array,
+		__rte_unused uint32_t array_len,
+		__rte_unused const struct rte_flow_item pattern[],
+		const struct rte_flow_action actions[],
+		uint32_t priority,
+		void **meta,
+		struct rte_flow_error *error)
+{
+	const struct rte_flow_action *action;
+	bool has_security = false;
+
+	if (priority != 0)
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY, NULL,
+				"Egress security flows do not support priority.");
+
+	for (action = actions; action->type != RTE_FLOW_ACTION_TYPE_END; action++) {
+		if (action->type == RTE_FLOW_ACTION_TYPE_VOID)
+			continue;
+
+		if (action->type != RTE_FLOW_ACTION_TYPE_SECURITY || has_security)
+			return rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION, action,
+					"Only one security action is supported.");
+
+		if (action->conf == NULL)
+			return rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ACTION_CONF, action,
+					"Security action requires configuration.");
+
+		has_security = true;
+	}
+
+	if (!has_security)
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION, actions,
+				"Security action is required.");
+
+	if (meta != NULL)
+		*meta = NULL;
+
+	return 0;
+}
+
+static struct iavf_flow_engine iavf_ipsec_flow_engine = {
+	.init = iavf_ipsec_flow_init,
+	.uninit = iavf_ipsec_flow_uninit,
+	.create = iavf_ipsec_flow_create,
+	.destroy = iavf_ipsec_flow_destroy,
+	.type = IAVF_FLOW_ENGINE_IPSEC_CRYPTO,
+};
+
+static struct iavf_flow_engine iavf_ipsec_egress_flow_engine = {
+	.init = iavf_ipsec_egress_flow_init,
+	.uninit = iavf_ipsec_egress_flow_uninit,
+	.create = iavf_ipsec_egress_flow_create,
+	.destroy = iavf_ipsec_egress_flow_destroy,
+	.type = IAVF_FLOW_ENGINE_IPSEC_EGRESS,
+};
+
 static struct iavf_flow_parser iavf_ipsec_flow_parser = {
 	.engine = &iavf_ipsec_flow_engine,
 	.array = iavf_ipsec_flow_pattern,
@@ -1989,7 +2087,18 @@ static struct iavf_flow_parser iavf_ipsec_flow_parser = {
 	.stage = IAVF_FLOW_STAGE_IPSEC_CRYPTO,
 };
 
+static struct iavf_flow_parser iavf_ipsec_egress_flow_parser = {
+	.engine = &iavf_ipsec_egress_flow_engine,
+	.parse_pattern_action = iavf_ipsec_egress_flow_parse,
+	.stage = IAVF_FLOW_STAGE_IPSEC_CRYPTO,
+};
+
 RTE_INIT(iavf_ipsec_flow_engine_register)
 {
 	iavf_register_flow_engine(&iavf_ipsec_flow_engine);
+}
+
+RTE_INIT(iavf_ipsec_egress_flow_engine_register)
+{
+	iavf_register_flow_engine(&iavf_ipsec_egress_flow_engine);
 }

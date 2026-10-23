@@ -1785,7 +1785,7 @@ enum rte_flow_item_type iavf_pattern_eth_ipv6_udp_l2tpv2_ppp_ipv6_tcp[] = {
 typedef struct iavf_flow_engine * (*parse_engine_t)(struct iavf_adapter *ad,
 		struct rte_flow *flow,
 		struct iavf_parser_list *parser_list,
-		uint32_t priority,
+		const struct rte_flow_attr *attr,
 		const struct rte_flow_item pattern[],
 		const struct rte_flow_action actions[],
 		struct rte_flow_error *error);
@@ -1902,7 +1902,8 @@ iavf_register_parser(struct iavf_flow_parser *parser,
 			}
 		}
 		TAILQ_INSERT_HEAD(list, parser_node, node);
-	} else if (parser->engine->type == IAVF_FLOW_ENGINE_IPSEC_CRYPTO) {
+	} else if (parser->engine->type == IAVF_FLOW_ENGINE_IPSEC_CRYPTO ||
+		   parser->engine->type == IAVF_FLOW_ENGINE_IPSEC_EGRESS) {
 		list = &vf->ipsec_crypto_parser_list;
 		TAILQ_INSERT_HEAD(list, parser_node, node);
 	} else if (parser->engine->type == IAVF_FLOW_ENGINE_FSUB) {
@@ -1931,7 +1932,8 @@ iavf_unregister_parser(struct iavf_flow_parser *parser,
 	else if ((parser->engine->type == IAVF_FLOW_ENGINE_FDIR) ||
 		 (parser->engine->type == IAVF_FLOW_ENGINE_FSUB))
 		list = &vf->dist_parser_list;
-	else if (parser->engine->type == IAVF_FLOW_ENGINE_IPSEC_CRYPTO)
+	else if (parser->engine->type == IAVF_FLOW_ENGINE_IPSEC_CRYPTO ||
+		 parser->engine->type == IAVF_FLOW_ENGINE_IPSEC_EGRESS)
 		list = &vf->ipsec_crypto_parser_list;
 
 	if (list == NULL)
@@ -1949,19 +1951,24 @@ static int
 iavf_flow_valid_attr(const struct rte_flow_attr *attr,
 		     struct rte_flow_error *error)
 {
-	/* Must be input direction */
-	if (!attr->ingress) {
+	if (!attr->ingress && !attr->egress) {
 		rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,
-				attr, "Only support ingress.");
+				attr, "Only support ingress or egress.");
 		return -rte_errno;
 	}
 
-	/* Not supported */
-	if (attr->egress) {
+	if (attr->ingress && attr->egress) {
 		rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ATTR_EGRESS,
-				attr, "Not support egress.");
+				attr, "Cannot combine ingress and egress.");
+		return -rte_errno;
+	}
+
+	if (attr->egress && attr->transfer) {
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ATTR_TRANSFER,
+				attr, "Not support transfer.");
 		return -rte_errno;
 	}
 
@@ -2113,7 +2120,7 @@ static struct iavf_flow_engine *
 iavf_parse_engine_create(struct iavf_adapter *ad,
 		struct rte_flow *flow,
 		struct iavf_parser_list *parser_list,
-		uint32_t priority,
+		const struct rte_flow_attr *attr,
 		const struct rte_flow_item pattern[],
 		const struct rte_flow_action actions[],
 		struct rte_flow_error *error)
@@ -2124,13 +2131,15 @@ iavf_parse_engine_create(struct iavf_adapter *ad,
 	void *meta = NULL;
 
 	RTE_TAILQ_FOREACH_SAFE(parser_node, parser_list, node, temp) {
+		engine = parser_node->parser->engine;
+		if (attr->egress != (engine->type == IAVF_FLOW_ENGINE_IPSEC_EGRESS))
+			continue;
+
 		if (parser_node->parser->parse_pattern_action(ad,
 				parser_node->parser->array,
 				parser_node->parser->array_len,
-				pattern, actions, priority, &meta, error) < 0)
+				pattern, actions, attr->priority, &meta, error) < 0)
 			continue;
-
-		engine = parser_node->parser->engine;
 
 		RTE_ASSERT(engine->create != NULL);
 		if (!(engine->create(ad, flow, meta, error)))
@@ -2143,7 +2152,7 @@ static struct iavf_flow_engine *
 iavf_parse_engine_validate(struct iavf_adapter *ad,
 		struct rte_flow *flow,
 		struct iavf_parser_list *parser_list,
-		uint32_t priority,
+		const struct rte_flow_attr *attr,
 		const struct rte_flow_item pattern[],
 		const struct rte_flow_action actions[],
 		struct rte_flow_error *error)
@@ -2154,13 +2163,16 @@ iavf_parse_engine_validate(struct iavf_adapter *ad,
 	void *meta = NULL;
 
 	RTE_TAILQ_FOREACH_SAFE(parser_node, parser_list, node, temp) {
+		engine = parser_node->parser->engine;
+		if (attr->egress != (engine->type == IAVF_FLOW_ENGINE_IPSEC_EGRESS))
+			continue;
+
 		if (parser_node->parser->parse_pattern_action(ad,
 				parser_node->parser->array,
 				parser_node->parser->array_len,
-				pattern, actions, priority, &meta, error) < 0)
+				pattern, actions, attr->priority, &meta, error) < 0)
 			continue;
 
-		engine = parser_node->parser->engine;
 		if (engine->validation == NULL) {
 			rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_HANDLE,
@@ -2220,17 +2232,17 @@ iavf_flow_process_filter(struct rte_eth_dev *dev,
 		return ret;
 
 	*engine = iavf_parse_engine(ad, flow, &vf->rss_parser_list,
-				    attr->priority, pattern, actions, error);
+				    attr, pattern, actions, error);
 	if (*engine)
 		return 0;
 
 	*engine = iavf_parse_engine(ad, flow, &vf->dist_parser_list,
-				    attr->priority, pattern, actions, error);
+				    attr, pattern, actions, error);
 	if (*engine)
 		return 0;
 
 	*engine = iavf_parse_engine(ad, flow, &vf->ipsec_crypto_parser_list,
-				    attr->priority, pattern, actions, error);
+				    attr, pattern, actions, error);
 	if (*engine)
 		return 0;
 
@@ -2279,12 +2291,6 @@ iavf_flow_create(struct rte_eth_dev *dev,
 		return flow;
 	}
 
-	/* Special case for inline crypto egress flows */
-	if (attr->egress && actions[0].type == RTE_FLOW_ACTION_TYPE_SECURITY) {
-		flow->is_ipsec_egress_flow = true;
-		goto tailq_insert;
-	}
-
 	ret = iavf_flow_process_filter(dev, flow, attr, pattern, actions,
 			&engine, iavf_parse_engine_create, error);
 	if (ret < 0) {
@@ -2295,7 +2301,6 @@ iavf_flow_create(struct rte_eth_dev *dev,
 	}
 
 	flow->engine = engine;
-tailq_insert:
 	rte_spinlock_lock(&vf->flow_ops_lock);
 	TAILQ_INSERT_TAIL(&vf->flow_list, flow, node);
 	rte_spinlock_unlock(&vf->flow_ops_lock);
@@ -2311,14 +2316,7 @@ iavf_flow_is_valid(struct rte_flow *flow)
 	struct iavf_flow_engine *engine;
 	void *temp;
 
-	if (flow == NULL)
-		return false;
-
-	/* these flows don't use engines */
-	if (flow->is_ipsec_egress_flow)
-		return true;
-
-	if (flow->engine) {
+	if (flow != NULL && flow->engine != NULL) {
 		RTE_TAILQ_FOREACH_SAFE(engine, &engine_list, node, temp) {
 			if (engine == flow->engine)
 				return true;
@@ -2336,26 +2334,17 @@ iavf_flow_destroy(struct rte_eth_dev *dev,
 	struct iavf_adapter *ad =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(ad);
-	bool need_destroy;
 	int ret = 0;
 
-	if (!iavf_flow_is_valid(flow)) {
+	if (!iavf_flow_is_valid(flow) || flow->engine->destroy == NULL) {
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_HANDLE,
 				   NULL, "Invalid flow destroy");
 		return -rte_errno;
 	}
-	need_destroy = !flow->is_ipsec_egress_flow;
-
-	if (need_destroy && flow->engine->destroy == NULL) {
-		return rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
-				"Invalid flow destroy");
-	}
 
 	rte_spinlock_lock(&vf->flow_ops_lock);
-	if (need_destroy)
-		ret = flow->engine->destroy(ad, flow, error);
+	ret = flow->engine->destroy(ad, flow, error);
 
 	if (!ret) {
 		TAILQ_REMOVE(&vf->flow_list, flow, node);
