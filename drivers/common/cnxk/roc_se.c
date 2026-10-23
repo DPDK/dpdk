@@ -255,6 +255,11 @@ cpt_pdcp_chain_key_type_get(uint16_t key_len)
 static void
 cpt_zuc_const_update(uint8_t *zuc_const, int key_len, int mac_len)
 {
+	if (key_len == 32 && roc_model_is_cn20k()) {
+		memcpy(zuc_const, zuc_key256_v2, 16);
+		return;
+	}
+
 	if (key_len == 16) {
 		memcpy(zuc_const, zuc_key128, 32);
 	} else if (key_len == 32) {
