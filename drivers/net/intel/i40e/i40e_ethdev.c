@@ -5329,6 +5329,7 @@ i40e_vsi_release(struct i40e_vsi *vsi)
 			if (i40e_vsi_release(vsi_list->vsi) != I40E_SUCCESS)
 				return -1;
 		}
+		i40e_veb_release(vsi->floating_veb);
 	}
 
 	/* Remove all macvlan filters of the VSI */
