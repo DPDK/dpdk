@@ -326,6 +326,7 @@ static void
 iavf_dev_watchdog(void *cb_arg)
 {
 	struct iavf_adapter *adapter = cb_arg;
+	struct rte_eth_dev *dev = iavf_get_eth_dev(adapter);
 	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(adapter);
 	int vfr_inprogress = 0, rc = 0;
 
@@ -339,7 +340,7 @@ iavf_dev_watchdog(void *cb_arg)
 
 		if (!vfr_inprogress) {
 			PMD_DRV_LOG(INFO, "VF \"%s\" reset has completed",
-				adapter->vf.eth_dev->data->name);
+				dev->data->name);
 			adapter->vf.vf_reset = false;
 			iavf_set_no_poll(adapter, false);
 		}
@@ -350,14 +351,14 @@ iavf_dev_watchdog(void *cb_arg)
 		if (vfr_inprogress) {
 			PMD_DRV_LOG(INFO,
 				"VF \"%s\" reset event detected by watchdog",
-				adapter->vf.eth_dev->data->name);
+				dev->data->name);
 
 			/* enter reset state with VFLR event */
 			adapter->vf.vf_reset = true;
 			iavf_set_no_poll(adapter, false);
 			adapter->vf.link_up = false;
 
-			iavf_dev_event_post(adapter->vf.eth_dev, RTE_ETH_EVENT_INTR_RESET,
+			iavf_dev_event_post(dev, RTE_ETH_EVENT_INTR_RESET,
 				NULL, 0);
 		}
 	}
@@ -369,7 +370,7 @@ iavf_dev_watchdog(void *cb_arg)
 
 		if (rc)
 			PMD_DRV_LOG(ERR, "Failed \"%s\" to reset device watchdog alarm",
-				adapter->vf.eth_dev->data->name);
+				dev->data->name);
 	}
 }
 
@@ -2668,8 +2669,6 @@ iavf_init_vf(struct rte_eth_dev *dev)
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
-
-	vf->eth_dev = dev;
 
 	err = iavf_parse_devargs(dev);
 	if (err) {
