@@ -3025,8 +3025,11 @@ iavf_dev_close(struct rte_eth_dev *dev)
 	iavf_security_ctx_destroy(adapter);
 
 	/* Skip the virtchnl-emitting teardown on a PF-initiated reset */
-	if (!vf->pf_reset_in_progress)
+	if (!vf->pf_reset_in_progress) {
+		/* remove RSS configuration */
+		iavf_hash_uninit(adapter);
 		iavf_flow_flush(dev, NULL);
+	}
 	iavf_flow_uninit(adapter);
 
 	/*

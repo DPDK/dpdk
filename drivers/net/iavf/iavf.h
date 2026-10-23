@@ -538,6 +538,7 @@ int iavf_add_del_rss_cfg(struct iavf_adapter *adapter,
 int iavf_get_hena_caps(struct iavf_adapter *adapter, uint64_t *caps);
 int iavf_set_hena(struct iavf_adapter *adapter, uint64_t hena);
 int iavf_rss_hash_set(struct iavf_adapter *ad, uint64_t rss_hf, bool add);
+void iavf_hash_uninit(struct iavf_adapter *ad);
 int iavf_add_del_mc_addr_list(struct iavf_adapter *adapter,
 			struct rte_ether_addr *mc_addrs,
 			uint32_t mc_addrs_num, bool add);
