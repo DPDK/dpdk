@@ -689,11 +689,9 @@ iavf_ipsec_crypto_session_create(void *device,
  * returns: 1 if valid
  */
 uint32_t
-iavf_ipsec_crypto_action_valid(struct rte_eth_dev *ethdev,
+iavf_ipsec_crypto_action_valid(struct iavf_adapter *adapter,
 	const struct rte_security_session *session, uint32_t spi)
 {
-	struct iavf_adapter *adapter =
-		IAVF_DEV_PRIVATE_TO_ADAPTER(ethdev->data->dev_private);
 	const struct iavf_security_session *sess = (const void *)session->driver_priv_data;
 
 	/* verify we have a valid session and that it belong to this adapter */
@@ -1502,24 +1500,25 @@ static struct rte_security_ops iavf_ipsec_crypto_ops = {
 int
 iavf_security_ctx_create(struct iavf_adapter *adapter)
 {
+	struct rte_eth_dev *dev = iavf_get_eth_dev(adapter);
 	struct rte_security_ctx *sctx;
 
 	sctx = rte_malloc("security_ctx", sizeof(struct rte_security_ctx), 0);
 	if (sctx == NULL)
 		return -ENOMEM;
 
-	sctx->device = adapter->vf.eth_dev;
+	sctx->device = dev;
 	sctx->ops = &iavf_ipsec_crypto_ops;
 	sctx->sess_cnt = 0;
 
-	adapter->vf.eth_dev->security_ctx = sctx;
+	dev->security_ctx = sctx;
 
 	if (adapter->security_ctx == NULL) {
 		adapter->security_ctx = rte_malloc("iavf_security_ctx",
 				sizeof(struct iavf_security_ctx), 0);
 		if (adapter->security_ctx == NULL) {
-			rte_free(adapter->vf.eth_dev->security_ctx);
-			adapter->vf.eth_dev->security_ctx = NULL;
+			rte_free(dev->security_ctx);
+			dev->security_ctx = NULL;
 			return -ENOMEM;
 		}
 	}
@@ -1565,7 +1564,8 @@ iavf_security_get_pkt_md_offset(struct iavf_adapter *adapter)
 int
 iavf_security_ctx_destroy(struct iavf_adapter *adapter)
 {
-	struct rte_security_ctx *sctx  = adapter->vf.eth_dev->security_ctx;
+	struct rte_eth_dev *dev = iavf_get_eth_dev(adapter);
+	struct rte_security_ctx *sctx  = dev->security_ctx;
 	struct iavf_security_ctx *iavf_sctx = adapter->security_ctx;
 
 	if (iavf_sctx == NULL)
@@ -1578,7 +1578,7 @@ iavf_security_ctx_destroy(struct iavf_adapter *adapter)
 	rte_free(sctx);
 
 	adapter->security_ctx = NULL;
-	adapter->vf.eth_dev->security_ctx = NULL;
+	dev->security_ctx = NULL;
 
 	return 0;
 }
@@ -1748,7 +1748,7 @@ parse_udp_item(const struct rte_flow_item_udp *item, struct rte_udp_hdr *udp)
 }
 
 static struct iavf_ipsec_flow_item *
-iavf_ipsec_flow_item_parse(struct rte_eth_dev *ethdev,
+iavf_ipsec_flow_item_parse(struct iavf_adapter *adapter,
 		const struct rte_flow_item pattern[],
 		const struct rte_security_session *session,
 		uint32_t type)
@@ -1819,7 +1819,7 @@ iavf_ipsec_flow_item_parse(struct rte_eth_dev *ethdev,
 		goto flow_cleanup;
 	}
 
-	if (!iavf_ipsec_crypto_action_valid(ethdev, session,
+	if (!iavf_ipsec_crypto_action_valid(adapter, session,
 			ipsec_flow->spi))
 		goto flow_cleanup;
 
@@ -1967,7 +1967,7 @@ iavf_ipsec_flow_parse(struct iavf_adapter *ad,
 		const struct rte_security_session *session = parsed_actions.actions[0]->conf;
 		uint32_t type = (uint64_t)(item->meta);
 		struct iavf_ipsec_flow_item *fi =
-				iavf_ipsec_flow_item_parse(ad->vf.eth_dev, pattern, session, type);
+				iavf_ipsec_flow_item_parse(ad, pattern, session, type);
 		if (fi && meta) {
 			*meta = fi;
 			ret = 0;

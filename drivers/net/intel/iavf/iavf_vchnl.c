@@ -314,13 +314,14 @@ iavf_read_msg_from_pf(struct iavf_adapter *adapter, uint16_t buf_len,
 		    opcode, vf->cmd_retval);
 
 	if (opcode == VIRTCHNL_OP_EVENT) {
+		struct rte_eth_dev *dev = iavf_get_eth_dev(adapter);
 		struct virtchnl_pf_event *vpe =
 			(struct virtchnl_pf_event *)event.msg_buf;
 
 		result = IAVF_MSG_SYS;
 		switch (vpe->event) {
 		case VIRTCHNL_EVENT_LINK_CHANGE:
-			iavf_handle_link_change_event(vf->eth_dev, vpe);
+			iavf_handle_link_change_event(dev, vpe);
 			break;
 		case VIRTCHNL_EVENT_RESET_IMPENDING:
 			/*
@@ -335,8 +336,8 @@ iavf_read_msg_from_pf(struct iavf_adapter *adapter, uint16_t buf_len,
 				iavf_set_no_poll(adapter, false);
 				iavf_dev_watchdog_enable(adapter);
 				if (adapter->devargs.no_poll_on_link_down)
-					iavf_dev_tx_drain(vf->eth_dev);
-				iavf_dev_event_post(vf->eth_dev,
+					iavf_dev_tx_drain(dev);
+				iavf_dev_event_post(dev,
 					RTE_ETH_EVENT_INTR_RESET,
 					NULL, 0);
 			}

@@ -127,13 +127,13 @@ int iavf_security_get_pkt_md_offset(struct iavf_adapter *adapter);
 /**
  * Destroy security context
  */
-int iavf_security_ctx_destroy(struct iavf_adapter *adapterv);
+int iavf_security_ctx_destroy(struct iavf_adapter *adapter);
 
 /**
  * Verify that the inline IPsec Crypto action is valid for this device
  */
 uint32_t
-iavf_ipsec_crypto_action_valid(struct rte_eth_dev *ethdev,
+iavf_ipsec_crypto_action_valid(struct iavf_adapter *adapter,
 	const struct rte_security_session *session, uint32_t spi);
 
 /**

@@ -7,6 +7,7 @@
 
 #include <sys/queue.h>
 
+#include <ethdev_driver.h>
 #include <rte_kvargs.h>
 #include <rte_tm_driver.h>
 
@@ -293,8 +294,6 @@ struct iavf_info {
 	struct iavf_qtc_map *qtc_map;
 	struct iavf_tm_conf tm_conf;
 
-	struct rte_eth_dev *eth_dev;
-
 	RTE_ATOMIC(bool)in_reset_recovery;
 	bool reset_pending;
 	bool pf_reset_in_progress;
@@ -407,6 +406,12 @@ struct iavf_adapter {
 	bool mac_primary_set;
 	uint16_t tpid;  /* VLAN tag identifier */
 };
+
+static inline struct rte_eth_dev *
+iavf_get_eth_dev(struct iavf_adapter *adapter)
+{
+	return &rte_eth_devices[adapter->dev_data->port_id];
+}
 
 /* IAVF_DEV_PRIVATE_TO */
 #define IAVF_DEV_PRIVATE_TO_ADAPTER(adapter) \
