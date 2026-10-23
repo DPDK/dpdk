@@ -861,6 +861,8 @@ get_fanout_mode(const char *fanout_mode)
 	} else if (!strcmp(fanout_mode, "cpu")) {
 		load_balance |= PACKET_FANOUT_CPU;
 	} else if (!strcmp(fanout_mode, "rollover")) {
+		/* setting both is rejected by kernel */
+		load_balance &= ~PACKET_FANOUT_FLAG_ROLLOVER;
 		load_balance |= PACKET_FANOUT_ROLLOVER;
 	} else if (!strcmp(fanout_mode, "rnd")) {
 		load_balance |= PACKET_FANOUT_RND;
