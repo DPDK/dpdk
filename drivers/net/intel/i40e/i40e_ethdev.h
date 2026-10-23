@@ -790,6 +790,7 @@ struct i40e_fdir_info {
 	struct ci_rx_queue *rxq;
 	void *prg_pkt[I40E_FDIR_PRG_PKT_CNT];     /* memory for fdir program packet */
 	uint64_t dma_addr[I40E_FDIR_PRG_PKT_CNT]; /* physic address of packet memory*/
+	const struct rte_memzone *prg_mz;         /* memzone backing prg_pkt */
 	/*
 	 * txq available buffer counter, indicates how many available buffers
 	 * for fdir programming, initialized as I40E_FDIR_PRG_PKT_CNT
