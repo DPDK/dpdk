@@ -155,10 +155,6 @@ struct iavf_fdir_conf {
 	uint32_t mark_flag;
 };
 
-struct iavf_fdir_info {
-	struct iavf_fdir_conf conf;
-};
-
 struct iavf_fsub_conf {
 	struct virtchnl_flow_sub sub_fltr;
 	struct virtchnl_flow_unsub unsub_fltr;
@@ -286,7 +282,6 @@ struct iavf_info {
 	struct iavf_parser_list dist_parser_list;
 	struct iavf_parser_list ipsec_crypto_parser_list;
 
-	struct iavf_fdir_info fdir; /* flow director info */
 	/* indicate large VF support enabled or not */
 	bool lv_enabled;
 

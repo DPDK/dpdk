@@ -1919,7 +1919,6 @@ iavf_ipsec_flow_destroy(struct iavf_adapter *ad,
 
 	iavf_ipsec_crypto_security_policy_delete(ad,
 			ipsec_flow->is_ipv4, ipsec_flow->id);
-	rte_free(ipsec_flow);
 	return 0;
 }
 
