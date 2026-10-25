@@ -255,6 +255,7 @@ mlx5_vdpa_steer_update(struct mlx5_vdpa_priv *priv, bool is_dummy)
 		ret = mlx5_vdpa_rss_flows_create(priv);
 		if (ret) {
 			DRV_LOG(ERR, "Cannot create RSS flows.");
+			mlx5_vdpa_rss_flows_destroy(priv);
 			pthread_mutex_unlock(&priv->steer_update_lock);
 			return -1;
 		}
