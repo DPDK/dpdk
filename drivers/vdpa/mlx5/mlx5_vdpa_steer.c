@@ -85,9 +85,11 @@ mlx5_vdpa_rqt_prepare(struct mlx5_vdpa_priv *priv, bool is_dummy)
 			k++;
 		}
 	}
-	if (k == 0)
+	if (k == 0) {
 		/* No enabled RQ to configure for RSS. */
+		rte_free(attr);
 		return 0;
+	}
 	num = (int)k;
 	for (j = 0; k != rqt_n; ++k, ++j)
 		attr->rq_list[k] = attr->rq_list[j];
