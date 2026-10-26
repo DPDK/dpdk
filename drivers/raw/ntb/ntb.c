@@ -46,12 +46,6 @@ ntb_link_cleanup(struct rte_rawdev *dev)
 	struct ntb_hw *hw = dev->dev_private;
 	int status, i;
 
-	if (hw->ntb_ops->spad_write == NULL ||
-	    hw->ntb_ops->mw_set_trans == NULL) {
-		NTB_LOG(ERR, "Not supported to clean up link.");
-		return;
-	}
-
 	/* Clean spad registers. */
 	for (i = 0; i < hw->spad_cnt; i++) {
 		status = (*hw->ntb_ops->spad_write)(dev, i, 0, 0);
@@ -73,12 +67,6 @@ ntb_handshake_work(const struct rte_rawdev *dev)
 	struct ntb_hw *hw = dev->dev_private;
 	uint32_t val;
 	int ret, i;
-
-	if (hw->ntb_ops->spad_write == NULL ||
-	    hw->ntb_ops->mw_set_trans == NULL) {
-		NTB_LOG(ERR, "Scratchpad/MW setting is not supported.");
-		return -ENOTSUP;
-	}
 
 	/* Tell peer the mw info of local side. */
 	ret = (*hw->ntb_ops->spad_write)(dev, SPAD_NUM_MWS, 1, hw->mw_cnt);
@@ -150,13 +138,6 @@ ntb_dev_intr_handler(void *param)
 	uint8_t peer_mw_cnt;
 	int i = 0;
 
-	if (hw->ntb_ops->db_read == NULL ||
-	    hw->ntb_ops->db_clear == NULL ||
-	    hw->ntb_ops->peer_db_set == NULL) {
-		NTB_LOG(ERR, "Doorbell is not supported.");
-		return;
-	}
-
 	db_bits = (*hw->ntb_ops->db_read)(dev);
 	if (!db_bits)
 		NTB_LOG(ERR, "No doorbells");
@@ -173,11 +154,6 @@ ntb_dev_intr_handler(void *param)
 		 */
 		if (hw->peer_dev_up)
 			return;
-
-		if (hw->ntb_ops->spad_read == NULL) {
-			NTB_LOG(ERR, "Scratchpad read is not supported.");
-			return;
-		}
 
 		/* Check if mw setting on the peer is the same as local. */
 		peer_mw_cnt = (*hw->ntb_ops->spad_read)(dev, SPAD_NUM_MWS, 0);
@@ -214,10 +190,6 @@ ntb_dev_intr_handler(void *param)
 		}
 
 		/* To get the link info. */
-		if (hw->ntb_ops->get_link_status == NULL) {
-			NTB_LOG(ERR, "Not supported to get link status.");
-			return;
-		}
 		(*hw->ntb_ops->get_link_status)(dev);
 		NTB_LOG(INFO, "Link is up. Link speed: %u. Link width: %u",
 			hw->link_speed, hw->link_width);
@@ -511,11 +483,6 @@ ntb_queue_init(struct rte_rawdev *dev, uint16_t qp_id)
 	void *bar_addr;
 	uint16_t i;
 
-	if (hw->ntb_ops->get_peer_mw_addr == NULL) {
-		NTB_LOG(ERR, "Getting peer mw addr is not supported.");
-		return -EINVAL;
-	}
-
 	/* Put queue info into the start of shared memory. */
 	hdr_offset = hw->hdr_size_per_queue * qp_id;
 	local_hdr = (volatile struct ntb_header *)
@@ -614,11 +581,6 @@ ntb_enqueue_bufs(struct rte_rawdev *dev,
 	uint64_t bytes = 0;
 	void *buf_addr;
 	int i;
-
-	if (unlikely(hw->ntb_ops->ioremap == NULL)) {
-		NTB_LOG(ERR, "Ioremap not supported.");
-		return nb_tx;
-	}
 
 	if (unlikely(dev->started == 0 || hw->peer_dev_up == 0)) {
 		NTB_LOG(DEBUG, "Link is not up.");
@@ -929,11 +891,6 @@ ntb_dev_start(struct rte_rawdev *dev)
 		goto err_q_init;
 	}
 
-	if (hw->ntb_ops->spad_read == NULL) {
-		ret = -ENOTSUP;
-		goto err_up;
-	}
-
 	peer_val = (*hw->ntb_ops->spad_read)(dev, SPAD_Q_SZ, 0);
 	if (peer_val != hw->queue_size) {
 		NTB_LOG(ERR, "Inconsistent queue size! (local: %u peer: %u)",
@@ -988,10 +945,6 @@ ntb_dev_stop(struct rte_rawdev *dev)
 	ntb_link_cleanup(dev);
 
 	/* Notify the peer that device will be down. */
-	if (hw->ntb_ops->peer_db_set == NULL) {
-		NTB_LOG(ERR, "Peer doorbell setting is not supported.");
-		return;
-	}
 	status = (*hw->ntb_ops->peer_db_set)(dev, 1);
 	if (status) {
 		NTB_LOG(ERR, "Failed to tell peer device is down.");
@@ -1012,10 +965,6 @@ ntb_dev_stop(struct rte_rawdev *dev)
 
 clean:
 	/* Clear doorbells mask. */
-	if (hw->ntb_ops->db_set_mask == NULL) {
-		NTB_LOG(ERR, "Doorbell mask setting is not supported.");
-		return;
-	}
 	status = (*hw->ntb_ops->db_set_mask)(dev,
 				(((uint64_t)1 << hw->db_cnt) - 1));
 	if (status)
@@ -1084,8 +1033,6 @@ ntb_attr_set(struct rte_rawdev *dev, const char *attr_name,
 	hw = dev->dev_private;
 
 	if (!strncmp(attr_name, NTB_SPAD_USER, NTB_SPAD_USER_LEN)) {
-		if (hw->ntb_ops->spad_write == NULL)
-			return -ENOTSUP;
 		index = atoi(&attr_name[NTB_SPAD_USER_LEN]);
 		if (index < 0 || index >= NTB_SPAD_USER_MAX_NUM) {
 			NTB_LOG(ERR, "Invalid attribute (%s)", attr_name);
@@ -1182,8 +1129,6 @@ ntb_attr_get(struct rte_rawdev *dev, const char *attr_name,
 	}
 
 	if (!strncmp(attr_name, NTB_SPAD_USER, NTB_SPAD_USER_LEN)) {
-		if (hw->ntb_ops->spad_read == NULL)
-			return -ENOTSUP;
 		index = atoi(&attr_name[NTB_SPAD_USER_LEN]);
 		if (index < 0 || index >= NTB_SPAD_USER_MAX_NUM) {
 			NTB_LOG(ERR, "Attribute (%s) out of range", attr_name);
@@ -1364,6 +1309,36 @@ static const struct rte_rawdev_ops ntb_ops = {
 	.xstats_reset         = ntb_xstats_reset,
 };
 
+/* Every vendor ops entry is dereferenced unconditionally in the common code,
+ * so enforce their presence once at probe time instead of guarding every call site at runtime.
+ */
+static int
+ntb_vendor_ops_check(const struct ntb_hw *hw)
+{
+#define NTB_OPS_REQ(member) do { \
+	if (hw->ntb_ops->member == NULL) { \
+		NTB_LOG(ERR, "Vendor ops lacks mandatory ." #member); \
+		return -EINVAL; \
+	} \
+} while (0)
+	NTB_OPS_REQ(ntb_dev_init);
+	NTB_OPS_REQ(get_peer_mw_addr);
+	NTB_OPS_REQ(mw_set_trans);
+	NTB_OPS_REQ(ioremap);
+	NTB_OPS_REQ(get_link_status);
+	NTB_OPS_REQ(set_link);
+	NTB_OPS_REQ(spad_read);
+	NTB_OPS_REQ(spad_write);
+	NTB_OPS_REQ(db_read);
+	NTB_OPS_REQ(db_clear);
+	NTB_OPS_REQ(db_set_mask);
+	NTB_OPS_REQ(peer_db_set);
+	NTB_OPS_REQ(vector_bind);
+#undef NTB_OPS_REQ
+
+	return 0;
+}
+
 static int
 ntb_init_hw(struct rte_rawdev *dev, struct rte_pci_device *pci_dev)
 {
@@ -1387,16 +1362,16 @@ ntb_init_hw(struct rte_rawdev *dev, struct rte_pci_device *pci_dev)
 		return -EINVAL;
 	}
 
-	if (hw->ntb_ops->ntb_dev_init == NULL)
-		return -ENOTSUP;
+	ret = ntb_vendor_ops_check(hw);
+	if (ret)
+		return ret;
+
 	ret = (*hw->ntb_ops->ntb_dev_init)(dev);
 	if (ret) {
 		NTB_LOG(ERR, "Unable to init ntb dev.");
 		return ret;
 	}
 
-	if (hw->ntb_ops->set_link == NULL)
-		return -ENOTSUP;
 	ret = (*hw->ntb_ops->set_link)(dev, 1);
 	if (ret)
 		return ret;
@@ -1404,8 +1379,6 @@ ntb_init_hw(struct rte_rawdev *dev, struct rte_pci_device *pci_dev)
 	/* Init doorbell. */
 	hw->db_valid_mask = RTE_LEN2MASK(hw->db_cnt, uint64_t);
 	/* Clear all valid doorbell bits before registering intr handler */
-	if (hw->ntb_ops->db_clear == NULL)
-		return -ENOTSUP;
 	(*hw->ntb_ops->db_clear)(dev, hw->db_valid_mask);
 
 	intr_handle = pci_dev->intr_handle;
@@ -1423,19 +1396,12 @@ ntb_init_hw(struct rte_rawdev *dev, struct rte_pci_device *pci_dev)
 	 */
 	if (!rte_intr_cap_multiple(intr_handle)) {
 		for (i = 0; i < hw->db_cnt; i++) {
-			if (hw->ntb_ops->vector_bind == NULL)
-				return -ENOTSUP;
 			ret = (*hw->ntb_ops->vector_bind)(dev, i, 0);
 			if (ret)
 				return ret;
 		}
 	}
 
-	if (hw->ntb_ops->db_set_mask == NULL ||
-	    hw->ntb_ops->peer_db_set == NULL) {
-		NTB_LOG(ERR, "Doorbell is not supported.");
-		return -ENOTSUP;
-	}
 	hw->db_mask = 0;
 	ret = (*hw->ntb_ops->db_set_mask)(dev, hw->db_mask);
 	if (ret) {
