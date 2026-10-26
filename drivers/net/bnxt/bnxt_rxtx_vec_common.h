@@ -227,7 +227,6 @@ static const alignas(32) uint32_t olflags_v3_lut[8] = {
 	RTE_MBUF_F_RX_IP_CKSUM_BAD | RTE_MBUF_F_RX_OUTER_IP_CKSUM_BAD | RTE_MBUF_F_RX_L4_CKSUM_BAD,
 };
 
-
 /* Split tables to reduce the latency from the old ptypes table look up as most
  * of the ptypes table isn't needed.
  * Because the hotpath code does not incur any cost from having all of the

@@ -540,32 +540,6 @@ bnxt_init_ptype_table(void)
 	initialized = true;
 }
 
-static uint32_t
-bnxt_parse_pkt_type(struct rx_pkt_cmpl *rxcmp, struct rx_pkt_cmpl_hi *rxcmp1)
-{
-	uint32_t flags_type, flags2;
-	uint8_t index;
-
-	flags_type = rte_le_to_cpu_16(rxcmp->flags_type);
-	flags2 = rte_le_to_cpu_32(rxcmp1->flags2);
-
-	/* Validate ptype table indexing at build time. */
-	bnxt_check_ptype_constants();
-
-	/*
-	 * Index format:
-	 *     bit 0: Set if IP tunnel encapsulated packet.
-	 *     bit 1: Set if IPv6 packet, clear if IPv4.
-	 *     bit 2: Set if VLAN tag present.
-	 *     bits 3-6: Four-bit hardware packet type field.
-	 */
-	index = BNXT_CMPL_ITYPE_TO_IDX(flags_type) |
-		BNXT_CMPL_VLAN_TUN_TO_IDX(flags2) |
-		BNXT_CMPL_IP_VER_TO_IDX(flags2);
-
-	return bnxt_ptype_table[index];
-}
-
 static void
 bnxt_parse_pkt_type_v3(struct rte_mbuf *mbuf,
 		       struct rx_pkt_cmpl *rxcmp_v1,
