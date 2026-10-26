@@ -1483,8 +1483,7 @@ enum {
 /* MKC read_after_write_ordering field (2-bit, dword 0x38 bits 9:8). */
 enum mlx5_mkc_raw_ordering {
 	MLX5_MKC_RAW_ORDERING_SO = 0x0,
-	MLX5_MKC_RAW_ORDERING_SAO = 0x1,
-	MLX5_MKC_RAW_ORDERING_RO = 0x2,
+	MLX5_MKC_RAW_ORDERING_RO = 0x1,
 };
 
 struct mlx5_ifc_create_mkey_out_bits {
