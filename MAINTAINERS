@@ -1616,6 +1616,8 @@ F: doc/guides/rawdevs/cnxk_rvu_lf.rst
 
 NTB
 M: Jingjing Wu <jingjing.wu@intel.com>
+M: Bhagyada Modali <bhagyada.modali@amd.com>
+M: Raghavendra Ningoji <raghavendra.ningoji@amd.com>
 F: drivers/raw/ntb/
 F: doc/guides/rawdevs/ntb.rst
 F: examples/ntb/

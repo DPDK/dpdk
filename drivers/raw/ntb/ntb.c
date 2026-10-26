@@ -20,11 +20,14 @@
 #include <rte_rawdev.h>
 #include <rte_rawdev_pmd.h>
 
+#include "ntb_hw_amd.h"
 #include "ntb_hw_intel.h"
 #include "rte_pmd_ntb.h"
 #include "ntb.h"
 
 static const struct rte_pci_id pci_id_ntb_map[] = {
+	{ RTE_PCI_DEVICE(NTB_AMD_VENDOR_ID, NTB_AMD_DEV_ID_PRI) },
+	{ RTE_PCI_DEVICE(NTB_AMD_VENDOR_ID, NTB_AMD_DEV_ID_SEC) },
 	{ RTE_PCI_DEVICE(NTB_INTEL_VENDOR_ID, NTB_INTEL_DEV_ID_B2B_SKX) },
 	{ RTE_PCI_DEVICE(NTB_INTEL_VENDOR_ID, NTB_INTEL_DEV_ID_B2B_ICX) },
 	{ .vendor_id = 0, /* sentinel */ },
@@ -1249,6 +1252,10 @@ ntb_init_hw(struct rte_rawdev *dev, struct rte_pci_device *pci_dev)
 	hw->link_width = NTB_WIDTH_NONE;
 
 	switch (pci_dev->id.device_id) {
+	case NTB_AMD_DEV_ID_PRI:
+	case NTB_AMD_DEV_ID_SEC:
+		hw->ntb_ops = &amd_ntb_ops;
+		break;
 	case NTB_INTEL_DEV_ID_B2B_SKX:
 	case NTB_INTEL_DEV_ID_B2B_ICX:
 		hw->ntb_ops = &intel_ntb_ops;

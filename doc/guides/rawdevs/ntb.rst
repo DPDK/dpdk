@@ -37,10 +37,36 @@ then reboot.
 - Set ``PCIe PLL SSC (Spread Spectrum Clocking)`` as ``Disabled``, on both hosts.
   This is a hardware requirement when using Re-timer Cards.
 
+AMD EPYC Embedded NTB
+---------------------
+
+The driver also supports the NTB endpoints integrated in AMD EPYC Embedded
+"Turin", "Genoa" and "Siena" processors.
+These use a primary/secondary topology rather than the Intel back-to-back topology:
+one endpoint is enumerated as the primary (device ID ``0x14c0``) and
+the other as the secondary (device ID ``0x14c3``).
+The BIOS on both systems performs NTB link training;
+no additional NTB-specific BIOS options are required beyond enabling the NTB endpoints.
+
+The AMD NTB hardware exposes two memory windows (BAR23 and BAR45),
+16 doorbells and a single shared 16-register scratchpad bank.
+The scratchpad bank is split into two disjoint 8-register sets, one owned by each side,
+so the driver uses a packed handshake layout that fits within 8 registers.
+
+The AMD NTB uses an outbound translation window:
+a write to a memory window offset is forwarded to ``(base | offset)`` in the peer's memory
+rather than ``(base + offset)``.
+The translation base must therefore be aligned to a power of two greater than or equal
+to the window length so that no offset bit collides with a set bit in the base.
+Different NTB hardware imposes different alignment constraints,
+so applications should not assume any particular value:
+reserve each memory window memzone with the alignment returned by ``rte_pmd_ntb_get_mem_align()``
+for that window and length. The ``ntb_fwd`` example shows this usage.
+
 Device Setup
 ------------
 
-The Intel NTB devices need to be bound to a DPDK-supported kernel driver
+The NTB devices need to be bound to a DPDK-supported kernel driver
 to use, i.e. igb_uio, vfio. The ``dpdk-devbind.py`` script can be used to
 show devices status and to bind them to a suitable kernel driver. They will
 appear under the category of "Misc (rawdev) devices".
@@ -151,8 +177,9 @@ like the following:
 Limitation
 ----------
 
-This PMD is only supported on Intel Xeon Platforms:
+This PMD is supported on:
 
+- AMD EPYC Embedded "Turin", "Genoa" and "Siena" processors.
 - 4th Generation Intel® Xeon® Scalable Processors.
 - 3rd Generation Intel® Xeon® Scalable Processors.
 - 2nd Generation Intel® Xeon® Scalable Processors.

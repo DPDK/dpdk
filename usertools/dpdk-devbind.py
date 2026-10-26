@@ -87,6 +87,7 @@ device_types = {
         'name': 'Misc (rawdev)',
         'match': [
             {'Class': '01', 'Vendor': '1af4', 'Device': '1001,1042'},  # VirtIO block
+            {'Class': '06', 'Vendor': '1022', 'Device': '14c0,14c3'},  # AMD NTB
             {'Class': '06', 'Vendor': '8086', 'Device': '201c'},  # Intel NTB Skylake
             {'Class': '06', 'Vendor': '8086', 'Device': '347e'},  # Intel NTB Ice Lake
             {'Class': '08', 'Vendor': '177d', 'Device': 'a059,a060'},  # Marvell CNXK BPHY CGX
