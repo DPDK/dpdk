@@ -8,6 +8,8 @@
 
 #include <net/if.h>
 
+#define MLX5_NET_INTR_LSC_SUPPORTED (1)
+
 /* verb enumerations translations to local enums. */
 enum {
 	MLX5_FS_NAME_MAX = IBV_SYSFS_NAME_MAX + 1,

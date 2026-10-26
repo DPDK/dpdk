@@ -7,6 +7,8 @@
 
 #include "mlx5_win_ext.h"
 
+#define MLX5_NET_INTR_LSC_SUPPORTED (0)
+
 enum {
 	MLX5_FS_NAME_MAX = MLX5_DEVX_DEVICE_NAME_SIZE + 1,
 	MLX5_FS_PATH_MAX = MLX5_DEVX_DEVICE_PNP_SIZE + 1

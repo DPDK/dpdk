@@ -130,6 +130,7 @@ Features
 - RSS hash result is supported.
 - Hardware TSO for generic IP or UDP tunnel, including VXLAN and GRE.
 - Hardware checksum Tx offload for generic IP or UDP tunnel, including VXLAN and GRE.
+- Link state interrupts (Linux only).
 - RX interrupts.
 - Statistics query including Basic, Extended and per queue.
 - Rx HW timestamp.
