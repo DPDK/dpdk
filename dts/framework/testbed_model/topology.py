@@ -142,9 +142,14 @@ class Topology:
 
         Binds all the ports to the right kernel driver to retrieve MAC addresses and logical names.
         """
+        from framework.context import get_ctx
+
+        if self.type is not LinkTopology.NO_LINK or get_ctx().sut_node.cryptodevs:
+            self._prepare_devbind_script()
+
         if self.type is LinkTopology.NO_LINK:
             return
-        self._prepare_devbind_script()
+
         self._setup_ports("sut")
         self._setup_ports("tg")
 
