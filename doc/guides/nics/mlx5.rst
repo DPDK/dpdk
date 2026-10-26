@@ -1106,6 +1106,7 @@ Port/Queue Feature                        Linux   Windows
 :ref:`hairpin <mlx5_hairpin>`               X        X
 :ref:`statistics <mlx5_net_stats>`          X        P
 link flow control (pause frame)             X
+link state interrupt                        X
 Rx interrupt                                X
 :ref:`shared Rx queue <mlx5_shared_rx>`     X
 :ref:`Rx threshold <mlx5_rx_threshold>`     X        X
