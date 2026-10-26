@@ -19,25 +19,99 @@
 #include "bnxt_rxtx_vec_common.h"
 #include <unistd.h>
 
+/*
+ * Scalar tail handler for the V2 completion format. Processes a
+ * single completion pair so that the caller can drain the packets left over
+ * once the eight-wide vector loop can no longer be run without stepping past
+ * the end of either ring.
+ */
 static uint16_t
-recv_burst_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+recv_one_vec_avx2(struct bnxt_rx_queue *rxq, struct rte_mbuf **rx_pkts,
+		  uint32_t cons, uint32_t mbcons, uint32_t valid_bit,
+		  uint64_t mbuf_init, struct cmpl_base *cp_desc_ring,
+		  struct rte_mbuf **rx_buf_ring)
 {
-	struct bnxt_rx_queue *rxq = rx_queue;
-	const __m256i mbuf_init =
-		_mm256_set_epi64x(0, 0, 0, rxq->mbuf_initializer);
-	struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
+	struct rx_pkt_cmpl *rxcmp = (struct rx_pkt_cmpl *)&cp_desc_ring[cons];
+	struct rx_pkt_cmpl_hi *rxcmp1 = (struct rx_pkt_cmpl_hi *)&cp_desc_ring[cons + 1];
 	struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
-	uint32_t cp_ring_size = cpr->cp_ring_struct->ring_size;
-	uint32_t rx_ring_size = rxr->rx_ring_struct->ring_size;
-	struct cmpl_base *cp_desc_ring = cpr->cp_desc_ring;
-	uint64_t valid, desc_valid_mask = ~0ULL;
+	uint32_t flags_type, flags2, index, errors;
+	struct rte_mbuf *mbuf;
+	uint16_t errors_v2;
+	uint64_t ol_flags;
+
+	errors_v2 = rxcmp1->errors_v2;
+
+	if (!((errors_v2 & CMPL_BASE_V) ^ valid_bit))
+		return 0;
+
+	rte_compiler_barrier();
+
+	mbuf = rx_buf_ring[mbcons];
+	RTE_ASSERT(mbuf != NULL);
+
+	flags_type = rxcmp->flags_type;
+	/* The vector loop only ever consumes the low 16 bits of flags2. */
+	flags2 = rxcmp1->flags2 & 0xffff;
+
+	/*
+	 * Build the ol_flags and checksum error table indices exactly as the
+	 * vector loop does: the tunnel bit (RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC)
+	 * is folded into bit 5 of the ol_flags index and bit 4 of the error
+	 * index. ol_flags_err_table[] is zero for every entry with no error
+	 * bit set, so the lookup is unconditional here as well.
+	 */
+	errors = ((errors_v2 >> 4) & 0xf) & flags2;
+	index = (flags2 & 0x1f) & ~errors;
+	index |= (flags2 & RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC) << 3;
+	errors |= (flags2 & RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC) << 2;
+
+	ol_flags = rxr->ol_flags_table[index];
+	ol_flags |= rxr->ol_flags_err_table[errors];
+
+	mbuf->hash.rss = rxcmp->rss_hash;
+	if (flags_type & RX_PKT_CMPL_FLAGS_RSS_VALID)
+		ol_flags |= RTE_MBUF_F_RX_RSS_HASH;
+
+	/*
+	 * ol_flags_table already carries RX_VLAN|RX_VLAN_STRIPPED when strip
+	 * offload is enabled; mirror the vector loop and OR them in from the
+	 * per-packet VLAN metadata bit so that the two sources agree.
+	 */
+	if ((flags2 & RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN) &&
+	    BNXT_RX_VLAN_STRIP_EN(rxq->bp))
+		ol_flags |= RTE_MBUF_F_RX_VLAN | RTE_MBUF_F_RX_VLAN_STRIPPED;
+
+	mbuf->ol_flags = ol_flags;
+
+	mbuf->next = NULL;
+	mbuf->pkt_len = rxcmp->len;
+	mbuf->data_len = mbuf->pkt_len;
+	mbuf->rearm_data[0] = mbuf_init;
+	mbuf->packet_type = bnxt_parse_pkt_type(rxcmp, rxcmp1);
+	mbuf->vlan_tci = rxcmp1->metadata;
+
+	rx_pkts[0] = mbuf;
+	return 1;
+}
+
+/*
+ * AVX2 V2 RX burst processing
+ *
+ * The function will always consume 2 * nb_pkts cpr bds and write nb_pkts
+ * packets given valid. Bounds are enforced by bnxt_recv_pkts_vec_avx2.
+ */
+static uint16_t
+recv_burst_vec_avx2(struct bnxt_rx_queue *rxq, struct rte_mbuf **rx_pkts,
+		    uint16_t nb_pkts, uint32_t cons, uint32_t mbcons,
+		    uint32_t valid_bit, uint64_t mbuf_init,
+		    struct cmpl_base *cp_desc_ring, struct rte_mbuf **rx_buf_ring)
+{
+	struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
 	const __m256i info3_v_mask = _mm256_set1_epi32(CMPL_BASE_V);
-	uint32_t raw_cons = cpr->cp_raw_cons;
-	uint32_t cons, mbcons;
-	int nb_rx_pkts = 0;
-	int i;
+	const __m256i mbuf_init_v =
+		_mm256_set_epi64x(0, 0, 0, mbuf_init);
 	const __m256i valid_target =
-		_mm256_set1_epi32(!!(raw_cons & cp_ring_size));
+		_mm256_set1_epi32(valid_bit);
 	const __m256i dsc_shuf_msk =
 		_mm256_set_epi8(0xff, 0xff, 0xff, 0xff,  /* Zeroes. */
 				7, 6,                    /* metadata type */
@@ -88,41 +162,12 @@ recv_burst_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	__m256i ol_flags, ol_flags_hi;
 	__m256i rss_flags;
 
+	int nb_rx_pkts = 0;
+	uint64_t valid;
+	int i;
+
 	/* Validate ptype table indexing at build time. */
 	bnxt_check_ptype_constants();
-
-	/* If Rx Q was stopped return */
-	if (unlikely(!rxq->rx_started))
-		return 0;
-
-	if (rxq->rxrearm_nb >= rxq->rx_free_thresh)
-		bnxt_rxq_rearm(rxq, rxr);
-
-	nb_pkts = RTE_ALIGN_FLOOR(nb_pkts, BNXT_RX_DESCS_PER_LOOP_VEC256);
-
-	cons = raw_cons & (cp_ring_size - 1);
-	mbcons = (raw_cons / 2) & (rx_ring_size - 1);
-
-	/* Return immediately if there is not at least one completed packet. */
-	if (!bnxt_cpr_cmp_valid(&cp_desc_ring[cons], raw_cons, cp_ring_size))
-		return 0;
-
-	/* Ensure that we do not go past the ends of the rings. */
-	nb_pkts = RTE_MIN(nb_pkts, RTE_MIN(rx_ring_size - mbcons,
-					   (cp_ring_size - cons) / 2));
-	/*
-	 * If we are at the end of the ring, ensure that descriptors after the
-	 * last valid entry are not treated as valid. Otherwise, force the
-	 * maximum number of packets to receive to be a multiple of the per-
-	 * loop count.
-	 */
-	if (nb_pkts < BNXT_RX_DESCS_PER_LOOP_VEC256) {
-		desc_valid_mask >>=
-			CHAR_BIT * (BNXT_RX_DESCS_PER_LOOP_VEC256 - nb_pkts);
-	} else {
-		nb_pkts =
-			RTE_ALIGN_FLOOR(nb_pkts, BNXT_RX_DESCS_PER_LOOP_VEC256);
-	}
 
 	/* Handle RX burst request */
 	for (i = 0; i < nb_pkts; i += BNXT_RX_DESCS_PER_LOOP_VEC256,
@@ -134,10 +179,10 @@ recv_burst_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		uint32_t num_valid;
 
 		/* Copy eight mbuf pointers to output array. */
-		t0 = _mm256_loadu_si256((void *)&rxr->rx_buf_ring[mbcons]);
+		t0 = _mm256_loadu_si256((void *)&rx_buf_ring[mbcons]);
 		_mm256_storeu_si256((void *)&rx_pkts[i], t0);
 #ifdef RTE_ARCH_X86_64
-		t0 = _mm256_loadu_si256((void *)&rxr->rx_buf_ring[mbcons + 4]);
+		t0 = _mm256_loadu_si256((void *)&rx_buf_ring[mbcons + 4]);
 		_mm256_storeu_si256((void *)&rx_pkts[i + 4], t0);
 #endif
 
@@ -266,10 +311,12 @@ recv_burst_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		valid = _mm_cvtsi128_si64(_mm256_extracti128_si256(info3_v, 1));
 		valid = (valid << CHAR_BIT) |
 			_mm_cvtsi128_si64(_mm256_castsi256_si128(info3_v));
-		num_valid = rte_popcount64(valid & desc_valid_mask);
+		num_valid = rte_popcount64(valid);
 
 		if (num_valid == 0)
 			break;
+
+		rte_compiler_barrier();
 
 		/* Update mbuf rearm_data for eight packets. */
 		mbuf01 = _mm256_shuffle_epi8(rxcmp0_1, shuf_msk);
@@ -287,10 +334,10 @@ recv_burst_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 					_mm256_srli_si256(ptypes, 12), 0x11);
 
 		/* Unpack rearm data, set fixed fields for first four mbufs. */
-		rearm0 = _mm256_permute2f128_si256(mbuf_init, mbuf01, 0x20);
-		rearm1 = _mm256_blend_epi32(mbuf_init, mbuf01, 0xF0);
-		rearm2 = _mm256_permute2f128_si256(mbuf_init, mbuf23, 0x20);
-		rearm3 = _mm256_blend_epi32(mbuf_init, mbuf23, 0xF0);
+		rearm0 = _mm256_permute2f128_si256(mbuf_init_v, mbuf01, 0x20);
+		rearm1 = _mm256_blend_epi32(mbuf_init_v, mbuf01, 0xF0);
+		rearm2 = _mm256_permute2f128_si256(mbuf_init_v, mbuf23, 0x20);
+		rearm3 = _mm256_blend_epi32(mbuf_init_v, mbuf23, 0xF0);
 
 		/* Compute final ol_flags values for eight packets. */
 		rss_flags = _mm256_and_si256(flags_type, rss_mask);
@@ -344,10 +391,10 @@ recv_burst_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 				    rearm3);
 
 		/* Unpack rearm data, set fixed fields for final four mbufs. */
-		rearm4 = _mm256_permute2f128_si256(mbuf_init, mbuf45, 0x20);
-		rearm5 = _mm256_blend_epi32(mbuf_init, mbuf45, 0xF0);
-		rearm6 = _mm256_permute2f128_si256(mbuf_init, mbuf67, 0x20);
-		rearm7 = _mm256_blend_epi32(mbuf_init, mbuf67, 0xF0);
+		rearm4 = _mm256_permute2f128_si256(mbuf_init_v, mbuf45, 0x20);
+		rearm5 = _mm256_blend_epi32(mbuf_init_v, mbuf45, 0xF0);
+		rearm6 = _mm256_permute2f128_si256(mbuf_init_v, mbuf67, 0x20);
+		rearm7 = _mm256_blend_epi32(mbuf_init_v, mbuf67, 0xF0);
 
 		/* Set ol_flags fields for final four packets. */
 		rearm4 = _mm256_blend_epi32(rearm4, ol_flags, 0x04);
@@ -372,14 +419,6 @@ recv_burst_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		nb_rx_pkts += num_valid;
 		if (num_valid < BNXT_RX_DESCS_PER_LOOP_VEC256)
 			break;
-	}
-
-	if (nb_rx_pkts) {
-		rxr->rx_raw_prod = RING_ADV(rxr->rx_raw_prod, nb_rx_pkts);
-
-		rxq->rxrearm_nb += nb_rx_pkts;
-		cpr->cp_raw_cons += 2 * nb_rx_pkts;
-		bnxt_db_cq(cpr);
 	}
 
 	return nb_rx_pkts;
@@ -680,6 +719,7 @@ crx_burst_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	return nb_rx_pkts;
 }
 
+
 uint16_t
 bnxt_recv_pkts_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts,
 			 uint16_t nb_pkts)
@@ -687,20 +727,68 @@ bnxt_recv_pkts_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts,
 	struct bnxt_rx_queue *rxq = rx_queue;
 	uint16_t brst = (uint16_t)RTE_MAX((uint32_t)rxq->rx_free_thresh,
 					   BNXT_RX_DESCS_PER_LOOP_VEC256);
+	struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
+	struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
+	uint32_t cp_ring_size = cpr->cp_ring_struct->ring_size;
+	uint32_t rx_ring_size = rxr->rx_ring_struct->ring_size;
+	struct cmpl_base *cp_desc_ring = cpr->cp_desc_ring;
+	struct rte_mbuf **rx_buf_ring = rxr->rx_buf_ring;
 	uint16_t cnt = 0;
 
-	while (nb_pkts > brst) {
-		uint16_t burst;
+	if (unlikely(!rxq->rx_started))
+		return 0;
 
-		burst = recv_burst_vec_avx2(rx_queue, rx_pkts + cnt, brst);
+	while (nb_pkts) {
+		uint32_t cons, mbcons, valid_bit, num, num_vec, received = 0;
 
-		cnt += burst;
-		nb_pkts -= burst;
+		if (rxq->rxrearm_nb >= rxq->rx_free_thresh)
+			bnxt_rxq_rearm(rxq, rxr);
 
-		if (burst < brst)
-			return cnt;
+		valid_bit = !!(cpr->cp_raw_cons & cp_ring_size);
+		cons = cpr->cp_raw_cons & (cp_ring_size - 1);
+		mbcons = (cpr->cp_raw_cons / 2) & (rx_ring_size - 1);
+
+		/* Never wrap either ring within one pass. */
+		num = RTE_MIN((uint32_t)nb_pkts, brst);
+		num = RTE_MIN(num, rx_ring_size - mbcons);
+		num = RTE_MIN(num, (cp_ring_size - cons) / 2);
+
+		num_vec = RTE_ALIGN_FLOOR(num, BNXT_RX_DESCS_PER_LOOP_VEC256);
+
+		if (num_vec)
+			received = recv_burst_vec_avx2(rxq, rx_pkts + cnt,
+						     num_vec, cons, mbcons,
+						     valid_bit,
+						     rxq->mbuf_initializer,
+						     cp_desc_ring, rx_buf_ring);
+
+		/* Only chase the tail if the vector loops all filled. */
+		if (received == num_vec) {
+			while (received < num &&
+				recv_one_vec_avx2(rxq, rx_pkts + cnt + received,
+						     cons + 2 * received, mbcons + received,
+						     valid_bit,
+						     rxq->mbuf_initializer,
+						     cp_desc_ring, rx_buf_ring))
+				received++;
+		}
+
+		if (received == 0)
+			break;
+
+		rxr->rx_raw_prod = RING_ADV(rxr->rx_raw_prod, received);
+		rxq->rxrearm_nb += received;
+		cpr->cp_raw_cons += 2 * received;
+		bnxt_db_cq(cpr);
+
+		cnt += received;
+		nb_pkts -= received;
+
+		if (received < num)
+			break;
 	}
-	return cnt + recv_burst_vec_avx2(rx_queue, rx_pkts + cnt, nb_pkts);
+
+	return cnt;
 }
 
 uint16_t
@@ -948,7 +1036,7 @@ bnxt_xmit_pkts_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return nb_sent;
 }
 
-static uint16_t
+static inline uint16_t
 recv_one_vec_avx2_v3(struct rte_mbuf **rx_pkts, uint32_t cons, uint32_t mbcons,
 		      uint32_t valid_bit, uint64_t mbuf_init,
 		      struct cmpl_base *cp_desc_ring, struct rte_mbuf **rx_buf_ring)
@@ -1031,7 +1119,7 @@ recv_one_vec_avx2_v3(struct rte_mbuf **rx_pkts, uint32_t cons, uint32_t mbcons,
  * The function will always consume 8 cpr bds and write 8 packets given valid.
  * Bounds are enforced by bnxt_recv_pkts_vec_avx2_v3.
  */
-static uint16_t
+static inline uint16_t
 recv_burst_vec_avx2_v3(struct rte_mbuf **rx_pkts, uint16_t nb_pkts,
 			uint32_t cons, uint32_t mbcons, uint32_t valid_bit, uint64_t mbuf_init,
 			struct cmpl_base *cp_desc_ring, struct rte_mbuf **rx_buf_ring)
