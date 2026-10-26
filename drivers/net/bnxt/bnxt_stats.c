@@ -11,6 +11,7 @@
 #include "bnxt.h"
 #include "bnxt_cpr.h"
 #include "bnxt_filter.h"
+#include "bnxt_func_error.h"
 #include "bnxt_hwrm.h"
 #include "bnxt_rxq.h"
 #include "bnxt_stats.h"
@@ -653,6 +654,9 @@ static int bnxt_stats_get_ext(struct rte_eth_dev *eth_dev,
 	struct bnxt *bp = eth_dev->data->dev_private;
 	unsigned int num_q_stats;
 
+	bnxt_stats->oerrors += rte_atomic_load_explicit(&bp->func_error_info->oerrors,
+						     rte_memory_order_relaxed);
+
 	num_q_stats = RTE_MIN(bp->rx_cp_nr_rings, eth_dev->data->nb_rx_queues);
 	for (i = 0; i < bp->rx_cp_nr_rings; i++) {
 		struct bnxt_rx_queue *rxq = bp->rx_queues[i];
@@ -717,6 +721,9 @@ int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 
 	if (BNXT_TPA_V2_P7(bp))
 		return bnxt_stats_get_ext(eth_dev, bnxt_stats, qstats);
+
+	bnxt_stats->oerrors += rte_atomic_load_explicit(&bp->func_error_info->oerrors,
+					     rte_memory_order_relaxed);
 
 	num_q_stats = RTE_MIN(bp->rx_cp_nr_rings, eth_dev->data->nb_rx_queues);
 	for (i = 0; i < bp->rx_cp_nr_rings; i++) {
@@ -816,6 +823,11 @@ int bnxt_stats_reset_op(struct rte_eth_dev *eth_dev)
 		rte_atomic_store_explicit(&txq->tx_dma_err, 0,
 					  rte_memory_order_relaxed);
 	}
+
+	rte_atomic_store_explicit(&bp->func_error_info->recovery_count, 0,
+				  rte_memory_order_relaxed);
+	rte_atomic_store_explicit(&bp->func_error_info->oerrors, 0,
+				  rte_memory_order_relaxed);
 
 	bnxt_clear_prev_stat(bp);
 
@@ -1049,6 +1061,11 @@ skip_func_stats:
 						 rte_memory_order_relaxed);
 	count++;
 
+	xstats[count].id = count;
+	xstats[count].value = rte_atomic_load_explicit(&bp->func_error_info->recovery_count,
+							rte_memory_order_relaxed);
+	count++;
+
 	if (bp->fw_cap & BNXT_FW_CAP_ADV_FLOW_COUNTERS &&
 	    bp->fw_cap & BNXT_FW_CAP_ADV_FLOW_MGMT &&
 	    BNXT_FLOW_XSTATS_EN(bp)) {
@@ -1180,6 +1197,10 @@ skip_func_stats:
 
 	strlcpy(xstats_names[count].name, "tx_dma_err_cmpl",
 		sizeof(xstats_names[count].name));
+	count++;
+
+	rte_strscpy(xstats_names[count].name, "func_error_recovery",
+		    sizeof(xstats_names[count].name));
 	count++;
 
 	if (bp->fw_cap & BNXT_FW_CAP_ADV_FLOW_COUNTERS &&

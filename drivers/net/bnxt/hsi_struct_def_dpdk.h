@@ -293,6 +293,11 @@ struct __rte_packed_begin cmd_nums {
 	#define HWRM_FUNC_VF_RESC_FREE                    UINT32_C(0x1b)
 	#define HWRM_FUNC_VF_VNIC_IDS_QUERY               UINT32_C(0x1c)
 	#define HWRM_FUNC_DRV_RGTR                        UINT32_C(0x1d)
+	/*
+	 * This command is used to query detailed diagnostic data when a
+	 * function is in the FUNC_ERROR state.
+	 */
+	#define HWRM_FUNC_ERROR_QUERY                     UINT32_C(0x1cb)
 	#define HWRM_FUNC_DRV_QVER                        UINT32_C(0x1e)
 	#define HWRM_FUNC_BUF_RGTR                        UINT32_C(0x1f)
 	#define HWRM_PORT_PHY_CFG                         UINT32_C(0x20)
@@ -1174,6 +1179,14 @@ struct __rte_packed_begin ret_codes {
 	 * requested by the host is not present or does not exist.
 	 */
 	#define HWRM_ERR_CODE_ENTITY_NOT_PRESENT           UINT32_C(0x13)
+	/*
+	 * This error code is reported by Firmware when a command cannot be
+	 * processed because the function is in the FUNC_ERROR state. The
+	 * driver must issue HWRM_FUNC_RESET to clear the error state before
+	 * resubmitting any gated commands. This code is returned for both PF
+	 * and VF functions in the FUNC_ERROR state.
+	 */
+	#define HWRM_ERR_CODE_FUNC_RESET_REQUIRED          UINT32_C(0x15)
 	/*
 	 * This value indicates that the HWRM response is in TLV format and
 	 * should be interpreted as one or more TLVs starting with the
@@ -18343,6 +18356,17 @@ struct __rte_packed_begin hwrm_func_drv_rgtr_input {
 	 */
 	#define HWRM_FUNC_DRV_RGTR_INPUT_FLAGS_TF_INGRESS_NIC_FLOW_MODE \
 		UINT32_C(0x800)
+	/*
+	 * When this bit is '1', the function driver is indicating support
+	 * for the FUNC_ERROR state machine. If a hardware error (like a PXP
+	 * DMA error) occurs, firmware will leave the function blocked and
+	 * reject subsequent HWRM commands with
+	 * HWRM_ERR_CODE_FUNC_RESET_REQUIRED until the driver issues
+	 * HWRM_FUNC_RESET. If '0', firmware falls back to legacy
+	 * silent-clear behavior.
+	 */
+	#define HWRM_FUNC_DRV_RGTR_INPUT_FLAGS_PXP_ERROR_SUPPORT \
+		UINT32_C(0x4000)
 	uint32_t	enables;
 	/*
 	 * This bit must be '1' for the os_type field to be
@@ -26671,6 +26695,112 @@ struct __rte_packed_begin hwrm_func_vlan_qcfg_output {
 	 * This field is used in Output records to indicate that the output
 	 * is completely written to RAM. This field should be read as '1'
 	 * to indicate that the output has been completely written. When
+	 * writing a command completion or response to an internal processor,
+	 * the order of writes has to be such that this field is written last.
+	 */
+	uint8_t	valid;
+} __rte_packed_end;
+
+/*************************
+ * hwrm_func_error_query *
+ *************************/
+
+
+/* hwrm_func_error_query_input (size:192b/24B) */
+struct __rte_packed_begin hwrm_func_error_query_input {
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/*
+	 * The completion ring to send the completion event on. This should
+	 * be the NQ ID returned from the `nq_alloc` HWRM command.
+	 */
+	uint16_t	cmpl_ring;
+	/*
+	 * The sequence ID is used by the driver for tracking multiple
+	 * commands. This ID is treated as opaque data by the firmware and
+	 * the value is returned in the `hwrm_resp_hdr` upon completion.
+	 */
+	uint16_t	seq_id;
+	/*
+	 * The target ID of the command:
+	 * * 0x0-0xFFF8 - The function ID
+	 * * 0xFFF8-0xFFFC, 0xFFFE - Reserved for internal processors
+	 * * 0xFFFD - Reserved for user-space HWRM interface
+	 * * 0xFFFF - HWRM
+	 */
+	uint16_t	target_id;
+	/*
+	 * A physical address pointer pointing to a host buffer that the
+	 * command's response data will be written. This can be either a host
+	 * physical address (HPA) or a guest physical address (GPA) and must
+	 * point to a physically contiguous block of memory.
+	 */
+	uint64_t	resp_addr;
+	uint8_t	unused_0[8];
+} __rte_packed_end;
+
+/* hwrm_func_error_query_output (size:256b/32B) */
+struct __rte_packed_begin hwrm_func_error_query_output {
+	/* The specific error status for the command. */
+	uint16_t	error_code;
+	/* The HWRM command request type. */
+	uint16_t	req_type;
+	/* The sequence ID from the original command. */
+	uint16_t	seq_id;
+	/* The length of the response data in number of bytes. */
+	uint16_t	resp_len;
+	/*
+	 * The type of error that caused the FUNC_ERROR state. If the function
+	 * is not currently in FUNC_ERROR state, this field is set to none (0)
+	 * and all other error fields are zeroed.
+	 */
+	uint8_t	func_error_type;
+	/* No FUNC_ERROR is active. The function is operating normally. */
+	#define HWRM_FUNC_ERROR_QUERY_OUTPUT_FUNC_ERROR_TYPE_NONE \
+		UINT32_C(0x0)
+	/* A PXP error occurred (e.g., PCIe transaction error). */
+	#define HWRM_FUNC_ERROR_QUERY_OUTPUT_FUNC_ERROR_TYPE_PXP_ERROR \
+		UINT32_C(0x1)
+	#define HWRM_FUNC_ERROR_QUERY_OUTPUT_FUNC_ERROR_TYPE_LAST \
+		HWRM_FUNC_ERROR_QUERY_OUTPUT_FUNC_ERROR_TYPE_PXP_ERROR
+	/*
+	 * The internal hardware client ID that caused the error
+	 * (e.g., TX engine, RX engine).
+	 */
+	uint8_t	client_id;
+	/*
+	 * The specific hardware error code (e.g., 4K boundary violation,
+	 * poison TLP). A value of 0 indicates no direct fault was captured
+	 * on this function; the function was placed into FUNC_ERROR by
+	 * parent PF fault propagation.
+	 */
+	uint16_t	client_err;
+	uint32_t	flags;
+	/*
+	 * If set to 1, the bad_dma_addr field contains a validly
+	 * captured host memory address that is bad and triggered
+	 * the fault.
+	 */
+	#define HWRM_FUNC_ERROR_QUERY_OUTPUT_FLAGS_BAD_DMA_ADDR_VALID \
+		UINT32_C(0x1)
+	/*
+	 * The 64-bit host memory address that triggered the fault (stashed
+	 * by firmware at the time of the error). Check bad_dma_addr_valid
+	 * before using this field.
+	 */
+	uint64_t	bad_dma_addr;
+	/*
+	 * The hardware-captured signature of the client request that
+	 * triggered the fault. This is an opaque value stashed by firmware
+	 * at the time of the error; log verbatim for offline diagnostic
+	 * correlation. Valid when func_error_type is pxp_error.
+	 */
+	uint32_t	client_req_sig;
+	uint8_t	unused_1[3];
+	/*
+	 * This field is used in output records to indicate that the output
+	 * is completely written to host memory. This field should be read as
+	 * '1' to indicate that the output has been completely written. When
 	 * writing a command completion or response to an internal processor,
 	 * the order of writes has to be such that this field is written last.
 	 */

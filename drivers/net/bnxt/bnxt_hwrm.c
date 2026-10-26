@@ -15,6 +15,7 @@
 
 #include "bnxt.h"
 #include "bnxt_filter.h"
+#include "bnxt_func_error.h"
 #include "bnxt_hwrm.h"
 #include "bnxt_rxq.h"
 #include "bnxt_rxr.h"
@@ -501,6 +502,12 @@ static int bnxt_hwrm_send_message(struct bnxt *bp, void *msg,
 	if (bp->flags & BNXT_FLAG_FATAL_ERROR)
 		return 0;
 
+	/* HWRM_FUNC_RESET already reclaimed every ring/VNIC/stat-ctx for this
+	 * function; skip the redundant per-resource frees during cleanup.
+	 */
+	if (bp->flags & BNXT_FLAG_PXP_ERROR)
+		return 0;
+
 	/* If previous HWRM command timed out, do not send new HWRM command */
 	if (bp->flags & BNXT_FLAG_FW_TIMEDOUT)
 		return 0;
@@ -611,6 +618,15 @@ static int bnxt_hwrm_send_message(struct bnxt *bp, void *msg,
 		bp->flags |= BNXT_FLAG_FW_TIMEDOUT;
 		return -ETIMEDOUT;
 	}
+
+	/* Any HWRM command can be rejected with this once the function
+	 * enters FUNC_ERROR state; it's the only way the driver finds out.
+	 */
+	if (rte_atomic_load_explicit(&bp->func_error_info->support,
+				     rte_memory_order_relaxed) &&
+	    rte_le_to_cpu_16(resp->error_code) == HWRM_ERR_CODE_FUNC_RESET_REQUIRED)
+		bnxt_func_error_trigger_recovery(bp);
+
 	return 0;
 }
 
@@ -1375,6 +1391,9 @@ int bnxt_hwrm_func_driver_register(struct bnxt *bp)
 		flags = HWRM_FUNC_DRV_RGTR_INPUT_FLAGS_HOT_RESET_SUPPORT;
 	if (bp->fw_cap & BNXT_FW_CAP_ERROR_RECOVERY)
 		flags |= HWRM_FUNC_DRV_RGTR_INPUT_FLAGS_ERROR_RECOVERY_SUPPORT;
+	if (rte_atomic_load_explicit(&bp->func_error_info->support,
+				     rte_memory_order_relaxed))
+		flags |= HWRM_FUNC_DRV_RGTR_INPUT_FLAGS_PXP_ERROR_SUPPORT;
 
 	/* PFs and trusted VFs should indicate the support of the
 	 * Master capability on non Stingray platform
@@ -1437,6 +1456,74 @@ int bnxt_hwrm_func_driver_register(struct bnxt *bp)
 	HWRM_UNLOCK();
 
 	bp->flags |= BNXT_FLAG_REGISTERED;
+
+	return rc;
+}
+
+int bnxt_hwrm_func_error_poll(struct bnxt *bp)
+{
+	struct hwrm_ver_get_input req = {.req_type = 0 };
+	struct hwrm_ver_get_output *resp = bp->hwrm_cmd_resp_addr;
+	int rc;
+
+	HWRM_PREP(&req, HWRM_VER_GET, BNXT_USE_CHIMP_MB);
+
+	req.hwrm_intf_maj = HWRM_VERSION_MAJOR;
+	req.hwrm_intf_min = HWRM_VERSION_MINOR;
+	req.hwrm_intf_upd = HWRM_VERSION_UPDATE;
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
+	HWRM_CHECK_RESULT_SILENT();
+	HWRM_UNLOCK();
+
+	return rc;
+}
+
+/* Called before BNXT_FLAG_PXP_ERROR is set, so not blocked by the
+ * post-reset HWRM gate, and safe to call before the HWRM_FUNC_RESET
+ * that clears the error state. Failure here is
+ * non-fatal to recovery, so callers only need to log it.
+ */
+int bnxt_hwrm_func_error_query(struct bnxt *bp)
+{
+	struct hwrm_func_error_query_input req = {.req_type = 0 };
+	struct hwrm_func_error_query_output *resp = bp->hwrm_cmd_resp_addr;
+	int rc;
+
+	HWRM_PREP(&req, HWRM_FUNC_ERROR_QUERY, BNXT_USE_CHIMP_MB);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req), BNXT_USE_CHIMP_MB);
+	HWRM_CHECK_RESULT();
+
+	if (resp->func_error_type != HWRM_FUNC_ERROR_QUERY_OUTPUT_FUNC_ERROR_TYPE_PXP_ERROR) {
+		/* Unexpected here -- only called from the recovery path. */
+		PMD_DRV_LOG_LINE(INFO,
+			    "Port %u: FUNC_ERROR diag: function not in FUNC_ERROR "
+			    "state (func_error_type=%u)",
+			    bp->eth_dev->data->port_id, resp->func_error_type);
+	} else if (resp->client_err == 0) {
+		/* Fault was propagated from a parent PF, not captured
+		 * directly on this function.
+		 */
+		PMD_DRV_LOG_LINE(INFO,
+			    "Port %u: FUNC_ERROR diag: no direct fault captured "
+			    "on this function (parent PF fault propagation)",
+			    bp->eth_dev->data->port_id);
+	} else {
+		rte_atomic_fetch_add_explicit(&bp->func_error_info->oerrors, 1,
+					      rte_memory_order_relaxed);
+		PMD_DRV_LOG_LINE(ERR,
+			    "Port %u: FUNC_ERROR diag: client_id=%u client_err=%#x "
+			    "bad_dma_addr=%#" PRIx64 " (valid=%u) req_sig=%#x",
+			    bp->eth_dev->data->port_id, resp->client_id,
+			    rte_le_to_cpu_16(resp->client_err),
+			    rte_le_to_cpu_64(resp->bad_dma_addr),
+			    !!(rte_le_to_cpu_32(resp->flags) &
+			       HWRM_FUNC_ERROR_QUERY_OUTPUT_FLAGS_BAD_DMA_ADDR_VALID),
+			    rte_le_to_cpu_32(resp->client_req_sig));
+	}
+
+	HWRM_UNLOCK();
 
 	return rc;
 }
