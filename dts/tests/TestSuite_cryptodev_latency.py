@@ -31,7 +31,7 @@ from api.cryptodev.types import (
     CryptodevResults,
 )
 from api.test import skip, verify
-from api.test_suite import BaseConfig, TestSuite, crypto_test
+from api.test_suite import BaseConfig, TestSuite, perf_test
 from api.testbed_model.virtual_device import VirtualDevice
 
 config_list: list[dict[str, int | float | str]] = [
@@ -159,7 +159,7 @@ class TestCryptodevLatency(TestSuite):
             )
         return result_list
 
-    @crypto_test
+    @perf_test
     def aes_cbc(self) -> None:
         """aes_cbc latency test.
 
@@ -193,7 +193,7 @@ class TestCryptodevLatency(TestSuite):
                 "latency was greater than the delta tolerance above baseline",
             )
 
-    @crypto_test
+    @perf_test
     def aes_cbc_sha1_hmac(self) -> None:
         """aes_cbc_sha1_hmac latency test.
 
@@ -230,7 +230,7 @@ class TestCryptodevLatency(TestSuite):
                 "latency was greater than the delta tolerance above baseline",
             )
 
-    @crypto_test
+    @perf_test
     def aes_cbc_sha2_hmac(self) -> None:
         """aes_cbc_sha2_hmac latency test.
 
@@ -268,7 +268,7 @@ class TestCryptodevLatency(TestSuite):
                 "latency was greater than the delta tolerance above baseline",
             )
 
-    @crypto_test
+    @perf_test
     def aes_docsisbpi(self) -> None:
         """aes_docsisbpi latency test.
 
@@ -301,7 +301,7 @@ class TestCryptodevLatency(TestSuite):
                 "latency was greater than the delta tolerance above baseline",
             )
 
-    @crypto_test
+    @perf_test
     def aes_gcm(self) -> None:
         """aes_gcm latency test.
 
@@ -337,7 +337,7 @@ class TestCryptodevLatency(TestSuite):
                 "latency was greater than the delta tolerance above baseline",
             )
 
-    @crypto_test
+    @perf_test
     def kasumi_f8_kasumi_f9(self) -> None:
         """kasumi_f8_kasumi_f9 latency test.
 
@@ -375,7 +375,7 @@ class TestCryptodevLatency(TestSuite):
                 "latency was greater than the delta tolerance above baseline",
             )
 
-    @crypto_test
+    @perf_test
     def snow3g_uea2_snow3g_uia2(self) -> None:
         """snow3g_uea2_snow3g_uia2 latency test.
 
@@ -413,7 +413,7 @@ class TestCryptodevLatency(TestSuite):
                 "latency was greater than the delta tolerance above baseline",
             )
 
-    @crypto_test
+    @perf_test
     def zuc_eea3_zuc_eia3(self) -> None:
         """zuc_eea3_zuc_eia3 cipher and auth latency test.
 
@@ -453,7 +453,7 @@ class TestCryptodevLatency(TestSuite):
 
     # BEGIN VDEV TESTS
 
-    @crypto_test
+    @perf_test
     def aesni_gcm_vdev(self) -> None:
         """aesni_gcm virtual device latency test.
 
@@ -489,7 +489,7 @@ class TestCryptodevLatency(TestSuite):
                 "latency was greater than the delta tolerance above baseline",
             )
 
-    @crypto_test
+    @perf_test
     def aesni_mb_cipher_then_auth_vdev(self) -> None:
         """aesni_mb vdev cipher and auth latency test.
 
@@ -527,7 +527,7 @@ class TestCryptodevLatency(TestSuite):
                 "latency was greater than the delta tolerance above baseline",
             )
 
-    @crypto_test
+    @perf_test
     def aesni_mb_vdev(self) -> None:
         """aesni_mb vdev latency test.
 
@@ -562,7 +562,7 @@ class TestCryptodevLatency(TestSuite):
                 "latency was greater than the delta tolerance above baseline",
             )
 
-    @crypto_test
+    @perf_test
     def kasumi_vdev(self) -> None:
         """Kasumi vdev latency test.
 
@@ -601,7 +601,7 @@ class TestCryptodevLatency(TestSuite):
                 "latency was greater than the delta tolerance above baseline",
             )
 
-    @crypto_test
+    @perf_test
     def open_ssl_vdev(self) -> None:
         """open_ssl vdev latency test.
 
@@ -637,7 +637,7 @@ class TestCryptodevLatency(TestSuite):
                 "latency was greater than the delta tolerance above baseline",
             )
 
-    @crypto_test
+    @perf_test
     def snow3g_vdev(self) -> None:
         """snow3g vdev latency test.
 
@@ -677,7 +677,7 @@ class TestCryptodevLatency(TestSuite):
                 "latency was greater than the delta tolerance above baseline",
             )
 
-    @crypto_test
+    @perf_test
     def zuc_vdev(self) -> None:
         """Zuc vdev latency test.
 

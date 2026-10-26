@@ -360,17 +360,19 @@ class TestRunSetup(State):
         ctx.dpdk.setup()
         ctx.topology.setup()
 
-        testrun_nic_info: list[dict[str, str]] = (
-            self.test_run.ctx.sut_node.main_session.get_nic_info()
-        )
+        # Only collect NIC info if network ports exist.
+        testrun_nic_info: list[dict[str, str]] = []
+        if ctx.topology.sut_ports:
+            testrun_nic_info = self.test_run.ctx.sut_node.main_session.get_nic_info()
+        else:
+            self.logger.info("No DUT NIC found, DUT NIC info file will contain an empty JSON list.")
         with open(f"{SETTINGS.output_dir}/dut_info.json", "w") as file:
             json.dump(testrun_nic_info, file, indent=3)
-
         self.logger.info(f"DUT NIC info written to: {SETTINGS.output_dir}/dut_info.json")
 
         if test_run.config.use_virtual_functions:
             ctx.topology.instantiate_vf_ports()
-        if ctx.sut_node.cryptodevs and test_run.config.crypto:
+        if ctx.sut_node.cryptodevs and test_run.config.perf:
             ctx.topology.instantiate_crypto_ports()
             ctx.topology.bind_cryptodevs("dpdk")
 
