@@ -1570,6 +1570,44 @@ error:
 	return ret;
 }
 
+/* Check duplicate packet type RSS rule in same VSI */
+static bool
+iavf_hash_ptype_in_use(struct iavf_adapter *ad,
+		       const struct virtchnl_proto_hdrs *hdrs)
+{
+	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(ad);
+	const struct virtchnl_rss_cfg *cfg;
+	struct rte_flow *flow;
+	bool found = false;
+	int i;
+
+	/* the packet type of a raw pattern is only known by the PF parser */
+	if (hdrs->count == 0)
+		return false;
+
+	rte_spinlock_lock(&vf->flow_ops_lock);
+	TAILQ_FOREACH(flow, &vf->flow_list, node) {
+		cfg = flow->rule;
+		if (flow->engine != &iavf_hash_engine || cfg == NULL ||
+		    cfg->proto_hdrs.tunnel_level != hdrs->tunnel_level ||
+		    cfg->proto_hdrs.count != hdrs->count)
+			continue;
+
+		for (i = 0; i < hdrs->count; i++) {
+			if (cfg->proto_hdrs.proto_hdr[i].type != hdrs->proto_hdr[i].type)
+				break;
+		}
+
+		if (i == hdrs->count) {
+			found = true;
+			break;
+		}
+	}
+	rte_spinlock_unlock(&vf->flow_ops_lock);
+
+	return found;
+}
+
 static int
 iavf_hash_create(__rte_unused struct iavf_adapter *ad,
 		 __rte_unused struct rte_flow *flow, void *meta,
@@ -1578,6 +1616,16 @@ iavf_hash_create(__rte_unused struct iavf_adapter *ad,
 	struct iavf_rss_meta *rss_meta = (struct iavf_rss_meta *)meta;
 	struct virtchnl_rss_cfg *rss_cfg;
 	int ret = 0;
+
+	/* Reject duplicate packet type rule in same VSI */
+	if (iavf_hash_ptype_in_use(ad, &rss_meta->proto_hdrs)) {
+		PMD_DRV_LOG(ERR, "RSS rule for this packet type already exists");
+		rte_flow_error_set(error, EEXIST,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "RSS rule for this packet type already exists");
+		rte_free(meta);
+		return -rte_errno;
+	}
 
 	rss_cfg = rte_zmalloc("iavf rss rule",
 			      sizeof(struct virtchnl_rss_cfg), 0);
