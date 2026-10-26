@@ -520,6 +520,10 @@ API Changes
     ``rte_event_port_profile_links_get`` and
     ``rte_event_port_profile_unlink``
 
+* raw/ntb: Removed the ``mw_size_align`` field from ``struct ntb_dev_info``.
+  Applications must now query the required memory window base-address alignment
+  with the new ``rte_pmd_ntb_get_mem_align()`` function instead of relying on this field.
+
 * reorder: Promoted the following API from experimental to stable:
   ``rte_reorder_seqn``, ``rte_reorder_drain_up_to_seqn``,
   ``rte_reorder_min_seqn_set`` and ``rte_reorder_memory_footprint_get``.

@@ -5,6 +5,14 @@
 #ifndef _NTB_HW_INTEL_H_
 #define _NTB_HW_INTEL_H_
 
+/* Vendor ID */
+#define NTB_INTEL_VENDOR_ID         0x8086
+
+/* Device IDs */
+#define NTB_INTEL_DEV_ID_B2B_SKX    0x201C
+#define NTB_INTEL_DEV_ID_B2B_ICX    0x347E
+#define NTB_INTEL_DEV_ID_B2B_SPR    0x347E
+
 /* Supported PCI device revision ID range for ICX */
 #define NTB_PCI_DEV_REVISION_ICX_MIN	0x02
 #define NTB_PCI_DEV_REVISION_ICX_MAX	0x0F

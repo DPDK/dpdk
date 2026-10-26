@@ -6,6 +6,7 @@
 #include <string.h>
 #include <errno.h>
 
+#include <eal_export.h>
 #include <rte_common.h>
 #include <rte_lcore.h>
 #include <rte_cycles.h>
@@ -40,103 +41,12 @@ static struct rte_rawdev_xstats_name ntb_xstats_names[] = {
 };
 #define NTB_XSTATS_NUM RTE_DIM(ntb_xstats_names)
 
-static inline void
-ntb_link_cleanup(struct rte_rawdev *dev)
-{
-	struct ntb_hw *hw = dev->dev_private;
-	int status, i;
-
-	/* Clean spad registers. */
-	for (i = 0; i < hw->spad_cnt; i++) {
-		status = (*hw->ntb_ops->spad_write)(dev, i, 0, 0);
-		if (status)
-			NTB_LOG(ERR, "Failed to clean local spad.");
-	}
-
-	/* Clear mw so that peer cannot access local memory.*/
-	for (i = 0; i < hw->used_mw_num; i++) {
-		status = (*hw->ntb_ops->mw_set_trans)(dev, i, 0, 0);
-		if (status)
-			NTB_LOG(ERR, "Failed to clean mw.");
-	}
-}
-
-static inline int
-ntb_handshake_work(const struct rte_rawdev *dev)
-{
-	struct ntb_hw *hw = dev->dev_private;
-	uint32_t val;
-	int ret, i;
-
-	/* Tell peer the mw info of local side. */
-	ret = (*hw->ntb_ops->spad_write)(dev, SPAD_NUM_MWS, 1, hw->mw_cnt);
-	if (ret < 0)
-		return ret;
-	for (i = 0; i < hw->mw_cnt; i++) {
-		NTB_LOG(INFO, "Local %u mw size: 0x%"PRIx64"", i,
-				hw->mw_size[i]);
-		val = hw->mw_size[i] >> 32;
-		ret = (*hw->ntb_ops->spad_write)(dev, SPAD_MW0_SZ_H + 2 * i,
-						 1, val);
-		if (ret < 0)
-			return ret;
-		val = hw->mw_size[i];
-		ret = (*hw->ntb_ops->spad_write)(dev, SPAD_MW0_SZ_L + 2 * i,
-						 1, val);
-		if (ret < 0)
-			return ret;
-	}
-
-	/* Tell peer about the queue info and map memory to the peer. */
-	ret = (*hw->ntb_ops->spad_write)(dev, SPAD_Q_SZ, 1, hw->queue_size);
-	if (ret < 0)
-		return ret;
-	ret = (*hw->ntb_ops->spad_write)(dev, SPAD_NUM_QPS, 1,
-					 hw->queue_pairs);
-	if (ret < 0)
-		return ret;
-	ret = (*hw->ntb_ops->spad_write)(dev, SPAD_USED_MWS, 1,
-					 hw->used_mw_num);
-	if (ret < 0)
-		return ret;
-	for (i = 0; i < hw->used_mw_num; i++) {
-		val = (uint64_t)(size_t)(hw->mz[i]->addr) >> 32;
-		ret = (*hw->ntb_ops->spad_write)(dev, SPAD_MW0_BA_H + 2 * i,
-						 1, val);
-		if (ret < 0)
-			return ret;
-		val = (uint64_t)(size_t)(hw->mz[i]->addr);
-		ret = (*hw->ntb_ops->spad_write)(dev, SPAD_MW0_BA_L + 2 * i,
-						 1, val);
-		if (ret < 0)
-			return ret;
-	}
-
-	for (i = 0; i < hw->used_mw_num; i++) {
-		ret = (*hw->ntb_ops->mw_set_trans)(dev, i, hw->mz[i]->iova,
-						   hw->mz[i]->len);
-		if (ret < 0)
-			return ret;
-	}
-
-	/* Ring doorbell 0 to tell peer the device is ready. */
-	ret = (*hw->ntb_ops->peer_db_set)(dev, 0);
-	if (ret < 0)
-		return ret;
-
-	return 0;
-}
-
 static void
 ntb_dev_intr_handler(void *param)
 {
 	struct rte_rawdev *dev = (struct rte_rawdev *)param;
 	struct ntb_hw *hw = dev->dev_private;
-	uint32_t val_h, val_l;
-	uint64_t peer_mw_size;
-	uint64_t db_bits = 0;
-	uint8_t peer_mw_cnt;
-	int i = 0;
+	uint64_t db_bits;
 
 	db_bits = (*hw->ntb_ops->db_read)(dev);
 	if (!db_bits)
@@ -155,36 +65,19 @@ ntb_dev_intr_handler(void *param)
 		if (hw->peer_dev_up)
 			return;
 
-		/* Check if mw setting on the peer is the same as local. */
-		peer_mw_cnt = (*hw->ntb_ops->spad_read)(dev, SPAD_NUM_MWS, 0);
-		if (peer_mw_cnt != hw->mw_cnt) {
-			NTB_LOG(ERR, "Both mw cnt must be the same.");
+		/* Check that the peer memory-window layout matches local. */
+		if ((*hw->ntb_ops->peer_mw_validate)(dev) < 0)
 			return;
-		}
-
-		for (i = 0; i < hw->mw_cnt; i++) {
-			val_h = (*hw->ntb_ops->spad_read)
-				(dev, SPAD_MW0_SZ_H + 2 * i, 0);
-			val_l = (*hw->ntb_ops->spad_read)
-				(dev, SPAD_MW0_SZ_L + 2 * i, 0);
-			peer_mw_size = ((uint64_t)val_h << 32) | val_l;
-			NTB_LOG(DEBUG, "Peer %u mw size: 0x%"PRIx64"", i,
-					peer_mw_size);
-			if (peer_mw_size != hw->mw_size[i]) {
-				NTB_LOG(ERR, "Mw config must be the same.");
-				return;
-			}
-		}
 
 		hw->peer_dev_up = 1;
 
 		/**
-		 * Handshake with peer. Spad_write & mw_set_trans only works
-		 * when both devices are up. So write spad again when db is
-		 * received. And set db again for the later device who may miss
-		 * the 1st db.
+		 * Handshake with peer. Scratchpad and translation programming
+		 * only takes effect when both devices are up, so run the
+		 * handshake again on the doorbell and ring the peer so the
+		 * device that came up second does not miss the first doorbell.
 		 */
-		if (ntb_handshake_work(dev) < 0) {
+		if ((*hw->ntb_ops->dev_handshake)(dev) < 0) {
 			NTB_LOG(ERR, "Handshake work failed.");
 			return;
 		}
@@ -202,7 +95,7 @@ ntb_dev_intr_handler(void *param)
 		(*hw->ntb_ops->db_clear)(dev, 2);
 
 		/* Peer device will be down, So clean local side too. */
-		ntb_link_cleanup(dev);
+		(*hw->ntb_ops->link_cleanup)(dev);
 
 		hw->peer_dev_up = 0;
 		/* Response peer's dev_stop request. */
@@ -220,6 +113,10 @@ ntb_dev_intr_handler(void *param)
 
 	/* Clear other received doorbells. */
 	(*hw->ntb_ops->db_clear)(dev, db_bits);
+
+	/* Let the vendor process any hardware-specific events. */
+	if (hw->ntb_ops->handle_hw_event != NULL)
+		(*hw->ntb_ops->handle_hw_event)(dev);
 }
 
 static int
@@ -708,6 +605,11 @@ ntb_dequeue_bufs(struct rte_rawdev *dev,
 	for (nb_rx = 0; nb_rx < count; nb_rx++) {
 		i = 0;
 		while (true) {
+			if (unlikely(nb_mbufs >= rxq->nb_rx_desc)) {
+				NTB_LOG(ERR, "Malformed rx stream (no EOP); "
+					"aborting to avoid desc overflow.");
+				goto end_of_rx;
+			}
 			rx_item = rxq->rx_used_ring + rxq->last_used;
 			rxm_t = sw_ring[rxq->last_used].mbuf;
 			rxm_t->data_len = rx_item->len;
@@ -796,13 +698,6 @@ ntb_dev_info_get(struct rte_rawdev *dev, rte_rawdev_obj_t dev_info,
 	info->mw_cnt = hw->mw_cnt;
 	info->mw_size = hw->mw_size;
 
-	/**
-	 * Intel hardware requires that mapped memory base address should be
-	 * aligned with EMBARSZ and needs continuous memzone.
-	 */
-	info->mw_size_align = (uint8_t)(hw->pci_dev->id.vendor_id ==
-					NTB_INTEL_VENDOR_ID);
-
 	if (!hw->queue_size || !hw->queue_pairs) {
 		NTB_LOG(ERR, "No queue size and queue num assigned.");
 		return -EAGAIN;
@@ -815,6 +710,26 @@ ntb_dev_info_get(struct rte_rawdev *dev, rte_rawdev_obj_t dev_info,
 	info->ntb_hdr_size = hw->hdr_size_per_queue * hw->queue_pairs;
 
 	return 0;
+}
+
+RTE_EXPORT_EXPERIMENTAL_SYMBOL(rte_pmd_ntb_get_mem_align, 26.11)
+uint64_t
+rte_pmd_ntb_get_mem_align(uint16_t dev_id, uint32_t mw_id, uint64_t mw_len)
+{
+	struct rte_rawdev *dev;
+	struct ntb_hw *hw;
+
+	if (dev_id >= RTE_RAWDEV_MAX_DEVS)
+		return 0;
+	dev = rte_rawdev_pmd_get_dev(dev_id);
+	if (dev->dev_private == NULL)
+		return 0;
+
+	hw = dev->dev_private;
+	if (mw_id >= hw->mw_cnt)
+		return RTE_CACHE_LINE_SIZE;
+
+	return (*hw->ntb_ops->mem_align)(dev, mw_id, mw_len);
 }
 
 static int
@@ -845,7 +760,7 @@ ntb_dev_configure(const struct rte_rawdev *dev, rte_rawdev_obj_t config,
 					 sizeof(uint64_t), 0);
 
 	/* Start handshake with the peer. */
-	ret = ntb_handshake_work(dev);
+	ret = (*hw->ntb_ops->dev_handshake)(dev);
 	if (ret < 0) {
 		rte_free(hw->rx_queues);
 		rte_free(hw->tx_queues);
@@ -861,8 +776,6 @@ static int
 ntb_dev_start(struct rte_rawdev *dev)
 {
 	struct ntb_hw *hw = dev->dev_private;
-	uint32_t peer_base_l, peer_val;
-	uint64_t peer_base_h;
 	uint32_t i;
 	int ret;
 
@@ -891,31 +804,10 @@ ntb_dev_start(struct rte_rawdev *dev)
 		goto err_q_init;
 	}
 
-	peer_val = (*hw->ntb_ops->spad_read)(dev, SPAD_Q_SZ, 0);
-	if (peer_val != hw->queue_size) {
-		NTB_LOG(ERR, "Inconsistent queue size! (local: %u peer: %u)",
-			hw->queue_size, peer_val);
-		ret = -EINVAL;
+	/* Read and validate the peer configuration. */
+	ret = (*hw->ntb_ops->read_peer_config)(dev);
+	if (ret < 0)
 		goto err_up;
-	}
-
-	peer_val = (*hw->ntb_ops->spad_read)(dev, SPAD_NUM_QPS, 0);
-	if (peer_val != hw->queue_pairs) {
-		NTB_LOG(ERR, "Inconsistent number of queues! (local: %u peer:"
-			" %u)", hw->queue_pairs, peer_val);
-		ret = -EINVAL;
-		goto err_up;
-	}
-
-	hw->peer_used_mws = (*hw->ntb_ops->spad_read)(dev, SPAD_USED_MWS, 0);
-
-	for (i = 0; i < hw->peer_used_mws; i++) {
-		peer_base_h = (*hw->ntb_ops->spad_read)(dev,
-				SPAD_MW0_BA_H + 2 * i, 0);
-		peer_base_l = (*hw->ntb_ops->spad_read)(dev,
-				SPAD_MW0_BA_L + 2 * i, 0);
-		hw->peer_mw_base[i] = (peer_base_h << 32) + peer_base_l;
-	}
 
 	dev->started = 1;
 
@@ -942,7 +834,7 @@ ntb_dev_stop(struct rte_rawdev *dev)
 	if (!hw->peer_dev_up)
 		goto clean;
 
-	ntb_link_cleanup(dev);
+	(*hw->ntb_ops->link_cleanup)(dev);
 
 	/* Notify the peer that device will be down. */
 	status = (*hw->ntb_ops->peer_db_set)(dev, 1);
@@ -1323,7 +1215,6 @@ ntb_vendor_ops_check(const struct ntb_hw *hw)
 } while (0)
 	NTB_OPS_REQ(ntb_dev_init);
 	NTB_OPS_REQ(get_peer_mw_addr);
-	NTB_OPS_REQ(mw_set_trans);
 	NTB_OPS_REQ(ioremap);
 	NTB_OPS_REQ(get_link_status);
 	NTB_OPS_REQ(set_link);
@@ -1334,6 +1225,11 @@ ntb_vendor_ops_check(const struct ntb_hw *hw)
 	NTB_OPS_REQ(db_set_mask);
 	NTB_OPS_REQ(peer_db_set);
 	NTB_OPS_REQ(vector_bind);
+	NTB_OPS_REQ(dev_handshake);
+	NTB_OPS_REQ(peer_mw_validate);
+	NTB_OPS_REQ(read_peer_config);
+	NTB_OPS_REQ(link_cleanup);
+	NTB_OPS_REQ(mem_align);
 #undef NTB_OPS_REQ
 
 	return 0;

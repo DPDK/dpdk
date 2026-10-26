@@ -11,6 +11,7 @@
 #include <bus_pci_driver.h>
 #include <rte_rawdev.h>
 #include <rte_rawdev_pmd.h>
+#include <rte_memzone.h>
 
 #include "ntb.h"
 #include "ntb_hw_intel.h"
@@ -612,11 +613,165 @@ intel_ntb_vector_bind(const struct rte_rawdev *dev, uint8_t intr, uint8_t msix)
 	return 0;
 }
 
+/* Advertise the local configuration to the peer and program the memory
+ * windows. Scratchpad writes and translations only take effect once both
+ * sides are up, so this is also re-run from the ready doorbell.
+ */
+static int
+intel_ntb_dev_handshake(const struct rte_rawdev *dev)
+{
+	struct ntb_hw *hw = dev->dev_private;
+	uint32_t val;
+	int ret, i;
+
+	/* Tell peer the mw info of local side. */
+	ret = intel_ntb_spad_write(dev, SPAD_NUM_MWS, 1, hw->mw_cnt);
+	if (ret < 0)
+		return ret;
+	for (i = 0; i < hw->mw_cnt; i++) {
+		NTB_LOG(INFO, "Local %u mw size: 0x%"PRIx64"", i, hw->mw_size[i]);
+		val = hw->mw_size[i] >> 32;
+		ret = intel_ntb_spad_write(dev, SPAD_MW0_SZ_H + 2 * i, 1, val);
+		if (ret < 0)
+			return ret;
+		val = hw->mw_size[i];
+		ret = intel_ntb_spad_write(dev, SPAD_MW0_SZ_L + 2 * i, 1, val);
+		if (ret < 0)
+			return ret;
+	}
+
+	/* Tell peer about the queue info and map memory to the peer. */
+	ret = intel_ntb_spad_write(dev, SPAD_Q_SZ, 1, hw->queue_size);
+	if (ret < 0)
+		return ret;
+	ret = intel_ntb_spad_write(dev, SPAD_NUM_QPS, 1, hw->queue_pairs);
+	if (ret < 0)
+		return ret;
+	ret = intel_ntb_spad_write(dev, SPAD_USED_MWS, 1, hw->used_mw_num);
+	if (ret < 0)
+		return ret;
+	for (i = 0; i < hw->used_mw_num; i++) {
+		val = (uint64_t)(size_t)(hw->mz[i]->addr) >> 32;
+		ret = intel_ntb_spad_write(dev, SPAD_MW0_BA_H + 2 * i, 1, val);
+		if (ret < 0)
+			return ret;
+		val = (uint64_t)(size_t)(hw->mz[i]->addr);
+		ret = intel_ntb_spad_write(dev, SPAD_MW0_BA_L + 2 * i, 1, val);
+		if (ret < 0)
+			return ret;
+	}
+
+	for (i = 0; i < hw->used_mw_num; i++) {
+		ret = intel_ntb_mw_set_trans(dev, i, hw->mz[i]->iova, hw->mz[i]->len);
+		if (ret < 0)
+			return ret;
+	}
+
+	/* Ring doorbell 0 to tell peer the device is ready. */
+	return intel_ntb_peer_db_set(dev, 0);
+}
+
+/* Check that the peer advertises the same memory-window layout as local. */
+static int
+intel_ntb_peer_mw_validate(const struct rte_rawdev *dev)
+{
+	struct ntb_hw *hw = dev->dev_private;
+	uint64_t peer_mw_size;
+	uint32_t val_h, val_l;
+	uint8_t peer_mw_cnt;
+	int i;
+
+	peer_mw_cnt = intel_ntb_spad_read(dev, SPAD_NUM_MWS, 0);
+	if (peer_mw_cnt != hw->mw_cnt) {
+		NTB_LOG(ERR, "Both mw cnt must be the same.");
+		return -EINVAL;
+	}
+
+	for (i = 0; i < hw->mw_cnt; i++) {
+		val_h = intel_ntb_spad_read(dev, SPAD_MW0_SZ_H + 2 * i, 0);
+		val_l = intel_ntb_spad_read(dev, SPAD_MW0_SZ_L + 2 * i, 0);
+		peer_mw_size = ((uint64_t)val_h << 32) | val_l;
+		NTB_LOG(DEBUG, "Peer %u mw size: 0x%"PRIx64"", i, peer_mw_size);
+		if (peer_mw_size != hw->mw_size[i]) {
+			NTB_LOG(ERR, "Mw config must be the same.");
+			return -EINVAL;
+		}
+	}
+
+	return 0;
+}
+
+/* Read and validate the peer configuration recorded in the scratchpad. */
+static int
+intel_ntb_read_peer_config(const struct rte_rawdev *dev)
+{
+	struct ntb_hw *hw = dev->dev_private;
+	uint32_t peer_base_l, peer_val;
+	uint64_t peer_base_h;
+	int i;
+
+	peer_val = intel_ntb_spad_read(dev, SPAD_Q_SZ, 0);
+	if (peer_val != hw->queue_size) {
+		NTB_LOG(ERR, "Inconsistent queue size! (local: %u peer: %u)",
+			hw->queue_size, peer_val);
+		return -EINVAL;
+	}
+
+	peer_val = intel_ntb_spad_read(dev, SPAD_NUM_QPS, 0);
+	if (peer_val != hw->queue_pairs) {
+		NTB_LOG(ERR, "Inconsistent number of queues! (local: %u peer: %u)",
+			hw->queue_pairs, peer_val);
+		return -EINVAL;
+	}
+
+	hw->peer_used_mws = intel_ntb_spad_read(dev, SPAD_USED_MWS, 0);
+
+	for (i = 0; i < hw->peer_used_mws; i++) {
+		peer_base_h = intel_ntb_spad_read(dev, SPAD_MW0_BA_H + 2 * i, 0);
+		peer_base_l = intel_ntb_spad_read(dev, SPAD_MW0_BA_L + 2 * i, 0);
+		hw->peer_mw_base[i] = (peer_base_h << 32) + peer_base_l;
+	}
+
+	return 0;
+}
+
+/* Tear down the local scratchpad and translations so the peer can no
+ * longer reach local memory.
+ */
+static void
+intel_ntb_link_cleanup(const struct rte_rawdev *dev)
+{
+	struct ntb_hw *hw = dev->dev_private;
+	int status, i;
+
+	/* Clean spad registers. */
+	for (i = 0; i < hw->spad_cnt; i++) {
+		status = intel_ntb_spad_write(dev, i, 0, 0);
+		if (status)
+			NTB_LOG(ERR, "Failed to clean local spad.");
+	}
+
+	/* Clear mw so that peer cannot access local memory. */
+	for (i = 0; i < hw->used_mw_num; i++) {
+		status = intel_ntb_mw_set_trans(dev, i, 0, 0);
+		if (status)
+			NTB_LOG(ERR, "Failed to clean mw.");
+	}
+}
+
+static uint64_t
+intel_ntb_get_mem_align(const struct rte_rawdev *dev, uint32_t mw_id, uint64_t mw_len __rte_unused)
+{
+	struct ntb_hw *hw = dev->dev_private;
+
+	/* The memzone base must be aligned to the memory window size. */
+	return hw->mw_size[mw_id];
+}
+
 /* operations for primary side of local ntb */
 const struct ntb_dev_ops intel_ntb_ops = {
 	.ntb_dev_init       = intel_ntb_dev_init,
 	.get_peer_mw_addr   = intel_ntb_get_peer_mw_addr,
-	.mw_set_trans       = intel_ntb_mw_set_trans,
 	.ioremap            = intel_ntb_ioremap,
 	.get_link_status    = intel_ntb_get_link_status,
 	.set_link           = intel_ntb_set_link,
@@ -627,4 +782,9 @@ const struct ntb_dev_ops intel_ntb_ops = {
 	.db_set_mask        = intel_ntb_db_set_mask,
 	.peer_db_set        = intel_ntb_peer_db_set,
 	.vector_bind        = intel_ntb_vector_bind,
+	.dev_handshake      = intel_ntb_dev_handshake,
+	.peer_mw_validate   = intel_ntb_peer_mw_validate,
+	.read_peer_config   = intel_ntb_read_peer_config,
+	.link_cleanup       = intel_ntb_link_cleanup,
+	.mem_align          = intel_ntb_get_mem_align,
 };

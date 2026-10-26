@@ -23,7 +23,7 @@ static: build/$(APP)-static
 	ln -sf $(APP)-static build/$(APP)
 
 CFLAGS += -D_FILE_OFFSET_BITS=64
-LDFLAGS += -pthread
+LDFLAGS += -pthread -lrte_raw_ntb
 
 PC_FILE := $(shell $(PKGCONF) --path libdpdk 2>/dev/null)
 CFLAGS += -O3 $(shell $(PKGCONF) --cflags libdpdk) -I build/

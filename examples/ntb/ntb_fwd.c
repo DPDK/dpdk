@@ -1150,8 +1150,6 @@ ntb_mbuf_pool_create(uint16_t mbuf_seg_size, uint32_t nb_mbuf,
 		if (!left_sz)
 			break;
 		snprintf(mz_name, sizeof(mz_name), "ntb_mw_%d", mz_id);
-		align = ntb_info.mw_size_align ? ntb_info.mw_size[mz_id] :
-			RTE_CACHE_LINE_SIZE;
 		/* Reserve ntb header space on memzone 0. */
 		max_mz_len = mz_id ? ntb_info.mw_size[mz_id] :
 			     ntb_info.mw_size[mz_id] - ntb_info.ntb_hdr_size;
@@ -1159,6 +1157,10 @@ ntb_mbuf_pool_create(uint16_t mbuf_seg_size, uint32_t nb_mbuf,
 			(max_mz_len / total_elt_sz * total_elt_sz);
 		if (!mz_len)
 			continue;
+		/* Let the driver report the base-address alignment its hardware needs
+		 * for a memory window of this length.
+		 */
+		align = rte_pmd_ntb_get_mem_align(dev_id, mz_id, mz_len);
 		mz = rte_memzone_reserve_aligned(mz_name, mz_len, socket_id,
 					RTE_MEMZONE_IOVA_CONTIG, align);
 		if (mz == NULL) {
