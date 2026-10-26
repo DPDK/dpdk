@@ -8,6 +8,8 @@
 
 #include <net/if.h>
 
+#define MLX5_NET_INTR_LSC_SUPPORTED (1)
+
 /* Maximal data of sendmsg message(in bytes). */
 #define MLX5_SENDMSG_MAX 64
 

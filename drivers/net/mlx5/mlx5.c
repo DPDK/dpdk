@@ -3959,7 +3959,7 @@ static struct mlx5_class_driver mlx5_net_driver = {
 	.probe = mlx5_os_net_probe,
 	.remove = mlx5_net_remove,
 	.probe_again = 1,
-	.intr_lsc = 1,
+	.intr_lsc = MLX5_NET_INTR_LSC_SUPPORTED,
 	.intr_rmv = 1,
 };
 

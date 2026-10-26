@@ -1107,6 +1107,7 @@ Port/Queue Feature                        Linux   Windows
 :ref:`statistics <mlx5_net_stats>`          X        P
 link flow control (pause frame)             X
 Rx interrupt                                X
+Link state interrupt                        X
 :ref:`shared Rx queue <mlx5_shared_rx>`     X
 :ref:`Rx threshold <mlx5_rx_threshold>`     X        X
 :ref:`Rx drop delay <mlx5_drop>`            X        X

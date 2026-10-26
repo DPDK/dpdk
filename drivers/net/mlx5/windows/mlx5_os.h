@@ -7,6 +7,8 @@
 
 #include "mlx5_win_ext.h"
 
+#define MLX5_NET_INTR_LSC_SUPPORTED (0)
+
 #define MLX5_NAMESIZE MLX5_FS_NAME_MAX
 
 enum mlx5_sw_parsing_offloads {
