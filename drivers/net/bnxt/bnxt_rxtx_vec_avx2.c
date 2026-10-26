@@ -831,7 +831,7 @@ bnxt_crx_pkts_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts,
 }
 
 static void
-bnxt_handle_tx_cp_vec(struct bnxt_tx_queue *txq)
+bnxt_handle_tx_cp_vec(struct bnxt_tx_queue *txq, uint16_t nb_pkts)
 {
 	struct bnxt_cp_ring_info *cpr = txq->cp_ring;
 	uint32_t raw_cons = cpr->cp_raw_cons;
@@ -869,7 +869,7 @@ bnxt_handle_tx_cp_vec(struct bnxt_tx_queue *txq)
 			nb_tx_pkts += txcmp->opaque;
 		}
 		raw_cons = NEXT_RAW_CMP(raw_cons);
-	} while (nb_tx_pkts < ring_mask);
+	} while (nb_tx_pkts < nb_pkts && nb_tx_pkts < ring_mask);
 
 	if (nb_tx_pkts) {
 		if (txq->offloads & RTE_ETH_TX_OFFLOAD_MBUF_FAST_FREE)
@@ -1025,7 +1025,7 @@ bnxt_xmit_pkts_vec_avx2(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	/* Handle TX completions */
 	if (bnxt_tx_bds_in_hw(txq) >= txq->tx_free_thresh)
-		bnxt_handle_tx_cp_vec(txq);
+		bnxt_handle_tx_cp_vec(txq, nb_pkts);
 
 	while (nb_pkts) {
 		uint16_t ret, num;
@@ -1368,9 +1368,6 @@ bnxt_recv_pkts_vec_avx2_v3(void *rx_queue, struct rte_mbuf **rx_pkts,
 	while (nb_pkts) {
 		uint32_t cons, mbcons, valid_bit, num, num_vec, received = 0;
 
-		if (rxq->rxrearm_nb >= rxq->rx_free_thresh)
-			bnxt_rxq_rearm(rxq, rxr);
-
 		valid_bit = !!(cpr->cp_raw_cons & cp_ring_size);
 		cons = cpr->cp_raw_cons & (cp_ring_size - 1);
 		mbcons = (cpr->cp_raw_cons / 2) & (rx_ring_size - 1);
@@ -1414,6 +1411,13 @@ bnxt_recv_pkts_vec_avx2_v3(void *rx_queue, struct rte_mbuf **rx_pkts,
 		if (received < num)
 			break;
 	}
+
+	/*
+	 * Rearm after every burst so that mbufs are fetched in small
+	 * batches rather than in one large bulk at rx_free_thresh, which
+	 * evicts the Rx working set from the L1 cache.
+	 */
+	bnxt_rxq_rearm(rxq, rxr);
 
 	return cnt;
 }
