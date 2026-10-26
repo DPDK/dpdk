@@ -81,7 +81,7 @@ class TrexTrafficGenerator(PerformanceTrafficGenerator):
 
     _streaming_mode: TrexStatelessTXModes = TrexStatelessTXModes.STLTXCont
 
-    _tg_cores: int = 10
+    _tg_cores: int
 
     _trex_app: BlockingApp
 
@@ -104,6 +104,7 @@ class TrexTrafficGenerator(PerformanceTrafficGenerator):
         super().__init__(tg_node=tg_node, config=config)
         self._tg_node_config = tg_node.config
         self._tg_config = config
+        self._tg_cores = config.cores
 
         self._os_session = create_session(self._tg_node.config, "TRex", self._logger)
 

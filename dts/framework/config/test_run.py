@@ -422,6 +422,7 @@ class TrexTrafficGeneratorConfig(TrafficGeneratorConfig):
     type: Literal[TrafficGeneratorType.TREX]
     remote_path: PurePath
     config: PurePath
+    cores: int = Field(default=10)
 
 
 #: A union type discriminating traffic generators by the `type` field.

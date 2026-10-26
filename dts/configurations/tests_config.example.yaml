@@ -4,6 +4,17 @@
 #   All fields are optional, uncomment a test suite to run it with a specific configuration.
 #   cryptodev_throughput:
 #       algorithms: https://doc.dpdk.org/guides-26.07/cryptodevs/overview.html
+#   `single_core_forward_perf`:
+#     `delta_tolerance`:
+#       Can be provided under `single_core_forward_perf` to apply to each configuration.
+#       Additionally, it can be provided within one list item to apply a unique delta tolerance
+#       to only that `frame_size` + `num_descriptors` combination.
+#     `test_duration`:
+#       Can be provided to define a duration in seconds to send traffic to the TG per config. If
+#       this field is not provided, 5 is used by default.
+#     `test_repetitions`:
+#       Can be provided to define how many times to repeat the performance test to calculate a more
+#       precise average. If this field is not provided, 5 is used by default.
 
 # Define the custom test suite configurations
 hello_world:
@@ -14,12 +25,15 @@ hello_world:
 #     - frame_size: 64
 #       num_descriptors: 512
 #       expected_mpps: 1.0 # Set millions of packets per second according to your devices expected throughput for this given frame size / descriptor count
+#       delta_tolerance: 0.06 # See `Optional Fields`
 #     - frame_size: 64
 #       num_descriptors: 1024
 #       expected_mpps: 1.0
 #     - frame_size: 512
 #       num_descriptors: 1024
 #       expected_mpps: 1.0
+#   test_duration: 5 # See `Optional Fields`
+#   test_repetitions: 5 # See `Optional Fields`
 #   delta_tolerance: 0.05
 
 # pmd_rss:
