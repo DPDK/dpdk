@@ -342,6 +342,16 @@ The BNXT PMD supports hardware-based CRC offload:
 
 Note that the CRC offload is always turned on.
 
+Tx Completion Coalescing
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+On P7 devices, the BNXT PMD programs the hardware to coalesce Tx completions
+instead of generating one completion per descriptor. The coalescing count is
+derived from the ``wthresh`` field of ``struct rte_eth_txconf.tx_thresh``
+passed to ``rte_eth_tx_queue_setup()``, rounded up to the nearest power of
+two supported by the hardware (up to 256). A ``wthresh`` of 0 disables Tx
+completion coalescing.
+
 Checksum Offload
 ^^^^^^^^^^^^^^^^
 

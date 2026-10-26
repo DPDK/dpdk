@@ -1098,7 +1098,7 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	int rc = 0;
 	struct hwrm_func_qcaps_input req = {.req_type = 0 };
 	struct hwrm_func_qcaps_output *resp = bp->hwrm_cmd_resp_addr;
-	uint32_t flags, flags_ext2, flags_ext3;
+	uint32_t flags, flags_ext, flags_ext2, flags_ext3;
 	uint16_t new_max_vfs;
 
 	HWRM_PREP(&req, HWRM_FUNC_QCAPS, BNXT_USE_CHIMP_MB);
@@ -1113,6 +1113,7 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 	if (bp->max_ring_grps > BNXT_MAX_RING_GRPS)
 		bp->max_ring_grps = BNXT_MAX_RING_GRPS;
 	flags = rte_le_to_cpu_32(resp->flags);
+	flags_ext = rte_le_to_cpu_32(resp->flags_ext);
 	flags_ext2 = rte_le_to_cpu_32(resp->flags_ext2);
 	flags_ext3 = rte_le_to_cpu_32(resp->flags_ext3);
 
@@ -1204,6 +1205,8 @@ static int __bnxt_hwrm_func_qcaps(struct bnxt *bp)
 		bp->fw_cap |= BNXT_FW_CAP_VLAN_TX_INSERT;
 		PMD_DRV_LOG_LINE(DEBUG, "VLAN acceleration for TX is enabled");
 	}
+	if (flags_ext & HWRM_FUNC_QCAPS_OUTPUT_FLAGS_EXT_TX_COAL_CMPL_CAP)
+		bp->fw_cap |= BNXT_FW_CAP_TX_COAL_CMPL;
 
 	bp->tunnel_disable_flag = rte_le_to_cpu_16(resp->tunnel_disable_flag);
 	if (bp->tunnel_disable_flag)
@@ -2161,11 +2164,51 @@ mpc_chnl_types[] = {HWRM_RING_ALLOC_INPUT_MPC_CHNLS_TYPE_TCE,
 		    HWRM_RING_ALLOC_INPUT_MPC_CHNLS_TYPE_RE_CFA,
 		    HWRM_RING_ALLOC_INPUT_MPC_CHNLS_TYPE_PRIMATE};
 
+static uint8_t bnxt_get_cmpl_coal(uint16_t wthresh)
+{
+	uint8_t coal;
+	uint16_t th;
+
+	th = rte_align32pow2(wthresh);
+	if (wthresh == 1)
+		th = 2;
+
+	switch (th) {
+	case 2:
+	case 4:
+		coal = HWRM_RING_ALLOC_INPUT_CMPL_COAL_CNT_COAL_4;
+		break;
+	case 8:
+		coal = HWRM_RING_ALLOC_INPUT_CMPL_COAL_CNT_COAL_8;
+		break;
+	case 16:
+		coal = HWRM_RING_ALLOC_INPUT_CMPL_COAL_CNT_COAL_16;
+		break;
+	case 32:
+		coal = HWRM_RING_ALLOC_INPUT_CMPL_COAL_CNT_COAL_32;
+		break;
+	case 64:
+		coal = HWRM_RING_ALLOC_INPUT_CMPL_COAL_CNT_COAL_64;
+		break;
+	case 128:
+		coal = HWRM_RING_ALLOC_INPUT_CMPL_COAL_CNT_COAL_128;
+		break;
+	case 256:
+		coal = HWRM_RING_ALLOC_INPUT_CMPL_COAL_CNT_COAL_256;
+		break;
+	case 0:
+	default:
+		coal = HWRM_RING_ALLOC_INPUT_CMPL_COAL_CNT_COAL_OFF;
+	}
+	return coal;
+}
+
 int bnxt_hwrm_ring_alloc(struct bnxt *bp,
 			 struct bnxt_ring *ring,
 			 uint32_t ring_type, uint32_t map_index,
 			 uint32_t stats_ctx_id, uint32_t cmpl_ring_id,
-			 uint16_t tx_cosq_id, uint16_t dpi)
+			 uint16_t tx_cosq_id, uint16_t dpi,
+			 uint16_t tx_coal_thresh)
 {
 	int rc = 0;
 	uint32_t enables = 0;
@@ -2188,8 +2231,7 @@ int bnxt_hwrm_ring_alloc(struct bnxt *bp,
 		req.cmpl_ring_id = rte_cpu_to_le_16(cmpl_ring_id);
 		req.stat_ctx_id = rte_cpu_to_le_32(stats_ctx_id);
 		if (bp->fw_cap & BNXT_FW_CAP_TX_COAL_CMPL)
-			req.cmpl_coal_cnt =
-				HWRM_RING_ALLOC_INPUT_CMPL_COAL_CNT_COAL_OFF;
+			req.cmpl_coal_cnt = bnxt_get_cmpl_coal(tx_coal_thresh);
 		if (tx_cosq_id != MPC_HW_COS_ID) {
 			req.queue_id = rte_cpu_to_le_16(tx_cosq_id);
 		} else {

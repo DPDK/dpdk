@@ -735,7 +735,9 @@ bnxt_handle_tx_cp_vec(struct bnxt_tx_queue *txq)
 	struct cmpl_base *cp_desc_ring = cpr->cp_desc_ring;
 	struct bnxt_ring *cp_ring_struct = cpr->cp_ring_struct;
 	uint32_t ring_mask = cp_ring_struct->ring_mask;
+	uint32_t tx_ring_mask;
 
+	tx_ring_mask = txq->tx_ring->tx_ring_struct->ring_mask;
 	do {
 		cons = RING_CMPL(ring_mask, raw_cons);
 		txcmp = (struct tx_cmpl *)&cp_desc_ring[cons];
@@ -751,7 +753,15 @@ bnxt_handle_tx_cp_vec(struct bnxt_tx_queue *txq)
 							 rte_memory_order_relaxed) + 1,
 				rte_memory_order_relaxed);
 
-		nb_tx_pkts += txcmp->opaque;
+		if (CMP_TYPE(txcmp) == CMPL_BASE_TYPE_TX_L2_COAL) {
+			struct tx_cmpl_coal *txcmp_c = (struct tx_cmpl_coal *)txcmp;
+
+			nb_tx_pkts = (rte_le_to_cpu_32(txcmp_c->sq_cons_idx) -
+				      (txq->tx_ring->tx_raw_cons & tx_ring_mask)) &
+				      tx_ring_mask;
+		} else {
+			nb_tx_pkts += txcmp->opaque;
+		}
 		raw_cons = NEXT_RAW_CMP(raw_cons);
 	} while (nb_tx_pkts < ring_mask);
 

@@ -716,7 +716,6 @@ static void bnxt_tx_cmp(struct bnxt_tx_queue *txq, int nb_tx, bool tx_coal_cmp)
 static bool bnxt_is_tx_cmpl_type(uint16_t type)
 {
 	return (type == CMPL_BASE_TYPE_TX_L2_PKT_TS ||
-		type == CMPL_BASE_TYPE_TX_L2_COAL ||
 		type == CMPL_BASE_TYPE_TX_L2);
 }
 
