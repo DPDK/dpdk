@@ -175,6 +175,7 @@ int bnxt_tx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	/* For PTP packets, process the completion sooner */
 	if (bp->ptp_cfg != NULL)
 		txq->tx_free_thresh = RTE_BNXT_MIN_TX_BURST;
+	txq->wthresh = tx_conf->tx_thresh.wthresh;
 	txq->offloads = eth_dev->data->dev_conf.txmode.offloads |
 			tx_conf->offloads;
 	txq->fast_free_requested =

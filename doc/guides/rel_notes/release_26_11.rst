@@ -145,6 +145,8 @@ New Features
     and is also folded into the standard ``oerrors`` counter.
   * Raised the maximum Tx and Rx ring descriptor counts
     from 4096/8192 to 16384 each.
+  * Enabled hardware Tx completion coalescing on P7 devices,
+    controlled by the existing ``wthresh`` Tx queue configuration field.
 
 * **Updated Intel iavf driver.**
 

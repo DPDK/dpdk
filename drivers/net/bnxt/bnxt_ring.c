@@ -434,7 +434,7 @@ int bnxt_alloc_cmpl_ring(struct bnxt *bp, int queue_index,
 
 	cpr->dpi = dpi;
 	rc = bnxt_hwrm_ring_alloc(bp, cp_ring, ring_type, cp_ring_index,
-				  HWRM_NA_SIGNATURE, nq_ring_id, 0, dpi);
+				  HWRM_NA_SIGNATURE, nq_ring_id, 0, dpi, 0);
 	if (rc)
 		return rc;
 
@@ -505,7 +505,7 @@ int bnxt_alloc_rxtx_nq_ring(struct bnxt *bp)
 	nqr->dpi = dpi;
 
 	rc = bnxt_hwrm_ring_alloc(bp, ring, ring_type, ring_index,
-				  HWRM_NA_SIGNATURE, HWRM_NA_SIGNATURE, 0, dpi);
+				  HWRM_NA_SIGNATURE, HWRM_NA_SIGNATURE, 0, dpi, 0);
 	if (rc) {
 		rte_free(ring);
 		rte_free(nqr);
@@ -555,7 +555,7 @@ static int bnxt_alloc_rx_ring(struct bnxt *bp, int queue_index)
 
 	rc = bnxt_hwrm_ring_alloc(bp, ring, ring_type,
 				  queue_index, cpr->hw_stats_ctx_id,
-				  cp_ring->fw_ring_id, 0, dpi);
+				  cp_ring->fw_ring_id, 0, dpi, 0);
 	if (rc)
 		return rc;
 
@@ -595,7 +595,7 @@ static int bnxt_alloc_rx_agg_ring(struct bnxt *bp, int queue_index)
 
 	rc = bnxt_hwrm_ring_alloc(bp, ring, ring_type, map_idx,
 				  hw_stats_ctx_id, cp_ring->fw_ring_id, 0,
-				  BNXT_PRIVILEGED_DPI);
+				  BNXT_PRIVILEGED_DPI, 0);
 
 	if (rc)
 		return rc;
@@ -833,7 +833,7 @@ int bnxt_alloc_async_cp_ring(struct bnxt *bp)
 
 	rc = bnxt_hwrm_ring_alloc(bp, cp_ring, ring_type, 0,
 				  HWRM_NA_SIGNATURE, HWRM_NA_SIGNATURE, 0,
-				  BNXT_PRIVILEGED_DPI);
+				  BNXT_PRIVILEGED_DPI, 0);
 
 	if (rc)
 		return rc;
@@ -944,7 +944,7 @@ int bnxt_alloc_hwrm_tx_ring(struct bnxt *bp, int queue_index)
 				  HWRM_RING_ALLOC_INPUT_RING_TYPE_TX,
 				  queue_index, cpr->hw_stats_ctx_id,
 				  cp_ring->fw_ring_id,
-				  tx_cosq_id, txr->dpi);
+				  tx_cosq_id, txr->dpi, txq->wthresh);
 	if (rc)
 		goto err_out;
 

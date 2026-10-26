@@ -569,6 +569,9 @@ bnxt_handle_tx_cp_vec(struct bnxt_tx_queue *txq)
 	struct cmpl_base *cp_desc_ring = cpr->cp_desc_ring;
 	struct bnxt_ring *cp_ring_struct = cpr->cp_ring_struct;
 	uint32_t ring_mask = cp_ring_struct->ring_mask;
+	uint32_t tx_ring_mask;
+
+	tx_ring_mask = txq->tx_ring->tx_ring_struct->ring_mask;
 
 	do {
 		cons = RING_CMPL(ring_mask, raw_cons);
@@ -585,12 +588,19 @@ bnxt_handle_tx_cp_vec(struct bnxt_tx_queue *txq)
 							 rte_memory_order_relaxed) + 1,
 				rte_memory_order_relaxed);
 
-		if (likely(CMP_TYPE(txcmp) == TX_CMPL_TYPE_TX_L2))
+		if (CMP_TYPE(txcmp) == CMPL_BASE_TYPE_TX_L2_COAL) {
+			struct tx_cmpl_coal *txcmp_c = (struct tx_cmpl_coal *)txcmp;
+
+			nb_tx_pkts = (rte_le_to_cpu_32(txcmp_c->sq_cons_idx) -
+				      (txq->tx_ring->tx_raw_cons & tx_ring_mask)) &
+				      tx_ring_mask;
+		} else if (likely(CMP_TYPE(txcmp) == TX_CMPL_TYPE_TX_L2)) {
 			nb_tx_pkts += txcmp->opaque;
-		else
+		} else {
 			RTE_LOG_DP_LINE(ERR, BNXT,
 				   "Unhandled CMP type %02x",
 				   CMP_TYPE(txcmp));
+		}
 		raw_cons = NEXT_RAW_CMP(raw_cons);
 	} while (nb_tx_pkts < ring_mask);
 
