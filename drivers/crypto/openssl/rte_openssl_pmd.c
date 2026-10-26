@@ -2791,6 +2791,10 @@ process_openssl_sm2_op_evp(struct rte_crypto_op *cop,
 			if (!EVP_PKEY_CTX_set_params(cctx, eparams))
 				goto err_sm2;
 
+			if (!EVP_PKEY_encrypt(cctx, NULL, &output_len,
+					op->sm2.message.data, op->sm2.message.length))
+				goto err_sm2;
+
 			if (!EVP_PKEY_encrypt(cctx, op->sm2.cipher.data, &output_len,
 								 op->sm2.message.data,
 								 op->sm2.message.length))
