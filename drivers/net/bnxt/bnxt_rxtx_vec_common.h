@@ -67,6 +67,8 @@ bnxt_rxq_rearm(struct bnxt_rx_queue *rxq, struct bnxt_rx_ring_info *rxr)
 	 */
 	nb = RTE_MIN(rxq->rxrearm_nb & ~0x3,
 		     rxq->nb_rx_desc - rxq->rxrearm_start);
+	if (unlikely(nb == 0))
+		return;
 
 	/* Allocate new mbufs into the software ring. */
 	if (rte_mempool_get_bulk(rxq->mb_pool, (void *)rx_bufs, nb) < 0) {

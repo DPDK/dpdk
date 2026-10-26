@@ -685,7 +685,8 @@ bnxt_recv_pkts_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts,
 			 uint16_t nb_pkts)
 {
 	struct bnxt_rx_queue *rxq = rx_queue;
-	uint32_t brst = rxq->rx_free_thresh;
+	uint16_t brst = (uint16_t)RTE_MAX((uint32_t)rxq->rx_free_thresh,
+					   BNXT_RX_DESCS_PER_LOOP_VEC256);
 	uint16_t cnt = 0;
 
 	while (nb_pkts > brst) {
@@ -707,7 +708,8 @@ bnxt_crx_pkts_vec_avx2(void *rx_queue, struct rte_mbuf **rx_pkts,
 		       uint16_t nb_pkts)
 {
 	struct bnxt_rx_queue *rxq = rx_queue;
-	uint32_t brst = rxq->rx_free_thresh;
+	uint16_t brst = (uint16_t)RTE_MAX((uint32_t)rxq->rx_free_thresh,
+					   BNXT_RX_DESCS_PER_LOOP_VEC256);
 	uint16_t cnt = 0;
 
 	while (nb_pkts > brst) {
@@ -1334,7 +1336,8 @@ bnxt_recv_pkts_vec_avx2_v3(void *rx_queue, struct rte_mbuf **rx_pkts,
 			   uint16_t nb_pkts)
 {
 	struct bnxt_rx_queue *rxq = rx_queue;
-	uint32_t expected_burst = rxq->rx_free_thresh;
+	uint32_t expected_burst = (uint16_t)RTE_MAX((uint32_t)rxq->rx_free_thresh,
+						     BNXT_RX_DESCS_PER_LOOP_VEC256);
 	uint16_t cnt = 0;
 
 	while (nb_pkts > expected_burst) {

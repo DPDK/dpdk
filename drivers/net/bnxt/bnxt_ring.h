@@ -116,7 +116,8 @@ static inline void bnxt_db_epoch_write(struct bnxt_db_info *db, uint32_t idx, ui
 	if (db->db_64) {
 		uint64_t key_idx = db->db_key64 | db_idx;
 
-		key_idx |= epoch << DBR_EPOCH_SFT;
+		if (db->db_epoch_mask)
+			key_idx |= ((uint64_t)epoch << DBR_EPOCH_SFT);
 
 		rte_compiler_barrier();
 		rte_write64_relaxed(key_idx, doorbell);
@@ -133,8 +134,10 @@ static inline void bnxt_db_mpc_write(struct bnxt_db_info *db, uint32_t idx, uint
 	void *doorbell = db->doorbell;
 
 	if (likely(db->db_64)) {
-		uint64_t key_idx = db->db_key64 | db_idx |
-			(epoch << 24);
+		uint64_t key_idx = db->db_key64 | db_idx;
+
+		if (db->db_epoch_mask)
+			key_idx |= ((uint64_t)epoch << 24);
 		rte_write64_relaxed(key_idx, doorbell);
 	} else {
 		uint32_t key_idx = db->db_key32 | db_idx;
@@ -195,8 +198,10 @@ static inline void bnxt_db_mpc_cq(struct bnxt_cp_ring_info *cpr)
 	uint32_t idx = DB_RING_IDX(&cpr->cp_db, cpr->cp_raw_cons);
 
 	if (likely(db->db_64)) {
-		uint64_t key_idx = db->db_key64 | idx |
-			(cpr->epoch << 24);
+		uint64_t key_idx = db->db_key64 | idx;
+
+		if (db->db_epoch_mask)
+			key_idx |= ((uint64_t)cpr->epoch << 24);
 		void *doorbell = db->doorbell;
 
 		rte_compiler_barrier();
