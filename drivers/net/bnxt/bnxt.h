@@ -802,6 +802,8 @@ enum bnxt_session_type {
 #define BNXT_BUF_SPLIT_OFFSET_CAP		1
 #define BNXT_BUF_SPLIT_ALIGN_CAP		0
 
+struct bnxt_func_error_info;
+
 struct bnxt {
 	void				*bar0;
 
@@ -816,6 +818,7 @@ struct bnxt {
 #define BNXT_FLAG_PORT_STATS		BIT(2)
 #define BNXT_FLAG_JUMBO			BIT(3)
 #define BNXT_FLAG_SHORT_CMD		BIT(4)
+#define BNXT_FLAG_PXP_ERROR		BIT(5)
 #define BNXT_FLAG_PTP_SUPPORTED		BIT(6)
 #define BNXT_FLAG_MULTI_HOST    	BIT(7)
 #define BNXT_FLAG_EXT_RX_PORT_STATS	BIT(8)
@@ -1088,6 +1091,7 @@ struct bnxt {
 	struct tf		tfp[BNXT_SESSION_TYPE_LAST];
 	struct tfc		tfcp;
 	struct bnxt_ulp_context	*ulp_ctx;
+	struct bnxt_func_error_info	*func_error_info;
 	struct bnxt_flow_stat_info *flow_stat;
 	uint16_t		max_num_kflows;
 	uint8_t			app_id;

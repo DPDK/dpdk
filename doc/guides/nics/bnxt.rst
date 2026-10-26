@@ -352,6 +352,23 @@ passed to ``rte_eth_tx_queue_setup()``, rounded up to the nearest power of
 two supported by the hardware (up to 256). A ``wthresh`` of 0 disables Tx
 completion coalescing.
 
+FUNC_ERROR Recovery
+^^^^^^^^^^^^^^^^^^^
+
+When a PCIe DMA transaction fails, the firmware places the affected function
+into FUNC_ERROR state and rejects HWRM commands until the driver resets the
+function. The BNXT PMD can recover from this without a full adapter reset
+by resetting the function and re-creating its rings and filters.
+
+Recovery is disabled by default. It is enabled with the ``func-error-support``
+device argument::
+
+    -a 0000:82:00.0,func-error-support=1
+
+The number of recoveries is reported by the ``func_error_recovery`` extended
+statistic, and DMA faults captured during recovery are reflected in
+``oerrors``.
+
 Checksum Offload
 ^^^^^^^^^^^^^^^^
 

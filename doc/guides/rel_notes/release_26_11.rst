@@ -147,6 +147,10 @@ New Features
     from 4096/8192 to 16384 each.
   * Enabled hardware Tx completion coalescing on P7 devices,
     controlled by the existing ``wthresh`` Tx queue configuration field.
+  * Added recovery from a firmware-reported FUNC_ERROR/PXP_ERROR condition
+    (a failed PCIe DMA transaction) without a full adapter reset,
+    gated behind the new ``func-error-support`` devarg (default off).
+    Added a ``func_error_recovery`` xstat to report the recovery count.
 
 * **Updated Intel iavf driver.**
 

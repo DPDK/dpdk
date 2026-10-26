@@ -202,6 +202,8 @@ int bnxt_hwrm_fwd_resp(struct bnxt *bp, uint16_t target_id,
 int bnxt_hwrm_func_buf_rgtr(struct bnxt *bp, int num_vfs);
 int bnxt_hwrm_func_buf_unrgtr(struct bnxt *bp);
 int bnxt_hwrm_func_driver_register(struct bnxt *bp);
+int bnxt_hwrm_func_error_query(struct bnxt *bp);
+int bnxt_hwrm_func_error_poll(struct bnxt *bp);
 int bnxt_hwrm_func_qcaps(struct bnxt *bp);
 int bnxt_hwrm_func_reset(struct bnxt *bp);
 int bnxt_hwrm_func_driver_unregister(struct bnxt *bp);

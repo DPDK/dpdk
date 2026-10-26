@@ -18,6 +18,7 @@
 
 #include "bnxt.h"
 #include "bnxt_filter.h"
+#include "bnxt_func_error.h"
 #include "bnxt_hwrm.h"
 #include "bnxt_irq.h"
 #include "bnxt_reps.h"
@@ -126,6 +127,7 @@ static const char *const bnxt_dev_args[] = {
 	BNXT_DEVARG_MPC,
 	BNXT_DEVARG_SCALAR_MODE,
 	BNXT_DEVARD_APP_INST_ID,
+	BNXT_DEVARG_FUNC_ERROR_SUPPORT,
 	NULL
 };
 
@@ -1728,6 +1730,7 @@ static int bnxt_dev_stop(struct rte_eth_dev *eth_dev)
 		bnxt_ulp_port_deinit(bp);
 
 	bnxt_cancel_fw_health_check(bp);
+	bnxt_cancel_func_error_poll(bp);
 
 	if (BNXT_P5_PTP_TIMESYNC_ENABLED(bp))
 		bnxt_cancel_ptp_alarm(bp);
@@ -1783,7 +1786,10 @@ int bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 	struct bnxt *bp = eth_dev->data->dev_private;
 
 	pthread_mutex_lock(&bp->err_recovery_lock);
-	if (bp->flags & BNXT_FLAG_FW_RESET) {
+	if (bp->flags & BNXT_FLAG_FW_RESET ||
+	    (bp->func_error_info != NULL &&
+	     rte_atomic_load_explicit(&bp->func_error_info->recovery_pending,
+				       rte_memory_order_acquire))) {
 		PMD_DRV_LOG_LINE(ERR,
 			    "Adapter recovering from error..Please retry");
 		pthread_mutex_unlock(&bp->err_recovery_lock);
@@ -1895,6 +1901,7 @@ int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 	bnxt_update_max_rx_burst(bp, link);
 
 	bnxt_schedule_fw_health_check(bp);
+	bnxt_schedule_func_error_poll(bp);
 
 	if (BNXT_P5_PTP_TIMESYNC_ENABLED(bp))
 		bnxt_schedule_ptp_alarm(bp);
@@ -1969,7 +1976,10 @@ static int bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
 		return 0;
 
 	pthread_mutex_lock(&bp->err_recovery_lock);
-	if (bp->flags & BNXT_FLAG_FW_RESET) {
+	if (bp->flags & BNXT_FLAG_FW_RESET ||
+	    (bp->func_error_info != NULL &&
+	     rte_atomic_load_explicit(&bp->func_error_info->recovery_pending,
+				       rte_memory_order_acquire))) {
 		PMD_DRV_LOG_LINE(ERR,
 			    "Adapter recovering from error...Please retry");
 		pthread_mutex_unlock(&bp->err_recovery_lock);
@@ -1985,6 +1995,17 @@ static int bnxt_dev_close_op(struct rte_eth_dev *eth_dev)
 
 	if (eth_dev->data->dev_started)
 		ret = bnxt_dev_stop(eth_dev);
+
+	/* Stop FUNC_ERROR detection before the teardown below: a HWRM
+	 * command issued while closing could otherwise schedule a recovery
+	 * that rebuilds resources concurrently with this teardown. Wait for
+	 * any recovery already scheduled or running.
+	 */
+	rte_atomic_store_explicit(&bp->func_error_info->support, 0,
+				  rte_memory_order_relaxed);
+	rte_eal_alarm_cancel(bnxt_func_error_recovery_cb, (void *)bp);
+	rte_eal_alarm_cancel(bnxt_dev_reset_and_resume, (void *)bp);
+	rte_eal_alarm_cancel(bnxt_dev_recover, (void *)bp);
 
 	bnxt_free_prev_ring_stats_ext(bp);
 	bnxt_free_prev_ring_stats(bp);
@@ -4664,6 +4685,7 @@ static void bnxt_dev_recover(void *arg)
 	}
 	/* clear reset flag as the device is initialized now */
 	bp->flags &= ~BNXT_FLAG_FW_RESET;
+	bnxt_func_error_clear_pending(bp);
 
 	rc = bnxt_dev_start_op(bp->eth_dev);
 	if (rc) {
@@ -4691,6 +4713,13 @@ static void bnxt_dev_recover(void *arg)
 err_start:
 	bnxt_dev_stop(bp->eth_dev);
 err:
+	/* Whatever failed here, don't leave a FUNC_ERROR recovery attempt
+	 * permanently marked in-flight -- this is a terminal state for this
+	 * attempt (BNXT_FLAG_FATAL_ERROR below takes over from here), and a
+	 * stuck pending flag would silently block every future FUNC_ERROR
+	 * trigger on this port.
+	 */
+	bnxt_func_error_clear_pending(bp);
 	bp->flags |= BNXT_FLAG_FATAL_ERROR;
 	bnxt_uninit_resources(bp, false);
 	rte_eth_dev_callback_process(bp->eth_dev,
@@ -4713,6 +4742,7 @@ void bnxt_dev_reset_and_resume(void *arg)
 	int rc;
 
 	bnxt_dev_cleanup(bp);
+	bp->flags &= ~BNXT_FLAG_PXP_ERROR;
 	PMD_DRV_LOG_LINE(INFO, "Port: %u Finished bnxt_dev_cleanup",
 		    bp->eth_dev->data->port_id);
 
@@ -4736,6 +4766,14 @@ void bnxt_dev_reset_and_resume(void *arg)
 			us = 1;
 		}
 	}
+
+	/* rte_eal_alarm_set() rejects a zero delay (-EINVAL); fw_reset_min_msecs
+	 * is legitimately 0 for paths with no blackout period (e.g. FUNC_ERROR
+	 * recovery), so clamp to the minimum valid delay instead of skipping
+	 * the alarm -- bnxt_dev_recover() must still run to reinit the port.
+	 */
+	if (us == 0)
+		us = 1;
 
 	rc = rte_eal_alarm_set(us, bnxt_dev_recover, (void *)bp);
 	if (rc)
@@ -6438,6 +6476,14 @@ err:
 	rte_kvargs_process(kvlist, BNXT_DEVARD_APP_INST_ID,
 			   bnxt_parse_devarg_app_instance_id, bp);
 
+	/*
+	 * Handler for "func-error-support" devarg.
+	 * Invoked as for ex: "-a 0000:00:0d.0,func-error-support=1"
+	 * Opt-in only; default is off.
+	 */
+	rte_kvargs_process(kvlist, BNXT_DEVARG_FUNC_ERROR_SUPPORT,
+			   bnxt_parse_devarg_func_error_support, bp);
+
 	rte_kvargs_free(kvlist);
 	return ret;
 }
@@ -6562,6 +6608,10 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev, void *params __rte_unused)
 	/* set the default app id */
 	bp->app_id = bnxt_ulp_default_app_id_get();
 
+	rc = bnxt_func_error_info_alloc(bp);
+	if (rc)
+		goto error_free;
+
 	/* Parse dev arguments passed on when starting the DPDK application. */
 	rc = bnxt_parse_dev_args(bp, pci_dev->device.devargs);
 	if (rc)
@@ -6684,6 +6734,7 @@ bnxt_uninit_resources(struct bnxt *bp, bool reconfig_dev)
 		bp->mcast_addr_list = NULL;
 		rte_free(bp->rss_conf.rss_key);
 		bp->rss_conf.rss_key = NULL;
+		bnxt_func_error_info_free(bp);
 	}
 
 	bnxt_uninit_ctx_mem(bp);

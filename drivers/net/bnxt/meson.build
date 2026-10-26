@@ -35,6 +35,7 @@ sources = files(
         'bnxt_ethdev.c',
         'bnxt_filter.c',
         'bnxt_flow.c',
+        'bnxt_func_error.c',
         'bnxt_hwrm.c',
         'bnxt_irq.c',
         'bnxt_mpc.c',
