@@ -1522,7 +1522,7 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			ret = qbman_swp_enqueue_multiple(swp, &eqdesc,
 					&fd_arr[loop], &flags[loop],
 					frames_to_send - loop);
-			if (unlikely(ret < 0)) {
+			if (unlikely(ret <= 0)) {
 				retry_count++;
 				if (retry_count > DPAA2_MAX_TX_RETRY_COUNT) {
 					num_tx += loop;
@@ -1558,7 +1558,7 @@ send_n_return:
 							 &fd_arr[i],
 							 &flags[i],
 							 loop - i);
-			if (unlikely(ret < 0)) {
+			if (unlikely(ret <= 0)) {
 				retry_count++;
 				if (retry_count > DPAA2_MAX_TX_RETRY_COUNT)
 					break;
@@ -1986,7 +1986,7 @@ dpaa2_dev_tx_ordered(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			ret = qbman_swp_enqueue_multiple_desc(swp,
 					&eqdesc[loop], &fd_arr[loop],
 					frames_to_send - loop);
-			if (unlikely(ret < 0)) {
+			if (unlikely(ret <= 0)) {
 				retry_count++;
 				if (retry_count > DPAA2_MAX_TX_RETRY_COUNT) {
 					num_tx += loop;
@@ -2019,7 +2019,7 @@ send_n_return:
 		while (i < loop) {
 			ret = qbman_swp_enqueue_multiple_desc(swp,
 				       &eqdesc[i], &fd_arr[i], loop - i);
-			if (unlikely(ret < 0)) {
+			if (unlikely(ret <= 0)) {
 				retry_count++;
 				if (retry_count > DPAA2_MAX_TX_RETRY_COUNT)
 					break;
