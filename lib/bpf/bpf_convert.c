@@ -301,6 +301,13 @@ do_pass:
 			*insn = BPF_RAW_INSN(fp->code, 0, 0, 0, fp->k);
 			break;
 
+			/* Indirect loads index the packet with X: A = P[X + k] */
+		case BPF_LD | BPF_IND | BPF_W:
+		case BPF_LD | BPF_IND | BPF_H:
+		case BPF_LD | BPF_IND | BPF_B:
+			*insn = BPF_RAW_INSN(fp->code, 0, BPF_REG_X, 0, fp->k);
+			break;
+
 		case BPF_ALU | BPF_DIV | BPF_X:
 		case BPF_ALU | BPF_MOD | BPF_X:
 			/* For cBPF, don't cause floating point exception */
@@ -328,9 +335,6 @@ do_pass:
 		case BPF_ALU | BPF_DIV | BPF_K:
 		case BPF_ALU | BPF_MOD | BPF_K:
 		case BPF_ALU | BPF_NEG:
-		case BPF_LD | BPF_IND | BPF_W:
-		case BPF_LD | BPF_IND | BPF_H:
-		case BPF_LD | BPF_IND | BPF_B:
 			/* All arithmetic insns map as-is. */
 			insn->code = fp->code;
 			insn->dst_reg = BPF_REG_A;
