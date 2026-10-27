@@ -92,17 +92,15 @@ smp_usage(const char *prgname, const char *errmsg)
 }
 
 
-/* Set by SIGTERM and SIGINT handler to stop the forwarding loops. */
-static volatile sig_atomic_t quit;
-
+/*
+ * Signal handler configured for SIGTERM and SIGINT to print stats on exit
+ *
+ * This is not safe way to exit for a real production application; it is just an example.
+ * Doing proper shutdown with primary/secondary requires process monitoring
+ * and rendezvous.
+ */
 static void
-signal_handler(__rte_unused int signum)
-{
-	quit = 1;
-}
-
-static void
-print_stats(void)
+print_stats(int signum __rte_unused)
 {
 	unsigned i;
 
@@ -111,6 +109,7 @@ print_stats(void)
 		printf("Port %u: RX - %u, TX - %u, Drop - %u\n", (unsigned)p_num,
 				pstats[p_num].rx, pstats[p_num].tx, pstats[p_num].drop);
 	}
+	exit(0);
 }
 
 /* Parse the argument given in the command line of the application */
@@ -353,7 +352,7 @@ lcore_main(void *arg __rte_unused)
 	 * queue number corresponding to our process number (not lcore id)
 	 */
 
-	while (!quit) {
+	for (;;) {
 		struct rte_mbuf *buf[PKT_BURST];
 
 		for (p = start_port; p < end_port; p++) {
@@ -373,8 +372,6 @@ lcore_main(void *arg __rte_unused)
 			}
 		}
 	}
-
-	return 0;
 }
 
 /* Check the link status of all ports in up to 9s, and print them finally */
@@ -451,8 +448,8 @@ main(int argc, char **argv)
 	struct rte_mempool *mp;
 
 	/* set up signal handlers to print stats on exit */
-	signal(SIGINT, signal_handler);
-	signal(SIGTERM, signal_handler);
+	signal(SIGINT, print_stats);
+	signal(SIGTERM, print_stats);
 
 	/* initialise the EAL for all */
 	ret = rte_eal_init(argc, argv);
@@ -495,9 +492,6 @@ main(int argc, char **argv)
 	RTE_LOG(INFO, APP, "Finished Process Init.\n");
 
 	rte_eal_mp_remote_launch(lcore_main, NULL, CALL_MAIN);
-	rte_eal_mp_wait_lcore();
-
-	print_stats();
 
 	/* clean up the EAL */
 	rte_eal_cleanup();
