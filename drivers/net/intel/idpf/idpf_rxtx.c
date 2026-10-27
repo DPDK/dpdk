@@ -413,7 +413,6 @@ idpf_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	const struct rte_memzone *mz;
 	struct ci_tx_queue *txq;
 	uint64_t offloads;
-	uint16_t len;
 	bool is_splitq;
 	int ret;
 
@@ -456,11 +455,7 @@ idpf_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	txq->offloads = idpf_tx_offload_convert(offloads);
 	txq->tx_deferred_start = tx_conf->tx_deferred_start;
 
-	if (is_splitq)
-		len = 2 * nb_desc;
-	else
-		len = nb_desc;
-	txq->sw_nb_desc = len;
+	txq->sw_nb_desc = nb_desc;
 
 	/* Allocate TX hardware ring descriptors. */
 	mz = idpf_dma_zone_reserve(dev, queue_idx, nb_desc, VIRTCHNL2_QUEUE_TYPE_TX,
@@ -472,29 +467,32 @@ idpf_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	txq->tx_ring_dma = mz->iova;
 	txq->mz = mz;
 
-	txq->sw_ring = rte_zmalloc_socket("idpf tx sw ring",
-					  sizeof(struct ci_tx_entry) * len,
-					  RTE_CACHE_LINE_SIZE, socket_id);
-	if (txq->sw_ring == NULL) {
-		PMD_INIT_LOG(ERR, "Failed to allocate memory for SW TX ring");
-		ret = -ENOMEM;
-		goto err_sw_ring_alloc;
-	}
-
-	txq->rs_last_id = rte_zmalloc_socket("idpf tx rs_last_id",
-			sizeof(txq->rs_last_id[0]) * (nb_desc >> txq->log2_rs_thresh),
-			RTE_CACHE_LINE_SIZE, socket_id);
-	if (txq->rs_last_id == NULL) {
-		PMD_INIT_LOG(ERR, "Failed to allocate memory for TX RS tracking");
-		ret = -ENOMEM;
-		goto err_rs_last_id_alloc;
-	}
-
 	if (!is_splitq) {
+		txq->sw_ring = rte_zmalloc_socket("idpf tx sw ring",
+				sizeof(struct ci_tx_entry) * nb_desc,
+				RTE_CACHE_LINE_SIZE, socket_id);
+		if (txq->sw_ring == NULL) {
+			PMD_INIT_LOG(ERR, "Failed to allocate memory for SW TX ring");
+			ret = -ENOMEM;
+			goto err_sw_ring_alloc;
+		}
+
+		txq->rs_last_id = rte_zmalloc_socket("idpf tx rs_last_id",
+				sizeof(txq->rs_last_id[0]) * (nb_desc >> txq->log2_rs_thresh),
+				RTE_CACHE_LINE_SIZE, socket_id);
+		if (txq->rs_last_id == NULL) {
+			PMD_INIT_LOG(ERR, "Failed to allocate memory for TX RS tracking");
+			ret = -ENOMEM;
+			goto err_rs_last_id_alloc;
+		}
+
 		txq->ci_tx_ring = mz->addr;
 		idpf_qc_single_tx_queue_reset(txq);
 	} else {
 		txq->desc_ring = mz->addr;
+		ret = idpf_qc_split_tx_pending_alloc(txq, socket_id);
+		if (ret != 0)
+			goto err_sw_ring_alloc;
 		idpf_qc_split_tx_descq_reset(txq);
 
 		/* Setup tx completion queue if split model */
@@ -733,8 +731,8 @@ idpf_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 	}
 
 	txq = dev->data->tx_queues[tx_queue_id];
-	ci_txq_release_all_mbufs(txq, false);
 	if (vport->txq_model == VIRTCHNL2_QUEUE_MODEL_SINGLE) {
+		ci_txq_release_all_mbufs(txq, false);
 		idpf_qc_single_tx_queue_reset(txq);
 	} else {
 		idpf_qc_split_tx_descq_reset(txq);
@@ -890,14 +888,12 @@ idpf_set_tx_function(struct rte_eth_dev *dev)
 					IDPF_TX_DEFAULT,
 					false);
 
-	/* Set use_vec_entry for single queue mode - only IDPF_TX_SINGLEQ uses regular entries */
-	if (vport->txq_model == VIRTCHNL2_QUEUE_MODEL_SINGLE) {
-		for (i = 0; i < dev->data->nb_tx_queues; i++) {
-			txq = dev->data->tx_queues[i];
-			if (txq == NULL)
-				continue;
-			txq->use_vec_entry = (ad->tx_func_type != IDPF_TX_SINGLEQ);
-		}
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+		if (txq == NULL)
+			continue;
+		txq->use_vec_entry = (ad->tx_func_type != IDPF_TX_SINGLEQ &&
+				ad->tx_func_type != IDPF_TX_DEFAULT);
 	}
 
 out:

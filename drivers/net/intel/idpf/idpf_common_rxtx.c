@@ -202,9 +202,7 @@ RTE_EXPORT_INTERNAL_SYMBOL(idpf_qc_split_tx_descq_reset)
 void
 idpf_qc_split_tx_descq_reset(struct ci_tx_queue *txq)
 {
-	struct ci_tx_entry *txe;
 	uint32_t i, size;
-	uint16_t prev;
 
 	if (txq == NULL) {
 		DRV_LOG(DEBUG, "Pointer to txq is NULL");
@@ -215,24 +213,56 @@ idpf_qc_split_tx_descq_reset(struct ci_tx_queue *txq)
 	for (i = 0; i < size; i++)
 		((volatile char *)txq->desc_ring)[i] = 0;
 
-	txe = txq->sw_ring;
-	prev = (uint16_t)(txq->sw_nb_desc - 1);
-	for (i = 0; i < txq->sw_nb_desc; i++) {
-		txe[i].mbuf = NULL;
-		txe[prev].next_id = i;
-		prev = i;
-	}
+	idpf_qc_split_tx_release_mbufs(txq);
 
 	txq->tx_tail = 0;
 
 	/* Use this as next to clean for split desc queue */
 	txq->last_desc_cleaned = 0;
-	txq->sw_tail = 0;
 	txq->nb_tx_free = txq->nb_tx_desc - 1;
 
 	txq->rs_compl_count = 0;
 	txq->tx_next_dd = txq->tx_rs_thresh - 1;
 	txq->tx_next_rs = txq->tx_rs_thresh - 1;
+
+	txq->tx_next_compl_tag = 0;
+}
+
+RTE_EXPORT_INTERNAL_SYMBOL(idpf_qc_split_tx_pending_alloc)
+int
+idpf_qc_split_tx_pending_alloc(struct ci_tx_queue *txq, unsigned int socket_id)
+{
+	/* Scalar completion tags and vector descriptor indices both use nb_tx_desc pointers. */
+	txq->tx_pending_pkts = rte_zmalloc_socket("idpf_tx_pending",
+			sizeof(struct rte_mbuf *) * txq->nb_tx_desc,
+			RTE_CACHE_LINE_SIZE, socket_id);
+	if (txq->tx_pending_pkts == NULL) {
+		DRV_LOG(ERR, "Failed to alloc idpf tx_pending shadow ring");
+		return -ENOMEM;
+	}
+	txq->tx_next_compl_tag = 0;
+
+	return 0;
+}
+
+RTE_EXPORT_INTERNAL_SYMBOL(idpf_qc_split_tx_release_mbufs)
+void
+idpf_qc_split_tx_release_mbufs(struct ci_tx_queue *txq)
+{
+	if (txq->tx_pending_pkts == NULL)
+		return;
+
+	if (txq->use_vec_entry) {
+		ci_txq_release_all_mbufs(txq, false);
+		return;
+	}
+
+	/* Scalar completion tags can outlive descriptor reuse, so drain every slot. */
+	for (uint16_t i = 0; i < txq->nb_tx_desc; i++) {
+		if (txq->tx_pending_pkts[i] != NULL)
+			rte_pktmbuf_free(txq->tx_pending_pkts[i]);
+		txq->tx_pending_pkts[i] = NULL;
+	}
 }
 
 RTE_EXPORT_INTERNAL_SYMBOL(idpf_qc_split_tx_complq_reset)
@@ -383,11 +413,12 @@ idpf_qc_tx_queue_release(void *txq)
 		return;
 
 	if (q->complq) {
+		idpf_qc_split_tx_release_mbufs(q);
 		rte_memzone_free(q->complq->mz);
 		rte_free(q->complq);
-	}
+	} else
+		ci_txq_release_all_mbufs(q, false);
 
-	ci_txq_release_all_mbufs(q, false);
 	rte_free(q->rs_last_id);
 	rte_free(q->sw_ring);
 	rte_memzone_free(q->mz);
@@ -787,7 +818,6 @@ idpf_split_tx_free(struct idpf_complq *cq)
 	volatile struct idpf_splitq_tx_compl_desc *compl_ring = cq->compl_ring;
 	volatile struct idpf_splitq_tx_compl_desc *txd;
 	uint16_t next = cq->tx_tail;
-	struct ci_tx_entry *txe;
 	struct ci_tx_queue *txq;
 	uint16_t gen, qid, q_head;
 	uint16_t nb_desc_clean;
@@ -824,26 +854,21 @@ idpf_split_tx_free(struct idpf_complq *cq)
 		txq->nb_tx_free += nb_desc_clean;
 		txq->last_desc_cleaned = q_head;
 		break;
-	case IDPF_TXD_COMPLT_RS:
-		/* Walk from first segment to EOP, freeing each segment. */
-		txe = &txq->sw_ring[q_head];
-		if (txe->mbuf != NULL) {
-			uint16_t first = txe->first_id;
-			uint16_t idx = first;
-			uint16_t end = (q_head + 1 == txq->sw_nb_desc) ?
-					0 : q_head + 1;
+	case IDPF_TXD_COMPLT_RS: {
+		/* Shadow ring indexed by the software-defined compl_tag is
+		 * the sole source of truth for RS-time mbuf ownership; free
+		 * the whole multi-seg chain via mbuf->next in one call.
+		 */
+		uint16_t tag = q_head;
 
-			do {
-				txe = &txq->sw_ring[idx];
-				if (txe->mbuf != NULL) {
-					rte_pktmbuf_free_seg(txe->mbuf);
-					txe->mbuf = NULL;
-				}
-				idx = (idx + 1 == txq->sw_nb_desc) ?
-					0 : idx + 1;
-			} while (idx != end);
+		if (unlikely(tag >= txq->nb_tx_desc)) {
+			TX_LOG(ERR, "invalid completion tag %u.", tag);
+		} else if (txq->tx_pending_pkts[tag] != NULL) {
+			rte_pktmbuf_free(txq->tx_pending_pkts[tag]);
+			txq->tx_pending_pkts[tag] = NULL;
 		}
 		break;
+	}
 	default:
 		TX_LOG(ERR, "unknown completion type.");
 		return;
@@ -915,10 +940,8 @@ idpf_dp_splitq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	struct ci_tx_queue *txq = (struct ci_tx_queue *)tx_queue;
 	volatile struct idpf_flex_tx_sched_desc *txr;
 	volatile struct idpf_flex_tx_sched_desc *txd;
-	struct ci_tx_entry *sw_ring;
 	union ci_tx_offload tx_offload = {0};
-	struct ci_tx_entry *txe, *txn;
-	uint16_t nb_used, tx_id, sw_id;
+	uint16_t nb_used, tx_id;
 	struct rte_mbuf *tx_pkt;
 	uint16_t nb_to_clean;
 	uint16_t nb_tx = 0;
@@ -930,10 +953,7 @@ idpf_dp_splitq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		return nb_tx;
 
 	txr = txq->desc_ring;
-	sw_ring = txq->sw_ring;
 	tx_id = txq->tx_tail;
-	sw_id = txq->sw_tail;
-	txe = &sw_ring[sw_id];
 
 	for (nb_tx = 0; nb_tx < nb_pkts; nb_tx++) {
 		tx_pkt = tx_pkts[nb_tx];
@@ -976,6 +996,19 @@ idpf_dp_splitq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		if (txq->nb_tx_free < nb_used)
 			break;
 
+		/* RE reclaims descriptors before RS, so tag occupancy is the
+		 * only bound on packets awaiting RS completion.
+		 */
+		uint16_t tag = txq->tx_next_compl_tag;
+
+		if (unlikely(txq->tx_pending_pkts[tag] != NULL)) {
+			nb_to_clean = 2 * txq->tx_rs_thresh;
+			while (nb_to_clean--)
+				idpf_split_tx_free(txq->complq);
+			if (txq->tx_pending_pkts[tag] != NULL)
+				break;
+		}
+
 		if (ol_flags & CI_TX_CKSUM_OFFLOAD_MASK)
 			cmd_dtype = IDPF_TXD_FLEX_FLOW_CMD_CS_EN;
 
@@ -991,8 +1024,6 @@ idpf_dp_splitq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 				tx_id = 0;
 		}
 
-		uint16_t first_sw_id = sw_id;
-
 		do {
 			uint16_t slen = tx_pkt->data_len;
 			rte_iova_t buf_dma_addr = rte_mbuf_data_iova(tx_pkt);
@@ -1003,14 +1034,12 @@ idpf_dp_splitq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			while ((ol_flags & RTE_MBUF_F_TX_TCP_SEG) &&
 					unlikely(slen > CI_MAX_DATA_PER_TXD)) {
 				txd = &txr[tx_id];
-				txn = &sw_ring[txe->next_id];
-				txe->mbuf = NULL;
 
 				txd->buf_addr = rte_cpu_to_le_64(buf_dma_addr);
 				txd->qw1.cmd_dtype = cmd_dtype |
 					IDPF_TX_DESC_DTYPE_FLEX_FLOW_SCHE;
 				txd->qw1.rxr_bufsize = CI_MAX_DATA_PER_TXD;
-				txd->qw1.compl_tag = sw_id;
+				txd->qw1.compl_tag = tag;
 
 				buf_dma_addr += CI_MAX_DATA_PER_TXD;
 				slen -= CI_MAX_DATA_PER_TXD;
@@ -1018,33 +1047,29 @@ idpf_dp_splitq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 				tx_id++;
 				if (tx_id == txq->nb_tx_desc)
 					tx_id = 0;
-				sw_id = txe->next_id;
-				txe = txn;
 			}
 
 			txd = &txr[tx_id];
-			txn = &sw_ring[txe->next_id];
-			txe->mbuf = tx_pkt;
 
 			/* Setup TX descriptor */
 			txd->buf_addr = rte_cpu_to_le_64(buf_dma_addr);
 			txd->qw1.cmd_dtype = cmd_dtype |
 				IDPF_TX_DESC_DTYPE_FLEX_FLOW_SCHE;
 			txd->qw1.rxr_bufsize = slen;
-			txd->qw1.compl_tag = sw_id;
+			/* Spec: COMPLETION_TAG must be identical on all data descs of a packet. */
+			txd->qw1.compl_tag = tag;
 			tx_id++;
 			if (tx_id == txq->nb_tx_desc)
 				tx_id = 0;
-			sw_id = txe->next_id;
-			txe = txn;
 			tx_pkt = tx_pkt->next;
 		} while (tx_pkt);
 
 		/* fill the last descriptor with End of Packet (EOP) bit */
 		txd->qw1.cmd_dtype |= IDPF_TXD_FLEX_FLOW_CMD_EOP;
 
-		/* Record first sw_id at EOP so completion can walk forward. */
-		sw_ring[txd->qw1.compl_tag].first_id = first_sw_id;
+		txq->tx_pending_pkts[tag] = tx_pkts[nb_tx];
+		if (++txq->tx_next_compl_tag == txq->nb_tx_desc)
+			txq->tx_next_compl_tag = 0;
 
 		txq->nb_tx_free = (uint16_t)(txq->nb_tx_free - nb_used);
 		txq->rs_compl_count += nb_used;
@@ -1060,7 +1085,6 @@ idpf_dp_splitq_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	if (likely(nb_tx > 0)) {
 		IDPF_PCI_REG_WRITE(txq->qtx_tail, tx_id);
 		txq->tx_tail = tx_id;
-		txq->sw_tail = sw_id;
 	}
 
 	return nb_tx;

@@ -166,7 +166,6 @@ struct ci_tx_queue;
 struct ci_tx_entry {
 	struct rte_mbuf *mbuf; /* mbuf associated with TX desc, if any. */
 	uint16_t next_id; /* Index of next descriptor in ring. */
-	uint16_t first_id; /* Split-queue: first sw_id of packet at EOP entry. */
 };
 
 /**
@@ -187,6 +186,8 @@ struct ci_tx_queue {
 	union {
 		struct ci_tx_entry *sw_ring; /* virtual address of SW ring */
 		struct ci_tx_entry_vec *sw_ring_vec;
+		/* IDPF split scalar: packet ownership indexed by completion tag. */
+		struct rte_mbuf **tx_pending_pkts;
 	};
 	/* Scalar TX path: Array tracking last_id at each RS threshold boundary */
 	uint16_t *rs_last_id;
@@ -260,8 +261,8 @@ struct ci_tx_queue {
 				struct idpf_complq *complq;
 				uint32_t latch_idx; /* Tx timestamp latch index */
 				uint16_t sw_nb_desc;
-				uint16_t sw_tail;
 				uint16_t rs_compl_count;
+				uint16_t tx_next_compl_tag;
 		};
 	};
 };
