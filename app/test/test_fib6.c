@@ -23,6 +23,7 @@ static int32_t test_free_null(void);
 static int32_t test_add_del_invalid(void);
 static int32_t test_get_invalid(void);
 static int32_t test_lookup(void);
+static int32_t test_wraparound(void);
 static int32_t test_invalid_rcu(void);
 static int32_t test_fib_rcu_sync_rw(void);
 static int32_t test_drift(void);
@@ -395,6 +396,107 @@ test_lookup(void)
 		"Check_fib fails for TRIE_8B type\n");
 	rte_fib6_free(fib);
 
+	return TEST_SUCCESS;
+}
+
+/*
+ * Reproducer for the address wraparound bug in modify_dp(). When the
+ * more-specific routes under a modified prefix cover its range up to
+ * ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff, and the last of them starts
+ * exactly at the current left edge, the left edge wraps to :: and the
+ * entire table must not be overwritten.
+ *
+ *   Case A: ADD ::/0, ::/1 and 8000::/1, then DEL ::/0. Both /1
+ *           routes must still resolve.
+ *   Case B: ADD 2001:db8::/32, ffff:...:ff00/121 and
+ *           ffff:...:ff80/121, then ADD their covering
+ *           ffff:...:ff00/120. No lookup result may change.
+ */
+static int32_t
+test_wraparound(void)
+{
+	struct rte_fib6_conf config = { 0 };
+	struct rte_fib6 *fib;
+	const struct rte_ipv6_addr zero = RTE_IPV6(0, 0, 0, 0, 0, 0, 0, 0);
+	const struct rte_ipv6_addr high = RTE_IPV6(0x8000, 0, 0, 0, 0, 0, 0, 0);
+	const struct rte_ipv6_addr net = RTE_IPV6(0x2001, 0xdb8, 0, 0, 0, 0, 0, 0);
+	const struct rte_ipv6_addr top00 = RTE_IPV6(0xffff, 0xffff, 0xffff,
+		0xffff, 0xffff, 0xffff, 0xffff, 0xff00);
+	const struct rte_ipv6_addr top80 = RTE_IPV6(0xffff, 0xffff, 0xffff,
+		0xffff, 0xffff, 0xffff, 0xffff, 0xff80);
+	uint64_t def_nh = 100;
+	struct rte_ipv6_addr ip[4];
+	uint64_t nh[4];
+	int ret;
+
+	config.max_routes = 1024;
+	config.rib_ext_sz = 0;
+	config.default_nh = def_nh;
+	config.type = RTE_FIB6_TRIE;
+	config.trie.nh_sz = RTE_FIB6_TRIE_4B;
+	config.trie.num_tbl8 = 256;
+
+	/* Case A */
+	fib = rte_fib6_create(__func__, SOCKET_ID_ANY, &config);
+	RTE_TEST_ASSERT(fib != NULL, "Failed to create FIB\n");
+
+	ret = rte_fib6_add(fib, &zero, 0, 1);
+	RTE_TEST_ASSERT(ret == 0, "ADD ::/0 failed (ret=%d)\n", ret);
+	ret = rte_fib6_add(fib, &zero, 1, 2);
+	RTE_TEST_ASSERT(ret == 0, "ADD ::/1 failed (ret=%d)\n", ret);
+	ret = rte_fib6_add(fib, &high, 1, 3);
+	RTE_TEST_ASSERT(ret == 0, "ADD 8000::/1 failed (ret=%d)\n", ret);
+
+	ret = rte_fib6_delete(fib, &zero, 0);
+	RTE_TEST_ASSERT(ret == 0, "DEL ::/0 failed (ret=%d)\n", ret);
+
+	ip[0] = (struct rte_ipv6_addr)RTE_IPV6(0, 0, 0, 0, 0, 0, 0, 1);
+	ip[1] = (struct rte_ipv6_addr)RTE_IPV6(0xffff, 0, 0, 0, 0, 0, 0, 1);
+	ret = rte_fib6_lookup_bulk(fib, ip, nh, 2);
+	RTE_TEST_ASSERT(ret == 0, "Lookup failed (ret=%d)\n", ret);
+	RTE_TEST_ASSERT(nh[0] == 2,
+		"::1: got nh %" PRIu64 ", want 2\n", nh[0]);
+	RTE_TEST_ASSERT(nh[1] == 3,
+		"ffff::1: got nh %" PRIu64 ", want 3\n", nh[1]);
+
+	rte_fib6_free(fib);
+
+	/* Case B */
+	fib = rte_fib6_create(__func__, SOCKET_ID_ANY, &config);
+	RTE_TEST_ASSERT(fib != NULL, "Failed to create FIB\n");
+
+	ret = rte_fib6_add(fib, &net, 32, 10);
+	RTE_TEST_ASSERT(ret == 0, "ADD 2001:db8::/32 failed (ret=%d)\n", ret);
+	ret = rte_fib6_add(fib, &top00, 121, 5);
+	RTE_TEST_ASSERT(ret == 0,
+		"ADD ffff:...:ff00/121 failed (ret=%d)\n", ret);
+	ret = rte_fib6_add(fib, &top80, 121, 6);
+	RTE_TEST_ASSERT(ret == 0,
+		"ADD ffff:...:ff80/121 failed (ret=%d)\n", ret);
+
+	ret = rte_fib6_add(fib, &top00, 120, 7);
+	RTE_TEST_ASSERT(ret == 0,
+		"ADD ffff:...:ff00/120 failed (ret=%d)\n", ret);
+
+	ip[0] = (struct rte_ipv6_addr)RTE_IPV6(0x2001, 0xdb8, 0, 0, 0, 0, 0, 1);
+	ip[1] = (struct rte_ipv6_addr)RTE_IPV6(0, 0, 0, 0, 0, 0, 0, 1);
+	ip[2] = top00;
+	ip[2].a[15] = 0x01;
+	ip[3] = top80;
+	ip[3].a[15] = 0x81;
+	ret = rte_fib6_lookup_bulk(fib, ip, nh, 4);
+	RTE_TEST_ASSERT(ret == 0, "Lookup failed (ret=%d)\n", ret);
+	RTE_TEST_ASSERT(nh[0] == 10,
+		"2001:db8::1: got nh %" PRIu64 ", want 10\n", nh[0]);
+	RTE_TEST_ASSERT(nh[1] == def_nh,
+		"::1: got nh %" PRIu64 ", want %" PRIu64 "\n",
+		nh[1], def_nh);
+	RTE_TEST_ASSERT(nh[2] == 5,
+		"ffff:...:ff01: got nh %" PRIu64 ", want 5\n", nh[2]);
+	RTE_TEST_ASSERT(nh[3] == 6,
+		"ffff:...:ff81: got nh %" PRIu64 ", want 6\n", nh[3]);
+
+	rte_fib6_free(fib);
 	return TEST_SUCCESS;
 }
 
@@ -1182,6 +1284,7 @@ static struct unit_test_suite fib6_fast_tests = {
 	TEST_CASE(test_add_del_invalid),
 	TEST_CASE(test_get_invalid),
 	TEST_CASE(test_lookup),
+	TEST_CASE(test_wraparound),
 	TEST_CASE(test_invalid_rcu),
 	TEST_CASE(test_fib_rcu_sync_rw),
 	TEST_CASE(test_drift),
