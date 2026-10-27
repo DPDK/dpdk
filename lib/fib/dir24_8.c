@@ -436,6 +436,12 @@ modify_fib(struct dir24_8_tbl *dp, struct rte_rib *rib, uint32_t ip,
 			if (ledge == redge) {
 				ledge = redge +
 					(uint32_t)(1ULL << (32 - tmp_depth));
+				/*
+				 * we got to the end of address space
+				 * and wrapped around
+				 */
+				if (ledge == 0)
+					break;
 				continue;
 			}
 			ret = install_to_fib(dp, ledge, redge,
