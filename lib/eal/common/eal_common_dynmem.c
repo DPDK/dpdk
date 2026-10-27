@@ -29,7 +29,7 @@ eal_dynmem_memseg_lists_init(void)
 		size_t mem_sz;
 		size_t va_offset;
 	} memtypes[RTE_MAX_MEMSEG_LISTS] = {0};
-	int i, hpi_idx, msl_idx, ret = -1; /* fail unless told to succeed */
+	int i, hpi_idx, msl_idx, n_msl = 0, ret = -1; /* fail unless told to succeed */
 	struct rte_memseg_list *msl;
 	size_t mem_va_len, mem_va_page_sz;
 	unsigned int n_memtypes, cur_type;
@@ -132,6 +132,31 @@ eal_dynmem_memseg_lists_init(void)
 		goto out;
 	}
 
+	/*
+	 * Create the segment lists (and their fbarrays) before reserving the
+	 * VA space, so that nothing is mapped right after the VA space. PCI
+	 * BAR mapping uses the end of the VA space as its address hint.
+	 */
+	msl_idx = 0;
+	for (cur_type = 0; cur_type < n_memtypes; cur_type++) {
+		struct memtype *type = &memtypes[cur_type];
+
+		/* skip page sizes with zero memory limit */
+		if (type->n_segs == 0)
+			continue;
+
+		EAL_LOG(DEBUG, "Creating segment list: n_segs:%u socket_id:%i hugepage_sz:%" PRIu64,
+			type->n_segs, type->socket_id, type->page_sz);
+
+		msl = &mcfg->memsegs[msl_idx];
+
+		if (eal_memseg_list_init(msl, type->page_sz, type->n_segs,
+				type->socket_id, msl_idx, true))
+			goto out;
+		msl_idx++;
+		n_msl = msl_idx;
+	}
+
 	mem_va_addr = eal_get_virtual_area(NULL, &mem_va_len,
 			mem_va_page_sz, 0, 0);
 	if (mem_va_addr == NULL) {
@@ -139,27 +164,16 @@ eal_dynmem_memseg_lists_init(void)
 		goto out;
 	}
 
-	/* go through all mem types and create segment lists */
+	/* go through all mem types and assign VA space to segment lists */
 	msl_idx = 0;
 	for (cur_type = 0; cur_type < n_memtypes; cur_type++) {
 		struct memtype *type = &memtypes[cur_type];
-		uint64_t pagesz;
-		int socket_id;
 
 		/* skip page sizes with zero memory limit */
 		if (type->n_segs == 0)
 			continue;
 
-		pagesz = type->page_sz;
-		socket_id = type->socket_id;
-
-		EAL_LOG(DEBUG, "Creating segment list: n_segs:%u socket_id:%i hugepage_sz:%" PRIu64,
-			type->n_segs, socket_id, pagesz);
-
 		msl = &mcfg->memsegs[msl_idx];
-
-		if (eal_memseg_list_init(msl, pagesz, type->n_segs, socket_id, msl_idx, true))
-			goto out;
 
 		if (eal_memseg_list_assign(msl,
 				RTE_PTR_ADD(mem_va_addr, type->va_offset))) {
@@ -172,6 +186,12 @@ eal_dynmem_memseg_lists_init(void)
 	ret = 0;
 out:
 	if (ret != 0) {
+		/* destroy the segment lists created so far */
+		for (msl_idx = 0; msl_idx < n_msl; msl_idx++) {
+			msl = &mcfg->memsegs[msl_idx];
+			rte_fbarray_destroy(&msl->memseg_arr);
+			*msl = (struct rte_memseg_list){0};
+		}
 		if (mem_va_addr != NULL)
 			eal_mem_free(mem_va_addr, mem_va_len);
 	} else {
