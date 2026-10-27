@@ -1183,7 +1183,7 @@ rte_flow_conv_name(int is_action,
 	const struct desc_info *const info = &info_rep[!!is_action];
 	unsigned int type = (uintptr_t)src;
 
-	if (type >= info->num)
+	if (type >= info->num || info->data[type].name == NULL)
 		return rte_flow_error_set
 			(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 			 "unknown object type to retrieve the name of");
@@ -1203,13 +1203,33 @@ rte_flow_conv_item_default_mask(void *dst,
 {
 	unsigned int type = (uintptr_t)src;
 
-	if (type >= RTE_DIM(rte_flow_desc_item))
+	if (type >= RTE_DIM(rte_flow_desc_item) ||
+	    rte_flow_desc_item[type].name == NULL)
 		return rte_flow_error_set
 			(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 			 "unknown item type to retrieve the default mask of");
 	if (size >= sizeof(const void **))
 		*((const void **)dst) = rte_flow_desc_item[type].default_mask;
 	return sizeof(const void **);
+}
+
+/** Retrieve the specification structure size of a flow item type. */
+static int
+rte_flow_conv_item_size(void *dst,
+			const size_t size,
+			const void *src,
+			struct rte_flow_error *error)
+{
+	unsigned int type = (uintptr_t)src;
+
+	if (type >= RTE_DIM(rte_flow_desc_item) ||
+	    rte_flow_desc_item[type].name == NULL)
+		return rte_flow_error_set
+			(error, EINVAL, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+			 "unknown item type to retrieve the size of");
+	if (size >= sizeof(size_t))
+		*(size_t *)dst = rte_flow_desc_item[type].size;
+	return sizeof(size_t);
 }
 
 /** Helper function to convert flow API objects. */
@@ -1275,6 +1295,9 @@ rte_flow_conv(enum rte_flow_conv_op op,
 		break;
 	case RTE_FLOW_CONV_OP_ITEM_DEFAULT_MASK_PTR:
 		ret = rte_flow_conv_item_default_mask(dst, size, src, error);
+		break;
+	case RTE_FLOW_CONV_OP_ITEM_SIZE:
+		ret = rte_flow_conv_item_size(dst, size, src, error);
 		break;
 	default:
 		ret = rte_flow_error_set

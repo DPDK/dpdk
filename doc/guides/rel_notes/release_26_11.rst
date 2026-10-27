@@ -117,10 +117,12 @@ New Features
   loss of lock and Tx fault flags.
   The SFF-8472 decoder also reports the Rx loss of signal and Tx fault state.
 
-* **Added flow item default mask lookup.**
+* **Added flow item default mask and size lookup.**
 
-  Added ``RTE_FLOW_CONV_OP_ITEM_DEFAULT_MASK_PTR`` conversion operation
-  to ``rte_flow_conv()`` to retrieve the default mask of a flow item type.
+  Added ``RTE_FLOW_CONV_OP_ITEM_DEFAULT_MASK_PTR`` and
+  ``RTE_FLOW_CONV_OP_ITEM_SIZE`` conversion operations
+  to ``rte_flow_conv()`` to retrieve the default mask
+  and the specification structure size of a flow item type.
 
 * **Added internal ethdev flow graph parser helper API.**
 
