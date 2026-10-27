@@ -38,6 +38,11 @@ write_dma_client_oob(uint8_t *work_queue_buffer_pointer,
 	header->inline_client_oob_size_in_dwords =
 		client_oob_size / sizeof(uint32_t);
 	header->client_data_unit = work_request->client_data_unit;
+	if (work_request->flags & GDMA_WR_OOB_IN_SGL) {
+		header->client_oob_in_sgl = 1;
+		if (work_request->flags & GDMA_WR_PAD_BY_SGE0)
+			header->last_v_bytes = work_request->sgl[0].size;
+	}
 
 	DP_LOG(DEBUG, "queue buf %p sgl %u oob_h %u du %u oob_buf %p oob_b %u",
 	       work_queue_buffer_pointer, header->num_sgl_entries,

@@ -274,15 +274,43 @@ mana_tx_burst(void *dpdk_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		struct transmit_oob_v2 tx_oob;
 		struct one_sgl sgl;
 		uint16_t seg_idx;
+		uint16_t num_sge;
+		uint16_t expected_sge;
+		bool is_tso = false;
+		uint32_t gso_hs = 0;
 
 		if (txq->desc_ring_len >= txq->num_desc)
 			break;
 
-		/* Drop the packet if it exceeds max segments */
-		if (unlikely(m_pkt->nb_segs > priv->max_send_sge ||
-			     m_pkt->nb_segs > MAX_SGL_ENTRIES_FOR_TRANSMIT)) {
+		if (m_pkt->ol_flags & RTE_MBUF_F_TX_TCP_SEG) {
+			gso_hs = m_pkt->l2_len + m_pkt->l3_len + m_pkt->l4_len;
+			/* Header must be in first segment; last_v_bytes is 8 bits */
+			if (unlikely(m_pkt->data_len < gso_hs ||
+				     gso_hs > UINT8_MAX)) {
+				DP_LOG(ERR, "invalid TSO packet header length %u",
+				       gso_hs);
+				goto drop;
+			}
+			if (unlikely(m_pkt->tso_segsz > MANA_TSO_MAX_SEGSZ)) {
+				DP_LOG(ERR, "TSO segment size %u exceeds max %u",
+				       m_pkt->tso_segsz, MANA_TSO_MAX_SEGSZ);
+				goto drop;
+			}
+			if (likely(gso_hs != 0 && m_pkt->pkt_len > gso_hs &&
+				   m_pkt->tso_segsz != 0))
+				is_tso = true;
+		}
+
+		/* Drop the packet if it exceeds max segments. A TSO packet
+		 * with payload in the first segment needs an extra SGE for
+		 * the header.
+		 */
+		expected_sge = m_pkt->nb_segs +
+			(is_tso && m_pkt->data_len > gso_hs ? 1 : 0);
+		if (unlikely(expected_sge > priv->max_send_sge ||
+			     expected_sge > MAX_SGL_ENTRIES_FOR_TRANSMIT)) {
 			DP_LOG(ERR, "send packet segments %d exceeding max",
-			       m_pkt->nb_segs);
+			       expected_sge);
 			goto drop;
 		}
 
@@ -307,9 +335,47 @@ mana_tx_burst(void *dpdk_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		tx_oob.short_oob.tx_compute_IP_header_checksum =
 			m_pkt->ol_flags & RTE_MBUF_F_TX_IP_CKSUM ? 1 : 0;
 
-		if ((m_pkt->ol_flags & RTE_MBUF_F_TX_L4_MASK) ==
-				RTE_MBUF_F_TX_TCP_CKSUM) {
+		if (is_tso) {
+			struct rte_tcp_hdr *tcp_hdr =
+				rte_pktmbuf_mtod_offset(m_pkt,
+					struct rte_tcp_hdr *,
+					m_pkt->l2_len + m_pkt->l3_len);
+
+			if (m_pkt->ol_flags & RTE_MBUF_F_TX_IPV4) {
+				struct rte_ipv4_hdr *ip_hdr =
+					rte_pktmbuf_mtod_offset(m_pkt,
+						struct rte_ipv4_hdr *,
+						m_pkt->l2_len);
+
+				ip_hdr->total_length = 0;
+				ip_hdr->hdr_checksum = 0;
+				tcp_hdr->cksum = rte_ipv4_phdr_cksum(ip_hdr,
+							m_pkt->ol_flags);
+			} else if (m_pkt->ol_flags & RTE_MBUF_F_TX_IPV6) {
+				struct rte_ipv6_hdr *ip_hdr =
+					rte_pktmbuf_mtod_offset(m_pkt,
+						struct rte_ipv6_hdr *,
+						m_pkt->l2_len);
+
+				ip_hdr->payload_len = 0;
+				tcp_hdr->cksum = rte_ipv6_phdr_cksum(ip_hdr,
+							m_pkt->ol_flags);
+			} else {
+				DP_LOG(ERR, "Invalid IP version for TSO");
+				goto drop;
+			}
+
+			tx_oob.short_oob.tx_compute_IP_header_checksum =
+				(m_pkt->ol_flags & RTE_MBUF_F_TX_IPV4) ? 1 : 0;
+			tx_oob.short_oob.tx_compute_TCP_checksum = 1;
+			tx_oob.short_oob.tx_compute_UDP_checksum = 0;
+			tx_oob.short_oob.tx_transport_header_offset =
+				m_pkt->l2_len + m_pkt->l3_len;
+		} else if ((m_pkt->ol_flags & RTE_MBUF_F_TX_L4_MASK) ==
+				RTE_MBUF_F_TX_TCP_CKSUM ||
+			   (m_pkt->ol_flags & RTE_MBUF_F_TX_TCP_SEG)) {
 			struct rte_tcp_hdr *tcp_hdr;
+			uint64_t ol = m_pkt->ol_flags & ~RTE_MBUF_F_TX_TCP_SEG;
 
 			/* HW needs partial TCP checksum */
 
@@ -323,8 +389,7 @@ mana_tx_burst(void *dpdk_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				ip_hdr = rte_pktmbuf_mtod_offset(m_pkt,
 						struct rte_ipv4_hdr *,
 						m_pkt->l2_len);
-				tcp_hdr->cksum = rte_ipv4_phdr_cksum(ip_hdr,
-							m_pkt->ol_flags);
+				tcp_hdr->cksum = rte_ipv4_phdr_cksum(ip_hdr, ol);
 
 			} else if (m_pkt->ol_flags & RTE_MBUF_F_TX_IPV6) {
 				struct rte_ipv6_hdr *ip_hdr;
@@ -332,8 +397,7 @@ mana_tx_burst(void *dpdk_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				ip_hdr = rte_pktmbuf_mtod_offset(m_pkt,
 						struct rte_ipv6_hdr *,
 						m_pkt->l2_len);
-				tcp_hdr->cksum = rte_ipv6_phdr_cksum(ip_hdr,
-							m_pkt->ol_flags);
+				tcp_hdr->cksum = rte_ipv6_phdr_cksum(ip_hdr, ol);
 			} else {
 				DP_LOG(ERR, "Invalid input for TCP CKSUM");
 			}
@@ -407,34 +471,92 @@ mana_tx_burst(void *dpdk_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		       m_pkt->pkt_len);
 
 		/* Create SGL for packet data buffers */
-		for (seg_idx = 0; seg_idx < m_pkt->nb_segs; seg_idx++) {
+		if (is_tso) {
 			struct mana_mr_cache *mr =
-				mana_alloc_pmd_mr(&txq->mr_btree, priv, m_seg);
+				mana_alloc_pmd_mr(&txq->mr_btree, priv, m_pkt);
 
-			if (!mr) {
-				DP_LOG(ERR, "failed to get MR, pkt_idx %u",
+			if (unlikely(!mr)) {
+				DP_LOG(ERR, "failed to get MR for TSO hdr, pkt_idx %u",
 				       pkt_idx);
-				break;
+				goto drop;
 			}
 
-			sgl.gdma_sgl[seg_idx].address =
-				rte_cpu_to_le_64(rte_pktmbuf_mtod(m_seg,
-								  uint64_t));
-			sgl.gdma_sgl[seg_idx].size = m_seg->data_len;
-			sgl.gdma_sgl[seg_idx].memory_key = mr->lkey;
+			/* SGE0: packet header only (L2 + L3 + L4) */
+			sgl.gdma_sgl[0].address =
+				rte_cpu_to_le_64(rte_pktmbuf_mtod(m_pkt, uint64_t));
+			sgl.gdma_sgl[0].size = gso_hs;
+			sgl.gdma_sgl[0].memory_key = mr->lkey;
+			num_sge = 1;
 
-			DP_LOG(DEBUG,
-			       "seg idx %u addr 0x%" PRIx64 " size %x key %x",
-			       seg_idx, sgl.gdma_sgl[seg_idx].address,
-			       sgl.gdma_sgl[seg_idx].size,
-			       sgl.gdma_sgl[seg_idx].memory_key);
+			/* If first mbuf has payload data beyond the header */
+			if (m_pkt->data_len > gso_hs) {
+				sgl.gdma_sgl[1].address =
+					rte_cpu_to_le_64(rte_pktmbuf_mtod(m_pkt,
+									  uint64_t) +
+							 gso_hs);
+				sgl.gdma_sgl[1].size = m_pkt->data_len - gso_hs;
+				sgl.gdma_sgl[1].memory_key = mr->lkey;
+				num_sge = 2;
+			}
 
-			m_seg = m_seg->next;
+			/* Subsequent mbuf segments */
+			m_seg = m_pkt->next;
+			while (m_seg && num_sge < expected_sge) {
+				mr = mana_alloc_pmd_mr(&txq->mr_btree, priv,
+						       m_seg);
+				if (unlikely(!mr)) {
+					DP_LOG(ERR,
+					       "failed to get MR for TSO seg, pkt_idx %u",
+					       pkt_idx);
+					goto drop;
+				}
+				sgl.gdma_sgl[num_sge].address =
+					rte_cpu_to_le_64(rte_pktmbuf_mtod(m_seg,
+									  uint64_t));
+				sgl.gdma_sgl[num_sge].size = m_seg->data_len;
+				sgl.gdma_sgl[num_sge].memory_key = mr->lkey;
+				num_sge++;
+				m_seg = m_seg->next;
+			}
+
+			if (unlikely(m_seg != NULL || num_sge != expected_sge)) {
+				DP_LOG(ERR, "failed to build TSO SGL, num_sge %u",
+				       num_sge);
+				goto drop;
+			}
+		} else {
+			for (seg_idx = 0; seg_idx < m_pkt->nb_segs; seg_idx++) {
+				struct mana_mr_cache *mr =
+					mana_alloc_pmd_mr(&txq->mr_btree, priv,
+							  m_seg);
+
+				if (!mr) {
+					DP_LOG(ERR, "failed to get MR, pkt_idx %u",
+					       pkt_idx);
+					break;
+				}
+
+				sgl.gdma_sgl[seg_idx].address =
+					rte_cpu_to_le_64(rte_pktmbuf_mtod(m_seg,
+									  uint64_t));
+				sgl.gdma_sgl[seg_idx].size = m_seg->data_len;
+				sgl.gdma_sgl[seg_idx].memory_key = mr->lkey;
+
+				DP_LOG(DEBUG,
+				       "seg idx %u addr 0x%" PRIx64 " size %x key %x",
+				       seg_idx, sgl.gdma_sgl[seg_idx].address,
+				       sgl.gdma_sgl[seg_idx].size,
+				       sgl.gdma_sgl[seg_idx].memory_key);
+
+				m_seg = m_seg->next;
+			}
+
+			/* Skip this packet if we can't populate all segments */
+			if (seg_idx != m_pkt->nb_segs)
+				goto drop;
+
+			num_sge = m_pkt->nb_segs;
 		}
-
-		/* Skip this packet if we can't populate all segments */
-		if (seg_idx != m_pkt->nb_segs)
-			goto drop;
 
 		/* If we can at least queue post two WQEs and there are at
 		 * least two packets to send, use TX CQE suppression for the
@@ -452,7 +574,7 @@ mana_tx_burst(void *dpdk_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		work_req.gdma_header.struct_size = sizeof(work_req);
 
 		work_req.sgl = sgl.gdma_sgl;
-		work_req.num_sgl_elements = m_pkt->nb_segs;
+		work_req.num_sgl_elements = num_sge;
 		if (tx_oob.short_oob.packet_format == SHORT_PACKET_FORMAT)
 			work_req.inline_oob_size_in_bytes =
 				sizeof(struct transmit_short_oob_v2);
@@ -460,8 +582,14 @@ mana_tx_burst(void *dpdk_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			work_req.inline_oob_size_in_bytes =
 				sizeof(struct transmit_oob_v2);
 		work_req.inline_oob_data = &tx_oob;
-		work_req.flags = 0;
-		work_req.client_data_unit = NOT_USING_CLIENT_DATA_UNIT;
+		if (is_tso) {
+			work_req.flags = GDMA_WR_OOB_IN_SGL |
+					 GDMA_WR_PAD_BY_SGE0;
+			work_req.client_data_unit = m_pkt->tso_segsz;
+		} else {
+			work_req.flags = 0;
+			work_req.client_data_unit = NOT_USING_CLIENT_DATA_UNIT;
+		}
 
 		ret = gdma_post_work_request(&txq->gdma_sq, &work_req,
 					     &wqe_size_in_bu);

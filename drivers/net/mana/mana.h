@@ -33,7 +33,8 @@ struct mana_shared_data {
 		RTE_ETH_TX_OFFLOAD_MULTI_SEGS | \
 		RTE_ETH_TX_OFFLOAD_IPV4_CKSUM | \
 		RTE_ETH_TX_OFFLOAD_TCP_CKSUM | \
-		RTE_ETH_TX_OFFLOAD_UDP_CKSUM)
+		RTE_ETH_TX_OFFLOAD_UDP_CKSUM | \
+		RTE_ETH_TX_OFFLOAD_TCP_TSO)
 
 #define INDIRECTION_TABLE_NUM_ELEMENTS 64
 #define TOEPLITZ_HASH_KEY_SIZE_IN_BYTES 40
@@ -207,6 +208,12 @@ struct gdma_sgl_element {
 struct one_sgl {
 	struct gdma_sgl_element gdma_sgl[MAX_SGL_ENTRIES_FOR_TRANSMIT];
 };
+
+#define GDMA_WR_OOB_IN_SGL  (1 << 0)
+#define GDMA_WR_PAD_BY_SGE0 (1 << 1)
+
+/* client_data_unit is 14 bits in gdma_wqe_dma_oob */
+#define MANA_TSO_MAX_SEGSZ  ((1u << 14) - 1)
 
 struct gdma_work_request {
 	struct gdma_header gdma_header;

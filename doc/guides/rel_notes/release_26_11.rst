@@ -196,6 +196,10 @@ New Features
 
   * Added support for CN20K SoC.
 
+* **Updated Microsoft mana driver.**
+
+  * Added hardware TCP Segmentation Offload (TSO) support for IPv4 and IPv6.
+
 * **Updated NVIDIA mlx5 ethernet driver.**
 
   * Increased the maximum number of secondary unicast MAC addresses from 128 to up to 4096

@@ -349,6 +349,7 @@ mana_dev_info_get(struct rte_eth_dev *dev,
 		  struct rte_eth_dev_info *dev_info)
 {
 	struct mana_priv *priv = dev->data->dev_private;
+	uint16_t max_sge;
 
 	dev_info->min_mtu = RTE_ETHER_MIN_MTU;
 	dev_info->max_mtu = MANA_MAX_MTU;
@@ -406,13 +407,13 @@ mana_dev_info_get(struct rte_eth_dev *dev,
 	dev_info->rx_desc_lim.nb_mtu_seg_max =
 		RTE_MIN(priv->max_recv_sge, UINT16_MAX);
 
+	max_sge = RTE_MIN(priv->max_send_sge, MAX_SGL_ENTRIES_FOR_TRANSMIT);
+
 	dev_info->tx_desc_lim.nb_min = MIN_BUFFERS_PER_QUEUE;
 	dev_info->tx_desc_lim.nb_max = RTE_MIN(priv->max_tx_desc, UINT16_MAX);
 	dev_info->tx_desc_lim.nb_align = MIN_BUFFERS_PER_QUEUE;
-	dev_info->tx_desc_lim.nb_seg_max =
-		RTE_MIN(priv->max_send_sge, MAX_SGL_ENTRIES_FOR_TRANSMIT);
-	dev_info->tx_desc_lim.nb_mtu_seg_max =
-		RTE_MIN(priv->max_send_sge, MAX_SGL_ENTRIES_FOR_TRANSMIT);
+	dev_info->tx_desc_lim.nb_seg_max = max_sge > 1 ? max_sge - 1 : 1;
+	dev_info->tx_desc_lim.nb_mtu_seg_max = max_sge;
 
 	/* Speed */
 	dev_info->speed_capa = RTE_ETH_LINK_SPEED_100G;
