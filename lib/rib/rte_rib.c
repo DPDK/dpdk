@@ -79,7 +79,7 @@ get_nxt_node(struct rte_rib_node *node, uint32_t ip)
 {
 	if (node->depth == RIB_MAXDEPTH)
 		return NULL;
-	return (ip & (1 << (31 - node->depth))) ? node->right : node->left;
+	return (ip & (1U << (31 - node->depth))) ? node->right : node->left;
 }
 
 static struct rte_rib_node *
@@ -308,7 +308,7 @@ rte_rib_insert(struct rte_rib *rib, uint32_t ip, uint8_t depth)
 		if ((d >= depth) || !is_covered(ip, (*tmp)->ip, d))
 			break;
 		prev = *tmp;
-		tmp = (ip & (1 << (31 - d))) ? &(*tmp)->right : &(*tmp)->left;
+		tmp = (ip & (1U << (31 - d))) ? &(*tmp)->right : &(*tmp)->left;
 	}
 	/* closest node found, new_node should be inserted in the middle */
 	common_depth = RTE_MIN(depth, (*tmp)->depth);
@@ -319,7 +319,7 @@ rte_rib_insert(struct rte_rib *rib, uint32_t ip, uint8_t depth)
 	common_prefix = ip & rte_rib_depth_to_mask(common_depth);
 	if ((common_prefix == ip) && (common_depth == depth)) {
 		/* insert as a parent */
-		if ((*tmp)->ip & (1 << (31 - depth)))
+		if ((*tmp)->ip & (1U << (31 - depth)))
 			new_node->right = *tmp;
 		else
 			new_node->left = *tmp;
@@ -340,7 +340,7 @@ rte_rib_insert(struct rte_rib *rib, uint32_t ip, uint8_t depth)
 		common_node->parent = (*tmp)->parent;
 		new_node->parent = common_node;
 		(*tmp)->parent = common_node;
-		if ((new_node->ip & (1 << (31 - common_depth))) == 0) {
+		if ((new_node->ip & (1U << (31 - common_depth))) == 0) {
 			common_node->left = new_node;
 			common_node->right = *tmp;
 		} else {
