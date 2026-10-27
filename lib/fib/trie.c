@@ -534,6 +534,12 @@ modify_dp(struct rte_trie_tbl *dp, struct rte_rib6 *rib,
 			rte_rib6_get_ip(tmp, &redge);
 			if (rte_ipv6_addr_eq(&ledge, &redge)) {
 				get_nxt_net(&ledge, tmp_depth);
+				/*
+				 * we got to the end of address space
+				 * and wrapped around
+				 */
+				if (rte_ipv6_addr_is_unspec(&ledge))
+					break;
 				continue;
 			}
 			ret = install_to_dp(dp, &ledge, &redge, next_hop);
