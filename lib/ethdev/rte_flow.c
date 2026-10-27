@@ -229,6 +229,7 @@ static const struct rte_flow_desc_data rte_flow_desc_item[] = {
 			rte_flow_item_l2tpv2_mask),
 	MK_FLOW_ITEM_MASK(PPP, sizeof(struct rte_flow_item_ppp),
 			rte_flow_item_ppp_mask),
+	MK_FLOW_ITEM(MACSEC, sizeof(struct rte_flow_item_macsec)),
 	MK_FLOW_ITEM_MASK(METER_COLOR, sizeof(struct rte_flow_item_meter_color),
 			rte_flow_item_meter_color_mask),
 	MK_FLOW_ITEM(IPV6_ROUTING_EXT, sizeof(struct rte_flow_item_ipv6_routing_ext)),
