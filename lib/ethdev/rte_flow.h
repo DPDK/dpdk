@@ -4426,6 +4426,24 @@ enum rte_flow_conv_op {
 	 *   @code const void ** @endcode
 	 */
 	RTE_FLOW_CONV_OP_ITEM_DEFAULT_MASK_PTR,
+
+	/**
+	 * Retrieve the fixed size of an item specification structure.
+	 *
+	 * Writes the size of the item specification structure to @p dst,
+	 * or zero for known item types without one. Does not include
+	 * variable-length or externally referenced data (for example, RAW
+	 * pattern bytes). Unknown and PMD-private item types return an error.
+	 *
+	 * No output is written if @p size is smaller than sizeof(size_t).
+	 * The return value is sizeof(size_t), not the item structure size.
+	 *
+	 * - @p src type:
+	 *   @code (const void *)(uintptr_t)enum rte_flow_item_type @endcode
+	 * - @p dst type:
+	 *   @code size_t * @endcode
+	 */
+	RTE_FLOW_CONV_OP_ITEM_SIZE,
 };
 
 /**

@@ -22,6 +22,92 @@
 #define BOGUS_TYPE INT32_MAX
 
 static int
+item_size(int type, size_t *size, struct rte_flow_error *error)
+{
+	return rte_flow_conv(RTE_FLOW_CONV_OP_ITEM_SIZE, size, sizeof(*size),
+			     RTE_CAST_PTR(const void *, type), error);
+}
+
+static int
+test_flow_conv_item_size(void)
+{
+	struct rte_flow_error error;
+	size_t size;
+	int ret;
+
+	struct {
+		int type;
+		size_t expected;
+	} const known[] = {
+		{ RTE_FLOW_ITEM_TYPE_END, 0 },
+		{ RTE_FLOW_ITEM_TYPE_VOID, 0 },
+		{ RTE_FLOW_ITEM_TYPE_INVERT, 0 },
+		{ RTE_FLOW_ITEM_TYPE_ETH, sizeof(struct rte_flow_item_eth) },
+		{ RTE_FLOW_ITEM_TYPE_IPV4, sizeof(struct rte_flow_item_ipv4) },
+		{ RTE_FLOW_ITEM_TYPE_GRE_KEY, sizeof(rte_be32_t) },
+		{ RTE_FLOW_ITEM_TYPE_GTPC, sizeof(struct rte_flow_item_gtp) },
+		{ RTE_FLOW_ITEM_TYPE_MACSEC,
+		  sizeof(struct rte_flow_item_macsec) },
+		{ RTE_FLOW_ITEM_TYPE_COMPARE,
+		  sizeof(struct rte_flow_item_compare) },
+	};
+
+	for (unsigned int i = 0; i < RTE_DIM(known); i++) {
+		size = SIZE_MAX;
+		ret = item_size(known[i].type, &size, &error);
+		TEST_ASSERT_EQUAL(ret, (int)sizeof(size_t),
+				  "item type %d: unexpected return %d",
+				  known[i].type, ret);
+		TEST_ASSERT_EQUAL(size, known[i].expected,
+				  "item type %d: size %zu, expected %zu",
+				  known[i].type, size, known[i].expected);
+	}
+
+	return TEST_SUCCESS;
+}
+
+static int
+test_flow_conv_item_size_errors(void)
+{
+	struct rte_flow_error error;
+	size_t size;
+	int ret;
+
+	/* Out of range type. */
+	memset(&error, 0, sizeof(error));
+	rte_errno = 0;
+	ret = item_size(BOGUS_TYPE, &size, &error);
+	TEST_ASSERT_EQUAL(ret, -EINVAL, "unexpected return %d", ret);
+	TEST_ASSERT_EQUAL(rte_errno, EINVAL, "rte_errno %d", rte_errno);
+	TEST_ASSERT_EQUAL(error.type, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+			  "unexpected error type %d", error.type);
+	TEST_ASSERT_NOT_NULL(error.message, "error message not set");
+
+	/* PMD private type. */
+	rte_errno = 0;
+	ret = item_size(-1, &size, &error);
+	TEST_ASSERT_EQUAL(ret, -EINVAL, "unexpected return %d", ret);
+	TEST_ASSERT_EQUAL(rte_errno, EINVAL, "rte_errno %d", rte_errno);
+
+	/* Destination too small: nothing written, size still reported. */
+	size = SIZE_MAX;
+	ret = rte_flow_conv(RTE_FLOW_CONV_OP_ITEM_SIZE, &size,
+			    sizeof(size) - 1,
+			    RTE_CAST_PTR(const void *, RTE_FLOW_ITEM_TYPE_ETH), &error);
+	TEST_ASSERT_EQUAL(ret, (int)sizeof(size_t), "unexpected return %d",
+			  ret);
+	TEST_ASSERT_EQUAL(size, SIZE_MAX, "destination was written");
+
+	/* NULL destination with zero size is a pure size query. */
+	ret = rte_flow_conv(RTE_FLOW_CONV_OP_ITEM_SIZE, NULL, 0,
+			    RTE_CAST_PTR(const void *, RTE_FLOW_ITEM_TYPE_ETH), &error);
+	TEST_ASSERT_EQUAL(ret, (int)sizeof(size_t), "unexpected return %d",
+			  ret);
+
+	return TEST_SUCCESS;
+}
+
+static int
 test_flow_conv_item_name(void)
 {
 	struct rte_flow_error error;
@@ -158,6 +244,7 @@ test_flow_conv_tables_complete(void)
 {
 	struct rte_flow_error error;
 	const char *name;
+	size_t size;
 	int ret;
 
 	for (int type = 0; type <= LAST_ITEM_TYPE; type++) {
@@ -167,6 +254,9 @@ test_flow_conv_tables_complete(void)
 		TEST_ASSERT_EQUAL(ret, (int)sizeof(const char **),
 				  "item type %d has no descriptor", type);
 		TEST_ASSERT_NOT_NULL(name, "item type %d has no name", type);
+		ret = item_size(type, &size, &error);
+		TEST_ASSERT_EQUAL(ret, (int)sizeof(size_t),
+				  "item type %d (%s) has no size", type, name);
 	}
 
 	for (int type = 0; type <= LAST_ACTION_TYPE; type++) {
@@ -399,6 +489,8 @@ static struct unit_test_suite flow_conv_testsuite = {
 	.setup = NULL,
 	.teardown = NULL,
 	.unit_test_cases = {
+		TEST_CASE(test_flow_conv_item_size),
+		TEST_CASE(test_flow_conv_item_size_errors),
 		TEST_CASE(test_flow_conv_item_name),
 		TEST_CASE(test_flow_conv_action_name),
 		TEST_CASE(test_flow_conv_item_default_mask),
