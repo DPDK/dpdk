@@ -192,6 +192,7 @@ mana_tx_burst(void *dpdk_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	int ret;
 	void *db_page;
 	uint16_t pkt_sent = 0;
+	uint16_t nb_done = 0;
 	uint32_t num_comp, i;
 	uint32_t expected = 0;
 #ifdef RTE_ARCH_32
@@ -278,10 +279,11 @@ mana_tx_burst(void *dpdk_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			break;
 
 		/* Drop the packet if it exceeds max segments */
-		if (m_pkt->nb_segs > priv->max_send_sge) {
+		if (unlikely(m_pkt->nb_segs > priv->max_send_sge ||
+			     m_pkt->nb_segs > MAX_SGL_ENTRIES_FOR_TRANSMIT)) {
 			DP_LOG(ERR, "send packet segments %d exceeding max",
 			       m_pkt->nb_segs);
-			continue;
+			goto drop;
 		}
 
 		/* Fill in the oob */
@@ -432,7 +434,7 @@ mana_tx_burst(void *dpdk_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		/* Skip this packet if we can't populate all segments */
 		if (seg_idx != m_pkt->nb_segs)
-			continue;
+			goto drop;
 
 		/* If we can at least queue post two WQEs and there are at
 		 * least two packets to send, use TX CQE suppression for the
@@ -477,6 +479,7 @@ mana_tx_burst(void *dpdk_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			txq->desc_ring_len++;
 
 			pkt_sent++;
+			nb_done++;
 
 			DP_LOG(DEBUG, "nb_pkts %u pkt[%d] sent",
 			       nb_pkts, pkt_idx);
@@ -499,6 +502,13 @@ mana_tx_burst(void *dpdk_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			       pkt_idx, ret);
 			break;
 		}
+
+		continue;
+
+drop:
+		txq->stats.errors++;
+		rte_pktmbuf_free(m_pkt);
+		nb_done++;
 	}
 
 	/* Ring hardware door bell */
@@ -523,5 +533,5 @@ mana_tx_burst(void *dpdk_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	rte_atomic_fetch_and_explicit(&txq->burst_state, ~(uint32_t)1,
 				     rte_memory_order_release);
 
-	return pkt_sent;
+	return nb_done;
 }

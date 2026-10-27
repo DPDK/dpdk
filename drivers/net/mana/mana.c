@@ -410,9 +410,9 @@ mana_dev_info_get(struct rte_eth_dev *dev,
 	dev_info->tx_desc_lim.nb_max = RTE_MIN(priv->max_tx_desc, UINT16_MAX);
 	dev_info->tx_desc_lim.nb_align = MIN_BUFFERS_PER_QUEUE;
 	dev_info->tx_desc_lim.nb_seg_max =
-		RTE_MIN(priv->max_send_sge, UINT16_MAX);
+		RTE_MIN(priv->max_send_sge, MAX_SGL_ENTRIES_FOR_TRANSMIT);
 	dev_info->tx_desc_lim.nb_mtu_seg_max =
-		RTE_MIN(priv->max_send_sge, UINT16_MAX);
+		RTE_MIN(priv->max_send_sge, MAX_SGL_ENTRIES_FOR_TRANSMIT);
 
 	/* Speed */
 	dev_info->speed_capa = RTE_ETH_LINK_SPEED_100G;
