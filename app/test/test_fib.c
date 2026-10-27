@@ -22,6 +22,7 @@ static int32_t test_free_null(void);
 static int32_t test_add_del_invalid(void);
 static int32_t test_get_invalid(void);
 static int32_t test_lookup(void);
+static int32_t test_wraparound(void);
 static int32_t test_invalid_rcu(void);
 static int32_t test_fib_rcu_sync_rw(void);
 
@@ -380,6 +381,98 @@ test_lookup(void)
 }
 
 /*
+ * Reproducer for the address wraparound bug in modify_fib(). When the
+ * more-specific routes under a modified prefix cover its range up to
+ * 255.255.255.255, and the last of them starts exactly at the current
+ * left edge, the left edge wraps to 0 and the entire table must not
+ * be overwritten.
+ *
+ *   Case A: ADD 0.0.0.0/0, 0.0.0.0/1 and 128.0.0.0/1, then DEL
+ *           0.0.0.0/0. Both /1 routes must still resolve.
+ *   Case B: ADD 10.0.0.0/8, 255.255.255.0/25 and 255.255.255.128/25,
+ *           then ADD their covering 255.255.255.0/24. No lookup result
+ *           may change.
+ */
+static int32_t
+test_wraparound(void)
+{
+	struct rte_fib_conf config = { 0 };
+	struct rte_fib *fib;
+	uint64_t def_nh = 100;
+	uint32_t ip[4];
+	uint64_t nh[4];
+	int ret;
+
+	config.max_routes = 1024;
+	config.rib_ext_sz = 0;
+	config.default_nh = def_nh;
+	config.type = RTE_FIB_DIR24_8;
+	config.dir24_8.nh_sz = RTE_FIB_DIR24_8_4B;
+	config.dir24_8.num_tbl8 = 256;
+
+	/* Case A */
+	fib = rte_fib_create(__func__, SOCKET_ID_ANY, &config);
+	RTE_TEST_ASSERT(fib != NULL, "Failed to create FIB\n");
+
+	ret = rte_fib_add(fib, RTE_IPV4(0, 0, 0, 0), 0, 1);
+	RTE_TEST_ASSERT(ret == 0, "ADD 0.0.0.0/0 failed (ret=%d)\n", ret);
+	ret = rte_fib_add(fib, RTE_IPV4(0, 0, 0, 0), 1, 2);
+	RTE_TEST_ASSERT(ret == 0, "ADD 0.0.0.0/1 failed (ret=%d)\n", ret);
+	ret = rte_fib_add(fib, RTE_IPV4(128, 0, 0, 0), 1, 3);
+	RTE_TEST_ASSERT(ret == 0, "ADD 128.0.0.0/1 failed (ret=%d)\n", ret);
+
+	ret = rte_fib_delete(fib, RTE_IPV4(0, 0, 0, 0), 0);
+	RTE_TEST_ASSERT(ret == 0, "DEL 0.0.0.0/0 failed (ret=%d)\n", ret);
+
+	ip[0] = RTE_IPV4(1, 1, 1, 1);
+	ip[1] = RTE_IPV4(200, 1, 1, 1);
+	ret = rte_fib_lookup_bulk(fib, ip, nh, 2);
+	RTE_TEST_ASSERT(ret == 0, "Lookup failed (ret=%d)\n", ret);
+	RTE_TEST_ASSERT(nh[0] == 2,
+		"1.1.1.1: got nh %" PRIu64 ", want 2\n", nh[0]);
+	RTE_TEST_ASSERT(nh[1] == 3,
+		"200.1.1.1: got nh %" PRIu64 ", want 3\n", nh[1]);
+
+	rte_fib_free(fib);
+
+	/* Case B */
+	fib = rte_fib_create(__func__, SOCKET_ID_ANY, &config);
+	RTE_TEST_ASSERT(fib != NULL, "Failed to create FIB\n");
+
+	ret = rte_fib_add(fib, RTE_IPV4(10, 0, 0, 0), 8, 10);
+	RTE_TEST_ASSERT(ret == 0, "ADD 10.0.0.0/8 failed (ret=%d)\n", ret);
+	ret = rte_fib_add(fib, RTE_IPV4(255, 255, 255, 0), 25, 5);
+	RTE_TEST_ASSERT(ret == 0,
+		"ADD 255.255.255.0/25 failed (ret=%d)\n", ret);
+	ret = rte_fib_add(fib, RTE_IPV4(255, 255, 255, 128), 25, 6);
+	RTE_TEST_ASSERT(ret == 0,
+		"ADD 255.255.255.128/25 failed (ret=%d)\n", ret);
+
+	ret = rte_fib_add(fib, RTE_IPV4(255, 255, 255, 0), 24, 7);
+	RTE_TEST_ASSERT(ret == 0,
+		"ADD 255.255.255.0/24 failed (ret=%d)\n", ret);
+
+	ip[0] = RTE_IPV4(10, 1, 1, 1);
+	ip[1] = RTE_IPV4(1, 2, 3, 4);
+	ip[2] = RTE_IPV4(255, 255, 255, 1);
+	ip[3] = RTE_IPV4(255, 255, 255, 129);
+	ret = rte_fib_lookup_bulk(fib, ip, nh, 4);
+	RTE_TEST_ASSERT(ret == 0, "Lookup failed (ret=%d)\n", ret);
+	RTE_TEST_ASSERT(nh[0] == 10,
+		"10.1.1.1: got nh %" PRIu64 ", want 10\n", nh[0]);
+	RTE_TEST_ASSERT(nh[1] == def_nh,
+		"1.2.3.4: got nh %" PRIu64 ", want %" PRIu64 "\n",
+		nh[1], def_nh);
+	RTE_TEST_ASSERT(nh[2] == 5,
+		"255.255.255.1: got nh %" PRIu64 ", want 5\n", nh[2]);
+	RTE_TEST_ASSERT(nh[3] == 6,
+		"255.255.255.129: got nh %" PRIu64 ", want 6\n", nh[3]);
+
+	rte_fib_free(fib);
+	return TEST_SUCCESS;
+}
+
+/*
  * rte_fib_rcu_qsbr_add positive and negative tests.
  *  - Add RCU QSBR variable to FIB
  *  - Add another RCU QSBR variable to FIB
@@ -598,6 +691,7 @@ static struct unit_test_suite fib_fast_tests = {
 	TEST_CASE(test_add_del_invalid),
 	TEST_CASE(test_get_invalid),
 	TEST_CASE(test_lookup),
+	TEST_CASE(test_wraparound),
 	TEST_CASE(test_invalid_rcu),
 	TEST_CASE(test_fib_rcu_sync_rw),
 	TEST_CASES_END()
