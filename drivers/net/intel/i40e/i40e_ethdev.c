@@ -4254,7 +4254,7 @@ i40e_macaddr_remove(struct rte_eth_dev *dev, uint32_t index)
 
 	macaddr = &(data->mac_addrs[index]);
 
-	if (!(pf->flags & I40E_FLAG_VMDQ)) {
+	if ((dev->data->dev_conf.rxmode.mq_mode & RTE_ETH_MQ_RX_VMDQ_FLAG) == 0) {
 		if (i40e_vsi_delete_mac(pf->main_vsi, macaddr) != 0)
 			PMD_DRV_LOG(ERR, "Failed to remove MACVLAN filter");
 		return;
