@@ -77,6 +77,7 @@ source_file_deps = {
     'test_efd_perf.c': ['efd', 'hash'],
     'test_errno.c': [],
     'test_ethdev_api.c': ['ethdev'],
+    'test_ethdev_flow_conv.c': ['ethdev'],
     'test_ethdev_link.c': ['ethdev'],
     'test_ethdev_module_eeprom.c': ['ethdev'],
     'test_event_crypto_adapter.c': ['cryptodev', 'eventdev', 'bus_vdev'],
