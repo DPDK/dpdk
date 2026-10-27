@@ -1054,7 +1054,7 @@ rte_flow_conv_actions(struct rte_flow_action *dst,
 			 * handler. Copy the action handle directly instead
 			 * of duplicating the pointer memory.
 			 */
-			if (size)
+			if (size >= (i + 1) * sizeof(*dst))
 				dst[i].conf = src->conf;
 		} else if (src->conf) {
 			off = RTE_ALIGN_CEIL(off, sizeof(double));
