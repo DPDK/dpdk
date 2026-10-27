@@ -921,7 +921,12 @@ rte_flow_conv_pattern(struct rte_flow_item *dst,
 	size_t ret;
 	unsigned int i;
 
-	for (i = 0, off = 0; !num || i != num; ++i, ++src, ++dst) {
+	/*
+	 * dst may be NULL when size is zero, so it is only ever indexed
+	 * inside the size-guarded writes below; pointer arithmetic on a
+	 * NULL pointer is undefined behavior.
+	 */
+	for (i = 0, off = 0; !num || i != num; ++i, ++src) {
 		/**
 		 * allow PMD private flow item
 		 */
@@ -932,7 +937,7 @@ rte_flow_conv_pattern(struct rte_flow_item *dst,
 				(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ITEM, src,
 				 "cannot convert unknown item type");
 		if (size >= off + sizeof(*dst))
-			*dst = (struct rte_flow_item){
+			dst[i] = (struct rte_flow_item){
 				.type = src->type,
 			};
 		off += sizeof(*dst);
@@ -941,8 +946,7 @@ rte_flow_conv_pattern(struct rte_flow_item *dst,
 	}
 	num = i;
 	src -= num;
-	dst -= num;
-	do {
+	for (i = 0; i != num; ++i, ++src) {
 		if (src->spec) {
 			off = RTE_ALIGN_CEIL(off, sizeof(double));
 			ret = rte_flow_conv_item_spec
@@ -950,7 +954,7 @@ rte_flow_conv_pattern(struct rte_flow_item *dst,
 				 size > off ? size - off : 0, src,
 				 RTE_FLOW_CONV_ITEM_SPEC);
 			if (size && size >= off + ret)
-				dst->spec = (void *)(data + off);
+				dst[i].spec = (void *)(data + off);
 			off += ret;
 
 		}
@@ -961,7 +965,7 @@ rte_flow_conv_pattern(struct rte_flow_item *dst,
 				 size > off ? size - off : 0, src,
 				 RTE_FLOW_CONV_ITEM_LAST);
 			if (size && size >= off + ret)
-				dst->last = (void *)(data + off);
+				dst[i].last = (void *)(data + off);
 			off += ret;
 		}
 		if (src->mask) {
@@ -971,12 +975,10 @@ rte_flow_conv_pattern(struct rte_flow_item *dst,
 				 size > off ? size - off : 0, src,
 				 RTE_FLOW_CONV_ITEM_MASK);
 			if (size && size >= off + ret)
-				dst->mask = (void *)(data + off);
+				dst[i].mask = (void *)(data + off);
 			off += ret;
 		}
-		++src;
-		++dst;
-	} while (--num);
+	}
 	return off;
 }
 
@@ -1014,7 +1016,12 @@ rte_flow_conv_actions(struct rte_flow_action *dst,
 	size_t ret;
 	unsigned int i;
 
-	for (i = 0, off = 0; !num || i != num; ++i, ++src, ++dst) {
+	/*
+	 * dst may be NULL when size is zero, so it is only ever indexed
+	 * inside the size-guarded writes below; pointer arithmetic on a
+	 * NULL pointer is undefined behavior.
+	 */
+	for (i = 0, off = 0; !num || i != num; ++i, ++src) {
 		/**
 		 * allow PMD private flow action
 		 */
@@ -1025,7 +1032,7 @@ rte_flow_conv_actions(struct rte_flow_action *dst,
 				(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ACTION,
 				 src, "cannot convert unknown action type");
 		if (size >= off + sizeof(*dst))
-			*dst = (struct rte_flow_action){
+			dst[i] = (struct rte_flow_action){
 				.type = src->type,
 			};
 		off += sizeof(*dst);
@@ -1034,8 +1041,7 @@ rte_flow_conv_actions(struct rte_flow_action *dst,
 	}
 	num = i;
 	src -= num;
-	dst -= num;
-	do {
+	for (i = 0; i != num; ++i, ++src) {
 		if (src->type == RTE_FLOW_ACTION_TYPE_INDIRECT) {
 			/*
 			 * Indirect action conf fills the indirect action
@@ -1043,19 +1049,17 @@ rte_flow_conv_actions(struct rte_flow_action *dst,
 			 * of duplicating the pointer memory.
 			 */
 			if (size)
-				dst->conf = src->conf;
+				dst[i].conf = src->conf;
 		} else if (src->conf) {
 			off = RTE_ALIGN_CEIL(off, sizeof(double));
 			ret = rte_flow_conv_action_conf
 				((void *)(data + off),
 				 size > off ? size - off : 0, src);
 			if (size && size >= off + ret)
-				dst->conf = (void *)(data + off);
+				dst[i].conf = (void *)(data + off);
 			off += ret;
 		}
-		++src;
-		++dst;
-	} while (--num);
+	}
 	return off;
 }
 
