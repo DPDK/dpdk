@@ -324,6 +324,8 @@ static const struct rte_flow_desc_data rte_flow_desc_action[] = {
 	MK_FLOW_ACTION(SET_IPV6_DSCP, sizeof(struct rte_flow_action_set_dscp)),
 	MK_FLOW_ACTION(AGE, sizeof(struct rte_flow_action_age)),
 	MK_FLOW_ACTION(SAMPLE, sizeof(struct rte_flow_action_sample)),
+	/* Deprecated; handle stored in conf as for INDIRECT. */
+	MK_FLOW_ACTION(SHARED, 0),
 	MK_FLOW_ACTION(MODIFY_FIELD,
 		       sizeof(struct rte_flow_action_modify_field)),
 	/**
@@ -334,11 +336,13 @@ static const struct rte_flow_desc_data rte_flow_desc_action[] = {
 	 */
 	MK_FLOW_ACTION(INDIRECT, 0),
 	MK_FLOW_ACTION(CONNTRACK, sizeof(struct rte_flow_action_conntrack)),
+	MK_FLOW_ACTION(METER_COLOR, sizeof(struct rte_flow_action_meter_color)),
 	MK_FLOW_ACTION(PORT_REPRESENTOR, sizeof(struct rte_flow_action_ethdev)),
 	MK_FLOW_ACTION(REPRESENTED_PORT, sizeof(struct rte_flow_action_ethdev)),
 	MK_FLOW_ACTION(METER_MARK, sizeof(struct rte_flow_action_meter_mark)),
 	MK_FLOW_ACTION(SEND_TO_KERNEL, 0),
 	MK_FLOW_ACTION(QUOTA, sizeof(struct rte_flow_action_quota)),
+	MK_FLOW_ACTION(SKIP_CMAN, 0),
 	MK_FLOW_ACTION(IPV6_EXT_PUSH, sizeof(struct rte_flow_action_ipv6_ext_push)),
 	MK_FLOW_ACTION(IPV6_EXT_REMOVE, sizeof(struct rte_flow_action_ipv6_ext_remove)),
 	MK_FLOW_ACTION(INDIRECT_LIST,
@@ -1043,7 +1047,8 @@ rte_flow_conv_actions(struct rte_flow_action *dst,
 	num = i;
 	src -= num;
 	for (i = 0; i != num; ++i, ++src) {
-		if (src->type == RTE_FLOW_ACTION_TYPE_INDIRECT) {
+		if (src->type == RTE_FLOW_ACTION_TYPE_INDIRECT ||
+		    src->type == RTE_FLOW_ACTION_TYPE_SHARED) {
 			/*
 			 * Indirect action conf fills the indirect action
 			 * handler. Copy the action handle directly instead
