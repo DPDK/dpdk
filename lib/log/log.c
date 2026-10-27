@@ -234,6 +234,21 @@ fail:
 	return -1;
 }
 
+static void
+log_free_saved_levels(void)
+{
+	struct rte_eal_opt_loglevel *opt_ll;
+
+	while ((opt_ll = TAILQ_FIRST(&opt_loglevel_list)) != NULL) {
+		TAILQ_REMOVE(&opt_loglevel_list, opt_ll, next);
+		if (opt_ll->pattern != NULL)
+			free(opt_ll->pattern);
+		else
+			regfree(&opt_ll->re_match);
+		free(opt_ll);
+	}
+}
+
 RTE_EXPORT_INTERNAL_SYMBOL(eal_log_save_regexp)
 int
 eal_log_save_regexp(const char *regex, uint32_t level)
@@ -578,6 +593,8 @@ RTE_EXPORT_INTERNAL_SYMBOL(rte_eal_log_cleanup)
 void
 rte_eal_log_cleanup(void)
 {
+	log_free_saved_levels();
+
 	if (rte_logs.is_internal_file && rte_logs.file != NULL)
 		fclose(rte_logs.file);
 	rte_logs.file = NULL;
