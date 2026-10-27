@@ -26,7 +26,7 @@ __rte_lpm_lookup_vec(const struct rte_lpm *lpm, const uint32_t *ips,
 	for (i = 0; i < n; i++)
 		next_hops[i] = 0;
 
-	for (i = 0; i < n - vl; i += vl) {
+	for (i = 0; i + vl < n; i += vl) {
 		v_ip = svld1(pg, &ips[i]);
 		/* Get indices for tbl24[] */
 		v_idx = svlsr_x(pg, v_ip, 8);
