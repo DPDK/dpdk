@@ -3370,7 +3370,8 @@ int txgbe_set_link_to_amlite(struct txgbe_hw *hw, u32 speed)
 	value = rd32_epcs(hw, VR_PCS_DIG_CTRL1);
 	if ((value & 0x8000)) {
 		status = TXGBE_ERR_PHY_INIT_NOT_DONE;
-		hw->mac.enable_tx_laser(hw);
+		if (hw->mac.type == txgbe_mac_aml)
+			hw->mac.enable_tx_laser(hw);
 		goto out;
 	}
 

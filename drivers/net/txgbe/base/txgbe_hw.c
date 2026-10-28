@@ -11,6 +11,7 @@
 #include "txgbe_eeprom.h"
 #include "txgbe_mng.h"
 #include "txgbe_hw.h"
+#include "txgbe_e56.h"
 #include "txgbe_aml.h"
 #include "txgbe_aml40.h"
 
@@ -3259,6 +3260,28 @@ void txgbe_disable_tx_laser_multispeed_fiber(struct txgbe_hw *hw)
 	if (hw->mac.type == txgbe_mac_aml40) {
 		wr32m(hw, TXGBE_GPIODIR, TXGBE_GPIOBIT_1, TXGBE_GPIOBIT_1);
 		esdp_reg &= ~TXGBE_GPIOBIT_1;
+		if (txgbe_is_dac_cable(hw) ||
+		    hw->phy.sfp_type == txgbe_sfp_type_unknown ||
+		    hw->phy.sfp_type == txgbe_sfp_type_not_present) {
+			u32 rdata = 0;
+
+			rte_spinlock_lock(&hw->phy_lock);
+			rdata = rd32_ephy(hw, PMD_CFG0);
+			set_fields_e56(&rdata,
+				       E56PHY_PMD_CFG_0_RX_EN_CFG,
+				       0x0);
+			set_fields_e56(&rdata, 15, 12, 0x0);
+			set_fields_e56(&rdata, 1, 1, 0x0);
+			wr32_ephy(hw, PMD_CFG0, rdata);
+			rte_spinlock_unlock(&hw->phy_lock);
+		} else if (hw->mac.acquire_swfw_sync(hw,
+						    TXGBE_MNGSEM_SWPHY) == 0) {
+			hw->phy.write_i2c_eeprom(hw,
+				TXGBE_SFF_8636_TX_DISABLE,
+				TXGBE_SFF_8636_TX_DISABLE_ALL_LANES);
+			hw->mac.release_swfw_sync(hw,
+						TXGBE_MNGSEM_SWPHY);
+		}
 	} else if (hw->mac.type == txgbe_mac_aml) {
 		esdp_reg |= TXGBE_GPIOBIT_1;
 	} else {
@@ -3288,6 +3311,14 @@ void txgbe_enable_tx_laser_multispeed_fiber(struct txgbe_hw *hw)
 	if (hw->mac.type == txgbe_mac_aml40) {
 		wr32m(hw, TXGBE_GPIODIR, TXGBE_GPIOBIT_1, TXGBE_GPIOBIT_1);
 		esdp_reg |= TXGBE_GPIOBIT_1;
+		if (!txgbe_is_dac_cable(hw) &&
+		    hw->phy.sfp_type != txgbe_sfp_type_unknown &&
+		    hw->phy.sfp_type != txgbe_sfp_type_not_present &&
+		    hw->mac.acquire_swfw_sync(hw, TXGBE_MNGSEM_SWPHY) == 0) {
+			hw->phy.write_i2c_eeprom(hw,
+				TXGBE_SFF_8636_TX_DISABLE, 0x0);
+			hw->mac.release_swfw_sync(hw, TXGBE_MNGSEM_SWPHY);
+		}
 	} else {
 		esdp_reg &= ~(TXGBE_GPIOBIT_0 | TXGBE_GPIOBIT_1);
 	}
