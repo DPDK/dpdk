@@ -507,8 +507,11 @@ mlx5dr_action_create_nat64_repalce_state(struct mlx5dr_context *ctx,
 		memcpy(address_prefix, nat64_well_known_pref,
 		       MLX5DR_ACTION_NAT64_HEADER_MINUS_ONE * sizeof(uint32_t));
 	} else {
-		/* In order to fix HW csum issue, make the prefix ready */
-		uint32_t ipv4_pref[] = {0x0, 0xffba0000, 0x0, 0x0, 0x0};
+		/* We make a buffer that contain the right HW csum and the DF bit set.
+		 * 0x00400000 - contain the DF bit in the right place.
+		 * 0xff7a0000 - is the csum for that buffer, calculated via external tool.
+		 */
+		uint32_t ipv4_pref[] = {0x00400000, 0xff7a0000, 0x0, 0x0, 0x0};
 
 		header_size_in_dw = MLX5DR_ACTION_NAT64_IPV4_HEADER;
 		ip_ver = MLX5DR_ACTION_NAT64_IPV4_VER;
