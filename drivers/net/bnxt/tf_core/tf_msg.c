@@ -23,7 +23,6 @@
  * means we have to manually sync hwrm with these defines if the
  * tf.yaml changes.
  */
-#define TF_MSG_SET_GLOBAL_CFG_DATA_SIZE  16
 #define TF_MSG_EM_INSERT_KEY_SIZE        64
 #define TF_MSG_EM_INSERT_RECORD_SIZE     96
 #define TF_MSG_TBL_TYPE_SET_DATA_SIZE    88
@@ -1628,7 +1627,7 @@ tf_msg_set_global_cfg(struct tf *tfp,
 	req.offset = tfp_cpu_to_le_32(params->offset);
 
 	/* Check for data size conformity */
-	if (params->config_sz_in_bytes > TF_MSG_SET_GLOBAL_CFG_DATA_SIZE) {
+	if (params->config_sz_in_bytes > sizeof(req.data)) {
 		rc = -EINVAL;
 		TFP_DRV_LOG(ERR,
 			    "%s: Invalid parameters for msg type, rc:%s\n",
@@ -1825,6 +1824,9 @@ tf_msg_set_if_tbl_entry(struct tf *tfp,
 	uint32_t flags = 0;
 	struct tf_dev_info *dev;
 	struct tf_session *tfs;
+
+	if (params->data_sz_in_bytes > sizeof(req.data))
+		return -EINVAL;
 
 	/* Retrieve the session information */
 	rc = tf_session_get_session(tfp, &tfs);
