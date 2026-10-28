@@ -724,7 +724,7 @@ struct txgbe_phy_info {
 	u32 addr;
 	u32 id;
 	enum txgbe_sfp_type sfp_type;
-	u32 fiber_suppport_speed;
+	u32 fiber_support_speed;
 	bool sfp_setup_needed;
 	u32 revision;
 	u32 media_type;

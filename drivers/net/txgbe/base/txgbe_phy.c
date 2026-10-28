@@ -913,11 +913,11 @@ ERR_I2C:
 		if (comp_codes_25g == TXGBE_SFF_25GBASECR_91FEC ||
 		    comp_codes_25g == TXGBE_SFF_25GBASECR_74FEC ||
 		    comp_codes_25g == TXGBE_SFF_25GBASECR_NOFEC) {
-			hw->phy.fiber_suppport_speed =
+			hw->phy.fiber_support_speed =
 				TXGBE_LINK_SPEED_25GB_FULL |
 				TXGBE_LINK_SPEED_10GB_FULL;
 		} else {
-			hw->phy.fiber_suppport_speed =
+			hw->phy.fiber_support_speed =
 				TXGBE_LINK_SPEED_10GB_FULL;
 		}
 	} else if (comp_codes_25g == TXGBE_SFF_25GAUI_C2M_AOC_BER_5 ||
@@ -938,7 +938,7 @@ ERR_I2C:
 			hw->phy.sfp_type = (hw->bus.lan_id == 0
 				? txgbe_sfp_type_da_act_lmt_core0
 				: txgbe_sfp_type_da_act_lmt_core1);
-			hw->phy.fiber_suppport_speed =
+			hw->phy.fiber_support_speed =
 				TXGBE_LINK_SPEED_10GB_FULL;
 		} else {
 			hw->phy.sfp_type = txgbe_sfp_type_unknown;
@@ -1142,7 +1142,7 @@ s32 txgbe_identify_qsfp_module(struct txgbe_hw *hw)
 				hw->phy.sfp_type = txgbe_qsfp_type_40g_cu_core0;
 			else
 				hw->phy.sfp_type = txgbe_qsfp_type_40g_cu_core1;
-			hw->phy.fiber_suppport_speed =
+			hw->phy.fiber_support_speed =
 						TXGBE_LINK_SPEED_40GB_FULL |
 						TXGBE_LINK_SPEED_10GB_FULL;
 		}
