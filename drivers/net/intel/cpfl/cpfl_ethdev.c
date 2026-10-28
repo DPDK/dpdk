@@ -67,7 +67,8 @@ uint32_t cpfl_supported_speeds[] = {
 	RTE_ETH_SPEED_NUM_50G,
 	RTE_ETH_SPEED_NUM_56G,
 	RTE_ETH_SPEED_NUM_100G,
-	RTE_ETH_SPEED_NUM_200G
+	RTE_ETH_SPEED_NUM_200G,
+	RTE_ETH_SPEED_NUM_400G,
 };
 
 static const uint64_t cpfl_map_hena_rss[] = {
