@@ -335,18 +335,18 @@ eth_af_packet_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	for (i = 0; i < nb_pkts; i++) {
 		mbuf = *bufs++;
 
-		/* drop oversized packets */
-		if (mbuf->pkt_len > pkt_q->frame_data_size) {
-			rte_pktmbuf_free(mbuf);
-			continue;
-		}
-
 		/* insert vlan info if necessary */
 		if (mbuf->ol_flags & RTE_MBUF_F_TX_VLAN) {
 			if (rte_vlan_insert(&mbuf)) {
 				rte_pktmbuf_free(mbuf);
 				continue;
 			}
+		}
+
+		/* drop oversized packets */
+		if (mbuf->pkt_len > pkt_q->frame_data_size) {
+			rte_pktmbuf_free(mbuf);
+			continue;
 		}
 
 		/* point at the next incoming frame */
