@@ -1125,6 +1125,8 @@ s32 txgbe_identify_qsfp_module(struct txgbe_hw *hw)
 		PMD_INIT_LOG(ERR, "port[%d] QSFP module not supported, identifier = 0x%x",
 			     hw->bus.lan_id, identifier);
 		hw->phy.type = txgbe_phy_sfp_unsupported;
+		if (hw->mac.type == txgbe_mac_aml40)
+			hw->phy.sfp_type = txgbe_sfp_type_unknown;
 		err = TXGBE_ERR_SFP_NOT_SUPPORTED;
 	} else {
 		err = hw->phy.read_i2c_sff8636(hw, 0,
@@ -1156,6 +1158,13 @@ s32 txgbe_identify_qsfp_module(struct txgbe_hw *hw)
 			else
 				hw->phy.sfp_type = txgbe_qsfp_type_40g_lr_core1;
 		}
+	}
+
+	if (err == 0 && hw->mac.type == txgbe_mac_aml40 &&
+	    hw->phy.sfp_type == txgbe_sfp_type_not_present) {
+		hw->phy.type = txgbe_phy_sfp_unsupported;
+		hw->phy.sfp_type = txgbe_sfp_type_unknown;
+		err = TXGBE_ERR_SFP_NOT_SUPPORTED;
 	}
 
 	hw->mac.release_swfw_sync(hw, TXGBE_MNGSEM_SWPHY);

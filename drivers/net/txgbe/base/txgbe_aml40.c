@@ -178,6 +178,11 @@ s32 txgbe_setup_phy_link_aml40(struct txgbe_hw *hw,
 		rte_spinlock_lock(&hw->phy_lock);
 		txgbe_e56_set_phy_link_mode(hw, speed, true);
 		rte_spinlock_unlock(&hw->phy_lock);
+		/* Restore link_valid: a txgbe_set_link_to_amlite() timeout
+		 * leaves it false, and check_phy_link()/check_mac_link() then
+		 * keep forcing the link down after AN73 brings it up.
+		 */
+		hw->link_valid = true;
 		return status;
 	}
 
