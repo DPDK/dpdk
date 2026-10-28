@@ -1956,6 +1956,9 @@ txgbe_set_link_to_sfi(struct txgbe_hw *hw,
 	s32 err = 0;
 	u32 value = 0;
 
+	/* Switching to SFI mode clears backplane link mode. */
+	hw->bp_link_mode = 0;
+
 	/* Set the module link speed */
 	hw->mac.set_rate_select_speed(hw, speed);
 	/* 1. Wait xpcs power-up good */

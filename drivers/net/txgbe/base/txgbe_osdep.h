@@ -31,10 +31,14 @@
 extern int txgbe_logtype_bp;
 #define RTE_LOGTYPE_TXGBE_BP txgbe_logtype_bp
 #define BP_LOG(fmt, ...) \
-	RTE_LOG(DEBUG, TXGBE_BP, \
-		"[%"PRIu64".%"PRIu64"]%s(%d): " fmt, \
-		usec_stamp() / 1000000, usec_stamp() % 1000000, \
-		__func__, __LINE__, ## __VA_ARGS__)
+	do { \
+		if (rte_log_can_log(RTE_LOGTYPE_TXGBE_BP, RTE_LOG_DEBUG)) \
+			RTE_LOG(DEBUG, TXGBE_BP, \
+				"[%" PRIu64 ".%" PRIu64 "]%s(%d): " fmt, \
+				usec_stamp() / 1000000, \
+				usec_stamp() % 1000000, \
+				__func__, __LINE__, ## __VA_ARGS__); \
+	} while (0)
 
 #define ASSERT(x) do {			\
 	if (!(x))			\

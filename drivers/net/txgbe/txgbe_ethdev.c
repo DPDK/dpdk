@@ -3041,6 +3041,7 @@ void txgbe_dev_e56_check_bp_event(void *param)
 	u32 __rte_unused an_int = 0;
 	int ret = 0;
 	bool need_link_update = false;
+	bool exchange_done = false;
 
 	if (!hw)
 		return;
@@ -3066,7 +3067,7 @@ void txgbe_dev_e56_check_bp_event(void *param)
 		}
 	}
 
-	if (!(txgbe_xpcs_an_enabled(hw)))
+	if (!txgbe_xpcs_an_enabled(hw))
 		return;
 
 	if (!hw->devarg.auto_neg)
@@ -3086,6 +3087,7 @@ void txgbe_dev_e56_check_bp_event(void *param)
 		need_link_update = true;
 		value &= ~VR_AN_INTR_CMPLT;
 		wr32_epcs(hw, VR_AN_INTR, value);
+		txgbe_e56_get_txffe(hw);
 	}
 
 	if (value & VR_AN_INTR_LINK) {
@@ -3103,7 +3105,21 @@ void txgbe_dev_e56_check_bp_event(void *param)
 	}
 
 	if (value & VR_AN_INTR_PG_RCV) {
-		BP_LOG("%d Enter training\n", hw->port_id);
+		BP_LOG("%d 2.1 *** Wait page changed ....\n", hw->port_id);
+		ret = txgbe_e56_exchange_page(hw);
+		if (ret) {
+			BP_LOG("%d 2.2 *** Exchange page failed\n", hw->port_id);
+			goto an_status;
+		} else {
+			BP_LOG("%d 2.2 *** Wait page changed ..done..\n",
+			       hw->port_id);
+			wr32_epcs(hw, 0x100ab, 0);
+			exchange_done = true;
+		}
+	}
+
+	if (exchange_done) {
+		BP_LOG("%d 2.2.2 *** Enter training\n", hw->port_id);
 		ret = txgbe_handle_e56_bkp_an73_flow(hw);
 		if (!AN_TRAINING_MODE) {
 			fsm = rd32_epcs(hw, 0x78010);
@@ -3826,8 +3842,10 @@ txgbe_dev_interrupt_get_status(struct rte_eth_dev *dev,
 	if (eicr & TXGBE_ICRMISC_LSC)
 		intr->flags |= TXGBE_FLAG_NEED_LINK_UPDATE;
 
-	if (eicr & TXGBE_ICRMISC_ANDONE)
+	if (eicr & TXGBE_ICRMISC_ANDONE) {
+		PMD_DRV_LOG(DEBUG, "an int eicr=0x%08x", eicr);
 		intr->flags |= TXGBE_FLAG_NEED_AN_CONFIG;
+	}
 
 	if (eicr & TXGBE_ICRMISC_VFMBX)
 		intr->flags |= TXGBE_FLAG_MAILBOX;
