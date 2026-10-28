@@ -279,4 +279,6 @@ typedef union {
 int txgbe_e56_set_phy_link_mode(struct txgbe_hw *hw,
 				u32 speed, u32 need_restart);
 int txgbe_handle_e56_bkp_an73_flow(struct txgbe_hw *hw);
+int txgbe_e56_exchange_page(struct txgbe_hw *hw);
+void txgbe_e56_get_txffe(struct txgbe_hw *hw);
 #endif
