@@ -2213,7 +2213,8 @@ txgbe_dev_set_link_up(struct rte_eth_dev *dev)
 		/* Turn on the laser */
 		hw->mac.enable_tx_laser(hw);
 
-		if (hw->mac.type == txgbe_mac_aml40) {
+		if (hw->mac.type == txgbe_mac_aml ||
+		    hw->mac.type == txgbe_mac_aml40) {
 			speed = hw->phy.autoneg_advertised;
 			if (speed == 0) {
 				err = hw->mac.get_link_capabilities(hw, &speed, &autoneg);
@@ -2227,10 +2228,31 @@ txgbe_dev_set_link_up(struct rte_eth_dev *dev)
 		}
 
 		hw->dev_start = true;
+		if (hw->mac.type == txgbe_mac_aml ||
+		    hw->mac.type == txgbe_mac_aml40) {
+			rte_eal_alarm_cancel(txgbe_dev_e56_check_bp_event, dev);
+			rte_eal_alarm_set(hw->bp_event_interval,
+					  txgbe_dev_e56_check_bp_event, dev);
+		}
 		txgbe_dev_link_update(dev, 0);
 	}
 
 	return 0;
+}
+
+static void
+txgbe_stop_link_handlers(struct rte_eth_dev *dev)
+{
+	struct txgbe_hw *hw = TXGBE_DEV_HW(dev);
+
+	if (hw->mac.type != txgbe_mac_aml &&
+	    hw->mac.type != txgbe_mac_aml40)
+		return;
+
+	rte_eal_alarm_cancel(txgbe_dev_e56_check_bp_event, dev);
+	rte_eal_alarm_cancel(txgbe_dev_setup_link_alarm_handler_aml, hw);
+	txgbe_dev_wait_setup_link_complete(dev, 0);
+	rte_eal_alarm_cancel(txgbe_dev_setup_link_alarm_handler_aml, hw);
 }
 
 /*
@@ -2245,9 +2267,11 @@ txgbe_dev_set_link_down(struct rte_eth_dev *dev)
 		/* Turn off the copper */
 		hw->phy.set_phy_power(hw, false);
 	} else {
+		hw->dev_start = false;
+		txgbe_stop_link_handlers(dev);
+
 		/* Turn off the laser */
 		hw->mac.disable_tx_laser(hw);
-		hw->dev_start = false;
 		txgbe_dev_link_update(dev, 0);
 	}
 
@@ -3073,8 +3097,8 @@ void txgbe_dev_e56_check_bp_event(void *param)
 	if (!hw->devarg.auto_neg)
 		return;
 
-	/* only continue if link is down */
-	if (dev->data->dev_link.link_status)
+	/* Continue only for an administratively up port with link down. */
+	if (!hw->dev_start || dev->data->dev_link.link_status)
 		goto out;
 
 	value = rd32_epcs(hw, VR_AN_INTR);
@@ -3232,7 +3256,8 @@ out:
 	} else if (err == 0) {
 		hw->mac.setup_sfp(hw);
 		PMD_DRV_LOG(INFO, "detected SFP+: %d", hw->phy.sfp_type);
-		txgbe_dev_setup_link_alarm_handler(dev);
+		if (hw->dev_start)
+			txgbe_dev_setup_link_alarm_handler(dev);
 		/* Re-arm the AN73 watchdog for the newly inserted module, so
 		 * that only one instance of it is running at a time.
 		 */
@@ -3411,6 +3436,11 @@ txgbe_dev_setup_link_alarm_handler_aml(void *param)
 	u32 speed;
 	bool autoneg = false;
 	u32 gssr = hw->phy.phy_semaphore_mask;
+
+	if (!hw->dev_start) {
+		intr->flags &= ~TXGBE_FLAG_NEED_LINK_CONFIG;
+		return;
+	}
 
 	speed = hw->phy.autoneg_advertised;
 	if (!speed)
