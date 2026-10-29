@@ -66,8 +66,7 @@ static int total_num_mbufs = NUM_MBUFS_DEFAULT;
 /* mask of enabled ports */
 static uint32_t enabled_port_mask = 0;
 
-/* Set by the SIGINT handler to stop the worker loops. */
-static volatile sig_atomic_t quit;
+static RTE_ATOMIC(bool) stop_workers;
 
 /* Promiscuous mode */
 static uint32_t promiscuous;
@@ -1242,7 +1241,7 @@ switch_worker(void *arg)
 		}
 	}
 
-	while (!quit) {
+	while (!rte_atomic_load_explicit(&stop_workers, rte_memory_order_relaxed)) {
 		drain_mbuf_table(tx_q);
 		drain_vhost_table();
 		/*
@@ -1494,12 +1493,6 @@ unregister_drivers(int socket_num)
 	}
 }
 
-static void
-sigint_handler(__rte_unused int signum)
-{
-	quit = 1;
-}
-
 /*
  * Main function, does initialisation and calls the per-lcore functions.
  */
@@ -1513,8 +1506,13 @@ main(int argc, char *argv[])
 	uint16_t portid;
 	rte_thread_t tid;
 	uint64_t flags = RTE_VHOST_USER_NET_COMPLIANT_OL_FLAGS;
+	sigset_t set;
+	int sig;
 
-	signal(SIGINT, sigint_handler);
+	sigemptyset(&set);
+	sigaddset(&set, SIGINT);
+	sigaddset(&set, SIGTERM);
+	pthread_sigmask(SIG_BLOCK, &set, NULL);
 
 	/* init EAL */
 	ret = rte_eal_init(argc, argv);
@@ -1654,11 +1652,16 @@ main(int argc, char *argv[])
 		}
 	}
 
-	RTE_LCORE_FOREACH_WORKER(lcore_id)
-		rte_eal_wait_lcore(lcore_id);
+	/* Wait until SIGINT or SIGTERM */
+	sigwait(&set, &sig);
+	pthread_sigmask(SIG_UNBLOCK, &set, NULL);
 
 	/* Unregister vhost driver. */
 	unregister_drivers(nb_sockets);
+
+	/* Tell worker threads to exit */
+	rte_atomic_store_explicit(&stop_workers, true, rte_memory_order_relaxed);
+	rte_eal_mp_wait_lcore();
 
 	/* clean up the EAL */
 	rte_eal_cleanup();
