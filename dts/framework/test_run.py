@@ -110,7 +110,7 @@ from typing import ClassVar, Protocol, Union
 from api.capabilities import LinkTopology
 from api.context import Context, init_ctx
 from api.exception import InternalError, SkippedTestException, TestCaseVerifyError
-from api.test_suite import BaseConfig, TestCase, TestCaseType, TestSuite
+from api.test_suite import BaseConfig, TestCase, TestCaseType, TestSuite, TestSuiteType
 from api.testbed_model.capability import (
     Capability,
     get_supported_capabilities,
@@ -377,11 +377,6 @@ class TestRunSetup(State):
             ctx.topology.bind_cryptodevs("dpdk")
 
         ctx.topology.configure_ports("sut", "dpdk")
-        if ctx.func_tg and ctx.topology.type is not LinkTopology.NO_LINK:
-            ctx.func_tg.setup(ctx.topology)
-        if ctx.perf_tg and ctx.topology.type is not LinkTopology.NO_LINK:
-            ctx.perf_tg.setup(ctx.topology)
-
         self.result.ports = [
             port.to_dict() for port in ctx.topology.sut_ports + ctx.topology.tg_ports
         ]
@@ -513,6 +508,20 @@ class TestSuiteSetup(TestSuiteState):
         """Hook before the state is processed."""
         super().before()
         self.logger.set_custom_log_file(self.test_suite.name)
+
+        ctx = self.test_run.ctx
+        test_suite_type = self.test_suite.test_suite_type
+        if ctx.topology.type is not LinkTopology.NO_LINK:
+            if test_suite_type == TestSuiteType.FUNC:
+                required_tg, other_tg = ctx.func_tg, ctx.perf_tg
+            else:
+                required_tg, other_tg = ctx.perf_tg, ctx.func_tg
+
+            if other_tg and other_tg.is_setup:
+                other_tg.teardown()
+
+            if required_tg and not required_tg.is_setup:
+                required_tg.setup(ctx.topology)
 
     @property
     def description(self) -> str:

@@ -28,7 +28,7 @@ from api.cryptodev.types import (
     CryptodevResults,
 )
 from api.test import verify
-from api.test_suite import TestSuite, perf_test
+from api.test_suite import TestSuite, perf_suite, perf_test
 from api.testbed_model.virtual_device import VirtualDevice
 from framework.context import get_ctx
 
@@ -38,6 +38,7 @@ AES_GCM_DATA = "test_aes_gcm.data"
 
 
 @requires_link_topology(LinkTopology.NO_LINK)
+@perf_suite
 class TestCryptodevVerify(TestSuite):
     """DPDK Crypto Device Testing Suite."""
 

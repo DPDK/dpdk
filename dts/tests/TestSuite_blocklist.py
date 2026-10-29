@@ -11,11 +11,12 @@ from api.capabilities import (
     requires_link_topology,
 )
 from api.test import verify
-from api.test_suite import TestSuite, func_test
+from api.test_suite import TestSuite, func_suite, func_test
 from api.testbed_model.port import Port
 from api.testpmd import TestPmd
 
 
+@func_suite
 class TestBlocklist(TestSuite):
     """DPDK device blocklisting test suite."""
 
