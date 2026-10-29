@@ -25,7 +25,7 @@ from api.capabilities import (
 )
 from api.packet import send_packet_and_capture
 from api.test import verify
-from api.test_suite import TestSuite, func_test
+from api.test_suite import TestSuite, func_suite, func_test
 from api.testpmd import TestPmd
 from api.testpmd.config import SimpleForwardingModes
 from api.testpmd.types import RtePTypes, TestPmdVerbosePacket
@@ -33,6 +33,7 @@ from api.testpmd.types import RtePTypes, TestPmdVerbosePacket
 
 @requires_nic_capability(NicCapability.PHYSICAL_FUNCTION)
 @requires_link_topology(LinkTopology.TWO_LINKS)
+@func_suite
 class TestPortStats(TestSuite):
     """DPDK Port statistics testing suite.
 

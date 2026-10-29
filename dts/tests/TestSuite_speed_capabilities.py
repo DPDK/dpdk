@@ -13,7 +13,7 @@ from api.capabilities import (
     requires_link_topology,
 )
 from api.test import verify
-from api.test_suite import BaseConfig, TestSuite, func_test
+from api.test_suite import BaseConfig, TestSuite, func_suite, func_test
 from api.testpmd import TestPmd
 
 
@@ -39,6 +39,7 @@ class Config(BaseConfig):
 
 
 @requires_link_topology(LinkTopology.ONE_LINK)
+@func_suite
 class TestSpeedCapabilities(TestSuite):
     """Speed capabilities test suite."""
 

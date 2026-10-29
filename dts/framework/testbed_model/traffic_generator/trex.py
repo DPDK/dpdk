@@ -110,6 +110,7 @@ class TrexTrafficGenerator(PerformanceTrafficGenerator):
     def setup(self, topology: Topology):
         """Initialize and start a TRex server process."""
         super().setup(topology)
+        topology.configure_ports("tg", "dpdk")
         self._topology = topology
 
         self._shell = PythonShell(self._tg_node, "TRex-client", privileged=True)
