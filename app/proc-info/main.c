@@ -1869,9 +1869,15 @@ show_module_eeprom_info(void)
 
 		ret = rte_eth_dev_get_module_info(i, &module_info);
 		if (ret != 0) {
-			fprintf(stderr, "Module EEPROM information read error: %s\n",
-				strerror(-ret));
-			return;
+			fprintf(stderr, "Port %u module EEPROM information read error: %s\n",
+				i, strerror(-ret));
+			continue;
+		}
+
+		if (module_info.eeprom_len > sizeof(bytes_eeprom)) {
+			fprintf(stderr, "Port %u module EEPROM too long: %u bytes\n",
+				i, module_info.eeprom_len);
+			continue;
 		}
 
 		eeprom_info.offset = 0;
@@ -1880,9 +1886,9 @@ show_module_eeprom_info(void)
 
 		ret = rte_eth_dev_get_module_eeprom(i, &eeprom_info);
 		if (ret != 0) {
-			fprintf(stderr, "Module EEPROM read error: %s\n",
-				strerror(-ret));
-			return;
+			fprintf(stderr, "Port %u module EEPROM read error: %s\n",
+				i, strerror(-ret));
+			continue;
 		}
 
 		rte_hexdump(stdout, "hexdump", eeprom_info.data,
