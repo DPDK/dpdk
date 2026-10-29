@@ -192,7 +192,7 @@ fib_main_loop(__rte_unused void *dummy)
 			US_PER_S * BURST_TX_DRAIN_US;
 
 	lcore_id = rte_lcore_id();
-	qconf = &lcore_conf[lcore_id];
+	qconf = lcore_conf[lcore_id];
 
 	const uint16_t n_rx_q = qconf->n_rx_queue;
 	const uint16_t n_tx_p = qconf->n_tx_port;
@@ -282,7 +282,7 @@ fib_event_loop(struct l3fwd_event_resources *evt_rsrc,
 
 	lcore_id = rte_lcore_id();
 
-	lconf = &lcore_conf[lcore_id];
+	lconf = lcore_conf[lcore_id];
 
 	RTE_LOG(INFO, L3FWD, "entering %s on lcore %u\n", __func__, lcore_id);
 
@@ -446,7 +446,7 @@ fib_process_event_vector(struct rte_event_vector *vec, uint8_t *type_arr,
 	uint16_t nh;
 	int i;
 
-	lconf = &lcore_conf[rte_lcore_id()];
+	lconf = lcore_conf[rte_lcore_id()];
 
 	/* Reset counters. */
 	ipv4_cnt = 0;

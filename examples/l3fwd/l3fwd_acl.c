@@ -1090,7 +1090,7 @@ acl_main_loop(__rte_unused void *dummy)
 
 	prev_tsc = 0;
 	lcore_id = rte_lcore_id();
-	qconf = &lcore_conf[lcore_id];
+	qconf = lcore_conf[lcore_id];
 	socketid = rte_lcore_to_socket_id(lcore_id);
 
 	if (qconf->n_rx_queue == 0) {

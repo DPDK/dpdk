@@ -104,7 +104,7 @@ extern uint32_t hash_entry_number;
 
 extern xmm_t val_eth[RTE_MAX_ETHPORTS];
 
-extern struct lcore_conf lcore_conf[RTE_MAX_LCORE];
+extern struct lcore_conf *lcore_conf[RTE_MAX_LCORE];
 
 extern struct parm_cfg parm_config;
 

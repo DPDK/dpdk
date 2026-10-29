@@ -95,7 +95,7 @@ uint32_t enabled_port_mask;
 /* Used only in exact match mode. */
 bool ipv6_enabled; /**< ipv6 is false by default. */
 
-struct lcore_conf lcore_conf[RTE_MAX_LCORE];
+struct lcore_conf *lcore_conf[RTE_MAX_LCORE];
 
 struct parm_cfg parm_config;
 
@@ -367,17 +367,17 @@ init_lcore_rx_queues(void)
 
 	for (i = 0; i < nb_lcore_params; ++i) {
 		lcore = lcore_params[i].lcore_id;
-		nb_rx_queue = lcore_conf[lcore].n_rx_queue;
+		nb_rx_queue = lcore_conf[lcore]->n_rx_queue;
 		if (nb_rx_queue >= MAX_RX_QUEUE_PER_LCORE) {
 			printf("error: too many queues (%u) for lcore: %u\n",
 				(unsigned int)nb_rx_queue + 1, lcore);
 			return -1;
 		} else {
-			lcore_conf[lcore].rx_queue_list[nb_rx_queue].port_id =
+			lcore_conf[lcore]->rx_queue_list[nb_rx_queue].port_id =
 				lcore_params[i].port_id;
-			lcore_conf[lcore].rx_queue_list[nb_rx_queue].queue_id =
+			lcore_conf[lcore]->rx_queue_list[nb_rx_queue].queue_id =
 				lcore_params[i].queue_id;
-			lcore_conf[lcore].n_rx_queue++;
+			lcore_conf[lcore]->n_rx_queue++;
 		}
 	}
 	return 0;
@@ -1117,6 +1117,41 @@ print_ethaddr(const char *name, const struct rte_ether_addr *eth_addr)
 	printf("%s%s", name, buf);
 }
 
+static void
+deinit_lcore_conf(void)
+{
+	unsigned int lcore_id;
+
+	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
+		if (lcore_conf[lcore_id] != NULL) {
+			rte_free(lcore_conf[lcore_id]);
+			lcore_conf[lcore_id] = NULL;
+		}
+	}
+}
+
+static int
+init_lcore_conf(void)
+{
+	unsigned int lcore_id;
+	int socketid;
+
+	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
+		if (rte_lcore_is_enabled(lcore_id) == 0)
+			continue;
+
+		socketid = numa_on ? (int)rte_lcore_to_socket_id(lcore_id) : SOCKET_ID_ANY;
+		lcore_conf[lcore_id] = rte_zmalloc_socket(NULL, sizeof(struct lcore_conf),
+							  RTE_CACHE_LINE_SIZE, socketid);
+		if (lcore_conf[lcore_id] == NULL) {
+			deinit_lcore_conf();
+			return -ENOMEM;
+		}
+	}
+
+	return 0;
+}
+
 int
 init_mem(uint16_t portid, unsigned int nb_mbuf)
 {
@@ -1188,7 +1223,7 @@ init_mem(uint16_t portid, unsigned int nb_mbuf)
 		}
 #endif
 
-		qconf = &lcore_conf[lcore_id];
+		qconf = lcore_conf[lcore_id];
 		qconf->ipv4_lookup_struct =
 			l3fwd_lkp.get_ipv4_lookup_struct(socketid);
 		qconf->ipv6_lookup_struct =
@@ -1490,7 +1525,7 @@ l3fwd_poll_resource_setup(void)
 					"rte_eth_tx_queue_setup: err=%d, "
 					"port=%d\n", ret, portid);
 
-			qconf = &lcore_conf[lcore_id];
+			qconf = lcore_conf[lcore_id];
 			qconf->tx_queue_id[portid] = queueid;
 			queueid++;
 
@@ -1503,7 +1538,7 @@ l3fwd_poll_resource_setup(void)
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
 		if (rte_lcore_is_enabled(lcore_id) == 0)
 			continue;
-		qconf = &lcore_conf[lcore_id];
+		qconf = lcore_conf[lcore_id];
 		printf("\nInitializing rx queues on lcore %u ... ", lcore_id );
 		fflush(stdout);
 		/* init RX queues */
@@ -1684,6 +1719,10 @@ main(int argc, char **argv)
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Invalid L3FWD parameters\n");
 
+	ret = init_lcore_conf();
+	if (ret)
+		rte_exit(EXIT_FAILURE, "Init lcore conf failed!\n");
+
 	RTE_LOG(INFO, L3FWD, "Using Rx burst %u Tx burst %u\n", rx_burst_size, tx_burst_size);
 
 	/* Setup function pointers for lookup method. */
@@ -1747,7 +1786,7 @@ main(int argc, char **argv)
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
 		if (rte_lcore_is_enabled(lcore_id) == 0)
 			continue;
-		qconf = &lcore_conf[lcore_id];
+		qconf = lcore_conf[lcore_id];
 		for (queue = 0; queue < qconf->n_rx_queue; ++queue) {
 			portid = qconf->rx_queue_list[queue].port_id;
 			queueid = qconf->rx_queue_list[queue].queue_id;
@@ -1810,6 +1849,8 @@ main(int argc, char **argv)
 
 	/* clean up config file routes */
 	l3fwd_lkp.free_routes();
+
+	deinit_lcore_conf();
 
 	/* clean up the EAL */
 	rte_eal_cleanup();
