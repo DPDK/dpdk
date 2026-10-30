@@ -317,6 +317,40 @@ mlx5_find_master_dev(struct rte_eth_dev *dev)
 }
 
 /**
+ * Retrieve the carrier state of a device.
+ *
+ * The IFF_RUNNING flag reported by SIOCGIFFLAGS reflects the RFC 2863
+ * operational state, which the kernel only refreshes from its link watch
+ * work queue and which may therefore lag the actual carrier by up to a
+ * second. ETHTOOL_GLINK reports the carrier directly, and additionally
+ * flushes any link watch event still pending for the device.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ *
+ * @return
+ *   1 if the carrier is up, 0 otherwise.
+ *   Negative errno value is returned on error.
+ */
+int
+mlx5_link_carrier_get(struct rte_eth_dev *dev)
+{
+	struct ethtool_value ecmd = {
+		.cmd = ETHTOOL_GLINK,
+	};
+	struct ifreq ifr = {
+		.ifr_data = (void *)&ecmd,
+	};
+	int ret;
+
+	ret = mlx5_ifreq(dev, SIOCETHTOOL, &ifr);
+	if (ret != 0)
+		return ret;
+
+	return !!ecmd.data;
+}
+
+/**
  * DPDK callback to retrieve physical link information.
  *
  * @param dev
@@ -346,9 +380,11 @@ mlx5_link_update_unlocked_gset(struct rte_eth_dev *dev,
 			dev->data->port_id, strerror(rte_errno));
 		return ret;
 	}
+	ret = mlx5_link_carrier_get(dev);
+	if (ret < 0)
+		return ret;
 	dev_link = (struct rte_eth_link) {
-		.link_status = ((ifr.ifr_flags & IFF_UP) &&
-				(ifr.ifr_flags & IFF_RUNNING)),
+		.link_status = ((ifr.ifr_flags & IFF_UP) && ret),
 	};
 	ifr = (struct ifreq) {
 		.ifr_data = (void *)&edata,
@@ -427,9 +463,11 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev,
 			dev->data->port_id, strerror(rte_errno));
 		return ret;
 	}
+	ret = mlx5_link_carrier_get(dev);
+	if (ret < 0)
+		return ret;
 	dev_link = (struct rte_eth_link) {
-		.link_status = ((ifr.ifr_flags & IFF_UP) &&
-				(ifr.ifr_flags & IFF_RUNNING)),
+		.link_status = ((ifr.ifr_flags & IFF_UP) && ret),
 	};
 	ifr = (struct ifreq) {
 		.ifr_data = (void *)&gcmd,
