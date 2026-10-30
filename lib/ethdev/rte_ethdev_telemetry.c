@@ -1515,13 +1515,11 @@ eth_dev_handle_port_regs(const char *cmd __rte_unused,
 		kvlist = rte_kvargs_parse(end_param, valid_keys);
 		filter_val = rte_kvargs_get(kvlist, "filter");
 		ret = rte_kvargs_process(kvlist, "hide_zero", eth_dev_parse_hide_zero, &hide_zero);
-		if (kvlist == NULL || (filter_val != NULL && strlen(filter_val) == 0) || ret != 0) {
+		if (kvlist == NULL || (filter_val != NULL && strlen(filter_val) == 0) || ret != 0)
 			RTE_ETHDEV_LOG_LINE(NOTICE,
 				"Unknown extra parameters passed to ethdev telemetry command, ignoring");
-		} else {
+		else
 			filter = (filter_val != NULL) ? strdup(filter_val) : NULL;
-			hide_zero = false;
-		}
 		rte_kvargs_free(kvlist);
 	}
 
