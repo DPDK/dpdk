@@ -249,9 +249,9 @@ npa_cn20k_aura_dump(__io struct npa_cn20k_aura_s *aura)
 int
 roc_npa_ctx_dump(void)
 {
+	struct npa_cn20k_aq_enq_rsp *rsp_cn20k = NULL;
 	struct npa_cn20k_aq_enq_req *aq_cn20k;
-	struct npa_cn20k_aq_enq_rsp *rsp_cn20k;
-	struct npa_aq_enq_rsp *rsp;
+	struct npa_aq_enq_rsp *rsp = NULL;
 	struct npa_aq_enq_req *aq;
 	struct mbox *mbox;
 	struct npa_lf *lf;
