@@ -2010,6 +2010,9 @@ i40e_fdir_flow_engine_init(const struct ci_flow_engine *engine,
 	uint32_t i;
 	int ret;
 
+	if ((pf->flags & I40E_FLAG_FDIR) == 0 || fdir_info->fdir_space_size == 0)
+		return -ENOTSUP;
+
 	snprintf(fdir_hash_name, sizeof(fdir_hash_name), "fdir_%s", dev_data->name);
 
 	struct rte_hash_parameters fdir_hash_params = {
