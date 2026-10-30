@@ -7814,16 +7814,16 @@ ice_timesync_disable(struct rte_eth_dev *dev)
 }
 
 static int
-ice_read_clock(__rte_unused struct rte_eth_dev *dev, uint64_t *clock)
+ice_read_clock(struct rte_eth_dev *dev, uint64_t *clock)
 {
-	struct timespec system_time;
+	struct timespec ts;
+	int ret;
 
-#ifdef RTE_EXEC_ENV_LINUX
-	clock_gettime(CLOCK_MONOTONIC_RAW, &system_time);
-#else
-	clock_gettime(CLOCK_MONOTONIC, &system_time);
-#endif
-	*clock = system_time.tv_sec * NSEC_PER_SEC + system_time.tv_nsec;
+	ret = ice_timesync_read_time(dev, &ts);
+	if (ret)
+		return ret;
+
+	*clock = (uint64_t)ts.tv_sec * NSEC_PER_SEC + ts.tv_nsec;
 
 	return 0;
 }
