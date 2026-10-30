@@ -2391,6 +2391,7 @@ int mlx5_get_mtu(struct rte_eth_dev *dev, uint16_t *mtu);
 int mlx5_set_mtu(struct rte_eth_dev *dev, uint16_t mtu);
 int mlx5_read_clock(struct rte_eth_dev *dev, uint64_t *clock);
 int mlx5_link_update(struct rte_eth_dev *dev, int wait_to_complete);
+int mlx5_link_carrier_get(struct rte_eth_dev *dev);
 int mlx5_dev_get_flow_ctrl(struct rte_eth_dev *dev,
 			   struct rte_eth_fc_conf *fc_conf);
 int mlx5_dev_set_flow_ctrl(struct rte_eth_dev *dev,
