@@ -329,6 +329,8 @@ npa_aura_pool_fini(struct mbox *m_box, uint32_t aura_id, uint64_t aura_handle)
 	pool_req->op = NPA_AQ_INSTOP_WRITE;
 	pool_req->pool.ena = 0;
 	pool_req->pool_mask.ena = ~pool_req->pool_mask.ena;
+	pool_req->pool.fc_ena = 0;
+	pool_req->pool_mask.fc_ena = ~pool_req->pool_mask.fc_ena;
 
 	if (roc_model_is_cn20k()) {
 		struct npa_cn20k_aq_enq_req *aura_req_cn20k;
@@ -344,6 +346,8 @@ npa_aura_pool_fini(struct mbox *m_box, uint32_t aura_id, uint64_t aura_handle)
 	aura_req->op = NPA_AQ_INSTOP_WRITE;
 	aura_req->aura.ena = 0;
 	aura_req->aura_mask.ena = ~aura_req->aura_mask.ena;
+	aura_req->aura.fc_ena = 0;
+	aura_req->aura_mask.fc_ena = ~aura_req->aura_mask.fc_ena;
 	if (roc_model_is_cn20k()) {
 		__io struct npa_cn20k_aura_s *aura_cn20k, *aura_mask_cn20k;
 
