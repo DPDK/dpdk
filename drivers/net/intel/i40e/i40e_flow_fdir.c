@@ -45,7 +45,8 @@ struct i40e_fdir_engine_priv {
 
 /**
  * FDIR graph implementation (non-tunnel)
- * Pattern: START -> ETH -> [VLAN] -> (IPv4 | IPv6) -> [TCP | UDP | SCTP | ESP | L2TPv3 | GTP] -> END
+ * Pattern: START -> ETH -> (IPv4 | IPv6) -> [TCP | UDP | SCTP | ESP | L2TPv3 | GTP] -> END
+ *          START -> ETH -> VLAN -> (IPv4 | IPv6) -> [TCP | UDP | SCTP] -> END
  * With RAW flexible payload support:
  *   - L2: ETH/VLAN -> RAW -> RAW -> RAW -> END
  *   - L3: IPv4/IPv6 -> RAW -> RAW -> RAW -> END
@@ -53,6 +54,9 @@ struct i40e_fdir_engine_priv {
  * GTP tunnel support:
  *   - IPv4/IPv6 -> UDP -> GTP -> END (GTP-C, GTP-U outer)
  *   - IPv4/IPv6 -> UDP -> GTP -> IPv4/IPv6 -> END (GTP-U with inner IP)
+ * VLAN cannot be combined with ESP, L2TPv3 or GTP: these use customized
+ * pctypes whose input set does not include the VLAN tag, so VLAN is followed
+ * by separate IP/UDP nodes that do not lead to any of them.
  */
 
 enum i40e_fdir_node_id {
@@ -70,6 +74,9 @@ enum i40e_fdir_node_id {
 	I40E_FDIR_NODE_GTPU,
 	I40E_FDIR_NODE_INNER_IPV4,
 	I40E_FDIR_NODE_INNER_IPV6,
+	I40E_FDIR_NODE_VLAN_IPV4,
+	I40E_FDIR_NODE_VLAN_IPV6,
+	I40E_FDIR_NODE_VLAN_UDP,
 	I40E_FDIR_NODE_RAW,
 	I40E_FDIR_NODE_END,
 	I40E_FDIR_NODE_MAX,
@@ -1345,6 +1352,31 @@ static const struct flow_graph i40e_fdir_graph = {
 			.validate = i40e_fdir_node_ipv6_validate,
 			.process = i40e_fdir_node_inner_ipv6_process,
 		},
+		[I40E_FDIR_NODE_VLAN_IPV4] = {
+			.name = "VLAN_IPv4",
+			.type = RTE_FLOW_ITEM_TYPE_IPV4,
+			.constraints = FLOW_GRAPH_NODE_EXPECT_EMPTY |
+				       FLOW_GRAPH_NODE_EXPECT_SPEC |
+				       FLOW_GRAPH_NODE_EXPECT_RANGE,
+			.validate = i40e_fdir_node_ipv4_validate,
+			.process = i40e_fdir_node_ipv4_process,
+		},
+		[I40E_FDIR_NODE_VLAN_IPV6] = {
+			.name = "VLAN_IPv6",
+			.type = RTE_FLOW_ITEM_TYPE_IPV6,
+			.constraints = FLOW_GRAPH_NODE_EXPECT_EMPTY |
+				       FLOW_GRAPH_NODE_EXPECT_SPEC,
+			.validate = i40e_fdir_node_ipv6_validate,
+			.process = i40e_fdir_node_ipv6_process,
+		},
+		[I40E_FDIR_NODE_VLAN_UDP] = {
+			.name = "VLAN_UDP",
+			.type = RTE_FLOW_ITEM_TYPE_UDP,
+			.constraints = FLOW_GRAPH_NODE_EXPECT_EMPTY |
+				       FLOW_GRAPH_NODE_EXPECT_SPEC,
+			.validate = i40e_fdir_node_udp_validate,
+			.process = i40e_fdir_node_udp_process,
+		},
 		[I40E_FDIR_NODE_RAW] = {
 			.name = "RAW",
 			.type = RTE_FLOW_ITEM_TYPE_RAW,
@@ -1378,8 +1410,8 @@ static const struct flow_graph i40e_fdir_graph = {
 		},
 		[I40E_FDIR_NODE_VLAN] = {
 			.next = (size_t[]) {
-				I40E_FDIR_NODE_IPV4,
-				I40E_FDIR_NODE_IPV6,
+				I40E_FDIR_NODE_VLAN_IPV4,
+				I40E_FDIR_NODE_VLAN_IPV6,
 				I40E_FDIR_NODE_RAW,
 				I40E_FDIR_NODE_END,
 				FLOW_GRAPH_NODE_EDGE_END
@@ -1467,6 +1499,33 @@ static const struct flow_graph i40e_fdir_graph = {
 		},
 		[I40E_FDIR_NODE_INNER_IPV6] = {
 			.next = (size_t[]) {
+				I40E_FDIR_NODE_END,
+				FLOW_GRAPH_NODE_EDGE_END
+			}
+		},
+		[I40E_FDIR_NODE_VLAN_IPV4] = {
+			.next = (size_t[]) {
+				I40E_FDIR_NODE_TCP,
+				I40E_FDIR_NODE_VLAN_UDP,
+				I40E_FDIR_NODE_SCTP,
+				I40E_FDIR_NODE_RAW,
+				I40E_FDIR_NODE_END,
+				FLOW_GRAPH_NODE_EDGE_END
+			}
+		},
+		[I40E_FDIR_NODE_VLAN_IPV6] = {
+			.next = (size_t[]) {
+				I40E_FDIR_NODE_TCP,
+				I40E_FDIR_NODE_VLAN_UDP,
+				I40E_FDIR_NODE_SCTP,
+				I40E_FDIR_NODE_RAW,
+				I40E_FDIR_NODE_END,
+				FLOW_GRAPH_NODE_EDGE_END
+			}
+		},
+		[I40E_FDIR_NODE_VLAN_UDP] = {
+			.next = (size_t[]) {
+				I40E_FDIR_NODE_RAW,
 				I40E_FDIR_NODE_END,
 				FLOW_GRAPH_NODE_EDGE_END
 			}
