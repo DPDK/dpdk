@@ -10,6 +10,7 @@ sources += files(
         'mlx5_mp_os.c',
         'mlx5_vlan_os.c',
         'mlx5_flow_os.c',
+        'mlx5_lsc_intr.c',
 )
 
 cflags += no_wvla_cflag

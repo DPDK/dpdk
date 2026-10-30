@@ -18,6 +18,7 @@
 #include "mlx5_rx.h"
 #include "mlx5_tx.h"
 #include "mlx5_utils.h"
+#include "mlx5_lsc_intr.h"
 #include "rte_pmd_mlx5.h"
 
 static void mlx5_traffic_disable_legacy(struct rte_eth_dev *dev);
@@ -1507,6 +1508,15 @@ continue_dev_start:
 	dev->rx_pkt_burst = mlx5_select_rx_function(dev);
 	/* Enable datapath on secondary process. */
 	mlx5_mp_os_req_start_rxtx(dev);
+	if (dev->data->dev_conf.intr_conf.lsc) {
+		ret = mlx5_lsc_intr_setup(dev);
+		if (ret < 0) {
+			DRV_LOG(INFO,
+				"port %u failed to configure LSC interrupts, starting without",
+				dev->data->port_id);
+			dev->data->dev_conf.intr_conf.lsc = 0;
+		}
+	}
 	if (rte_intr_fd_get(priv->sh->intr_handle) >= 0) {
 		priv->sh->port[priv->dev_port - 1].ih_port_id =
 					(uint32_t)dev->data->port_id;
@@ -1514,14 +1524,6 @@ continue_dev_start:
 		DRV_LOG(INFO, "port %u starts without RMV interrupts.",
 			dev->data->port_id);
 		dev->data->dev_conf.intr_conf.rmv = 0;
-	}
-	if (rte_intr_fd_get(priv->sh->intr_handle_nl) >= 0) {
-		priv->sh->port[priv->dev_port - 1].nl_ih_port_id =
-					(uint32_t)dev->data->port_id;
-	} else {
-		DRV_LOG(INFO, "port %u starts without LSC interrupts.",
-			dev->data->port_id);
-		dev->data->dev_conf.intr_conf.lsc = 0;
 	}
 	if (rte_intr_fd_get(priv->sh->intr_handle_devx) >= 0)
 		priv->sh->port[priv->dev_port - 1].devx_ih_port_id =
@@ -1664,7 +1666,7 @@ continue_dev_stop:
 	mlx5_rx_intr_vec_disable(dev);
 	priv->sh->port[priv->dev_port - 1].ih_port_id = RTE_MAX_ETHPORTS;
 	priv->sh->port[priv->dev_port - 1].devx_ih_port_id = RTE_MAX_ETHPORTS;
-	priv->sh->port[priv->dev_port - 1].nl_ih_port_id = RTE_MAX_ETHPORTS;
+	mlx5_lsc_intr_cleanup(dev);
 	mlx5_txq_stop(dev);
 	mlx5_rxq_stop(dev);
 	mlx5_dev_free_consec_tx_mem(dev, true);

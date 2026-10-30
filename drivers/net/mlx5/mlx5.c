@@ -1930,7 +1930,6 @@ mlx5_alloc_shared_dev_ctx(const struct mlx5_dev_spawn_data *spawn,
 	for (i = 0; i < sh->max_port; i++) {
 		sh->port[i].ih_port_id = RTE_MAX_ETHPORTS;
 		sh->port[i].devx_ih_port_id = RTE_MAX_ETHPORTS;
-		sh->port[i].nl_ih_port_id = RTE_MAX_ETHPORTS;
 	}
 	if (sh->cdev->config.devx) {
 		sh->td = mlx5_devx_cmd_create_td(sh->cdev->ctx);
@@ -2559,12 +2558,6 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	mlx5_free(priv->mac);
 	dev->data->mac_addrs = NULL;
 	mlx5_free(priv->mac_own);
-	sh->port[priv->dev_port - 1].nl_ih_port_id = RTE_MAX_ETHPORTS;
-	/*
-	 * The interrupt handler port id must be reset before priv is reset
-	 * since 'mlx5_dev_interrupt_nl_cb' uses priv.
-	 */
-	rte_io_wmb();
 	/*
 	 * Free the shared context in last turn, because the cleanup
 	 * routines above may use some shared fields, like

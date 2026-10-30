@@ -1995,35 +1995,6 @@ mlx5_nl_enable_roce_set(int nlsk_fd, int family_id, const char *pci_addr,
 }
 
 /**
- * Try to parse a Netlink message as a link status update.
- *
- * @param hdr
- *  Netlink message header.
- * @param[out] ifindex
- *  Index of the updated interface.
- *
- * @return
- *  0 on success, negative on failure.
- */
-RTE_EXPORT_INTERNAL_SYMBOL(mlx5_nl_parse_link_status_update)
-int
-mlx5_nl_parse_link_status_update(struct nlmsghdr *hdr, uint32_t *ifindex)
-{
-	struct ifinfomsg *info;
-
-	switch (hdr->nlmsg_type) {
-	case RTM_NEWLINK:
-	case RTM_DELLINK:
-	case RTM_GETLINK:
-	case RTM_SETLINK:
-		info = NLMSG_DATA(hdr);
-		*ifindex = info->ifi_index;
-		return 0;
-	}
-	return -1;
-}
-
-/**
  * Read pending events from a Netlink socket.
  *
  * @param nlsk_fd
