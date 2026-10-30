@@ -509,14 +509,20 @@ roc_npa_aura_batch_free(uint64_t aura_handle, uint64_t const *buf,
 	/*
 	 * NPA_LF_AURA_BATCH_FREE0
 	 *
-	 * 63   63 62  33 32       32 31  20 19    0
+	 * 63   63 62  34 33       32 31  20 19    0
 	 * -----------------------------------------
 	 * | FABS | Rsvd | COUNT_EOT | Rsvd | AURA |
 	 * -----------------------------------------
 	 */
 	free0 = roc_npa_aura_handle_to_aura(aura_handle);
-	free0 |= ((uint64_t)!!fabs << 63);
-	free0 |= ((uint64_t)(num & 0x1) << 32);
+	free0 |= ((uint64_t) !!fabs << 63);
+
+	/*
+	 * COUNT_EOT field is 1-bit wide in cn10k and is 2-bit wide in
+	 * cn20k. However we can consider it as 2-bit wide for all cases
+	 * as the upper bit is going to get ignored in cn10k.
+	 */
+	free0 |= ((uint64_t)(num & 0x3) << 32);
 
 	/* tar_addr[4:6] is LMTST size-1 in units of 128b */
 	tar_addr = addr | ((num >> 1) << 4);
@@ -546,14 +552,19 @@ roc_npa_aura_batch_free_burst(uint64_t aura_handle, uint64_t const *buf,
 	       NPA_LF_AURA_BATCH_FREE0;
 	tar_addr = addr | (0x7 << 4);
 
-	/* 63   63 62  33 32       32 31  20 19    0
+	/* 63   63 62  34 33       32 31  20 19    0
 	 * -----------------------------------------
 	 * | FABS | Rsvd | COUNT_EOT | Rsvd | AURA |
 	 * -----------------------------------------
 	 */
 	free0 = roc_npa_aura_handle_to_aura(aura_handle);
-	free0 |= ((uint64_t)!!fabs << 63);
-	free0 |= (0x1UL << 32);
+	free0 |= ((uint64_t) !!fabs << 63);
+	/*
+	 * COUNT_EOT field is 1-bit wide in cn10k and is 2-bit wide in
+	 * cn20k. However we can consider it as 2-bit wide for all cases
+	 * as the upper bit is going to get ignored in cn10k.
+	 */
+	free0 |= (0x3UL << 32);
 
 	/* Fill the lmt lines */
 	lmt_data = (uint64_t *)lmt_addr;
