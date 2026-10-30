@@ -684,7 +684,8 @@ i40e_fdir_node_sctp_process(void *ctx, const struct rte_flow_item *item,
 	struct i40e_fdir_filter *fdir_filter = &fdir_ctx->fdir_filter;
 	const struct rte_flow_item_sctp *sctp_spec = item->spec;
 	const struct rte_flow_item_sctp *sctp_mask = ci_flow_item_mask(item);
-	rte_be16_t src_spec, dst_spec, src_mask, dst_mask, tag_spec, tag_mask;
+	rte_be16_t src_spec, dst_spec, src_mask, dst_mask;
+	rte_be32_t tag_spec, tag_mask;
 	bool is_ipv4;
 
 	/* Set layer index for L4 flexible payload */
