@@ -1811,7 +1811,7 @@ roc_npa_dev_unlock(void)
 }
 
 int
-roc_npa_dpc_alloc(uint8_t *counter_id, uint16_t conf)
+roc_npa_dpc_alloc(uint8_t *counter_id, uint64_t conf)
 {
 	struct npa_cn20k_dpc_alloc_req *req;
 	struct npa_cn20k_dpc_alloc_rsp *rsp;

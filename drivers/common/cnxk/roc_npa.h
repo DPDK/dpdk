@@ -904,7 +904,7 @@ int __roc_api roc_npa_aura_drop_set(uint64_t aura_handle, uint64_t limit,
 
 void __roc_api roc_npa_dev_lock(void);
 void __roc_api roc_npa_dev_unlock(void);
-int __roc_api roc_npa_dpc_alloc(uint8_t *counter_id, uint16_t conf);
+int __roc_api roc_npa_dpc_alloc(uint8_t *counter_id, uint64_t conf);
 int __roc_api roc_npa_dpc_free(uint8_t counter_id);
 int __roc_api roc_npa_pool_dpc_enable(uint64_t aura_handle, uint8_t counter_id, uint32_t flags);
 int __roc_api roc_npa_pool_dpc_disable(uint64_t aura_handle, uint32_t flags);
