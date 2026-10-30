@@ -754,7 +754,7 @@ i40e_fdir_node_raw_validate(const void *ctx, const struct rte_flow_item *item,
 	size_t spec_size, spec_offset;
 	size_t total_size, i;
 	size_t new_src_offset;
-	bool wants_offset, wants_search, wants_limit, wants_absolute;
+	bool wants_offset, wants_search, wants_limit;
 
 	if (raw_mask == NULL) {
 		return rte_flow_error_set(error, EINVAL,
@@ -788,6 +788,11 @@ i40e_fdir_node_raw_validate(const void *ctx, const struct rte_flow_item *item,
 				RTE_FLOW_ERROR_TYPE_ITEM, item,
 				"RAW mask length must match spec length or be 0xffff");
 	}
+	if (raw_spec->length % sizeof(uint16_t) != 0) {
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM, item,
+				"RAW length must be a multiple of 2 bytes");
+	}
 
 	/* control field masks must be all zero or all one */
 	if (!CI_FIELD_IS_ZERO_OR_MASKED(&raw_mask->offset) ||
@@ -799,7 +804,6 @@ i40e_fdir_node_raw_validate(const void *ctx, const struct rte_flow_item *item,
 	wants_offset = raw_mask->offset != 0;
 	wants_search = raw_mask->search != 0 && raw_spec->search != 0;
 	wants_limit = raw_mask->limit != 0 && raw_spec->limit != 0;
-	wants_absolute = raw_mask->relative != 0 && raw_spec->relative == 0;
 
 	/* Offset must be 16-bit aligned */
 	if (wants_offset && (raw_spec->offset % sizeof(uint16_t) != 0)) {
@@ -823,7 +827,7 @@ i40e_fdir_node_raw_validate(const void *ctx, const struct rte_flow_item *item,
 	}
 
 	/* only relative offsets are supported */
-	if (wants_absolute) {
+	if (raw_spec->relative == 0) {
 		return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ITEM, item,
 				"RAW absolute offset not supported");
