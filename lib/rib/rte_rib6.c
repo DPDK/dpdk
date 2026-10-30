@@ -488,9 +488,17 @@ rte_rib6_create(const char *name, int socket_id,
 	}
 
 	snprintf(mem_name, sizeof(mem_name), "MP_%s", name);
+	/*
+	 * Nodes are small, CPU-only objects: skip cache-line alignment and
+	 * memory-channel spreading, which otherwise grow each object well
+	 * beyond sizeof(struct rte_rib6_node), and IOVA contiguity, which
+	 * only matters for device access.
+	 */
 	node_pool = rte_mempool_create(mem_name, conf->max_nodes,
 		sizeof(struct rte_rib6_node) + conf->ext_sz, 0, 0,
-		NULL, NULL, NULL, NULL, socket_id, 0);
+		NULL, NULL, NULL, NULL, socket_id,
+		RTE_MEMPOOL_F_NO_SPREAD | RTE_MEMPOOL_F_NO_CACHE_ALIGN |
+		RTE_MEMPOOL_F_NO_IOVA_CONTIG);
 
 	if (node_pool == NULL) {
 		RIB_LOG(ERR,
