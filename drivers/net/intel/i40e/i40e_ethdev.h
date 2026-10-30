@@ -780,6 +780,14 @@ struct i40e_fdir_tmpl_store {
 	struct i40e_fdir_tmpl_list list;
 };
 
+/* tracking for rte_flow filters; shared by all FDIR flow engines */
+struct i40e_fdir_flow_store {
+	/* preallocated flows, one per FDIR filter */
+	struct rte_mempool *pool;
+	/* used to reject duplicate filters */
+	struct rte_hash *hash_table;
+};
+
 /*
  *  A structure used to define fields of a FDIR related info.
  */
@@ -799,6 +807,7 @@ struct i40e_fdir_info {
 
 	struct i40e_fdir_state fdir_state;
 	struct i40e_fdir_tmpl_store tmpls;
+	struct i40e_fdir_flow_store flow_store;
 
 	/*
 	 * Priority ordering at filter invalidation(destroying a flow) between
@@ -1425,7 +1434,8 @@ bool i40e_fdir_filter_needs_status_wait(const struct i40e_pf *pf,
 					uint32_t filter_count);
 enum i40e_filter_pctype i40e_fdir_filter_pctype(const struct i40e_fdir_filter *filter);
 void i40e_fdir_tmpl_store_free(struct i40e_fdir_info *fdir_info);
-void i40e_fdir_flow_store_init(struct rte_eth_dev *dev);
+int i40e_fdir_flow_store_init(struct rte_eth_dev *dev);
+void i40e_fdir_flow_store_free(struct i40e_fdir_info *fdir_info);
 int i40e_fdir_inset_check(struct i40e_pf *pf,
 		enum i40e_filter_pctype pctype,
 		uint64_t input_set);

@@ -5,9 +5,7 @@
 #include "i40e_ethdev.h"
 #include "i40e_flow.h"
 
-#include <rte_bitmap.h>
-#include <rte_malloc.h>
-#include <rte_hash_crc.h>
+#include <rte_mempool.h>
 
 #include "../common/flow_engine.h"
 #include "../common/flow_check.h"
@@ -28,20 +26,6 @@ struct i40e_flow_engine_fdir_flow {
 	struct i40e_fdir_filter fdir_filter;
 	bool installed;
 };
-
-struct i40e_fdir_flow_pool_entry {
-	struct i40e_flow_engine_fdir_flow flow;
-	uint32_t idx;
-};
-
-struct i40e_fdir_engine_priv {
-	struct i40e_fdir_flow_pool_entry *pool;
-	struct rte_bitmap *bitmap;
-	struct rte_hash *hash_table;
-};
-
-#define I40E_FDIR_FLOW_ENTRY(flow_ptr) \
-	container_of((flow_ptr), struct i40e_fdir_flow_pool_entry, flow)
 
 /**
  * FDIR graph implementation (non-tunnel)
@@ -1698,19 +1682,19 @@ i40e_fdir_ctx_to_flow(const struct ci_flow_engine_ctx *ctx,
 
 /* Add a flow director filter into the SW hash table */
 static int
-i40e_fdir_filter_hash_add(struct i40e_fdir_engine_priv *priv,
+i40e_fdir_filter_hash_add(struct i40e_fdir_flow_store *store,
 		const struct i40e_fdir_input *filter_key)
 {
 	int ret;
 
 	/* try to find the filter in the hash table first */
-	ret = rte_hash_lookup(priv->hash_table, filter_key);
+	ret = rte_hash_lookup(store->hash_table, filter_key);
 	if (ret >= 0) {
 		PMD_DRV_LOG(ERR, "Filter already exists!");
 		return -EEXIST;
 	}
 
-	ret = rte_hash_add_key(priv->hash_table, filter_key);
+	ret = rte_hash_add_key(store->hash_table, filter_key);
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR, "Failed to insert fdir filter: %s", rte_strerror(-ret));
 		return ret;
@@ -1721,12 +1705,12 @@ i40e_fdir_filter_hash_add(struct i40e_fdir_engine_priv *priv,
 
 /* Delete a flow director filter from the SW hash table */
 static int
-i40e_fdir_filter_hash_del(struct i40e_fdir_engine_priv *priv,
+i40e_fdir_filter_hash_del(struct i40e_fdir_flow_store *store,
 		const struct i40e_fdir_input *filter_key)
 {
 	int ret;
 
-	ret = rte_hash_del_key(priv->hash_table, filter_key);
+	ret = rte_hash_del_key(store->hash_table, filter_key);
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR,
 			    "Failed to delete fdir filter: %s", rte_strerror(-ret));
@@ -1742,7 +1726,6 @@ i40e_fdir_filter_hash_del(struct i40e_fdir_engine_priv *priv,
 static int
 i40e_fdir_flow_register(struct ci_flow *flow, struct rte_flow_error *error)
 {
-	struct i40e_fdir_engine_priv *priv = flow->engine_priv;
 	struct i40e_flow_engine_fdir_flow *fdir_flow = (struct i40e_flow_engine_fdir_flow *)flow;
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(flow->dev_data->dev_private);
 	const struct i40e_fdir_filter *filter = &fdir_flow->fdir_filter;
@@ -1791,7 +1774,7 @@ i40e_fdir_flow_register(struct ci_flow *flow, struct rte_flow_error *error)
 	}
 
 	/* register the flow with the hash table */
-	ret = i40e_fdir_filter_hash_add(priv, &filter->input);
+	ret = i40e_fdir_filter_hash_add(&pf->fdir.flow_store, &filter->input);
 	if (ret < 0) {
 		return rte_flow_error_set(error, -ret,
 				RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
@@ -1833,7 +1816,6 @@ i40e_fdir_flow_register(struct ci_flow *flow, struct rte_flow_error *error)
 static int
 i40e_fdir_flow_unregister(struct ci_flow *flow, struct rte_flow_error *error)
 {
-	struct i40e_fdir_engine_priv *priv = flow->engine_priv;
 	struct i40e_flow_engine_fdir_flow *fdir_flow = (struct i40e_flow_engine_fdir_flow *)flow;
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(flow->dev_data->dev_private);
 	const struct i40e_fdir_filter *filter = &fdir_flow->fdir_filter;
@@ -1844,7 +1826,7 @@ i40e_fdir_flow_unregister(struct ci_flow *flow, struct rte_flow_error *error)
 	struct i40e_fdir_pctype_state *pctype_state = &fdir->pctype[pctype];
 	int ret;
 
-	ret = i40e_fdir_filter_hash_del(priv, &filter->input);
+	ret = i40e_fdir_filter_hash_del(&pf->fdir.flow_store, &filter->input);
 	if (ret < 0) {
 		return rte_flow_error_set(error, -ret,
 				RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
@@ -2053,124 +2035,34 @@ i40e_fdir_flow_uninstall(struct ci_flow *flow, struct rte_flow_error *error)
 }
 
 static int
-i40e_fdir_flow_engine_init(const struct ci_flow_engine *engine,
+i40e_fdir_flow_engine_init(const struct ci_flow_engine *engine __rte_unused,
 		struct rte_eth_dev_data *dev_data,
-		void *priv_data)
+		void *priv_data __rte_unused)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev_data->dev_private);
-	struct i40e_fdir_info *fdir_info = &pf->fdir;
-	struct i40e_fdir_engine_priv *priv = priv_data;
-	char fdir_hash_name[RTE_HASH_NAMESIZE];
-	struct i40e_fdir_flow_pool_entry *pool;
-	struct rte_hash *hash_table;
-	struct rte_bitmap *bmp;
-	uint32_t bmp_size;
-	void *bmp_mem;
-	uint32_t i;
-	int ret;
 
-	if ((pf->flags & I40E_FLAG_FDIR) == 0 || fdir_info->fdir_space_size == 0)
+	if ((pf->flags & I40E_FLAG_FDIR) == 0 || pf->fdir.fdir_space_size == 0)
 		return -ENOTSUP;
 
-	snprintf(fdir_hash_name, sizeof(fdir_hash_name), "fdir_%s", dev_data->name);
-
-	struct rte_hash_parameters fdir_hash_params = {
-		.name = fdir_hash_name,
-		.entries = I40E_MAX_FDIR_FILTER_NUM,
-		.key_len = sizeof(struct i40e_fdir_input),
-		.hash_func = rte_hash_crc,
-		.hash_func_init_val = 0,
-		.socket_id = rte_socket_id(),
-	};
-
-	hash_table = rte_hash_create(&fdir_hash_params);
-	if (hash_table == NULL) {
-		PMD_INIT_LOG(ERR, "Failed to create fdir hash table: %s", rte_strerror(rte_errno));
-		ret = -rte_errno;
-		goto err_hash;
-	}
-
-	pool = rte_zmalloc(engine->name,
-			fdir_info->fdir_space_size * sizeof(*pool), 0);
-	if (pool == NULL) {
-		PMD_INIT_LOG(ERR, "Failed to allocate fdir pool");
-		ret = -ENOMEM;
-		goto err_pool;
-	}
-
-	bmp_size = rte_bitmap_get_memory_footprint(fdir_info->fdir_space_size);
-	bmp_mem = rte_zmalloc("fdir_bmap", bmp_size, RTE_CACHE_LINE_SIZE);
-	if (bmp_mem == NULL) {
-		PMD_INIT_LOG(ERR, "Failed to allocate fdir bitmap");
-		ret = -ENOMEM;
-		goto err_bitmap_mem;
-	}
-
-	bmp = rte_bitmap_init(fdir_info->fdir_space_size, bmp_mem, bmp_size);
-	if (bmp == NULL) {
-		PMD_INIT_LOG(ERR, "Failed to initialize fdir bitmap: %s", rte_strerror(rte_errno));
-		ret = -rte_errno;
-		goto err_bitmap;
-	}
-
-	for (i = 0; i < fdir_info->fdir_space_size; i++) {
-		pool[i].idx = i;
-		rte_bitmap_set(bmp, i);
-	}
-
-	priv->pool = pool;
-	priv->bitmap = bmp;
-	priv->hash_table = hash_table;
-
 	return 0;
-err_bitmap:
-	rte_free(bmp_mem);
-err_bitmap_mem:
-	rte_free(pool);
-err_pool:
-	rte_hash_free(hash_table);
-err_hash:
-	return ret;
-}
-
-static void
-i40e_fdir_flow_engine_uninit(const struct ci_flow_engine *engine __rte_unused,
-		void *priv_data)
-{
-	struct i40e_fdir_engine_priv *priv = priv_data;
-
-	rte_free(priv->bitmap);
-	rte_free(priv->pool);
-	rte_hash_free(priv->hash_table);
 }
 
 static struct ci_flow *
 i40e_fdir_flow_alloc(const struct ci_flow_engine *engine __rte_unused,
 		struct rte_eth_dev_data *dev_data,
-		void *priv_data)
+		void *priv_data __rte_unused)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev_data->dev_private);
 	struct i40e_fdir_info *fdir_info = &pf->fdir;
-	struct i40e_fdir_engine_priv *priv = priv_data;
 	struct i40e_flow_engine_fdir_flow *flow;
-	uint64_t slab = 0;
-	uint32_t pos = 0;
-	uint32_t bit;
 	size_t mem_sz;
-	int ret;
 
 	if (fdir_info->fdir_rule_count >= fdir_info->fdir_space_size)
 		return NULL;
 
-	ret = rte_bitmap_scan(priv->bitmap, &pos, &slab);
-	if (ret == 0)
+	if (rte_mempool_get(fdir_info->flow_store.pool, (void **)&flow) < 0)
 		return NULL;
 
-	bit = rte_bsf64(slab);
-	pos += bit;
-	rte_bitmap_clear(priv->bitmap, pos);
-
-	flow = &priv->pool[pos].flow;
 	/* do not touch ci_flow members, they are initialized by the caller */
 	mem_sz = sizeof(*flow) - sizeof(struct ci_flow);
 
@@ -2180,20 +2072,16 @@ i40e_fdir_flow_alloc(const struct ci_flow_engine *engine __rte_unused,
 
 static void
 i40e_fdir_flow_free(struct ci_flow *flow,
-		struct rte_eth_dev_data *dev_data __rte_unused,
-		void *priv_data)
+		struct rte_eth_dev_data *dev_data,
+		void *priv_data __rte_unused)
 {
-	struct i40e_fdir_engine_priv *priv = priv_data;
-	struct i40e_fdir_flow_pool_entry *entry;
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev_data->dev_private);
 
-	entry = I40E_FDIR_FLOW_ENTRY((struct i40e_flow_engine_fdir_flow *)flow);
-	/* idx is not set at alloc, it's set at init */
-	rte_bitmap_set(priv->bitmap, entry->idx);
+	rte_mempool_put(pf->fdir.flow_store.pool, flow);
 }
 
 static const struct ci_flow_engine_ops i40e_flow_engine_fdir_ops = {
 	.engine_init = i40e_fdir_flow_engine_init,
-	.engine_uninit = i40e_fdir_flow_engine_uninit,
 	.flow_alloc = i40e_fdir_flow_alloc,
 	.flow_free = i40e_fdir_flow_free,
 	.ctx_init = i40e_fdir_ctx_init,
@@ -2209,6 +2097,5 @@ const struct ci_flow_engine i40e_flow_engine_fdir = {
 	.ops = &i40e_flow_engine_fdir_ops,
 	.ctx_size = sizeof(struct i40e_fdir_ctx),
 	.flow_size = sizeof(struct i40e_flow_engine_fdir_flow),
-	.priv_size = sizeof(struct i40e_fdir_engine_priv),
 	.graph = &i40e_fdir_graph,
 };

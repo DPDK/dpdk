@@ -1660,7 +1660,9 @@ eth_i40e_dev_init(struct rte_eth_dev *dev, void *init_params __rte_unused)
 	/* Initialize the filter invalidation configuration */
 	i40e_init_filter_invalidation(pf);
 
-	i40e_fdir_flow_store_init(dev);
+	ret = i40e_fdir_flow_store_init(dev);
+	if (ret < 0)
+		goto err_fdir_flow_store_init;
 	/* after device init, tunnel configuration is in its default state */
 	pf->tunnel_state = (struct i40e_tunnel_state){0};
 
@@ -1679,6 +1681,8 @@ eth_i40e_dev_init(struct rte_eth_dev *dev, void *init_params __rte_unused)
 	return 0;
 
 err_flow_engine_conf_init:
+	i40e_fdir_flow_store_free(&pf->fdir);
+err_fdir_flow_store_init:
 	rte_intr_callback_unregister(intr_handle,
 		i40e_dev_interrupt_handler, dev);
 	rte_free(dev->data->mac_addrs);

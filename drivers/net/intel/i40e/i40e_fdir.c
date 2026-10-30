@@ -15,6 +15,7 @@
 #include <rte_log.h>
 #include <rte_memzone.h>
 #include <rte_malloc.h>
+#include <rte_mempool.h>
 #include <rte_arp.h>
 #include <rte_ip.h>
 #include <rte_udp.h>
@@ -28,6 +29,7 @@
 #include "base/i40e_type.h"
 #include "base/i40e_prototype.h"
 #include "i40e_ethdev.h"
+#include "i40e_flow.h"
 #include "i40e_rxtx.h"
 
 #define I40E_FDIR_MZ_NAME          "FDIR_MEMZONE"
@@ -960,14 +962,26 @@ i40e_fdir_programming_status_cleanup(struct ci_rx_queue *rxq)
 		PMD_DRV_LOG(INFO, "error report captured.");
 }
 
-void
+int
 i40e_fdir_flow_store_init(struct rte_eth_dev *dev)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
 	struct i40e_fdir_info *fdir_info = &pf->fdir;
+	struct i40e_fdir_flow_store *store = &fdir_info->flow_store;
 	uint32_t alloc = hw->func_caps.fd_filters_guaranteed;
 	uint32_t best = hw->func_caps.fd_filters_best_effort;
+	char fdir_hash_name[RTE_HASH_NAMESIZE];
+	struct rte_hash_parameters fdir_hash_params = {
+		.name = fdir_hash_name,
+		.entries = I40E_MAX_FDIR_FILTER_NUM,
+		.key_len = sizeof(struct i40e_fdir_input),
+		.hash_func = rte_hash_crc,
+		.hash_func_init_val = 0,
+		.socket_id = rte_socket_id(),
+	};
+	char fdir_pool_name[RTE_MEMPOOL_NAMESIZE];
+	int ret;
 
 	fdir_info->fdir_space_size = alloc + best;
 	fdir_info->fdir_rule_count = 0;
@@ -975,6 +989,48 @@ i40e_fdir_flow_store_init(struct rte_eth_dev *dev)
 	fdir_info->fdir_guarantee_total_space = alloc;
 
 	PMD_DRV_LOG(INFO, "FDIR guarantee space: %u, best_effort space %u.", alloc, best);
+
+	if ((pf->flags & I40E_FLAG_FDIR) == 0 || fdir_info->fdir_space_size == 0)
+		return 0;
+
+	snprintf(fdir_hash_name, sizeof(fdir_hash_name), "fdir_%s", dev->data->name);
+	store->hash_table = rte_hash_create(&fdir_hash_params);
+	if (store->hash_table == NULL) {
+		PMD_INIT_LOG(ERR, "Failed to create fdir hash table: %s", rte_strerror(rte_errno));
+		ret = -rte_errno;
+		goto err;
+	}
+
+	snprintf(fdir_pool_name, sizeof(fdir_pool_name), "fdir_%s", dev->data->name);
+	store->pool = rte_mempool_create(fdir_pool_name, fdir_info->fdir_space_size,
+			i40e_flow_engine_fdir.flow_size, 0, 0, NULL, NULL, NULL, NULL,
+			rte_socket_id(),
+			/* pack flows tightly */
+			RTE_MEMPOOL_F_NO_SPREAD | RTE_MEMPOOL_F_NO_CACHE_ALIGN |
+			RTE_MEMPOOL_F_NO_IOVA_CONTIG |
+			/* flows are only accessed under the flow engine lock */
+			RTE_MEMPOOL_F_SP_PUT | RTE_MEMPOOL_F_SC_GET);
+	if (store->pool == NULL) {
+		PMD_INIT_LOG(ERR, "Failed to create fdir flow pool: %s", rte_strerror(rte_errno));
+		ret = -rte_errno;
+		goto err;
+	}
+
+	return 0;
+err:
+	i40e_fdir_flow_store_free(fdir_info);
+	return ret;
+}
+
+void
+i40e_fdir_flow_store_free(struct i40e_fdir_info *fdir_info)
+{
+	struct i40e_fdir_flow_store *store = &fdir_info->flow_store;
+
+	rte_mempool_free(store->pool);
+	rte_hash_free(store->hash_table);
+	store->pool = NULL;
+	store->hash_table = NULL;
 }
 
 static uint32_t
@@ -1726,6 +1782,7 @@ i40e_fdir_cleanup(struct rte_eth_dev *dev)
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 
 	i40e_fdir_tmpl_store_free(&pf->fdir);
+	i40e_fdir_flow_store_free(&pf->fdir);
 
 	if (pf->fdir.hw_configured) {
 		i40e_fdir_teardown(pf);
