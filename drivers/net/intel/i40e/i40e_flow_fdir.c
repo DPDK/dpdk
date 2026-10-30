@@ -257,11 +257,9 @@ i40e_fdir_node_ipv4_validate(const void *ctx __rte_unused, const struct rte_flow
 				"Invalid IPv4 header mask");
 	}
 
-	if (ipv4_last == NULL)
-		return 0;
-
 	/* Only fragment_offset supports range */
-	if (ipv4_last->hdr.version_ihl ||
+	if (ipv4_last != NULL &&
+	    (ipv4_last->hdr.version_ihl ||
 	    ipv4_last->hdr.type_of_service ||
 	    ipv4_last->hdr.total_length ||
 	    ipv4_last->hdr.packet_id ||
@@ -269,16 +267,25 @@ i40e_fdir_node_ipv4_validate(const void *ctx __rte_unused, const struct rte_flow
 	    ipv4_last->hdr.next_proto_id ||
 	    ipv4_last->hdr.hdr_checksum ||
 	    ipv4_last->hdr.src_addr ||
-	    ipv4_last->hdr.dst_addr) {
+	    ipv4_last->hdr.dst_addr)) {
 		return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ITEM, item,
 				"IPv4 range only supported for fragment_offset");
 	}
 
-	/* Validate fragment_offset range values */
+	/* Validate fragment_offset values */
 	uint16_t frag_mask = rte_be_to_cpu_16(ipv4_mask->hdr.fragment_offset);
 	uint16_t frag_spec = rte_be_to_cpu_16(ipv4_spec->hdr.fragment_offset);
-	uint16_t frag_last = rte_be_to_cpu_16(ipv4_last->hdr.fragment_offset);
+	uint16_t frag_last = ipv4_last != NULL ?
+			rte_be_to_cpu_16(ipv4_last->hdr.fragment_offset) : 0;
+
+	if (frag_mask == 0) {
+		if (ipv4_last == NULL)
+			return 0; /* fragment_offset not matched */
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM, item,
+				"IPv4 fragment_offset range requires a mask");
+	}
 
 	/* Mask must be 0x3fff (fragment offset + MF flag) */
 	if (frag_mask != (RTE_IPV4_HDR_OFFSET_MASK | RTE_IPV4_HDR_MF_FLAG)) {
