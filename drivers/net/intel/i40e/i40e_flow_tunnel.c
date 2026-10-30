@@ -1883,6 +1883,20 @@ i40e_tunnel_flow_engine_init(const struct ci_flow_engine *engine __rte_unused,
 	return tunnel_priv->state == NULL ? -ENOMEM : 0;
 }
 
+static int
+i40e_tunnel_replace_flow_engine_init(const struct ci_flow_engine *engine,
+		struct rte_eth_dev_data *dev_data,
+		void *priv)
+{
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev_data->dev_private);
+
+	/* tunnel filter replacement is not supported in multi-driver mode */
+	if (pf->support_multi_driver)
+		return -ENOTSUP;
+
+	return i40e_tunnel_flow_engine_init(engine, dev_data, priv);
+}
+
 static void
 i40e_tunnel_flow_engine_uninit(const struct ci_flow_engine *engine __rte_unused,
 		void *priv)
@@ -1894,6 +1908,18 @@ i40e_tunnel_flow_engine_uninit(const struct ci_flow_engine *engine __rte_unused,
 
 static const struct ci_flow_engine_ops i40e_flow_engine_tunnel_ops = {
 	.engine_init = i40e_tunnel_flow_engine_init,
+	.engine_uninit = i40e_tunnel_flow_engine_uninit,
+	.ctx_init = i40e_tunnel_ctx_init,
+	.ctx_to_flow = i40e_tunnel_ctx_to_flow,
+	.flow_register = i40e_tunnel_flow_register,
+	.flow_unregister = i40e_tunnel_flow_unregister,
+	.flow_install = i40e_tunnel_flow_install,
+	.flow_uninstall = i40e_tunnel_flow_uninstall,
+};
+
+/* for tunnel types that require tunnel filter replacement */
+static const struct ci_flow_engine_ops i40e_flow_engine_tunnel_replace_ops = {
+	.engine_init = i40e_tunnel_replace_flow_engine_init,
 	.engine_uninit = i40e_tunnel_flow_engine_uninit,
 	.ctx_init = i40e_tunnel_ctx_init,
 	.ctx_to_flow = i40e_tunnel_ctx_to_flow,
@@ -1923,7 +1949,7 @@ const struct ci_flow_engine i40e_flow_engine_tunnel_vxlan = {
 
 const struct ci_flow_engine i40e_flow_engine_tunnel_mpls = {
 	.name = "i40e_tunnel_mpls",
-	.ops = &i40e_flow_engine_tunnel_ops,
+	.ops = &i40e_flow_engine_tunnel_replace_ops,
 	.ctx_size = sizeof(struct i40e_tunnel_ctx),
 	.flow_size = sizeof(struct i40e_tunnel_flow),
 	.priv_size = sizeof(struct i40e_tunnel_priv),
@@ -1932,7 +1958,7 @@ const struct ci_flow_engine i40e_flow_engine_tunnel_mpls = {
 
 const struct ci_flow_engine i40e_flow_engine_tunnel_gtp = {
 	.name = "i40e_tunnel_gtp",
-	.ops = &i40e_flow_engine_tunnel_ops,
+	.ops = &i40e_flow_engine_tunnel_replace_ops,
 	.ctx_size = sizeof(struct i40e_tunnel_ctx),
 	.flow_size = sizeof(struct i40e_tunnel_flow),
 	.priv_size = sizeof(struct i40e_tunnel_priv),
@@ -1941,7 +1967,7 @@ const struct ci_flow_engine i40e_flow_engine_tunnel_gtp = {
 
 const struct ci_flow_engine i40e_flow_engine_tunnel_l4 = {
 	.name = "i40e_tunnel_l4",
-	.ops = &i40e_flow_engine_tunnel_ops,
+	.ops = &i40e_flow_engine_tunnel_replace_ops,
 	.ctx_size = sizeof(struct i40e_tunnel_ctx),
 	.flow_size = sizeof(struct i40e_tunnel_flow),
 	.priv_size = sizeof(struct i40e_tunnel_priv),
@@ -1950,7 +1976,7 @@ const struct ci_flow_engine i40e_flow_engine_tunnel_l4 = {
 
 const struct ci_flow_engine i40e_flow_engine_tunnel_qinq = {
 	.name = "i40e_tunnel_qinq",
-	.ops = &i40e_flow_engine_tunnel_ops,
+	.ops = &i40e_flow_engine_tunnel_replace_ops,
 	.ctx_size = sizeof(struct i40e_tunnel_ctx),
 	.flow_size = sizeof(struct i40e_tunnel_flow),
 	.priv_size = sizeof(struct i40e_tunnel_priv),
