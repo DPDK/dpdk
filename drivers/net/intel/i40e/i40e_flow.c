@@ -34,6 +34,7 @@ const struct ci_flow_engine_list i40e_flow_engine_list = {
 	{
 		&i40e_flow_engine_ethertype,
 		&i40e_flow_engine_fdir,
+		&i40e_flow_engine_fdir_ethertype,
 		&i40e_flow_engine_tunnel_qinq,
 		&i40e_flow_engine_tunnel_vxlan,
 		&i40e_flow_engine_tunnel_nvgre,

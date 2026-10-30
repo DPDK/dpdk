@@ -70,9 +70,8 @@ static int
 i40e_fdir_node_eth_validate(const void *ctx __rte_unused, const struct rte_flow_item *item,
 		struct rte_flow_error *error)
 {
-	const struct rte_flow_item_eth *eth_spec = item->spec;
 	const struct rte_flow_item_eth *eth_mask = ci_flow_item_mask(item);
-	bool no_src_mac, no_dst_mac, src_mac, dst_mac, no_etype;
+	bool no_src_mac, no_dst_mac, src_mac, dst_mac;
 
 	/* may be empty */
 	if (eth_mask == NULL)
@@ -81,12 +80,15 @@ i40e_fdir_node_eth_validate(const void *ctx __rte_unused, const struct rte_flow_
 	/* source and destination masks may be all zero or all one */
 	no_src_mac = CI_FIELD_IS_ZERO(&eth_mask->hdr.src_addr);
 	no_dst_mac = CI_FIELD_IS_ZERO(&eth_mask->hdr.dst_addr);
-	no_etype = CI_FIELD_IS_ZERO(&eth_mask->hdr.ether_type);
 	src_mac = CI_FIELD_IS_MASKED(&eth_mask->hdr.src_addr);
 	dst_mac = CI_FIELD_IS_MASKED(&eth_mask->hdr.dst_addr);
 
+	if (!CI_FIELD_IS_ZERO(&eth_mask->hdr.ether_type)) {
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM, item, "Ethertype match not supported");
+	}
 	/* can't be all zero */
-	if (no_src_mac && no_dst_mac && no_etype) {
+	if (no_src_mac && no_dst_mac) {
 		return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ITEM, item, "Invalid eth mask");
 	}
@@ -97,38 +99,18 @@ i40e_fdir_node_eth_validate(const void *ctx __rte_unused, const struct rte_flow_
 				RTE_FLOW_ERROR_TYPE_ITEM, item, "Invalid eth mask");
 	}
 
-	/* ethertype can either be unmasked or fully masked */
-	if (no_etype)
-		return 0;
-
-	if (!CI_FIELD_IS_MASKED(&eth_mask->hdr.ether_type)) {
-		return rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ITEM, item, "Invalid ethertype mask");
-	}
-
-	/* Check for valid ethertype (not IPv4/IPv6) */
-	uint16_t ether_type = rte_be_to_cpu_16(eth_spec->hdr.ether_type);
-	if (ether_type == RTE_ETHER_TYPE_IPV4 ||
-	    ether_type == RTE_ETHER_TYPE_IPV6) {
-		return rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ITEM, item,
-				"IPv4/IPv6 not supported by ethertype filter");
-	}
-
 	return 0;
 }
 
 static int
 i40e_fdir_node_eth_process(void *ctx, const struct rte_flow_item *item,
-		struct rte_flow_error *error)
+		struct rte_flow_error *error __rte_unused)
 {
 	struct i40e_fdir_ctx *fdir_ctx = ctx;
 	struct i40e_fdir_filter *fdir_filter = &fdir_ctx->fdir_filter;
 	const struct rte_flow_item_eth *eth_spec = item->spec;
 	const struct rte_flow_item_eth *eth_mask = ci_flow_item_mask(item);
-	uint16_t tpid, ether_type;
 	uint64_t input_set = 0;
-	int ret;
 
 	/* Set layer index for L2 flexible payload (after ETH/VLAN) */
 	fdir_filter->input.flow_ext.layer_idx = I40E_FLXPLD_L2_IDX;
@@ -151,40 +133,17 @@ i40e_fdir_node_eth_process(void *ctx, const struct rte_flow_item *item,
 		input_set |= I40E_INSET_DMAC;
 	}
 
-	/* do we care for ethertype? */
-	if (eth_mask->hdr.ether_type) {
-		struct i40e_pf *pf =
-				I40E_DEV_PRIVATE_TO_PF(fdir_ctx->base.dev_data->dev_private);
-
-		ether_type = rte_be_to_cpu_16(eth_spec->hdr.ether_type);
-		ret = i40e_get_outer_vlan(pf, &tpid);
-		if (ret != 0) {
-			return rte_flow_error_set(error, EIO,
-					RTE_FLOW_ERROR_TYPE_ITEM, item,
-					"Can not get the Ethertype identifying the L2 tag");
-		}
-		if (ether_type == tpid) {
-			return rte_flow_error_set(error, EINVAL,
-						RTE_FLOW_ERROR_TYPE_ITEM, item,
-						"Unsupported ether_type in control packet filter.");
-		}
-		fdir_filter->input.flow.l2_flow.ether_type = eth_spec->hdr.ether_type;
-		input_set |= I40E_INSET_LAST_ETHER_TYPE;
-	}
-
 	fdir_filter->input.flow_ext.input_set = input_set;
 
 	return 0;
 }
 
 static int
-i40e_fdir_node_vlan_validate(const void *ctx, const struct rte_flow_item *item,
+i40e_fdir_node_vlan_validate(const void *ctx __rte_unused, const struct rte_flow_item *item,
 		struct rte_flow_error *error)
 {
 	const struct rte_flow_item_vlan *vlan_spec = item->spec;
 	const struct rte_flow_item_vlan *vlan_mask = ci_flow_item_mask(item);
-	const struct i40e_fdir_ctx *fdir_ctx = ctx;
-	const struct i40e_fdir_filter *fdir_filter = &fdir_ctx->fdir_filter;
 	uint16_t ether_type;
 
 	if (vlan_mask == NULL)
@@ -204,13 +163,6 @@ i40e_fdir_node_vlan_validate(const void *ctx, const struct rte_flow_item *item,
 		return rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ITEM, item,
 				"Invalid VLAN header mask");
-	}
-
-	/* can't match on eth_proto as we're already matching on ethertype */
-	if (fdir_filter->input.flow_ext.input_set & I40E_INSET_LAST_ETHER_TYPE) {
-		return rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ITEM, item,
-				"Cannot set two ethertype filters");
 	}
 
 	ether_type = rte_be_to_cpu_16(vlan_spec->hdr.eth_proto);
@@ -1388,7 +1340,6 @@ static const struct flow_graph i40e_fdir_graph = {
 				I40E_FDIR_NODE_IPV4,
 				I40E_FDIR_NODE_IPV6,
 				I40E_FDIR_NODE_RAW,
-				I40E_FDIR_NODE_END,
 				FLOW_GRAPH_NODE_EDGE_END
 			}
 		},
@@ -1518,6 +1469,111 @@ static const struct flow_graph i40e_fdir_graph = {
 			.next = (size_t[]) {
 				I40E_FDIR_NODE_RAW,
 				I40E_FDIR_NODE_END,
+				FLOW_GRAPH_NODE_EDGE_END
+			}
+		},
+	},
+};
+
+/**
+ * FDIR ethertype graph implementation
+ * Pattern: START -> ETH -> END
+ */
+
+enum i40e_fdir_ethertype_node_id {
+	I40E_FDIR_ETHERTYPE_NODE_START = FLOW_GRAPH_NODE_FIRST,
+	I40E_FDIR_ETHERTYPE_NODE_ETH,
+	I40E_FDIR_ETHERTYPE_NODE_END,
+	I40E_FDIR_ETHERTYPE_NODE_MAX,
+};
+
+static int
+i40e_fdir_ethertype_node_eth_validate(const void *ctx __rte_unused,
+		const struct rte_flow_item *item, struct rte_flow_error *error)
+{
+	const struct rte_flow_item_eth *eth_spec = item->spec;
+	const struct rte_flow_item_eth *eth_mask = ci_flow_item_mask(item);
+	uint16_t ether_type;
+
+	if (!CI_FIELD_IS_ZERO(&eth_mask->hdr.src_addr) ||
+	    !CI_FIELD_IS_ZERO(&eth_mask->hdr.dst_addr)) {
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM, item, "Invalid eth mask");
+	}
+	if (!CI_FIELD_IS_MASKED(&eth_mask->hdr.ether_type)) {
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM, item, "Invalid ethertype mask");
+	}
+
+	ether_type = rte_be_to_cpu_16(eth_spec->hdr.ether_type);
+	if (ether_type == RTE_ETHER_TYPE_IPV4 ||
+	    ether_type == RTE_ETHER_TYPE_IPV6) {
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM, item,
+				"IPv4/IPv6 not supported by ethertype filter");
+	}
+
+	return 0;
+}
+
+static int
+i40e_fdir_ethertype_node_eth_process(void *ctx, const struct rte_flow_item *item,
+		struct rte_flow_error *error)
+{
+	struct i40e_fdir_ctx *fdir_ctx = ctx;
+	struct i40e_fdir_filter *fdir_filter = &fdir_ctx->fdir_filter;
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(fdir_ctx->base.dev_data->dev_private);
+	const struct rte_flow_item_eth *eth_spec = item->spec;
+	uint16_t tpid;
+	int ret;
+
+	ret = i40e_get_outer_vlan(pf, &tpid);
+	if (ret != 0) {
+		return rte_flow_error_set(error, EIO,
+				RTE_FLOW_ERROR_TYPE_ITEM, item,
+				"Can not get the Ethertype identifying the L2 tag");
+	}
+	if (rte_be_to_cpu_16(eth_spec->hdr.ether_type) == tpid) {
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM, item,
+				"Unsupported ether_type in control packet filter.");
+	}
+
+	fdir_filter->input.flow_ext.layer_idx = I40E_FLXPLD_L2_IDX;
+	fdir_filter->input.pctype = I40E_FILTER_PCTYPE_L2_PAYLOAD;
+	fdir_filter->input.flow.l2_flow.ether_type = eth_spec->hdr.ether_type;
+	fdir_filter->input.flow_ext.input_set = I40E_INSET_LAST_ETHER_TYPE;
+
+	return 0;
+}
+
+static const struct flow_graph i40e_fdir_ethertype_graph = {
+	.nodes = (struct flow_graph_node[]) {
+		[I40E_FDIR_ETHERTYPE_NODE_START] = { .name = "START" },
+		[I40E_FDIR_ETHERTYPE_NODE_ETH] = {
+			.name = "ETH",
+			.type = RTE_FLOW_ITEM_TYPE_ETH,
+			.constraints = FLOW_GRAPH_NODE_EXPECT_SPEC,
+			.validate = i40e_fdir_ethertype_node_eth_validate,
+			.process = i40e_fdir_ethertype_node_eth_process,
+		},
+		[I40E_FDIR_ETHERTYPE_NODE_END] = {
+			.name = "END",
+			.type = RTE_FLOW_ITEM_TYPE_END,
+			.validate = i40e_fdir_node_end_validate,
+			.process = i40e_fdir_node_end_process
+		},
+	},
+	.edges = (struct flow_graph_edge[]) {
+		[I40E_FDIR_ETHERTYPE_NODE_START] = {
+			.next = (size_t[]) {
+				I40E_FDIR_ETHERTYPE_NODE_ETH,
+				FLOW_GRAPH_NODE_EDGE_END
+			}
+		},
+		[I40E_FDIR_ETHERTYPE_NODE_ETH] = {
+			.next = (size_t[]) {
+				I40E_FDIR_ETHERTYPE_NODE_END,
 				FLOW_GRAPH_NODE_EDGE_END
 			}
 		},
@@ -2098,4 +2154,12 @@ const struct ci_flow_engine i40e_flow_engine_fdir = {
 	.ctx_size = sizeof(struct i40e_fdir_ctx),
 	.flow_size = sizeof(struct i40e_flow_engine_fdir_flow),
 	.graph = &i40e_fdir_graph,
+};
+
+const struct ci_flow_engine i40e_flow_engine_fdir_ethertype = {
+	.name = "i40e_fdir_ethertype",
+	.ops = &i40e_flow_engine_fdir_ops,
+	.ctx_size = sizeof(struct i40e_fdir_ctx),
+	.flow_size = sizeof(struct i40e_flow_engine_fdir_flow),
+	.graph = &i40e_fdir_ethertype_graph,
 };

@@ -1003,7 +1003,9 @@ i40e_fdir_flow_store_init(struct rte_eth_dev *dev)
 
 	snprintf(fdir_pool_name, sizeof(fdir_pool_name), "fdir_%s", dev->data->name);
 	store->pool = rte_mempool_create(fdir_pool_name, fdir_info->fdir_space_size,
-			i40e_flow_engine_fdir.flow_size, 0, 0, NULL, NULL, NULL, NULL,
+			RTE_MAX(i40e_flow_engine_fdir.flow_size,
+				i40e_flow_engine_fdir_ethertype.flow_size),
+			0, 0, NULL, NULL, NULL, NULL,
 			rte_socket_id(),
 			/* pack flows tightly */
 			RTE_MEMPOOL_F_NO_SPREAD | RTE_MEMPOOL_F_NO_CACHE_ALIGN |
