@@ -168,8 +168,10 @@ i40e_hash_get_inset(uint64_t rss_types, bool symmetric_enable)
 
 /*
  * Hash pattern graph implementation
- * Pattern: START -> ETH -> [VLAN] -> [VLAN] -> (IPv4|IPv6) -> (TCP|UDP|SCTP|ESP|L2TPV3OIP|AH)
- *          START -> ETH -> [VLAN] -> [VLAN] -> (IPv4|IPv6) frag
+ * Pattern: START -> ETH
+ *          START -> ETH -> [VLAN] -> [VLAN] -> (IPv4|IPv6)
+ *          START -> ETH -> [VLAN] -> [VLAN] -> (IPv4|IPv6) -> (TCP|UDP|SCTP|ESP|L2TPV3OIP|AH)
+ *          START -> ETH -> [VLAN] -> [VLAN] -> IPv6 -> IPV6_FRAG_EXT
  *          START -> ETH -> [VLAN] -> [VLAN] -> (IPv4|IPv6) -> UDP -> (GTPC|ESP|GTPU)
  *          START -> ETH -> [VLAN] -> [VLAN] -> (IPv4|IPv6) -> UDP -> GTPU -> (IPv4|IPv6)
  */
@@ -491,6 +493,7 @@ static const struct flow_graph i40e_hash_pattern_graph = {
 				I40E_HASH_PATTERN_NODE_OUTER_VLAN,
 				I40E_HASH_PATTERN_NODE_IPV4,
 				I40E_HASH_PATTERN_NODE_IPV6,
+				I40E_HASH_PATTERN_NODE_END,
 				FLOW_GRAPH_NODE_EDGE_END
 			}
 		},
@@ -517,6 +520,7 @@ static const struct flow_graph i40e_hash_pattern_graph = {
 				I40E_HASH_PATTERN_NODE_ESP,
 				I40E_HASH_PATTERN_NODE_L2TPV3OIP,
 				I40E_HASH_PATTERN_NODE_AH,
+				I40E_HASH_PATTERN_NODE_END,
 				FLOW_GRAPH_NODE_EDGE_END
 			}
 		},
@@ -529,6 +533,7 @@ static const struct flow_graph i40e_hash_pattern_graph = {
 				I40E_HASH_PATTERN_NODE_ESP,
 				I40E_HASH_PATTERN_NODE_L2TPV3OIP,
 				I40E_HASH_PATTERN_NODE_AH,
+				I40E_HASH_PATTERN_NODE_END,
 				FLOW_GRAPH_NODE_EDGE_END
 			}
 		},
