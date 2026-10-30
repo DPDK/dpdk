@@ -1913,13 +1913,13 @@ roc_npa_pool_dpc_enable(uint64_t aura_handle, uint8_t counter_id, uint32_t flags
 	req->aura_id = roc_npa_aura_handle_to_aura(aura_handle);
 	req->op = NPA_AQ_INSTOP_WRITE;
 	if (!(flags & ROC_NPA_HALO_F)) {
-		/* Enable DPC in Pool */
-		req->ctype = NPA_AQ_CTYPE_POOL;
-		req->pool.op_dpc_ena = 1;
-		req->pool.op_dpc_set = counter_id;
-		req->pool_mask.op_dpc_ena = 1;
-		req->pool_mask.op_dpc_set = 0;
-		req->pool_mask.op_dpc_set = ~req->pool_mask.op_dpc_set;
+		/* Enable DPC in Aura */
+		req->ctype = NPA_AQ_CTYPE_AURA;
+		req->aura.op_dpc_ena = 1;
+		req->aura.op_dpc_set = counter_id;
+		req->aura_mask.op_dpc_ena = 1;
+		req->aura_mask.op_dpc_set = 0;
+		req->aura_mask.op_dpc_set = ~req->aura_mask.op_dpc_set;
 	} else {
 		/* Enable DPC in Halo */
 		req->ctype = NPA_AQ_CTYPE_HALO;
@@ -1940,36 +1940,7 @@ roc_npa_pool_dpc_enable(uint64_t aura_handle, uint8_t counter_id, uint32_t flags
 	if (rsp->hdr.rc != 0)
 		goto exit;
 
-	if (!(flags & ROC_NPA_HALO_F)) {
-		req = mbox_alloc_msg_npa_cn20k_aq_enq(mbox);
-		if (req == NULL)
-			goto disable;
-
-		/* Enable DPC in Aura */
-		req->aura_id = roc_npa_aura_handle_to_aura(aura_handle);
-		req->op = NPA_AQ_INSTOP_WRITE;
-		req->ctype = NPA_AQ_CTYPE_AURA;
-		req->aura.op_dpc_ena = 1;
-		req->aura.op_dpc_set = counter_id;
-		req->aura_mask.op_dpc_ena = 1;
-		req->aura_mask.op_dpc_set = 0;
-		req->aura_mask.op_dpc_set = ~req->aura_mask.op_dpc_set;
-
-		rc = mbox_process(mbox);
-		if (rc < 0)
-			goto disable;
-
-		off = mbox->rx_start +
-		      PLT_ALIGN(sizeof(struct mbox_hdr), MBOX_MSG_ALIGN);
-		rsp = (struct npa_cn20k_aq_enq_rsp *)((uintptr_t)mdev->mbase + off);
-		if (rsp->hdr.rc != 0)
-			goto disable;
-	}
 	rc = 0;
-	goto exit;
-
-disable:
-	roc_npa_pool_dpc_disable(aura_handle, flags);
 exit:
 	mbox_put(mbox);
 	return rc;
@@ -1999,9 +1970,9 @@ roc_npa_pool_dpc_disable(uint64_t aura_handle, uint32_t flags)
 	req->aura_id = roc_npa_aura_handle_to_aura(aura_handle);
 	req->op = NPA_AQ_INSTOP_WRITE;
 	if (!(flags & ROC_NPA_HALO_F)) {
-		req->ctype = NPA_AQ_CTYPE_POOL;
-		req->pool.op_dpc_ena = 0;
-		req->pool_mask.op_dpc_ena = 1;
+		req->ctype = NPA_AQ_CTYPE_AURA;
+		req->aura.op_dpc_ena = 0;
+		req->aura_mask.op_dpc_ena = 1;
 	} else {
 		req->ctype = NPA_AQ_CTYPE_HALO;
 		req->halo.op_dpc_ena = 0;
@@ -2018,28 +1989,7 @@ roc_npa_pool_dpc_disable(uint64_t aura_handle, uint32_t flags)
 	if (rsp->hdr.rc != 0)
 		goto exit;
 
-	if (!(flags & ROC_NPA_HALO_F)) {
-		req = mbox_alloc_msg_npa_cn20k_aq_enq(mbox);
-		if (req == NULL)
-			goto exit;
-
-		req->aura_id = roc_npa_aura_handle_to_aura(aura_handle);
-		req->op = NPA_AQ_INSTOP_WRITE;
-		req->ctype = NPA_AQ_CTYPE_AURA;
-		req->aura.op_dpc_ena = 0;
-		req->aura_mask.op_dpc_ena = 1;
-		rc = mbox_process(mbox);
-		if (rc < 0)
-			goto exit;
-
-		off = mbox->rx_start + PLT_ALIGN(sizeof(struct mbox_hdr), MBOX_MSG_ALIGN);
-		rsp = (struct npa_cn20k_aq_enq_rsp *)((uintptr_t)mdev->mbase + off);
-		if (rsp->hdr.rc != 0)
-			goto exit;
-	}
-
 	rc = 0;
-
 exit:
 	mbox_put(mbox);
 	return rc;
