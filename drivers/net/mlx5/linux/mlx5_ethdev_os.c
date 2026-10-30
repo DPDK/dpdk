@@ -575,10 +575,7 @@ mlx5_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 			return ret;
 		}
 	} while (wait_to_complete || retry-- > 0);
-	ret = !!memcmp(&dev->data->dev_link, &dev_link,
-		       sizeof(struct rte_eth_link));
-	dev->data->dev_link = dev_link;
-	return ret;
+	return rte_eth_linkstatus_set(dev, &dev_link) == 0;
 }
 
 /**
@@ -699,102 +696,6 @@ mlx5_dev_interrupt_device_fatal(struct mlx5_dev_ctx_shared *sh)
 				(dev, RTE_ETH_EVENT_INTR_RMV, NULL);
 		}
 	}
-}
-
-static bool
-mlx5_dev_nl_ifindex_verify(uint32_t if_index, struct mlx5_priv *priv)
-{
-	struct mlx5_bond_info *bond = &priv->sh->bond;
-	int i;
-
-	if (bond->n_port == 0)
-		return (if_index == priv->if_index);
-
-	if (if_index == bond->ifindex)
-		return true;
-	for (i = 0; i < MLX5_BOND_MAX_PORTS; i++) {
-		if (!strlen(priv->sh->bond.ports[i].ifname))
-			continue;
-		if (if_index == bond->ports[i].ifindex)
-			return true;
-	}
-
-	return false;
-}
-
-static void
-mlx5_link_update_bond(struct rte_eth_dev *dev)
-{
-	struct mlx5_priv *priv = dev->data->dev_private;
-	struct mlx5_bond_info *bond = &priv->sh->bond;
-	struct ifreq ifr = (struct ifreq) {
-		.ifr_flags = 0,
-	};
-	int ret;
-
-	ret = mlx5_ifreq_by_ifname(bond->ifname, SIOCGIFFLAGS, &ifr);
-	if (ret) {
-		DRV_LOG(WARNING, "ifname %s ioctl(SIOCGIFFLAGS) failed: %s",
-			bond->ifname, strerror(rte_errno));
-		return;
-	}
-	dev->data->dev_link.link_status =
-		((ifr.ifr_flags & IFF_UP) && (ifr.ifr_flags & IFF_RUNNING));
-}
-
-static void
-mlx5_dev_interrupt_nl_cb(struct nlmsghdr *hdr, void *cb_arg)
-{
-	struct mlx5_dev_ctx_shared *sh = cb_arg;
-	uint32_t i;
-	uint32_t if_index;
-
-	if (mlx5_nl_parse_link_status_update(hdr, &if_index) < 0)
-		return;
-
-	for (i = 0; i < sh->max_port; i++) {
-		struct mlx5_dev_shared_port *port = &sh->port[i];
-		struct rte_eth_dev *dev;
-		struct mlx5_priv *priv;
-
-		if (port->nl_ih_port_id >= RTE_MAX_ETHPORTS)
-			continue;
-		dev = &rte_eth_devices[port->nl_ih_port_id];
-		/* Probing may initiate an LSC before configuration is done. */
-		if (dev->data->dev_configured &&
-		    !dev->data->dev_conf.intr_conf.lsc)
-			break;
-		priv = dev->data->dev_private;
-		if (mlx5_dev_nl_ifindex_verify(if_index, priv)) {
-			/* Block logical LSC events. */
-			uint16_t prev_status = dev->data->dev_link.link_status;
-
-			if (mlx5_link_update(dev, 0) < 0) {
-				DRV_LOG(ERR, "Failed to update link status: %s",
-					rte_strerror(rte_errno));
-			} else {
-				if (priv->sh->bond.n_port)
-					mlx5_link_update_bond(dev);
-				if (prev_status != dev->data->dev_link.link_status)
-					rte_eth_dev_callback_process
-						(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
-			}
-			break;
-		}
-	}
-}
-
-void
-mlx5_dev_interrupt_handler_nl(void *arg)
-{
-	struct mlx5_dev_ctx_shared *sh = arg;
-	int nlsk_fd = rte_intr_fd_get(sh->intr_handle_nl);
-
-	if (nlsk_fd < 0)
-		return;
-	if (mlx5_nl_read_events(nlsk_fd, mlx5_dev_interrupt_nl_cb, sh) < 0)
-		DRV_LOG(ERR, "Failed to process Netlink events: %s",
-			rte_strerror(rte_errno));
 }
 
 /**

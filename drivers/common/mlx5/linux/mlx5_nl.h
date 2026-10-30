@@ -102,8 +102,6 @@ int mlx5_nl_enable_roce_set(int nlsk_fd, int family_id, const char *pci_addr,
 
 __rte_internal
 int mlx5_nl_read_events(int nlsk_fd, mlx5_nl_event_cb *cb, void *cb_arg);
-__rte_internal
-int mlx5_nl_parse_link_status_update(struct nlmsghdr *hdr, uint32_t *ifindex);
 
 __rte_internal
 int mlx5_nl_devlink_esw_multiport_get(int nlsk_fd, int family_id,

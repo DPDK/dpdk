@@ -1790,8 +1790,6 @@ err_secondary:
 		eth_dev->data->port_id);
 	/* Read link status in case it is up and there will be no event. */
 	mlx5_link_update(eth_dev, 0);
-	/* Watch LSC interrupts between port probe and port start. */
-	priv->sh->port[priv->dev_port - 1].nl_ih_port_id = eth_dev->data->port_id;
 	mlx5_set_link_up(eth_dev);
 	for (i = 0; i < MLX5_FLOW_TYPE_MAXI; i++) {
 		icfg[i].release_mem_en = !!sh->config.reclaim_mode;
@@ -1968,9 +1966,6 @@ err_secondary:
 	return eth_dev;
 error:
 	if (priv) {
-		priv->sh->port[priv->dev_port - 1].nl_ih_port_id =
-							       RTE_MAX_ETHPORTS;
-		rte_io_wmb();
 #ifdef HAVE_MLX5_HWS_SUPPORT
 		if (eth_dev &&
 		    priv->sh &&
@@ -3274,19 +3269,6 @@ mlx5_os_dev_shared_handler_install(struct mlx5_dev_ctx_shared *sh)
 			}
 		}
 	}
-	nlsk_fd = mlx5_nl_init(NETLINK_ROUTE, RTMGRP_LINK);
-	if (nlsk_fd < 0) {
-		DRV_LOG(ERR, "Failed to create a socket for Netlink events: %s",
-			rte_strerror(rte_errno));
-		return;
-	}
-	sh->intr_handle_nl = mlx5_os_interrupt_handler_create
-		(RTE_INTR_INSTANCE_F_SHARED, true,
-		 nlsk_fd, mlx5_dev_interrupt_handler_nl, sh);
-	if (sh->intr_handle_nl == NULL) {
-		DRV_LOG(ERR, "Fail to allocate intr_handle");
-		return;
-	}
 	if (sh->cdev->config.devx) {
 #ifdef HAVE_IBV_DEVX_ASYNC
 		struct mlx5dv_devx_cmd_comp *devx_comp;
@@ -3324,11 +3306,6 @@ mlx5_os_dev_shared_handler_uninstall(struct mlx5_dev_ctx_shared *sh)
 
 	mlx5_os_interrupt_handler_destroy(sh->intr_handle,
 					  mlx5_dev_interrupt_handler, sh);
-	fd = rte_intr_fd_get(sh->intr_handle_nl);
-	mlx5_os_interrupt_handler_destroy(sh->intr_handle_nl,
-					  mlx5_dev_interrupt_handler_nl, sh);
-	if (fd >= 0)
-		close(fd);
 #ifdef HAVE_IBV_DEVX_ASYNC
 	mlx5_os_interrupt_handler_destroy(sh->intr_handle_devx,
 					  mlx5_dev_interrupt_handler_devx, sh);
