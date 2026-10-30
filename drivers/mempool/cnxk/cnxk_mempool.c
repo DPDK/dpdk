@@ -51,13 +51,13 @@ static int
 parse_halo_ena_handler(const char *key, const char *value, void *extra_args)
 {
 	RTE_SET_USED(key);
-	uint8_t val;
+	uint32_t val;
 
 	val = atoi(value);
 	if (val != 0 && val != 1)
 		return -EINVAL;
 
-	*(uint8_t *)extra_args = val;
+	*(uint32_t *)extra_args = val;
 	return 0;
 }
 
