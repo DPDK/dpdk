@@ -2924,15 +2924,15 @@ void
 iavf_dev_alarm_handler(void *param)
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
-	struct iavf_info *vf;
+	struct iavf_adapter *adapter;
 	if (dev == NULL || dev->data == NULL || dev->data->dev_private == NULL)
 		return;
 
-	vf = IAVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	adapter = IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct iavf_hw *hw = IAVF_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t icr0;
 
-	if (!(vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR)) {
+	if (adapter->adminq_polling) {
 		iavf_disable_irq0(hw);
 
 		/* read out interrupt causes */
@@ -3107,13 +3107,18 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 	rte_ether_addr_copy((struct rte_ether_addr *)hw->mac.addr,
 			&eth_dev->data->mac_addrs[0]);
 
+	adapter->adminq_polling = true;
 	if (vf->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_WB_ON_ITR &&
 			/* register callback func to eal lib */
 			rte_intr_callback_register(pci_dev->intr_handle,
-				   iavf_dev_interrupt_handler, (void *)eth_dev) == 0)
-
+				   iavf_dev_interrupt_handler, (void *)eth_dev) == 0) {
 		/* enable uio intr after callback register */
-		rte_intr_enable(pci_dev->intr_handle);
+		if (rte_intr_enable(pci_dev->intr_handle) == 0)
+			adapter->adminq_polling = false;
+		else
+			rte_intr_callback_unregister_sync(pci_dev->intr_handle,
+						  iavf_dev_interrupt_handler, eth_dev);
+	}
 
 	rte_eal_alarm_set(IAVF_ALARM_INTERVAL,
 			  iavf_dev_alarm_handler, eth_dev);
