@@ -5,6 +5,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/event.h>
+#include <sys/ioctl.h>
 #include <sys/queue.h>
 #include <unistd.h>
 
@@ -18,6 +19,7 @@
 
 #include "eal_private.h"
 #include "eal_alarm_private.h"
+#include "nic_uio.h"
 
 #define MAX_INTR_EVENTS 16
 
@@ -25,6 +27,7 @@
  * union buffer for reading on different devices
  */
 union rte_intr_read_buffer {
+	uint32_t uio_count;
 	char charbuf[16];                /* for others */
 };
 
@@ -100,6 +103,10 @@ rte_intr_callback_register(const struct rte_intr_handle *intr_handle,
 		EAL_LOG(ERR, "Kqueue is not active: %d", kq);
 		return -ENODEV;
 	}
+	/* Older nic_uio modules do not implement this optional interface. */
+	if (rte_intr_type_get(intr_handle) == RTE_INTR_HANDLE_UIO &&
+			ioctl(rte_intr_fd_get(intr_handle), NIC_UIO_IRQ_INIT) < 0)
+		return -errno;
 
 	rte_spinlock_lock(&intr_lock);
 
@@ -171,10 +178,7 @@ rte_intr_callback_register(const struct rte_intr_handle *intr_handle,
 		 * add the intr file descriptor into wait list.
 		 */
 		if (kevent(kq, &ke, 1, NULL, 0, NULL) < 0) {
-			/* currently, nic_uio does not support interrupts, so
-			 * this error will always be triggered and output to the
-			 * user. so, don't output it unless debug log level set.
-			 */
+			/* An interrupt source may not support kqueue notification. */
 			if (errno == ENODEV)
 				EAL_LOG(DEBUG, "Interrupt handle %d not supported",
 					rte_intr_fd_get(src->intr_handle));
@@ -373,6 +377,13 @@ rte_intr_enable(const struct rte_intr_handle *intr_handle)
 	if (intr_handle == NULL)
 		return -1;
 
+	if (rte_intr_type_get(intr_handle) == RTE_INTR_HANDLE_UIO) {
+		rc = ioctl(rte_intr_fd_get(intr_handle), NIC_UIO_IRQ_ENABLE);
+		if (rc < 0)
+			rc = -errno;
+		goto out;
+	}
+
 	if (rte_intr_type_get(intr_handle) == RTE_INTR_HANDLE_VDEV) {
 		rc = 0;
 		goto out;
@@ -415,6 +426,13 @@ rte_intr_disable(const struct rte_intr_handle *intr_handle)
 	if (intr_handle == NULL)
 		return -1;
 
+	if (rte_intr_type_get(intr_handle) == RTE_INTR_HANDLE_UIO) {
+		rc = ioctl(rte_intr_fd_get(intr_handle), NIC_UIO_IRQ_DISABLE);
+		if (rc < 0)
+			rc = -errno;
+		goto out;
+	}
+
 	if (rte_intr_type_get(intr_handle) == RTE_INTR_HANDLE_VDEV) {
 		rc = 0;
 		goto out;
@@ -451,7 +469,9 @@ RTE_EXPORT_SYMBOL(rte_intr_ack)
 int
 rte_intr_ack(const struct rte_intr_handle *intr_handle)
 {
-	if (rte_intr_type_get(intr_handle) == RTE_INTR_HANDLE_VDEV)
+	/* nic_uio MSI-X handlers leave device-specific rearming to the PMD. */
+	if (rte_intr_type_get(intr_handle) == RTE_INTR_HANDLE_VDEV ||
+			rte_intr_type_get(intr_handle) == RTE_INTR_HANDLE_UIO)
 		return 0;
 
 	return -1;
@@ -498,6 +518,9 @@ eal_intr_process_interrupts(struct kevent *events, int nfds)
 		case RTE_INTR_HANDLE_DEV_EVENT:
 			bytes_read = 0;
 			call = true;
+			break;
+		case RTE_INTR_HANDLE_UIO:
+			bytes_read = sizeof(buf.uio_count);
 			break;
 		default:
 			bytes_read = 1;

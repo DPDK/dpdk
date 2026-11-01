@@ -160,13 +160,13 @@ Loading the DPDK nic_uio Module
 
 The module supports one MSI-X vector per PCI function for control events,
 such as AdminQ messages and link changes. Interrupt resources are allocated
-only when an application requests them through the initialization ioctl.
-The application retains responsibility for acknowledging and rearming
-device interrupt causes.
+only when an application registers an interrupt callback. The application
+retains responsibility for acknowledging and rearming device interrupt causes.
 Per-queue Rx interrupts, MSI, and legacy INTx interrupts are not supported.
 
-The interrupt interface is optional. Applications can use the updated
-module without allocating interrupts.
+The interrupt interface is optional. An updated application can continue
+to use an older module with a PMD that supports polling fallback. Older
+applications can use the updated module without allocating interrupts.
 The file description that initializes interrupts owns the vector until its
 last reference is closed; other opens can still map device BARs. Detaching
 the device is refused while device files remain open.

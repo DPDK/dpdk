@@ -169,11 +169,27 @@ freebsd_interrupt_read_race(void)
 	return TEST_SUCCESS;
 }
 
+static int
+freebsd_interrupt_no_uio(void)
+{
+	TEST_ASSERT_SUCCESS(rte_intr_type_set(handles[0], RTE_INTR_HANDLE_UIO),
+		"Cannot set UIO type");
+	TEST_ASSERT_EQUAL(rte_intr_callback_register(handles[0], freebsd_gate, NULL),
+		-ENOTTY, "A descriptor without the UIO interface was accepted");
+	TEST_ASSERT_EQUAL(rte_intr_enable(handles[0]), -ENOTTY,
+		"Unsupported UIO interrupts were enabled");
+	TEST_ASSERT_EQUAL(rte_intr_disable(handles[0]), -ENOTTY,
+		"Unsupported UIO interrupts were disabled");
+	return TEST_SUCCESS;
+}
+
 static struct unit_test_suite freebsd_interrupt_suite = {
 	.suite_name = "FreeBSD interrupt dispatch",
 	.unit_test_cases = {
 		TEST_CASE_ST(freebsd_interrupt_setup, freebsd_interrupt_teardown,
 			freebsd_interrupt_read_race),
+		TEST_CASE_ST(freebsd_interrupt_setup, freebsd_interrupt_teardown,
+			freebsd_interrupt_no_uio),
 		TEST_CASES_END()
 	}
 };
