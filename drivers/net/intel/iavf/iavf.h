@@ -399,6 +399,7 @@ struct iavf_adapter {
 	bool phc_sync_paused;
 	struct iavf_devargs devargs;
 	bool mac_primary_set;
+	bool adminq_polling; /* Interrupt setup fell back to alarm polling. */
 	uint16_t tpid;  /* VLAN tag identifier */
 };
 
