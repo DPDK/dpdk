@@ -464,12 +464,12 @@ eal_intr_process_interrupts(struct kevent *events, int nfds)
 	union rte_intr_read_buffer buf;
 	struct rte_intr_callback *cb, *next;
 	struct rte_intr_source *src;
-	bool call = false;
 	int n, bytes_read;
 	struct kevent ke;
 
 	for (n = 0; n < nfds; n++) {
 		int event_fd = events[n].ident;
+		bool call = false;
 
 		rte_spinlock_lock(&intr_lock);
 		TAILQ_FOREACH(src, &intr_sources, next)
@@ -511,13 +511,10 @@ eal_intr_process_interrupts(struct kevent *events, int nfds)
 			 */
 			bytes_read = read(event_fd, &buf, bytes_read);
 			if (bytes_read < 0) {
-				if (errno == EINTR || errno == EWOULDBLOCK)
-					continue;
-
-				EAL_LOG(ERR, "Error reading from file "
-					"descriptor %d: %s",
-					event_fd,
-					strerror(errno));
+				if (errno != EINTR && errno != EWOULDBLOCK)
+					EAL_LOG(ERR, "Error reading from file "
+						"descriptor %d: %s", event_fd,
+						strerror(errno));
 			} else if (bytes_read == 0)
 				EAL_LOG(ERR, "Read nothing from file "
 					"descriptor %d", event_fd);
