@@ -393,6 +393,7 @@ F: kernel/freebsd/contigmem/
 FreeBSD UIO
 M: Bruce Richardson <bruce.richardson@intel.com>
 F: kernel/freebsd/nic_uio/
+F: app/test/test_nic_uio.py
 
 Windows support
 M: Dmitry Kozlyuk <dmitry.kozliuk@gmail.com>
