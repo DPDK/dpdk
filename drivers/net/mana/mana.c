@@ -450,6 +450,24 @@ mana_reset_trylock(struct mana_priv *priv)
 	return 0;
 }
 
+/*
+ * Like mana_reset_trylock(), but wait for the lock. Used by Rx interrupt
+ * enable/disable, which every queue calls on each sleep and wakeup: they
+ * must not fail just because another queue holds the lock for a moment.
+ */
+static int
+mana_reset_lock(struct mana_priv *priv)
+{
+	pthread_mutex_lock(&priv->reset_ops_lock);
+
+	if (rte_atomic_load_explicit(&priv->dev_state,
+	    rte_memory_order_acquire) != MANA_DEV_ACTIVE) {
+		pthread_mutex_unlock(&priv->reset_ops_lock);
+		return -EBUSY;
+	}
+	return 0;
+}
+
 static int
 mana_dev_info_get_lock(struct rte_eth_dev *dev,
 		       struct rte_eth_dev_info *dev_info)
@@ -1127,7 +1145,7 @@ mana_rx_intr_enable_lock(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	struct mana_priv *priv = dev->data->dev_private;
 	int ret;
 
-	if (mana_reset_trylock(priv))
+	if (mana_reset_lock(priv))
 		return -EBUSY;
 	ret = mana_rx_intr_enable(dev, rx_queue_id);
 	pthread_mutex_unlock(&priv->reset_ops_lock);
@@ -1140,7 +1158,7 @@ mana_rx_intr_disable_lock(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	struct mana_priv *priv = dev->data->dev_private;
 	int ret;
 
-	if (mana_reset_trylock(priv))
+	if (mana_reset_lock(priv))
 		return -EBUSY;
 	ret = mana_rx_intr_disable(dev, rx_queue_id);
 	pthread_mutex_unlock(&priv->reset_ops_lock);
