@@ -2931,6 +2931,9 @@ ice_release_vsi(struct ice_vsi *vsi)
 {
 	struct ice_hw *hw;
 	struct ice_vsi_ctx vsi_ctx;
+	struct ice_mac_filter *m_f;
+	struct ice_vlan_filter *v_f;
+	void *temp;
 	int ret, error = 0;
 
 	if (!vsi)
@@ -2939,6 +2942,12 @@ ice_release_vsi(struct ice_vsi *vsi)
 	hw = ICE_VSI_TO_HW(vsi);
 
 	ice_remove_all_mac_vlan_filters(vsi);
+
+	/* filters whose HW removal failed or was skipped are still listed */
+	RTE_TAILQ_FOREACH_SAFE(m_f, &vsi->mac_list, next, temp)
+		rte_free(m_f);
+	RTE_TAILQ_FOREACH_SAFE(v_f, &vsi->vlan_list, next, temp)
+		rte_free(v_f);
 
 	memset(&vsi_ctx, 0, sizeof(vsi_ctx));
 
