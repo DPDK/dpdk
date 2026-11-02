@@ -477,13 +477,15 @@ ice_fdir_setup(struct ice_pf *pf)
 	err = ice_fdir_init_filter_list(pf);
 	if (err) {
 		PMD_DRV_LOG(ERR, "Failed to init FDIR filter list.");
-		return -EINVAL;
+		err = -EINVAL;
+		goto fail_filter_list;
 	}
 
 	err = ice_fdir_counter_init(pf);
 	if (err) {
 		PMD_DRV_LOG(ERR, "Failed to init FDIR counter.");
-		return -EINVAL;
+		err = -EINVAL;
+		goto fail_counter;
 	}
 
 	/*Fdir tx queue setup*/
@@ -554,6 +556,10 @@ fail_setup_rx:
 	ice_tx_queue_release(pf->fdir.txq);
 	pf->fdir.txq = NULL;
 fail_setup_tx:
+	ice_fdir_counter_release(pf);
+fail_counter:
+	ice_fdir_release_filter_list(pf);
+fail_filter_list:
 	ice_release_vsi(vsi);
 	pf->fdir.fdir_vsi = NULL;
 	return err;
