@@ -839,17 +839,24 @@ struct roc_mcs *
 roc_mcs_dev_init(uint8_t mcs_idx)
 {
 	struct mcs_event_cb_list *cb_list;
+	struct idev_cfg *idev;
 	struct roc_mcs *mcs;
 	struct npa_lf *npa;
 
 	if (!(roc_feature_bphy_has_macsec() || roc_feature_nix_has_macsec()))
 		return NULL;
 
-	mcs = roc_idev_mcs_get(mcs_idx);
-	if (mcs) {
-		plt_info("Skipping device, mcs device already probed");
-		mcs->refcount++;
-		return mcs;
+	idev = idev_get_cfg();
+	if (idev) {
+		plt_spinlock_lock(&idev->mcs_lock);
+		mcs = roc_idev_mcs_get(mcs_idx);
+		if (mcs) {
+			plt_info("Skipping device, mcs device already probed");
+			mcs->refcount++;
+			plt_spinlock_unlock(&idev->mcs_lock);
+			return mcs;
+		}
+		plt_spinlock_unlock(&idev->mcs_lock);
 	}
 
 	mcs = plt_zmalloc(sizeof(struct roc_mcs), PLT_CACHE_LINE_SIZE);
@@ -870,8 +877,11 @@ roc_mcs_dev_init(uint8_t mcs_idx)
 	cb_list = (struct mcs_event_cb_list *)roc_mcs_to_mcs_cb_list(mcs);
 	TAILQ_INIT(cb_list);
 
+	idev = idev_get_cfg();
+	plt_spinlock_lock(&idev->mcs_lock);
 	roc_idev_mcs_set(mcs);
 	mcs->refcount++;
+	plt_spinlock_unlock(&idev->mcs_lock);
 
 	return mcs;
 exit:
@@ -882,12 +892,18 @@ exit:
 void
 roc_mcs_dev_fini(struct roc_mcs *mcs)
 {
+	struct idev_cfg *idev = idev_get_cfg();
 	struct mcs_priv *priv;
 	int i;
 
+	plt_spinlock_lock(&idev->mcs_lock);
 	mcs->refcount--;
-	if (mcs->refcount > 0)
+	if (mcs->refcount > 0) {
+		plt_spinlock_unlock(&idev->mcs_lock);
 		return;
+	}
+	roc_idev_mcs_free(mcs);
+	plt_spinlock_unlock(&idev->mcs_lock);
 
 	priv = roc_mcs_to_mcs_priv(mcs);
 
@@ -901,8 +917,6 @@ roc_mcs_dev_fini(struct roc_mcs *mcs)
 	plt_free(priv->port_rsrc);
 
 	plt_free(mcs->sa_port_map);
-
-	roc_idev_mcs_free(mcs);
 
 	plt_free(mcs);
 }

@@ -45,6 +45,7 @@ idev_set_defaults(struct idev_cfg *idev)
 	TAILQ_INIT(&idev->roc_nix_list);
 	plt_spinlock_init(&idev->nix_inl_dev_lock);
 	plt_spinlock_init(&idev->npa_dev_lock);
+	plt_spinlock_init(&idev->mcs_lock);
 	__atomic_store_n(&idev->npa_refcnt, 0, __ATOMIC_RELEASE);
 }
 

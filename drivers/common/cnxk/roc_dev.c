@@ -669,15 +669,20 @@ static int
 mbox_up_handler_mcs_intr_notify(struct dev *dev, struct mcs_intr_info *info, struct msg_rsp *rsp)
 {
 	struct roc_mcs_event_desc desc = {0};
+	struct idev_cfg *idev = idev_get_cfg();
 	struct roc_mcs *mcs;
 
 	plt_base_dbg("pf:%d/vf:%d msg id 0x%x (%s) from: pf:%d/vf:%d", dev_get_pf(dev->pf_func),
 		     dev_get_vf(dev->pf_func), info->hdr.id, mbox_id2name(info->hdr.id),
 		     dev_get_pf(info->hdr.pcifunc), dev_get_vf(info->hdr.pcifunc));
 
+	if (idev == NULL)
+		goto exit;
+
+	plt_spinlock_lock(&idev->mcs_lock);
 	mcs = roc_idev_mcs_get(info->mcs_id);
 	if (!mcs)
-		goto exit;
+		goto unlock;
 
 	if (info->intr_mask) {
 		switch (info->intr_mask) {
@@ -739,12 +744,14 @@ mbox_up_handler_mcs_intr_notify(struct dev *dev, struct mcs_intr_info *info, str
 			desc.metadata.lmac_id = info->lmac_id;
 			break;
 		default:
-			goto exit;
+			goto unlock;
 		}
 
 		mcs_event_cb_process(mcs, &desc);
 	}
 
+unlock:
+	plt_spinlock_unlock(&idev->mcs_lock);
 exit:
 	rsp->hdr.rc = 0;
 	return 0;
