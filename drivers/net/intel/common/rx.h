@@ -167,6 +167,9 @@ ci_rx_reassemble_packets(struct rte_mbuf **rx_bufs, uint16_t nb_bufs, uint8_t *s
 				start->hash = end->hash;
 				start->vlan_tci = end->vlan_tci;
 				start->ol_flags = end->ol_flags;
+#ifdef RTE_LIBRTE_IEEE1588
+				start->timesync = end->timesync;
+#endif
 				/* we need to strip crc for the whole packet */
 				start->pkt_len -= crc_len;
 				if (end->data_len > crc_len) {
