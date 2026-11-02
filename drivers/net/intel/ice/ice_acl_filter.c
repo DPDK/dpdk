@@ -226,62 +226,57 @@ ice_acl_prof_init(struct ice_pf *pf)
 	struct ice_flow_prof *prof_ipv4_udp = NULL;
 	struct ice_flow_prof *prof_ipv4_tcp = NULL;
 	struct ice_flow_prof *prof_ipv4_sctp = NULL;
-	struct ice_flow_seg_info *seg;
+	struct ice_flow_seg_info seg = {0};
 	int i;
 	int ret;
 
-	seg = (struct ice_flow_seg_info *)
-		 ice_malloc(hw, sizeof(*seg));
-	if (!seg)
-		return -ENOMEM;
-
-	ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_IPV4);
-	acl_add_prof_prepare(hw, seg, false, 0, 0);
+	ICE_FLOW_SET_HDRS(&seg, ICE_FLOW_SEG_HDR_IPV4);
+	acl_add_prof_prepare(hw, &seg, false, 0, 0);
 	ret = ice_flow_add_prof(hw, ICE_BLK_ACL, ICE_FLOW_RX,
 				ICE_FLTR_PTYPE_NONF_IPV4_OTHER,
-				seg, 1, NULL, 0, &prof_ipv4);
+				&seg, 1, NULL, 0, &prof_ipv4);
 	if (ret)
 		goto err_add_prof;
 
-	ice_memset(seg, 0, sizeof(*seg), ICE_NONDMA_MEM);
-	ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_IPV_FRAG);
-	acl_add_prof_prepare(hw, seg, false, 0, 0);
+	ice_memset(&seg, 0, sizeof(seg), ICE_NONDMA_MEM);
+	ICE_FLOW_SET_HDRS(&seg, ICE_FLOW_SEG_HDR_IPV_FRAG);
+	acl_add_prof_prepare(hw, &seg, false, 0, 0);
 	ret = ice_flow_add_prof(hw, ICE_BLK_ACL, ICE_FLOW_RX,
 				ICE_FLTR_PTYPE_FRAG_IPV4,
-				seg, 1, NULL, 0, &prof_ipv4_frag);
+				&seg, 1, NULL, 0, &prof_ipv4_frag);
 	if (ret)
 		goto err_add_prof_ipv4_udp_frag;
 
-	ice_memset(seg, 0, sizeof(*seg), ICE_NONDMA_MEM);
-	ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_UDP | ICE_FLOW_SEG_HDR_IPV4);
-	acl_add_prof_prepare(hw, seg, true,
+	ice_memset(&seg, 0, sizeof(seg), ICE_NONDMA_MEM);
+	ICE_FLOW_SET_HDRS(&seg, ICE_FLOW_SEG_HDR_UDP | ICE_FLOW_SEG_HDR_IPV4);
+	acl_add_prof_prepare(hw, &seg, true,
 			     ICE_FLOW_FIELD_IDX_UDP_SRC_PORT,
 			     ICE_FLOW_FIELD_IDX_UDP_DST_PORT);
 	ret = ice_flow_add_prof(hw, ICE_BLK_ACL, ICE_FLOW_RX,
 				ICE_FLTR_PTYPE_NONF_IPV4_UDP,
-				seg, 1, NULL, 0, &prof_ipv4_udp);
+				&seg, 1, NULL, 0, &prof_ipv4_udp);
 	if (ret)
 		goto err_add_prof_ipv4_udp;
 
-	ice_memset(seg, 0, sizeof(*seg), ICE_NONDMA_MEM);
-	ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_TCP | ICE_FLOW_SEG_HDR_IPV4);
-	acl_add_prof_prepare(hw, seg, true,
+	ice_memset(&seg, 0, sizeof(seg), ICE_NONDMA_MEM);
+	ICE_FLOW_SET_HDRS(&seg, ICE_FLOW_SEG_HDR_TCP | ICE_FLOW_SEG_HDR_IPV4);
+	acl_add_prof_prepare(hw, &seg, true,
 			     ICE_FLOW_FIELD_IDX_TCP_SRC_PORT,
 			     ICE_FLOW_FIELD_IDX_TCP_DST_PORT);
 	ret = ice_flow_add_prof(hw, ICE_BLK_ACL, ICE_FLOW_RX,
 				ICE_FLTR_PTYPE_NONF_IPV4_TCP,
-				seg, 1, NULL, 0, &prof_ipv4_tcp);
+				&seg, 1, NULL, 0, &prof_ipv4_tcp);
 	if (ret)
 		goto err_add_prof_ipv4_tcp;
 
-	ice_memset(seg, 0, sizeof(*seg), ICE_NONDMA_MEM);
-	ICE_FLOW_SET_HDRS(seg, ICE_FLOW_SEG_HDR_SCTP | ICE_FLOW_SEG_HDR_IPV4);
-	acl_add_prof_prepare(hw, seg, true,
+	ice_memset(&seg, 0, sizeof(seg), ICE_NONDMA_MEM);
+	ICE_FLOW_SET_HDRS(&seg, ICE_FLOW_SEG_HDR_SCTP | ICE_FLOW_SEG_HDR_IPV4);
+	acl_add_prof_prepare(hw, &seg, true,
 			     ICE_FLOW_FIELD_IDX_SCTP_SRC_PORT,
 			     ICE_FLOW_FIELD_IDX_SCTP_DST_PORT);
 	ret = ice_flow_add_prof(hw, ICE_BLK_ACL, ICE_FLOW_RX,
 				ICE_FLTR_PTYPE_NONF_IPV4_SCTP,
-				seg, 1, NULL, 0, &prof_ipv4_sctp);
+				&seg, 1, NULL, 0, &prof_ipv4_sctp);
 	if (ret)
 		goto err_add_prof_ipv4_sctp;
 
@@ -321,7 +316,6 @@ err_add_prof_ipv4_udp:
 err_add_prof_ipv4_udp_frag:
 	ice_flow_rem_prof(hw, ICE_BLK_ACL, ICE_FLTR_PTYPE_NONF_IPV4_OTHER);
 err_add_prof:
-	ice_free(hw, seg);
 	return ret;
 }
 
