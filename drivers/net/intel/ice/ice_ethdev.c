@@ -2833,7 +2833,7 @@ ice_dev_init(struct rte_eth_dev *dev)
 	ret = ice_send_driver_ver(hw);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to send driver version");
-		goto err_pf_setup;
+		goto err_release_vsi;
 	}
 
 	vsi = pf->main_vsi;
@@ -2905,6 +2905,9 @@ err_flow_init:
 	ice_pf_disable_irq0(hw);
 	rte_intr_callback_unregister(intr_handle,
 				     ice_interrupt_handler, dev);
+err_release_vsi:
+	ice_release_vsi(pf->main_vsi);
+	pf->main_vsi = NULL;
 err_pf_setup:
 	ice_res_pool_destroy(&pf->msix_pool);
 err_msix_pool_init:
