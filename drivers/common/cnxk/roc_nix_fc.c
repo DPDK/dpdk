@@ -358,7 +358,12 @@ nix_fc_rq_config_set(struct roc_nix *roc_nix, struct roc_nix_fc_cfg *fc_cfg)
 	struct roc_nix_rq *rq;
 	int rc;
 
+	if (fc_cfg->rq_cfg.rq >= nix->nb_rx_queues)
+		return NIX_ERR_QUEUE_INVALID_RANGE;
+
 	rq = nix->rqs[fc_cfg->rq_cfg.rq];
+	if (rq == NULL)
+		return NIX_ERR_PARAM;
 
 	if (rq->sso_ena) {
 		pool_drop_pct = fc_cfg->rq_cfg.pool_drop_pct;
