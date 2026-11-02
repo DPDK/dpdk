@@ -2,6 +2,9 @@
  * Copyright(c) 2010-2025 Intel Corporation
  */
 
+#include <uapi/linux/iommufd.h>
+#include <uapi/linux/vfio.h>
+
 #include <dirent.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -9,9 +12,6 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
-
-#include <uapi/linux/iommufd.h>
-#include <uapi/linux/vfio.h>
 
 #include <rte_log.h>
 #include <rte_errno.h>
