@@ -589,6 +589,12 @@ roc_nix_max_rep_count(struct roc_nix *roc_nix)
 	if (rc)
 		goto exit;
 
+	if (rsp->rep_cnt > MAX_PFVF_REP) {
+		plt_err("Invalid rep_cnt %u in get_rep_cnt rsp", rsp->rep_cnt);
+		rc = -EIO;
+		goto exit;
+	}
+
 	roc_nix->rep_cnt = rsp->rep_cnt;
 	for (i = 0; i < rsp->rep_cnt; i++)
 		roc_nix->rep_pfvf_map[i] = rsp->rep_pfvf_map[i];
