@@ -487,6 +487,17 @@ soc_cn10k = {
     'sve_acle': false
 }
 
+soc_cn20k = {
+    'description' : 'Marvell OCTEON 20',
+    'implementer' : '0x41',
+    'flags': [
+        ['RTE_MAX_LCORE', 42],
+        ['RTE_MAX_NUMA_NODES', 1]
+    ],
+    'part_number': '0xd8e',
+    'numa': false
+}
+
 soc_cobalt100 = {
     'description' : 'Microsoft Azure Cobalt 100',
     'implementer' : '0x6d',
@@ -763,6 +774,7 @@ cdx:             AMD CDX
 centriq2400:     Qualcomm Centriq 2400
 cn9k:            Marvell OCTEON 9
 cn10k:           Marvell OCTEON 10
+cn20k:           Marvell OCTEON 20
 cobalt100:       Microsoft Azure Cobalt 100
 dpaa:            NXP DPAA
 elba:            AMD Pensando Elba
@@ -808,6 +820,7 @@ socs = {
     'cn9k': soc_cn9k,
     'cn10k' : soc_cn10k,
     'cobalt100' : soc_cobalt100,
+    'cn20k' : soc_cn20k,
     'dpaa': soc_dpaa,
     'elba': soc_elba,
     'emag': soc_emag,
