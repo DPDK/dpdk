@@ -53,7 +53,14 @@ _i40e_rx_queue_release_mbufs_vec(struct ci_rx_queue *rxq)
 static inline int
 i40e_rx_vec_dev_conf_condition_check_default(struct rte_eth_dev *dev)
 {
-#ifndef RTE_LIBRTE_IEEE1588
+#if defined(RTE_LIBRTE_IEEE1588) && !defined(RTE_ARCH_X86)
+	/* Only the AVX2/AVX512 Rx paths propagate the IEEE1588 PTP flags and
+	 * the hardware timestamp register index, so other architectures
+	 * still have to fall back to the scalar Rx path.
+	 */
+	RTE_SET_USED(dev);
+	return -1;
+#else
 	/**
 	 * Vector mode is allowed only when number of Rx queue
 	 * descriptor is power of 2.
@@ -67,9 +74,6 @@ i40e_rx_vec_dev_conf_condition_check_default(struct rte_eth_dev *dev)
 	}
 
 	return 0;
-#else
-	RTE_SET_USED(dev);
-	return -1;
 #endif
 }
 

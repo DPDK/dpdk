@@ -543,6 +543,69 @@ _recv_raw_pkts_vec_avx512(struct ci_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 
 		} /* if() on FDIR enabled */
 
+#ifdef RTE_LIBRTE_IEEE1588
+		/* The TSYNVALID and TSYNINDX bits are already present in
+		 * status0_7, so the PTP timestamp flags can be built with
+		 * no extra descriptor reads, the same way the RSS/FDIR flags
+		 * are above. Only the 2-bit timestamp register index has to
+		 * land in a specific mbuf field, so it still needs a
+		 * per-packet store, done the same way as the FDIR ID above.
+		 */
+		const __m256i tsyn_valid_mask = _mm256_set1_epi32(
+				1 << I40E_RXD_QW1_STATUS_TSYNVALID_SHIFT);
+		const __m256i tsyn_valid = _mm256_cmpeq_epi32(
+				_mm256_and_si256(status0_7, tsyn_valid_mask),
+				tsyn_valid_mask);
+		const __m256i tmst_flags = _mm256_and_si256(tsyn_valid,
+				_mm256_set1_epi32(RTE_MBUF_F_RX_IEEE1588_TMST));
+
+		mbuf_flags = _mm256_or_si256(mbuf_flags, tmst_flags);
+
+		/* zero the index unless TSYNVALID is set, to match the
+		 * scalar driver, which only ever assigns tsyn & 0x03
+		 */
+		const __m256i tsyn_indx = _mm256_and_si256(tsyn_valid,
+				_mm256_srli_epi32(_mm256_and_si256(status0_7,
+					_mm256_set1_epi32(0x3 << I40E_RXD_QW1_STATUS_TSYNINDX_SHIFT)),
+					I40E_RXD_QW1_STATUS_TSYNINDX_SHIFT));
+
+		/* status0_7 packet order is (hi->lo): [1, 3, 5, 7, 0, 2, 4, 6] */
+		if (!_mm256_testz_si256(tsyn_valid, tsyn_valid)) {
+			rx_pkts[i + 1]->timesync = _mm256_extract_epi32(tsyn_indx, 7);
+			rx_pkts[i + 3]->timesync = _mm256_extract_epi32(tsyn_indx, 6);
+			rx_pkts[i + 5]->timesync = _mm256_extract_epi32(tsyn_indx, 5);
+			rx_pkts[i + 7]->timesync = _mm256_extract_epi32(tsyn_indx, 4);
+			rx_pkts[i + 0]->timesync = _mm256_extract_epi32(tsyn_indx, 3);
+			rx_pkts[i + 2]->timesync = _mm256_extract_epi32(tsyn_indx, 2);
+			rx_pkts[i + 4]->timesync = _mm256_extract_epi32(tsyn_indx, 1);
+			rx_pkts[i + 6]->timesync = _mm256_extract_epi32(tsyn_indx, 0);
+		}
+
+		/* the PTP flag only depends on packet_type, which was already
+		 * looked up above for each packet, so again no extra reads
+		 * are needed to build it
+		 */
+		const __m256i ptp_flags = _mm256_set_epi32(
+			(ptype_tbl[ptype1] & RTE_PTYPE_L2_MASK) == RTE_PTYPE_L2_ETHER_TIMESYNC ?
+				RTE_MBUF_F_RX_IEEE1588_PTP : 0,
+			(ptype_tbl[ptype3] & RTE_PTYPE_L2_MASK) == RTE_PTYPE_L2_ETHER_TIMESYNC ?
+				RTE_MBUF_F_RX_IEEE1588_PTP : 0,
+			(ptype_tbl[ptype5] & RTE_PTYPE_L2_MASK) == RTE_PTYPE_L2_ETHER_TIMESYNC ?
+				RTE_MBUF_F_RX_IEEE1588_PTP : 0,
+			(ptype_tbl[ptype7] & RTE_PTYPE_L2_MASK) == RTE_PTYPE_L2_ETHER_TIMESYNC ?
+				RTE_MBUF_F_RX_IEEE1588_PTP : 0,
+			(ptype_tbl[ptype0] & RTE_PTYPE_L2_MASK) == RTE_PTYPE_L2_ETHER_TIMESYNC ?
+				RTE_MBUF_F_RX_IEEE1588_PTP : 0,
+			(ptype_tbl[ptype2] & RTE_PTYPE_L2_MASK) == RTE_PTYPE_L2_ETHER_TIMESYNC ?
+				RTE_MBUF_F_RX_IEEE1588_PTP : 0,
+			(ptype_tbl[ptype4] & RTE_PTYPE_L2_MASK) == RTE_PTYPE_L2_ETHER_TIMESYNC ?
+				RTE_MBUF_F_RX_IEEE1588_PTP : 0,
+			(ptype_tbl[ptype6] & RTE_PTYPE_L2_MASK) == RTE_PTYPE_L2_ETHER_TIMESYNC ?
+				RTE_MBUF_F_RX_IEEE1588_PTP : 0);
+
+		mbuf_flags = _mm256_or_si256(mbuf_flags, ptp_flags);
+#endif /* RTE_LIBRTE_IEEE1588 */
+
 		/* At this point, we have the 8 sets of flags in the low 16-bits
 		 * of each 32-bit value in vlan0.
 		 * We want to extract these, and merge them with the mbuf init data
