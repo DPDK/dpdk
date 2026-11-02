@@ -1483,21 +1483,40 @@ nix_tm_assign_resources(struct nix *nix, enum roc_nix_tm_tree tree)
 	return 0;
 }
 
-void
+int
 nix_tm_copy_rsp_to_nix(struct nix *nix, struct nix_txsch_alloc_rsp *rsp)
 {
 	uint8_t lvl;
 	uint16_t i;
 
 	for (lvl = 0; lvl < NIX_TXSCH_LVL_CNT; lvl++) {
-		for (i = 0; i < rsp->schq[lvl]; i++)
-			plt_bitmap_set(nix->schq_bmp[lvl],
-				       rsp->schq_list[lvl][i]);
 
-		for (i = 0; i < rsp->schq_contig[lvl]; i++)
-			plt_bitmap_set(nix->schq_contig_bmp[lvl],
-				       rsp->schq_contig_list[lvl][i]);
+		uint16_t cnt = PLT_MIN(rsp->schq[lvl], (uint16_t)MAX_TXSCHQ_PER_FUNC);
+
+		for (i = 0; i < cnt; i++) {
+			uint16_t id = rsp->schq_list[lvl][i];
+
+			if (id >= NIX_TM_MAX_HW_TXSCHQ) {
+				plt_err("Invalid schq %u for lvl %u in alloc rsp", id, lvl);
+				return -EINVAL;
+			}
+			plt_bitmap_set(nix->schq_bmp[lvl], id);
+		}
+
+		cnt = PLT_MIN(rsp->schq_contig[lvl], (uint16_t)MAX_TXSCHQ_PER_FUNC);
+
+		for (i = 0; i < cnt; i++) {
+			uint16_t id = rsp->schq_contig_list[lvl][i];
+
+			if (id >= NIX_TM_MAX_HW_TXSCHQ) {
+				plt_err("Invalid contig schq %u for lvl %u in alloc rsp", id, lvl);
+				return -EINVAL;
+			}
+			plt_bitmap_set(nix->schq_contig_bmp[lvl], id);
+		}
 	}
+
+	return 0;
 }
 
 int
@@ -1563,8 +1582,10 @@ nix_tm_alloc_txschq(struct nix *nix, enum roc_nix_tm_tree tree)
 			goto alloc_err;
 		}
 
-		nix_tm_copy_rsp_to_nix(nix, rsp);
+		rc = nix_tm_copy_rsp_to_nix(nix, rsp);
 		mbox_put(mbox);
+		if (rc)
+			goto alloc_err;
 	} while (pend);
 
 	nix->tm_link_cfg_lvl = rsp->link_cfg_lvl;
