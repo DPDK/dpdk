@@ -50,6 +50,7 @@ nix_inl_cpt_cq_cb(struct roc_cpt_lf *lf)
 {
 	struct idev_cfg *idev = idev_get_cfg();
 	struct nix_inl_dev *inl_dev = NULL;
+	roc_nix_inl_sso_work_cb_t work_cb;
 	enum nix_inl_event_type cq_type;
 	uint32_t port_id = UINT32_MAX;
 	union cpt_lf_cq_base cq_base;
@@ -102,6 +103,9 @@ nix_inl_cpt_cq_cb(struct roc_cpt_lf *lf)
 		port_id = roc_nix->port_id;
 	}
 
+	/* Snapshot once so the test and the call use the same pointer */
+	work_cb = inl_dev->work_cb;
+
 	for (i = 0; i < count; i++) {
 		cq_s = (struct cpt_cq_s *)(uintptr_t)((((uint64_t)cq_base.s.addr << 7)) +
 						      (head << 5));
@@ -129,7 +133,8 @@ nix_inl_cpt_cq_cb(struct roc_cpt_lf *lf)
 				goto done;
 			}
 			gw[1] = (uint64_t)(uintptr_t)wqe;
-			inl_dev->work_cb(gw, sa, cq_type, (void *)cq_s, port_id);
+			if (work_cb)
+				work_cb(gw, sa, cq_type, (void *)cq_s, port_id);
 		}
 done:
 		head = (head + 1) % lf->cq_size;
