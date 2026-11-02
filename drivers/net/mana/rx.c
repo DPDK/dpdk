@@ -289,7 +289,8 @@ mana_start_rx_queues(struct rte_eth_dev *dev)
 
 		rxq->cq = ibv_create_cq(priv->ib_ctx, rxq->num_desc,
 					NULL, rxq->channel,
-					rxq->channel ? i : 0);
+					rxq->channel ?
+					i % priv->ib_ctx->num_comp_vectors : 0);
 		if (!rxq->cq) {
 			ret = -errno;
 			DRV_LOG(ERR, "failed to create rx cq queue %d", i);
