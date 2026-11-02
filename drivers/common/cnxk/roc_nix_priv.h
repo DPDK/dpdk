@@ -421,7 +421,7 @@ int nix_tm_alloc_txschq(struct nix *nix, enum roc_nix_tm_tree tree);
 int nix_tm_assign_resources(struct nix *nix, enum roc_nix_tm_tree tree);
 int nix_tm_release_resources(struct nix *nix, uint8_t hw_lvl, bool contig,
 			     bool above_thresh);
-void nix_tm_copy_rsp_to_nix(struct nix *nix, struct nix_txsch_alloc_rsp *rsp);
+int nix_tm_copy_rsp_to_nix(struct nix *nix, struct nix_txsch_alloc_rsp *rsp);
 
 int nix_tm_txsch_reg_config(struct nix *nix, enum roc_nix_tm_tree tree);
 int nix_tm_update_parent_info(struct nix *nix, enum roc_nix_tm_tree tree);

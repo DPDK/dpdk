@@ -778,8 +778,10 @@ roc_nix_tm_prealloc_res(struct roc_nix *roc_nix, uint8_t lvl,
 			return rc;
 		}
 
-		nix_tm_copy_rsp_to_nix(nix, rsp);
+		rc = nix_tm_copy_rsp_to_nix(nix, rsp);
 		mbox_put(mbox);
+		if (rc)
+			return rc;
 	}
 
 	/* Preallocate contiguous */
@@ -797,8 +799,10 @@ roc_nix_tm_prealloc_res(struct roc_nix *roc_nix, uint8_t lvl,
 			return rc;
 		}
 
-		nix_tm_copy_rsp_to_nix(nix, rsp);
+		rc = nix_tm_copy_rsp_to_nix(nix, rsp);
 		mbox_put(mbox);
+		if (rc)
+			return rc;
 	}
 
 	/* Save thresholds */
