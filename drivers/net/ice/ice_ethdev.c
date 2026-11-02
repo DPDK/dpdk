@@ -702,6 +702,7 @@ handle_ddp_filename_arg(__rte_unused const char *key, const char *value, void *n
 		PMD_DRV_LOG(ERR, "The DDP package filename is too long : '%s'", value);
 		return -1;
 	}
+	free((void *)(uintptr_t)*filename);
 	*filename = strdup(value);
 	return 0;
 }
@@ -2555,7 +2556,8 @@ ice_dev_init(struct rte_eth_dev *dev)
 	ret = ice_parse_devargs(dev);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to parse devargs");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto err_free_devargs;
 	}
 
 	ice_init_controlq_parameter(hw);
@@ -2563,7 +2565,8 @@ ice_dev_init(struct rte_eth_dev *dev)
 	ret = ice_init_hw(hw);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failed to initialize HW");
-		return -EINVAL;
+		ret = -EINVAL;
+		goto err_free_devargs;
 	}
 
 #ifndef RTE_EXEC_ENV_WINDOWS
@@ -2715,6 +2718,9 @@ err_init_mac:
 err_init_fw:
 #endif
 	ice_deinit_hw(hw);
+err_free_devargs:
+	free((void *)(uintptr_t)ad->devargs.ddp_filename);
+	ad->devargs.ddp_filename = NULL;
 
 	return ret;
 }
