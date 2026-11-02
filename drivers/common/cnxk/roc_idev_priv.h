@@ -45,6 +45,7 @@ struct idev_cfg {
 	struct idev_nix_inl_rx_inj_cfg inl_rx_inj_cfg;
 	plt_spinlock_t nix_inl_dev_lock;
 	plt_spinlock_t npa_dev_lock;
+	plt_spinlock_t mcs_lock;
 	uint8_t dma_cs_offset;
 };
 
