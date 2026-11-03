@@ -1602,7 +1602,7 @@ acc_ring_avail_enq(struct acc_queue *q)
 static inline uint32_t
 acc_ring_avail_deq(struct acc_queue *q)
 {
-	return (q->sw_ring_depth + q->sw_ring_head - q->sw_ring_tail) & q->sw_ring_wrap_mask;
+	return (q->sw_ring_head - q->sw_ring_tail) & q->sw_ring_wrap_mask;
 }
 
 /* Check room in AQ for the enqueues batches into Qmgr */
