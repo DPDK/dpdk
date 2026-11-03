@@ -245,7 +245,7 @@ if dlopen_ibverbs
             dlopen_lib_name,
             dlopen_sources,
             include_directories: dlopen_includes,
-            c_args: cflags,
+            c_args: cflags + ['-DMLX5_GLUE_LIBRARY'],
             dependencies: libs,
             link_args: [
                 '-Wl,-export-dynamic',

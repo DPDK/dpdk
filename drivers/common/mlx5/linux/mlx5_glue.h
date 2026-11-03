@@ -412,6 +412,17 @@ struct mlx5_glue {
 	int (*destroy_steering_anchor)(struct mlx5dv_steering_anchor *sa);
 };
 
+#if defined(RTE_IBVERBS_LINK_DLOPEN) && !defined(MLX5_GLUE_LIBRARY)
+/*
+ * The PMD keeps the address of the glue table in a private symbol. The glue
+ * library exports mlx5_glue for lookup with dlsym().
+ */
+typedef struct mlx5_glue mlx5_glue_t;
+
+extern const mlx5_glue_t *mlx5_glue_handle;
+#define mlx5_glue mlx5_glue_handle
+#else
 extern const struct mlx5_glue *mlx5_glue;
+#endif
 
 #endif /* MLX5_GLUE_H_ */
