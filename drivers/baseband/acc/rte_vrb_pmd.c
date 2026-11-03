@@ -219,7 +219,7 @@ vrb_device_fft_win(struct rte_bbdev *dev)
 	/* Check from the device the first time. */
 	if (d->fft_window_width[0] == 0) {
 		for (win = 0; win < ACC_MAX_FFT_WIN; win++) {
-			vrb_vf2pf(d, ACC_VF2PF_FFT_WIN_REQUEST | win);
+			vrb_vf2pf(d, ACC_VF2PF_FFT_WIN_REQUEST | (win << 8));
 			reg = acc_reg_read(d, d->reg_addr->pf2vf_doorbell);
 			while ((time_out < ACC_STATUS_TO) && (reg == RTE_BBDEV_DEV_NOSTATUS)) {
 				usleep(ACC_STATUS_WAIT); /* Wait or VF->PF->VF Comms. */
