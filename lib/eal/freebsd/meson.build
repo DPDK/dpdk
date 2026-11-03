@@ -3,6 +3,8 @@
 
 subdir('include')
 
+includes += include_directories('../../../kernel/freebsd/nic_uio')
+
 sources += files(
         'eal.c',
         'eal_alarm.c',

@@ -220,6 +220,10 @@ source_file_deps = {
     'test_version.c': [],
 }
 
+if is_freebsd
+    source_file_deps += {'test_interrupts_freebsd.c': []}
+endif
+
 source_file_ext_deps = {
     'test_compressdev.c': ['zlib'],
     'test_pcapng.c': ['pcap'],
