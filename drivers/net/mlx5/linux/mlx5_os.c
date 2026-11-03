@@ -1081,6 +1081,13 @@ is_hpf(const struct mlx5_dev_spawn_data *spawn)
 	       spawn->info.name_type == MLX5_PHYS_PORT_NAME_TYPE_PFHPF;
 }
 
+static bool
+is_bluefield_local_representor(const struct mlx5_dev_spawn_data *spawn)
+{
+	return spawn->info.representor && spawn->info.ctrl_num == 0 &&
+	       spawn->nb_hpfs > 0 && !is_hpf(spawn);
+}
+
 static int
 build_port_name(struct rte_device *dpdk_dev,
 		struct mlx5_dev_spawn_data *spawn,
@@ -1130,12 +1137,14 @@ build_port_name(struct rte_device *dpdk_dev,
 		 * 1. Device is a bond (VF-LAG).
 		 * 2. There are multiple uplinks (MPESW).
 		 * 3. There are multiple host PFs (BlueField socket direct).
+		 * 4. Port is a local (controller 0) representor on BlueField. Local and
+		 *    host representors with the same index would otherwise share a name.
 		 *
 		 * If none of these conditions apply, then it is assumed that
 		 * this device manages a single non-shared E-Switch with single controller,
 		 * where there is only one uplink/PF and one host PF (on BlueField).
 		 */
-		if (!is_standard_eswitch(spawn))
+		if (!is_standard_eswitch(spawn) || is_bluefield_local_representor(spawn))
 			ret = snprintf(name + written, name_sz - written,
 				       "_representor_c%dpf%d%s%u",
 				       spawn->info.ctrl_num,
@@ -1359,6 +1368,9 @@ mlx5_dev_spawn(struct rte_device *dpdk_dev,
 		 */
 		if (mkvlist)
 			mlx5_port_args_set_used(name, port_id, mkvlist);
+		if (switch_info->representor)
+			DRV_LOG(NOTICE, "representor \"%s\" is already spawned as port %u",
+				name, port_id);
 		rte_errno = EEXIST;
 		return NULL;
 	}
