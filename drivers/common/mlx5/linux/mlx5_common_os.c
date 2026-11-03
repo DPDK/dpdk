@@ -28,8 +28,8 @@
 #include "mlx5_glue.h"
 
 #ifdef MLX5_GLUE
-RTE_EXPORT_INTERNAL_SYMBOL(mlx5_glue)
-const struct mlx5_glue *mlx5_glue;
+RTE_EXPORT_INTERNAL_SYMBOL(mlx5_glue_handle)
+const mlx5_glue_t *mlx5_glue;
 #endif
 
 RTE_EXPORT_INTERNAL_SYMBOL(mlx5_get_pci_addr)
