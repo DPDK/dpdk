@@ -138,6 +138,31 @@ check_header()
 	return 0
 }
 
+check_include_order()
+{
+	local first_other
+	local last_uapi
+	local errors=0
+
+	$quiet || echo "Checking uapi/linux inclusion order"
+	for filename in $(git grep -l '#include <uapi/linux/' ':!devtools/linux-uapi.sh' \
+			':!doc/guides/contributing/linux_uapi.rst' ':!kernel/linux/uapi/'); do
+		last_uapi=$(grep -n '^#include <uapi/linux/' "$filename" | tail -1 | cut -d: -f1)
+		first_other=$(grep -n '^#include' "$filename" | grep -v 'uapi/linux/' |
+			head -1 | cut -d: -f1)
+		if [ -z "$first_other" ] || [ "$first_other" -gt "$last_uapi" ]; then
+			continue
+		fi
+		$quiet || echo "$filename: uapi headers must be included before other headers"
+		errors=$((errors + 1))
+	done
+	if [ $errors -ne 0 ] || ! $quiet; then
+		echo "$errors error(s) found in uapi inclusion order"
+	fi
+
+	return $errors
+}
+
 check_all()
 {
 	local errors=0
@@ -192,3 +217,5 @@ if $check_headers; then
 else
 	update_all
 fi
+
+check_include_order
