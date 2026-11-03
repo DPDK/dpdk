@@ -1108,7 +1108,13 @@ mlx5_os_interrupt_handler_create(int mode, bool set_fd_nonblock, int fd,
 	}
 	return tmp_intr_handle;
 err:
-	rte_intr_fd_set(tmp_intr_handle, -1);
+	if (tmp_intr_handle != NULL) {
+		int saved_errno = rte_errno;
+
+		if (rte_intr_fd_set(tmp_intr_handle, -1) != 0)
+			DRV_LOG(DEBUG, "failed to reset interrupt fd");
+		rte_errno = saved_errno;
+	}
 	rte_intr_instance_free(tmp_intr_handle);
 	return NULL;
 }
@@ -1185,7 +1191,8 @@ mlx5_os_interrupt_handler_destroy(struct rte_intr_handle *intr_handle,
 	if (rte_intr_fd_get(intr_handle) >= 0) {
 		mlx5_intr_callback_unregister(intr_handle, cb, cb_arg);
 		/* fd is not owned by the driver, only clear reference here. */
-		rte_intr_fd_set(intr_handle, -1);
+		if (rte_intr_fd_set(intr_handle, -1) != 0)
+			DRV_LOG(DEBUG, "failed to reset interrupt fd");
 	}
 	rte_intr_instance_free(intr_handle);
 }
