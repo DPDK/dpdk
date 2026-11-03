@@ -1082,6 +1082,9 @@ acc_fcw_le_fill(const struct rte_bbdev_enc_op *op,
 	fcw->k0 = get_k0(fcw->ncb, fcw->Zc, op->ldpc_enc.basegraph,
 			op->ldpc_enc.rv_index, 0);
 	fcw->rm_e = (default_e == 0) ? op->ldpc_enc.cb_params.e : default_e;
+	fcw->rm_e_b = 0;
+	fcw->C = 0;
+	fcw->Cab = 0;
 	fcw->crc_select = check_bit(op->ldpc_enc.op_flags,
 			RTE_BBDEV_LDPC_CRC_24B_ATTACH);
 	fcw->bypass_intlv = check_bit(op->ldpc_enc.op_flags,
