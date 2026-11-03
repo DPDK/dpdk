@@ -10,9 +10,9 @@ import re
 new_file_regexp = re.compile(r"^(\-\-\-|\+\+\+) [ab]/")
 file_header_regexp = re.compile(r"^(\-\-\-|\+\+\+) [ab]/(lib|drivers)/([^/]+)/([^/]+)")
 # From eal_exports.h
-export_exp_sym_regexp = re.compile(r"^.RTE_EXPORT_EXPERIMENTAL_SYMBOL\(([^,]+),")
-export_int_sym_regexp = re.compile(r"^.RTE_EXPORT_INTERNAL_SYMBOL\(([^)]+)\)")
-export_sym_regexp = re.compile(r"^.RTE_EXPORT_SYMBOL\(([^)]+)\)")
+export_exp_sym_regexp = re.compile(r"^[+-]RTE_EXPORT_EXPERIMENTAL_SYMBOL\(([^,]+),")
+export_int_sym_regexp = re.compile(r"^[+-]RTE_EXPORT_INTERNAL_SYMBOL\(([^)]+)\)")
+export_sym_regexp = re.compile(r"^[+-]RTE_EXPORT_SYMBOL\(([^)]+)\)")
 
 parser = argparse.ArgumentParser(
     description=__doc__,
