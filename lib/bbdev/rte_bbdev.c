@@ -1187,7 +1187,6 @@ rte_bbdev_enqueue_status_str(enum rte_bbdev_enqueue_status status)
 	if ((uint8_t)status < sizeof(enq_sta_string) / sizeof(char *))
 		return enq_sta_string[status];
 
-	rte_bbdev_log(ERR, "Invalid enqueue status");
 	return NULL;
 }
 
