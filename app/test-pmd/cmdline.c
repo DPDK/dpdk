@@ -725,7 +725,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 
 			"port config (port_id|all)"
 			" speed (10|100|1000|2500|5000|10000|25000|40000|50000|"
-			"100000|200000|400000|800000|auto)"
+			"100000|200000|400000|800000|1600000|auto)"
 			" duplex (half|full|auto)\n"
 			"    Set speed and duplex for all ports or port_id\n\n"
 
@@ -1447,6 +1447,8 @@ parse_and_check_speed_duplex(char *speedstr, char *duplexstr, uint32_t *speed)
 			*speed = RTE_ETH_LINK_SPEED_400G;
 		} else if (!strcmp(speedstr, "800000")) {
 			*speed = RTE_ETH_LINK_SPEED_800G;
+		} else if (!strcmp(speedstr, "1600000")) {
+			*speed = RTE_ETH_LINK_SPEED_1600G;
 		} else if (!strcmp(speedstr, "auto")) {
 			*speed = RTE_ETH_LINK_SPEED_AUTONEG;
 		} else {
@@ -1498,7 +1500,7 @@ static cmdline_parse_token_string_t cmd_config_speed_all_item1 =
 static cmdline_parse_token_string_t cmd_config_speed_all_value1 =
 	TOKEN_STRING_INITIALIZER(struct cmd_config_speed_all, value1,
 		"10#100#1000#2500#5000#10000#25000#40000#50000#"
-		"100000#200000#400000#800000#auto");
+		"100000#200000#400000#800000#1600000#auto");
 static cmdline_parse_token_string_t cmd_config_speed_all_item2 =
 	TOKEN_STRING_INITIALIZER(struct cmd_config_speed_all, item2, "duplex");
 static cmdline_parse_token_string_t cmd_config_speed_all_value2 =
@@ -1510,7 +1512,7 @@ static cmdline_parse_inst_t cmd_config_speed_all = {
 	.data = NULL,
 	.help_str = "port config all speed "
 		"10|100|1000|2500|5000|10000|25000|40000|50000|"
-		"100000|200000|400000|800000|auto "
+		"100000|200000|400000|800000|1600000|auto "
 		"duplex half|full|auto",
 	.tokens = {
 		(void *)&cmd_config_speed_all_port,
@@ -1575,7 +1577,7 @@ static cmdline_parse_token_string_t cmd_config_speed_specific_item1 =
 static cmdline_parse_token_string_t cmd_config_speed_specific_value1 =
 	TOKEN_STRING_INITIALIZER(struct cmd_config_speed_specific, value1,
 		"10#100#1000#2500#5000#10000#25000#40000#50000#"
-		"100000#200000#400000#800000#auto");
+		"100000#200000#400000#800000#1600000#auto");
 static cmdline_parse_token_string_t cmd_config_speed_specific_item2 =
 	TOKEN_STRING_INITIALIZER(struct cmd_config_speed_specific, item2,
 								"duplex");
@@ -1588,7 +1590,7 @@ static cmdline_parse_inst_t cmd_config_speed_specific = {
 	.data = NULL,
 	.help_str = "port config <port_id> speed "
 		"10|100|1000|2500|5000|10000|25000|40000|50000|"
-		"100000|200000|400000|800000|auto "
+		"100000|200000|400000|800000|1600000|auto "
 		"duplex half|full|auto",
 	.tokens = {
 		(void *)&cmd_config_speed_specific_port,

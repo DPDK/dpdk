@@ -104,6 +104,11 @@ New Features
   the kernel driver is the generic ``vfio-platform``,
   which carries no device identity in its name.
 
+* **Added link speed 1.6T to ethdev.**
+
+  Added the 1.6 Tb/s Ethernet link speed,
+  allowing aggregate links such as two 800 Gb/s members to be represented.
+
 * **Added module EEPROM decoding API to ethdev.**
 
   Added the experimental ``rte_eth_module_eeprom_parse()`` function
