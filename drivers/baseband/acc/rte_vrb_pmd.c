@@ -454,7 +454,7 @@ vrb_dev_interrupt_handler(void *cb_arg)
 					rte_bbdev_log(ERR,
 							"Couldn't find queue: aq_id: %u, qg_id: %u, vf_id: %u",
 							aq_id, qg_id, vf_id);
-					return;
+					break;
 				}
 				rte_bbdev_pmd_callback_process(dev,
 						RTE_BBDEV_EVENT_DEQUEUE, &deq_intr_det);
@@ -482,7 +482,7 @@ vrb_dev_interrupt_handler(void *cb_arg)
 					rte_bbdev_log(ERR,
 							"Couldn't find queue: aq_id: %u, qg_id: %u",
 							aq_id, qg_id);
-					return;
+					break;
 				}
 				rte_bbdev_pmd_callback_process(dev,
 						RTE_BBDEV_EVENT_DEQUEUE, &deq_intr_det);
