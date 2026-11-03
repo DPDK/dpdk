@@ -50,7 +50,7 @@
 #include "mlx4_utils.h"
 
 #ifdef MLX4_GLUE
-const struct mlx4_glue *mlx4_glue;
+const mlx4_glue_t *mlx4_glue;
 #endif
 
 static const char *MZ_MLX4_PMD_SHARED_DATA = "mlx4_pmd_shared_data";

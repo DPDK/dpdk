@@ -83,6 +83,17 @@ struct mlx4_glue {
 				   void *attr);
 };
 
+#if defined(MLX4_GLUE) && !defined(MLX4_GLUE_LIBRARY)
+/*
+ * The PMD keeps the address of the glue table in a private symbol. The glue
+ * library exports mlx4_glue for lookup with dlsym().
+ */
+typedef struct mlx4_glue mlx4_glue_t;
+
+extern const mlx4_glue_t *mlx4_glue_handle;
+#define mlx4_glue mlx4_glue_handle
+#else
 extern const struct mlx4_glue *mlx4_glue;
+#endif
 
 #endif /* MLX4_GLUE_H_ */

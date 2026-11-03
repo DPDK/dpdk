@@ -92,6 +92,7 @@ INTERNAL {
 	mlx5_get_pci_addr; # WINDOWS_NO_EXPORT
 
 	mlx5_glue;
+	mlx5_glue_handle; # WINDOWS_NO_EXPORT
 
 	mlx5_kvargs_process;
 

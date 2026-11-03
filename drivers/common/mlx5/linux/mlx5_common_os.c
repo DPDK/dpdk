@@ -27,7 +27,7 @@
 #include "mlx5_glue.h"
 
 #ifdef MLX5_GLUE
-const struct mlx5_glue *mlx5_glue;
+const mlx5_glue_t *mlx5_glue;
 #endif
 
 int
