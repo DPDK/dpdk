@@ -380,7 +380,11 @@ def get_device_details(devices_type):
         # get additional info and add it to existing data
         devices[d] = devices[d].copy()
         # No need to probe lspci
-        devices[d].update(get_pci_device_details(d, False).items())
+        details = get_pci_device_details(d, False)
+        if is_bsd:
+            # on BSD, interface name comes from ifconfig, not sysfs
+            details["Interface"] = devices[d].get("Interface", "")
+        devices[d].update(details.items())
 
         if is_linux and devices_type == 'net':
             for _if in ssh_if:
