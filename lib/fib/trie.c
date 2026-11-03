@@ -257,8 +257,8 @@ tbl8_recycle(struct rte_trie_tbl *dp, void *par, uint64_t tbl8_idx)
 }
 
 #define BYTE_SIZE	8
-static inline uint32_t
-get_idx(const struct rte_ipv6_addr *ip, uint32_t prev_idx, int bytes, int first_byte)
+static inline uint64_t
+get_idx(const struct rte_ipv6_addr *ip, uint64_t prev_idx, int bytes, int first_byte)
 {
 	int i;
 	uint32_t idx = 0;
@@ -319,7 +319,8 @@ build_common_root(struct rte_trie_tbl *dp, const struct rte_ipv6_addr *ip,
 	void *tbl_ptr = NULL;
 	uint64_t *cur_tbl;
 	uint64_t val;
-	int i, j, idx, prev_idx = 0;
+	uint64_t idx, prev_idx = 0;
+	int i, j, tbl8_idx;
 
 	cur_tbl = dp->tbl24;
 	for (i = 3, j = 0; i <= common_bytes; i++) {
@@ -327,12 +328,12 @@ build_common_root(struct rte_trie_tbl *dp, const struct rte_ipv6_addr *ip,
 		val = get_tbl_val_by_idx(cur_tbl, idx, dp->nh_sz);
 		tbl_ptr = get_tbl_p_by_idx(cur_tbl, idx, dp->nh_sz);
 		if ((val & TRIE_EXT_ENT) != TRIE_EXT_ENT) {
-			idx = tbl8_alloc(dp, val);
-			if (unlikely(idx < 0))
-				return idx;
-			write_to_dp(tbl_ptr, (idx << 1) |
+			tbl8_idx = tbl8_alloc(dp, val);
+			if (unlikely(tbl8_idx < 0))
+				return tbl8_idx;
+			write_to_dp(tbl_ptr, ((uint64_t)tbl8_idx << 1) |
 				TRIE_EXT_ENT, dp->nh_sz, 1);
-			prev_idx = idx;
+			prev_idx = (uint64_t)tbl8_idx;
 		} else
 			prev_idx = val >> 1;
 
@@ -361,7 +362,7 @@ write_edge(struct rte_trie_tbl *dp, const uint8_t *ip_part, uint64_t next_hop,
 			tbl8_idx = tbl8_alloc(dp, val);
 			if (tbl8_idx < 0)
 				return tbl8_idx;
-			val = (tbl8_idx << 1)|TRIE_EXT_ENT;
+			val = ((uint64_t)tbl8_idx << 1) | TRIE_EXT_ENT;
 		}
 		p = get_tbl_p_by_idx(dp->tbl8, (tbl8_idx *
 			TRIE_TBL8_GRP_NUM_ENT) + *ip_part, dp->nh_sz);
@@ -448,8 +449,8 @@ install_to_dp(struct rte_trie_tbl *dp, const struct rte_ipv6_addr *ledge,
 	uint8_t first_byte_idx = (common_bytes < 3) ? 0 : common_bytes;
 	uint8_t first_idx_len = (common_bytes < 3) ? 3 : 1;
 
-	uint32_t left_idx = get_idx(ledge, 0, first_idx_len, first_byte_idx);
-	uint32_t right_idx = get_idx(&redge, 0, first_idx_len, first_byte_idx);
+	uint64_t left_idx = get_idx(ledge, 0, first_idx_len, first_byte_idx);
+	uint64_t right_idx = get_idx(&redge, 0, first_idx_len, first_byte_idx);
 
 	ent = get_tbl_p_by_idx(common_root_tbl, left_idx, dp->nh_sz);
 	ret = write_edge(dp, &ledge->a[first_tbl8_byte + !(common_bytes < 3)],

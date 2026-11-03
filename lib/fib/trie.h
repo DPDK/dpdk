@@ -80,19 +80,19 @@ lookup_msk(uint8_t nh_sz)
 }
 
 static inline uint8_t
-get_psd_idx(uint32_t val, uint8_t nh_sz)
+get_psd_idx(uint64_t val, uint8_t nh_sz)
 {
 	return val & ((1 << (3 - nh_sz)) - 1);
 }
 
-static inline uint32_t
-get_tbl_pos(uint32_t val, uint8_t nh_sz)
+static inline uint64_t
+get_tbl_pos(uint64_t val, uint8_t nh_sz)
 {
 	return val >> (3 - nh_sz);
 }
 
 static inline uint64_t
-get_tbl_val_by_idx(uint64_t *tbl, uint32_t idx, uint8_t nh_sz)
+get_tbl_val_by_idx(uint64_t *tbl, uint64_t idx, uint8_t nh_sz)
 {
 	return ((tbl[get_tbl_pos(idx, nh_sz)] >> (get_psd_idx(idx, nh_sz) *
 		bits_in_nh(nh_sz))) & lookup_msk(nh_sz));
