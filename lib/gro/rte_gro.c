@@ -35,26 +35,24 @@ static gro_tbl_pkt_count_fn tbl_pkt_count_fn[RTE_GRO_TYPE_MAX_NUM] = {
 			NULL};
 
 #define IS_IPV4_TCP_PKT(ptype) (RTE_ETH_IS_IPV4_HDR(ptype) && \
-		((ptype & RTE_PTYPE_L4_TCP) == RTE_PTYPE_L4_TCP) && \
-		((ptype & RTE_PTYPE_L4_FRAG) != RTE_PTYPE_L4_FRAG) && \
+		((ptype & RTE_PTYPE_L4_MASK) == RTE_PTYPE_L4_TCP) && \
 		(RTE_ETH_IS_TUNNEL_PKT(ptype) == 0))
 
 /* GRO with extension headers is not supported */
 #define IS_IPV6_TCP_PKT(ptype) (RTE_ETH_IS_IPV6_HDR(ptype) && \
-		((ptype & RTE_PTYPE_L4_TCP) == RTE_PTYPE_L4_TCP) && \
-		((ptype & RTE_PTYPE_L4_FRAG) != RTE_PTYPE_L4_FRAG) && \
+		((ptype & RTE_PTYPE_L4_MASK) == RTE_PTYPE_L4_TCP) && \
 		(RTE_ETH_IS_TUNNEL_PKT(ptype) == 0))
 
-#define IS_IPV4_UDP_PKT(ptype) (RTE_ETH_IS_IPV4_HDR(ptype) && \
-		((ptype & RTE_PTYPE_L4_UDP) == RTE_PTYPE_L4_UDP) && \
+/* GRO for UDP ingests IP fragments */
+#define IS_IPV4_FRAG_PKT(ptype) (RTE_ETH_IS_IPV4_HDR(ptype) && \
+		((ptype & RTE_PTYPE_L4_MASK) == RTE_PTYPE_L4_FRAG) && \
 		(RTE_ETH_IS_TUNNEL_PKT(ptype) == 0))
 
 #define IS_IPV4_VXLAN_TCP4_PKT(ptype) (RTE_ETH_IS_IPV4_HDR(ptype) && \
-		((ptype & RTE_PTYPE_L4_UDP) == RTE_PTYPE_L4_UDP) && \
-		((ptype & RTE_PTYPE_L4_FRAG) != RTE_PTYPE_L4_FRAG) && \
-		((ptype & RTE_PTYPE_TUNNEL_VXLAN) == \
+		((ptype & RTE_PTYPE_L4_MASK) == RTE_PTYPE_L4_UDP) && \
+		((ptype & RTE_PTYPE_TUNNEL_MASK) == \
 		 RTE_PTYPE_TUNNEL_VXLAN) && \
-		((ptype & RTE_PTYPE_INNER_L4_TCP) == \
+		((ptype & RTE_PTYPE_INNER_L4_MASK) == \
 		 RTE_PTYPE_INNER_L4_TCP) && \
 		(((ptype & RTE_PTYPE_INNER_L3_MASK) == \
 		  RTE_PTYPE_INNER_L3_IPV4) || \
@@ -63,12 +61,13 @@ static gro_tbl_pkt_count_fn tbl_pkt_count_fn[RTE_GRO_TYPE_MAX_NUM] = {
 		 ((ptype & RTE_PTYPE_INNER_L3_MASK) == \
 		  RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN)))
 
-#define IS_IPV4_VXLAN_UDP4_PKT(ptype) (RTE_ETH_IS_IPV4_HDR(ptype) && \
-		((ptype & RTE_PTYPE_L4_UDP) == RTE_PTYPE_L4_UDP) && \
-		((ptype & RTE_PTYPE_TUNNEL_VXLAN) == \
+/* GRO for inner UDP of VXLAN ingests inner IP fragments */
+#define IS_IPV4_VXLAN_FRAG4_PKT(ptype) (RTE_ETH_IS_IPV4_HDR(ptype) && \
+		((ptype & RTE_PTYPE_L4_MASK) == RTE_PTYPE_L4_UDP) && \
+		((ptype & RTE_PTYPE_TUNNEL_MASK) == \
 		 RTE_PTYPE_TUNNEL_VXLAN) && \
-		((ptype & RTE_PTYPE_INNER_L4_UDP) == \
-		 RTE_PTYPE_INNER_L4_UDP) && \
+		((ptype & RTE_PTYPE_INNER_L4_MASK) == \
+		 RTE_PTYPE_INNER_L4_FRAG) && \
 		(((ptype & RTE_PTYPE_INNER_L3_MASK) == \
 		  RTE_PTYPE_INNER_L3_IPV4) || \
 		 ((ptype & RTE_PTYPE_INNER_L3_MASK) == \
@@ -279,7 +278,7 @@ rte_gro_reassemble_burst(struct rte_mbuf **pkts,
 				nb_after_gro--;
 			else if (ret < 0)
 				pkts[unprocess_num++] = pkts[i];
-		} else if (IS_IPV4_VXLAN_UDP4_PKT(pkts[i]->packet_type) &&
+		} else if (IS_IPV4_VXLAN_FRAG4_PKT(pkts[i]->packet_type) &&
 				do_vxlan_udp_gro) {
 			ret = gro_vxlan_udp4_reassemble(pkts[i],
 							&vxlan_udp_tbl, 0);
@@ -296,7 +295,7 @@ rte_gro_reassemble_burst(struct rte_mbuf **pkts,
 				nb_after_gro--;
 			else if (ret < 0)
 				pkts[unprocess_num++] = pkts[i];
-		} else if (IS_IPV4_UDP_PKT(pkts[i]->packet_type) &&
+		} else if (IS_IPV4_FRAG_PKT(pkts[i]->packet_type) &&
 				do_udp4_gro) {
 			ret = gro_udp4_reassemble(pkts[i], &udp_tbl, 0);
 			if (ret > 0)
@@ -394,7 +393,7 @@ rte_gro_reassemble(struct rte_mbuf **pkts,
 			if (gro_vxlan_tcp4_reassemble(pkts[i], vxlan_tcp_tbl,
 						current_time) < 0)
 				pkts[unprocess_num++] = pkts[i];
-		} else if (IS_IPV4_VXLAN_UDP4_PKT(pkts[i]->packet_type) &&
+		} else if (IS_IPV4_VXLAN_FRAG4_PKT(pkts[i]->packet_type) &&
 				do_vxlan_udp_gro) {
 			if (gro_vxlan_udp4_reassemble(pkts[i], vxlan_udp_tbl,
 						current_time) < 0)
@@ -404,7 +403,7 @@ rte_gro_reassemble(struct rte_mbuf **pkts,
 			if (gro_tcp4_reassemble(pkts[i], tcp_tbl,
 						current_time) < 0)
 				pkts[unprocess_num++] = pkts[i];
-		} else if (IS_IPV4_UDP_PKT(pkts[i]->packet_type) &&
+		} else if (IS_IPV4_FRAG_PKT(pkts[i]->packet_type) &&
 				do_udp4_gro) {
 			if (gro_udp4_reassemble(pkts[i], udp_tbl,
 						current_time) < 0)
