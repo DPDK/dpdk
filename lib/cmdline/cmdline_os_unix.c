@@ -17,7 +17,7 @@ terminal_adjust(struct cmdline *cl)
 
 	memcpy(&term, &cl->oldterm, sizeof(term));
 	term.c_lflag &= ~(ICANON | ECHO | ISIG);
-	tcsetattr(0, TCSANOW, &term);
+	tcsetattr(STDIN_FILENO, TCSANOW, &term);
 
 	setbuf(stdin, NULL);
 }
@@ -25,7 +25,7 @@ terminal_adjust(struct cmdline *cl)
 void
 terminal_restore(const struct cmdline *cl)
 {
-	tcsetattr(fileno(stdin), TCSANOW, &cl->oldterm);
+	tcsetattr(STDIN_FILENO, TCSANOW, &cl->oldterm);
 }
 
 ssize_t
