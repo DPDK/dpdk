@@ -2673,34 +2673,19 @@ rte_swx_ctl_pipeline_abort(struct rte_swx_ctl_pipeline *ctl)
 static int
 mask_to_prefix(uint64_t mask, uint32_t mask_length, uint32_t *prefix_length)
 {
-	uint32_t n_trailing_zeros = 0, n_ones = 0, i;
+	uint32_t n_trailing_zeros, n_ones;
 
 	if (!mask) {
 		*prefix_length = 0;
 		return 0;
 	}
 
-	/* Count trailing zero bits. */
-	for (i = 0; i < 64; i++) {
-		if (mask & (1LLU << i))
-			break;
+	/* Verify that all 1-bits in mask form a single contiguous run. */
+	if (((mask + (mask & (~mask + 1ULL))) & mask) != 0ULL)
+		return -EINVAL;
 
-		n_trailing_zeros++;
-	}
-
-	/* Count the one bits that follow. */
-	for ( ; i < 64; i++) {
-		if (!(mask & (1LLU << i)))
-			break;
-
-		n_ones++;
-	}
-
-	/* Check that no more one bits are present */
-	for ( ; i < 64; i++)
-		if (mask & (1LLU << i))
-			return -EINVAL;
-
+	n_trailing_zeros = (uint32_t)rte_ctz64(mask);
+	n_ones = (uint32_t)rte_popcount64(mask);
 	/* Check that the input mask is a prefix or the right length. */
 	if (n_ones + n_trailing_zeros != mask_length)
 		return -EINVAL;
