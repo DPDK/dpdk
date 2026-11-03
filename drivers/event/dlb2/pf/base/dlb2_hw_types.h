@@ -213,17 +213,15 @@ static inline bool dlb2_sn_group_full(struct dlb2_sn_group *group)
 
 static inline int dlb2_sn_group_alloc_slot(struct dlb2_sn_group *group)
 {
-	const u32 bound[] = {16, 8, 4, 2, 1};
-	u32 i;
+	const u32 mask[] = {0x0000ffff, 0x000000ff, 0x0000000f, 0x00000003, 0x00000001};
+	u32 free_bits = (~group->slot_use_bitmap) & mask[group->mode];
 
-	for (i = 0; i < bound[group->mode]; i++) {
-		if (!(group->slot_use_bitmap & (1 << i))) {
-			group->slot_use_bitmap |= 1 << i;
-			return i;
-		}
-	}
+	if (!free_bits)
+		return -1;
 
-	return -1;
+	int slot = __builtin_ctz(free_bits);
+	group->slot_use_bitmap |= (1U << slot);
+	return slot;
 }
 
 static inline void
@@ -234,12 +232,7 @@ dlb2_sn_group_free_slot(struct dlb2_sn_group *group, int slot)
 
 static inline int dlb2_sn_group_used_slots(struct dlb2_sn_group *group)
 {
-	int i, cnt = 0;
-
-	for (i = 0; i < 32; i++)
-		cnt += !!(group->slot_use_bitmap & (1 << i));
-
-	return cnt;
+	return __builtin_popcount(group->slot_use_bitmap);
 }
 
 struct dlb2_hw_domain {
