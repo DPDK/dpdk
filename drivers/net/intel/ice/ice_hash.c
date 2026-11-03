@@ -1311,6 +1311,40 @@ update_symm:
 	return 0;
 }
 
+/* Check duplicate packet type RSS rule in same port */
+static bool
+ice_hash_ptype_in_use(struct ice_adapter *ad,
+		      const struct ice_hash_flow_cfg *new_cfg)
+{
+	const struct ice_rss_hash_cfg *hash = &new_cfg->rss_cfg.hash;
+	const struct ice_rss_raw_cfg *raw = &new_cfg->rss_cfg.raw;
+	const struct ice_hash_flow_cfg *cfg;
+	struct rte_flow *flow;
+
+	/* flow_ops_lock is held by ice_flow_create() */
+	TAILQ_FOREACH(flow, &ad->pf.flow_list, node) {
+		cfg = flow->rule;
+		if (flow->engine != &ice_hash_engine || cfg->simple_xor ||
+		    cfg->rss_cfg.raw.raw_ena != raw->raw_ena)
+			continue;
+
+		if (raw->raw_ena) {
+			if (ice_find_first_bit(cfg->rss_cfg.raw.prof.ptypes, ICE_FLOW_PTYPE_MAX) ==
+			    ice_find_first_bit(raw->prof.ptypes, ICE_FLOW_PTYPE_MAX))
+				return true;
+			continue;
+		}
+
+		/* an outer VLAN header does not change the packet type */
+		if (cfg->rss_cfg.hash.hdr_type == hash->hdr_type &&
+		    !((cfg->rss_cfg.hash.addl_hdrs ^ hash->addl_hdrs) &
+		      ~ICE_FLOW_SEG_HDR_VLAN))
+			return true;
+	}
+
+	return false;
+}
+
 static int
 ice_hash_create(struct ice_adapter *ad,
 		void *flow_rule,
@@ -1332,6 +1366,15 @@ ice_hash_create(struct ice_adapter *ad,
 
 		goto out;
 	} else {
+		/* Reject duplicate packet type rule in same port */
+		if (ice_hash_ptype_in_use(ad, filter_ptr)) {
+			PMD_DRV_LOG(ERR, "RSS rule for this packet type already exists");
+			rte_flow_error_set(error, EEXIST,
+					   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+					   "RSS rule for this packet type already exists");
+			goto error;
+		}
+
 		if (filter_ptr->rss_cfg.raw.raw_ena) {
 			ret = ice_hash_add_raw_cfg(ad, &filter_ptr->rss_cfg.raw,
 						   pf->main_vsi->idx);
