@@ -20,6 +20,7 @@ Deprecation Notices
 
   - ``kernel_dir``: option unused as Linux kernel drivers are in a separate ``dpdk-kmods`` repository.
   - ``tests``: disabling tests can be achieved by using the ``enable_apps`` / ``disable_apps`` options instead.
+  - ``use_hpet``: option will be removed as HPET support itself is deprecated (see below).
 
 * kvargs: The function ``rte_kvargs_process`` will get a new parameter
   for returning key match count. It will ease handling of no-match case.
@@ -33,6 +34,12 @@ Deprecation Notices
   and will be removed in a future release.
   Use the ``-S <service-corelist>`` parameter instead
   to specify the cores to be used for background services in DPDK.
+
+* eal: HPET support is deprecated and will be removed in a future release.
+  Support has been disabled by default for many years.
+  Applications should use the generic timer API,
+  such as ``rte_get_timer_cycles()`` and ``rte_get_timer_hz()``
+  instead of HPET-specific API.
 
 * lib: will fix extending some enum/define breaking the ABI. There are multiple
   samples in DPDK that enum/define terminated with a ``.*MAX.*`` value which is

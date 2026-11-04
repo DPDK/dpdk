@@ -88,8 +88,6 @@ See :ref:`eal_hugepage_mapping` section to learn how these limits affect EAL.
 Device Control
 ~~~~~~~~~~~~~~
 
-If the HPET is to be used, ``/dev/hpet`` permissions must be adjusted.
-
 For ``vfio-pci`` kernel driver, the following Linux file system objects'
 permissions should be adjusted:
 
@@ -159,33 +157,3 @@ one can look into "Linux cgroups",
 Also see
 `CPU isolation example <https://www.suse.com/c/cpu-isolation-practical-example-part-5/>`_
 and `systemd core isolation example <https://www.rcannings.com/systemd-core-isolation/>`_.
-
-.. _linux_gsg_high_precision_event_timer:
-
-High Precision Event Timer (HPET) Functionality
------------------------------------------------
-
-DPDK can support the system HPET as a timer source rather than the system default timers,
-such as the core Time-Stamp Counter (TSC) on x86 systems.
-To enable HPET support in DPDK:
-
-#. Ensure that HPET is enabled in BIOS settings.
-#. Enable ``HPET_MMAP`` support in kernel configuration.
-   Note that this may involve doing a kernel rebuild,
-   as many common linux distributions do *not* have this setting
-   enabled by default in their kernel builds.
-#. Enable DPDK support for HPET by using the build-time meson option ``use_hpet``,
-   for example, ``meson configure -Duse_hpet=true``
-
-For an application to use the ``rte_get_hpet_cycles()`` and ``rte_get_hpet_hz()`` API calls,
-and optionally to make the HPET the default time source for the rte_timer library,
-the ``rte_eal_hpet_init()`` API call should be called at application initialization.
-This API call will ensure that the HPET is accessible,
-returning an error to the application if it is not.
-
-For applications that require timing APIs, but not the HPET timer specifically,
-it is recommended that the ``rte_get_timer_cycles()`` and ``rte_get_timer_hz()``
-API calls be used instead of the HPET-specific APIs.
-These generic APIs can work with either TSC or HPET time sources,
-depending on what is requested by an application call to ``rte_eal_hpet_init()``,
-if any, and on what is available on the system at runtime.
