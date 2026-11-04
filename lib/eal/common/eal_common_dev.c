@@ -233,10 +233,13 @@ err_devarg:
 int
 rte_dev_probe(const char *devargs)
 {
+	bool do_mp = !eal_mp_is_disabled();
 	struct eal_dev_mp_req req;
 	struct rte_device *dev;
 	int ret;
 
+	if (!do_mp)
+		goto skip_mp_req;
 
 	if (strlen(devargs) >= EAL_DEV_MP_DEV_ARGS_MAX_LEN) {
 		EAL_LOG(ERR, "devargs truncated (len %zu, max %d)",
@@ -267,6 +270,7 @@ rte_dev_probe(const char *devargs)
 
 	/* attach a shared device from primary start from here: */
 
+skip_mp_req:
 	/* primary attach the new device itself. */
 	ret = local_dev_probe(devargs, &dev);
 
@@ -283,6 +287,9 @@ rte_dev_probe(const char *devargs)
 		if (ret != -EEXIST)
 			return ret;
 	}
+
+	if (!do_mp)
+		return 0;
 
 	/* primary send attach sync request to secondary. */
 	ret = eal_dev_hotplug_request_to_secondary(&req);
@@ -376,6 +383,7 @@ local_dev_remove(struct rte_device *dev)
 int
 rte_dev_remove(struct rte_device *dev)
 {
+	bool do_mp = !eal_mp_is_disabled();
 	struct eal_dev_mp_req req;
 	char *devargs;
 	int ret;
@@ -384,6 +392,9 @@ rte_dev_remove(struct rte_device *dev)
 		EAL_LOG(ERR, "Device is not probed");
 		return -ENOENT;
 	}
+
+	if (!do_mp)
+		goto skip_mp_req;
 
 	ret = build_devargs(dev->bus->name, dev->name, "", &devargs);
 	if (ret != 0)
@@ -443,6 +454,7 @@ rte_dev_remove(struct rte_device *dev)
 			goto rollback;
 	}
 
+skip_mp_req:
 	/* primary detach the device itself. */
 	ret = local_dev_remove(dev);
 
@@ -459,13 +471,15 @@ rte_dev_remove(struct rte_device *dev)
 	return 0;
 
 rollback:
-	req.t = EAL_DEV_REQ_TYPE_DETACH_ROLLBACK;
+	if (do_mp) {
+		req.t = EAL_DEV_REQ_TYPE_DETACH_ROLLBACK;
 
-	/* primary send rollback request to secondary. */
-	if (eal_dev_hotplug_request_to_secondary(&req) != 0)
-		EAL_LOG(WARNING,
-			"Failed to rollback device detach on secondary."
-			"Devices in secondary may not sync with primary");
+		/* primary send rollback request to secondary. */
+		if (eal_dev_hotplug_request_to_secondary(&req) != 0)
+			EAL_LOG(WARNING,
+				"Failed to rollback device detach on secondary."
+				"Devices in secondary may not sync with primary");
+	}
 
 	return ret;
 }

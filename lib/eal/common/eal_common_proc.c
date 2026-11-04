@@ -226,14 +226,12 @@ int
 rte_mp_action_register(const char *name, rte_mp_t action)
 {
 	struct action_entry *entry;
-	const struct internal_config *internal_conf =
-		eal_get_internal_configuration();
 
 	if (validate_action_name(name) != 0)
 		return -1;
 
-	if (internal_conf->no_shconf) {
-		EAL_LOG(DEBUG, "No shared files mode enabled, IPC is disabled");
+	if (eal_mp_is_disabled()) {
+		EAL_LOG(DEBUG, "Multi-process support is disabled");
 		rte_errno = ENOTSUP;
 		return -1;
 	}
@@ -262,16 +260,9 @@ void
 rte_mp_action_unregister(const char *name)
 {
 	struct action_entry *entry;
-	const struct internal_config *internal_conf =
-		eal_get_internal_configuration();
 
 	if (validate_action_name(name) != 0)
 		return;
-
-	if (internal_conf->no_shconf) {
-		EAL_LOG(DEBUG, "No shared files mode enabled, IPC is disabled");
-		return;
-	}
 
 	pthread_mutex_lock(&mp_mutex_action);
 	entry = find_action_entry_by_name(name);
@@ -644,14 +635,9 @@ rte_mp_channel_init(void)
 {
 	char path[PATH_MAX];
 	int dir_fd;
-	const struct internal_config *internal_conf =
-		eal_get_internal_configuration();
 
-	/* in no shared files mode, we do not have secondary processes support,
-	 * so no need to initialize IPC.
-	 */
-	if (internal_conf->no_shconf) {
-		EAL_LOG(DEBUG, "No shared files mode enabled, IPC will be disabled");
+	if (eal_mp_is_disabled()) {
+		EAL_LOG(DEBUG, "Multi-process support is disabled");
 		rte_errno = ENOTSUP;
 		return -1;
 	}
@@ -894,14 +880,11 @@ check_input(const struct rte_mp_msg *msg)
 int
 rte_mp_sendmsg(struct rte_mp_msg *msg)
 {
-	const struct internal_config *internal_conf =
-		eal_get_internal_configuration();
-
 	if (check_input(msg) != 0)
 		return -1;
 
-	if (internal_conf->no_shconf) {
-		EAL_LOG(DEBUG, "No shared files mode enabled, IPC is disabled");
+	if (eal_mp_is_disabled()) {
+		EAL_LOG(DEBUG, "Multi-process support is disabled");
 		rte_errno = ENOTSUP;
 		return -1;
 	}
@@ -1054,8 +1037,6 @@ rte_mp_request_sync(struct rte_mp_msg *req, struct rte_mp_reply *reply,
 	DIR *mp_dir;
 	struct dirent *ent;
 	struct timespec now, end;
-	const struct internal_config *internal_conf =
-		eal_get_internal_configuration();
 
 	EAL_LOG(DEBUG, "request: %s", req->name);
 
@@ -1066,8 +1047,8 @@ rte_mp_request_sync(struct rte_mp_msg *req, struct rte_mp_reply *reply,
 	if (check_input(req) != 0)
 		goto end;
 
-	if (internal_conf->no_shconf) {
-		EAL_LOG(DEBUG, "No shared files mode enabled, IPC is disabled");
+	if (eal_mp_is_disabled()) {
+		EAL_LOG(DEBUG, "Multi-process support is disabled");
 		rte_errno = ENOTSUP;
 		return -1;
 	}
@@ -1157,16 +1138,14 @@ rte_mp_request_async(struct rte_mp_msg *req, const struct timespec *ts,
 	struct timespec now;
 	struct timespec *end;
 	bool dummy_used = false;
-	const struct internal_config *internal_conf =
-		eal_get_internal_configuration();
 
 	EAL_LOG(DEBUG, "request: %s", req->name);
 
 	if (check_input(req) != 0)
 		return -1;
 
-	if (internal_conf->no_shconf) {
-		EAL_LOG(DEBUG, "No shared files mode enabled, IPC is disabled");
+	if (eal_mp_is_disabled()) {
+		EAL_LOG(DEBUG, "Multi-process support is disabled");
 		rte_errno = ENOTSUP;
 		return -1;
 	}
@@ -1351,8 +1330,6 @@ int
 rte_mp_reply(struct rte_mp_msg *msg, const char *peer)
 {
 	EAL_LOG(DEBUG, "reply: %s", msg->name);
-	const struct internal_config *internal_conf =
-		eal_get_internal_configuration();
 
 	if (check_input(msg) != 0)
 		return -1;
@@ -1363,8 +1340,8 @@ rte_mp_reply(struct rte_mp_msg *msg, const char *peer)
 		return -1;
 	}
 
-	if (internal_conf->no_shconf) {
-		EAL_LOG(DEBUG, "No shared files mode enabled, IPC is disabled");
+	if (eal_mp_is_disabled()) {
+		EAL_LOG(DEBUG, "Multi-process support is disabled");
 		return 0;
 	}
 
@@ -1409,4 +1386,13 @@ bool
 __rte_mp_enable(void)
 {
 	return set_mp_status(MP_STATUS_ENABLED);
+}
+
+bool
+eal_mp_is_disabled(void)
+{
+	struct rte_mem_config *mcfg = rte_eal_get_configuration()->mem_config;
+
+	return rte_atomic_load_explicit(&mcfg->mp_status,
+			rte_memory_order_relaxed) == MP_STATUS_DISABLED;
 }

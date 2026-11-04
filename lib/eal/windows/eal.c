@@ -80,6 +80,12 @@ rte_mp_disable(void)
 	return true;
 }
 
+bool
+eal_mp_is_disabled(void)
+{
+	return true;
+}
+
 /* display usage */
 static void
 eal_usage(const char *prgname)
