@@ -19,6 +19,7 @@ Deprecation Notices
 * build: The following meson build options are deprecated and will be removed in a future release:
 
   - ``kernel_dir``: option unused as Linux kernel drivers are in a separate ``dpdk-kmods`` repository.
+  - ``tests``: disabling tests can be achieved by using the ``enable_apps`` / ``disable_apps`` options instead.
 
 * kvargs: The function ``rte_kvargs_process`` will get a new parameter
   for returning key match count. It will ease handling of no-match case.
