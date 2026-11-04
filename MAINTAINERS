@@ -1374,7 +1374,7 @@ M: Bhagyada Modali <bhagyada.modali@amd.com>
 F: drivers/dma/ae4dma/
 F: doc/guides/dmadevs/ae4dma.rst
 
-Intel IDXD - EXPERIMENTAL
+Intel IDXD
 M: Bruce Richardson <bruce.richardson@intel.com>
 M: Kevin Laatz <kevin.laatz@intel.com>
 F: drivers/dma/idxd/
