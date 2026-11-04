@@ -33,7 +33,7 @@ option('ibverbs_link', type: 'combo', choices : ['static', 'shared', 'dlopen'], 
 option('include_subdir_arch', type: 'string', value: '', description:
        'subdirectory where to install arch-dependent headers')
 option('kernel_dir', type: 'string', value: '', description:
-       'Path to the kernel for building kernel modules. Headers must be in $kernel_dir or $kernel_dir/build. Modules will be installed in /lib/modules.')
+       '[Deprecated] Value unused. Previously, path to the kernel for building kernel modules.')
 option('machine', type: 'string', value: 'auto', description:
        'Alias of cpu_instruction_set.')
 option('max_ethports', type: 'integer', value: 32, description:
