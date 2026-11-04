@@ -21,7 +21,7 @@ import random
 import tarfile
 from enum import Enum, Flag
 from pathlib import Path
-from typing import Any, Callable, Literal, TypeAlias, cast
+from typing import Any, Callable, Literal, TypeAlias, TypeVar, cast
 
 from scapy.layers.inet import IP, TCP, UDP, Ether
 from scapy.packet import Packet
@@ -40,6 +40,13 @@ REGEX_FOR_PORT_LINK: str = (
 )
 
 Tar_modes: TypeAlias = Literal["w:gz", "w:bz2", "w:xz", "w:tar"]
+
+_T = TypeVar("_T")
+
+
+def default_if_none(value: _T | None, default: _T) -> _T:
+    """Use a default only when a value is absent."""
+    return default if value is None else value
 
 
 def expand_range(range_str: str) -> list[int]:

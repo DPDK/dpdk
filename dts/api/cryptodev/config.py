@@ -515,3 +515,50 @@ class CryptoPmdParams(EalParams):
     test_name: str | None = field(default=None, metadata=Params.long("test-name"))
     tls_version: TLSVersion | None = field(default=None, metadata=Params.long("tls-version"))
     total_ops: int | None = field(default=100000, metadata=Params.long("total-ops"))
+
+
+# Algorithm parameter mappings for automatic key/IV size determination
+CIPHER_ALGORITHM_PARAMS = {
+    CipherAlgorithm.aes_cbc: {"key_size": 16, "iv_size": 16},
+    CipherAlgorithm.aes_ctr: {"key_size": 16, "iv_size": 16},
+    CipherAlgorithm.aes_gcm: {"key_size": 16, "iv_size": 16},
+    CipherAlgorithm.aes_ecb: {"key_size": 16, "iv_size": 16},
+    CipherAlgorithm.aes_f8: {"key_size": 16, "iv_size": 16},
+    CipherAlgorithm.aes_xts: {"key_size": 16, "iv_size": 16},
+    CipherAlgorithm.arc4: {"key_size": 16, "iv_size": 16},
+    CipherAlgorithm.null: {"key_size": 16, "iv_size": 16},
+    CipherAlgorithm.aes_docsisbpi: {"key_size": 32, "iv_size": 16},
+    CipherAlgorithm.snow3g_uea2: {"key_size": 16, "iv_size": 16},
+    CipherAlgorithm.zuc_eea3: {"key_size": 16, "iv_size": 16},
+    CipherAlgorithm.kasumi_f8: {"key_size": 16, "iv_size": 8},
+    CipherAlgorithm.three_des_cbc: {"key_size": 8, "iv_size": 8},
+    CipherAlgorithm.three_des_ecb: {"key_size": 24, "iv_size": 8},
+    CipherAlgorithm.three_des_ctr: {"key_size": 24, "iv_size": 8},
+}
+
+AUTHENTICATION_ALGORITHM_PARAMS = {
+    AuthenticationAlgorithm.sha1: {"key_size": 20, "iv_size": 0, "digest_size": 20},
+    AuthenticationAlgorithm.sha1_hmac: {"key_size": 64, "iv_size": 20, "digest_size": 12},
+    AuthenticationAlgorithm.sha2_224: {"key_size": 20, "iv_size": 0, "digest_size": 20},
+    AuthenticationAlgorithm.sha2_224_hmac: {"key_size": 20, "iv_size": 0, "digest_size": 20},
+    AuthenticationAlgorithm.sha2_256: {"key_size": 64, "iv_size": 0, "digest_size": 32},
+    AuthenticationAlgorithm.sha2_256_hmac: {"key_size": 64, "iv_size": 0, "digest_size": 32},
+    AuthenticationAlgorithm.sha2_384: {"key_size": 48, "iv_size": 0, "digest_size": 48},
+    AuthenticationAlgorithm.sha2_384_hmac: {"key_size": 48, "iv_size": 0, "digest_size": 48},
+    AuthenticationAlgorithm.sha2_512: {"key_size": 64, "iv_size": 0, "digest_size": 64},
+    AuthenticationAlgorithm.sha2_512_hmac: {"key_size": 64, "iv_size": 0, "digest_size": 64},
+    AuthenticationAlgorithm.md5: {"key_size": 16, "iv_size": 0, "digest_size": 16},
+    AuthenticationAlgorithm.md5_hmac: {"key_size": 16, "iv_size": 0, "digest_size": 16},
+    AuthenticationAlgorithm.snow3g_uia2: {"key_size": 16, "iv_size": 16, "digest_size": 4},
+    AuthenticationAlgorithm.zuc_eia3: {"key_size": 16, "iv_size": 16, "digest_size": 4},
+    AuthenticationAlgorithm.kasumi_f9: {"key_size": 16, "iv_size": 0, "digest_size": 4},
+    AuthenticationAlgorithm.aes_gmac: {"key_size": 16, "iv_size": 16, "digest_size": 16},
+    AuthenticationAlgorithm.aes_xcbc_mac: {"key_size": 16, "iv_size": 0, "digest_size": 12},
+    AuthenticationAlgorithm.aes_cmac: {"key_size": 16, "iv_size": 0, "digest_size": 16},
+    AuthenticationAlgorithm.aes_cbc_mac: {"key_size": 16, "iv_size": 0, "digest_size": 16},
+}
+
+AEAD_ALGORITHM_PARAMS = {
+    AeadAlgName.aes_gcm: {"key_size": 16, "iv_size": 12, "aad_size": 16, "digest_size": 16},
+    AeadAlgName.aes_ccm: {"key_size": 16, "iv_size": 11, "aad_size": 16, "digest_size": 16},
+}

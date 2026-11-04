@@ -78,6 +78,18 @@ class Cryptodev:
         """
         return get_ctx().dpdk_build.remote_dpdk_tree_path.joinpath("dts/test_resources/")
 
+    def update_params(self, **app_params: Unpack["CryptoPmdParamsDict"]) -> None:
+        """Update the app parameters.
+
+        Args:
+            app_params: app parameters to pass to dpdk-test-crypto-perf application
+        """
+        for k, v in app_params.items():
+            if v is not None:
+                self._app_params[k] = (
+                    self.vector_directory.joinpath(str(v)) if k == "test_file" else v
+                )
+
     def run_app(self, num_vfs: int = 1) -> list[CryptodevResults]:
         """Run the cryptodev application with the given app parameters.
 

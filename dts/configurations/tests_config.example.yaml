@@ -2,10 +2,13 @@
 
 # Optional Fields:
 #   All fields are optional, uncomment a test suite to run it with a specific configuration.
+#   cryptodev_throughput:
+#       algorithms: https://doc.dpdk.org/guides-26.07/cryptodevs/overview.html
 
 # Define the custom test suite configurations
 hello_world:
   msg: A custom hello world to you!
+
 # single_core_forward_perf:
 #   test_parameters: # Add frame size / descriptor count combinations as needed
 #     - frame_size: 64
@@ -18,18 +21,51 @@ hello_world:
 #       num_descriptors: 1024
 #       expected_mpps: 1.0
 #   delta_tolerance: 0.05
+
 # pmd_rss:
 #   NUM_QUEUES: 4
 #   ACTUAL_KEY_SIZE: 52
 #   ACTUAL_RETA_SIZE: 512
+
 # cryptodev_throughput:
 #   delta_tolerance: 0.05
-#   throughput_test_parameters:
-#     snow3g_uea2_snow3g_uia2: # Add the name of the test suite you would like to run
-#      - buff_size: 64
-#        Gbps: 2.0 # Set gigabits per second according to your devices throughput for this given buffer size
-#      - buff_size: 512
-#        Gbps: 20.0
+#   test_combinations:
+#     - name: "example cipher test" # Add a name for this test config
+#       cipher_algorithm: "aes-cbc" # See `algorithms` in `Optional Fields` for a complete list
+#       virtual_device: "crypto_openssl" # uncomment to run with a virtual device.
+#       test_parameters:  # Buffer sizes and expected throughput, a default is used if not present
+#         - buff_size: 64
+#           gbps: 1.5 # Set gigabits per second for your devices throughput for this buffer size
+#         - buff_size: 512
+#           gbps: 3.0
+#         - buff_size: 2048
+#           gbps: 4.0
+#     - name: "example authentication test"
+#       auth_algorithm: "aes-cbc-mac" # See `algorithms` in `Optional Fields` for a complete list
+#       test_parameters:
+#         - buff_size: 64
+#           gbps: 1.5
+#     - name: "example cipher then auth test"
+#       ops: 30000000 # Specify total ops to use, 10000000 is used by default
+#       cipher_algorithm: "aes-cbc" # See `algorithms` in `Optional Fields` for a complete list
+#       auth_algorithm: "aes-cbc-mac" # See `algorithms` in `Optional Fields` for a complete list
+#       cipher_key_size: 16
+#       cipher_iv_size: 0
+#       auth_key_size: 16 # Specify key size, a default is used if field is not present
+#       auth_iv_size: 0 # Specify IV size, a default is used if field is not present
+#       test_parameters:
+#         - buff_size: 64
+#           gbps: 1.5
+#     - name: "example aead test"
+#       aead_algorithm: "aes-gcm" # See `algorithms` in `Optional Fields` for a complete list
+#       aead_key_size: 16
+#       aead_iv_size: 16
+#       aead_aad_size: 16 # Specify AAD size, a default is used if field not present
+#       digest_size: 16 # Specify a digest size, a default is used if not present
+#       test_parameters:
+#         - buff_size: 64
+#           gbps: 1.5
+
 # port_speed_capabilities:
 #   test_parameters:
 #     0 : 100 Gbps # Assign an expected link speed to a port ID in Gbps

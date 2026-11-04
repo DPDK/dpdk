@@ -8,7 +8,75 @@ Exposes types used in the Cryptodev API.
 
 from dataclasses import dataclass, field
 
+from api.params import Switch
+from framework.config.common import FrozenModel
 from framework.parser import TextParser
+
+from .config import (
+    AeadAlgName,
+    AuthenticationAlgorithm,
+    AuthenticationOpMode,
+    CipherAlgorithm,
+    EncryptDecryptSwitch,
+)
+
+
+class ThroughputParameters(FrozenModel):
+    """Test parameters for Throughput runs."""
+
+    buff_size: int
+    gbps: float
+
+
+class CryptoConfig(FrozenModel):
+    """User supplied configuration for CryptoDev object."""
+
+    #:
+    aead_algorithm: AeadAlgName | None = None
+    #:
+    aead_iv_size: int | None = None
+    #:
+    aead_key_size: int | None = None
+    #:
+    aead_op: EncryptDecryptSwitch | None = None
+    #:
+    aead_aad_size: int | None = None
+    #:
+    auth_algorithm: AuthenticationAlgorithm | None = None
+    #:
+    auth_iv_size: int | None = None
+    #:
+    auth_key_size: int | None = None
+    #:
+    auth_op: AuthenticationOpMode | None = None
+    #:
+    buff_size: int | None = None
+    #:
+    burst_size: int | None = None
+    #:
+    cipher_algorithm: CipherAlgorithm | None = None
+    #:
+    cipher_iv_size: int | None = None
+    #:
+    cipher_key_size: int | None = None
+    #:
+    cipher_op: EncryptDecryptSwitch | None = None
+    #:
+    digest_size: int | None = None
+    #:
+    name: str
+    #:
+    ops: int | None = None
+    #:
+    out_of_place: Switch = None
+    #:
+    virtual_device: str | None = None
+
+
+class ThroughputCryptoConfig(CryptoConfig):
+    """Cryptodev configuration with throughput baselines."""
+
+    test_parameters: list[ThroughputParameters] | None = None
 
 
 @dataclass

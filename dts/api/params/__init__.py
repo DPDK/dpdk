@@ -334,7 +334,8 @@ class Params:
         """
         prefix = f"{'-' if is_short else '--'}{'no-' if is_no else ''}"
         name = name.replace("_", "-")
-        value = f"{' ' if is_short else '='}{value}" if value else ""
+        value = None if value == "" else value
+        value = f"{' ' if is_short else '='}{value}" if value is not None else ""
         return f"{prefix}{name}{value}"
 
     def __str__(self) -> str:
