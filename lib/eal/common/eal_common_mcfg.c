@@ -2,6 +2,7 @@
  * Copyright(c) 2019 Intel Corporation
  */
 
+#include <rte_eal.h>
 #include <rte_eal_memconfig.h>
 #include <rte_version.h>
 
@@ -66,6 +67,8 @@ eal_mcfg_update_from_internal(void)
 
 	mcfg->legacy_mem = internal_conf->legacy_mem;
 	mcfg->single_file_segments = internal_conf->single_file_segments;
+	if (internal_conf->no_shconf)
+		rte_mp_disable(); /* multi-process requires shared config */
 	/* record current DPDK version */
 	mcfg->version = RTE_VERSION;
 }

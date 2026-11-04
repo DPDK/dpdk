@@ -81,6 +81,12 @@ rte_mp_disable(void)
 	return true;
 }
 
+bool
+eal_mp_is_disabled(void)
+{
+	return true;
+}
+
 static int
 sync_func(void *arg __rte_unused)
 {
