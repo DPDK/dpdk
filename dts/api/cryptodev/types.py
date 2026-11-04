@@ -28,6 +28,14 @@ class ThroughputParameters(FrozenModel):
     gbps: float
 
 
+class LatencyParameters(FrozenModel):
+    """Test parameters for Throughput runs."""
+
+    buff_size: int
+    avg_cycles: float
+    avg_time_us: float
+
+
 class CryptoConfig(FrozenModel):
     """User supplied configuration for CryptoDev object."""
 
@@ -77,6 +85,12 @@ class ThroughputCryptoConfig(CryptoConfig):
     """Cryptodev configuration with throughput baselines."""
 
     test_parameters: list[ThroughputParameters] | None = None
+
+
+class LatencyCryptoConfig(CryptoConfig):
+    """Cryptodev configuration with latency baselines."""
+
+    test_parameters: list[LatencyParameters] | None = None
 
 
 @dataclass

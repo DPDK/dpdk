@@ -66,6 +66,24 @@ hello_world:
 #         - buff_size: 64
 #           gbps: 1.5
 
+# cryptodev_latency:
+#   # Identical to cryptodev_throughput configuration besides updated test_parameters below.
+#   delta_tolerance: 0.05
+#   test_combinations:
+#     - name: "example cipher test" # Add a name for this test config
+#       cipher_algorithm: "aes-cbc" # See `algorithms` in `Optional Fields` for a complete list
+#       virtual_device: "crypto_openssl" # uncomment to run with a virtual device.
+#       test_parameters:  # Buffer sizes and expected throughput, a default is used if not present
+#        - buff_size: 64
+#          avg_cycles: 999999
+#          avg_time_us: 999999
+#        - buff_size: 512
+#          avg_cycles: 999999
+#          avg_time_us: 999999
+#        - buff_size: 2048
+#          avg_cycles: 999999
+#          avg_time_us: 999999
+
 # port_speed_capabilities:
 #   test_parameters:
 #     0 : 100 Gbps # Assign an expected link speed to a port ID in Gbps
