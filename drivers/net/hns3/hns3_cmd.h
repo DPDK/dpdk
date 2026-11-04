@@ -1008,9 +1008,11 @@ struct hns3_dev_specs_0_cmd {
 };
 
 struct hns3_dev_specs_1_cmd {
-	uint8_t rsv0[12];
+	uint8_t rsv0[8];
+	uint16_t umv_size;
+	uint8_t rsv1[2];
 	uint8_t min_tx_pkt_len;
-	uint8_t rsv1[11];
+	uint8_t rsv2[11];
 };
 
 struct hns3_query_rpu_cmd {

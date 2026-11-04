@@ -991,6 +991,7 @@ hns3_parse_dev_specifications(struct hns3_hw *hw, struct hns3_cmd_desc *desc)
 		return;
 
 	hw->max_tm_rate = rte_le_to_cpu_32(req0->max_tm_rate);
+	hns->pf.def_umv_size = rte_le_to_cpu_16(req1->umv_size);
 }
 
 static int

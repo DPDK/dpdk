@@ -1330,19 +1330,26 @@ hns3_init_umv_space(struct hns3_hw *hw)
 	struct hns3_adapter *hns = HNS3_DEV_HW_TO_ADAPTER(hw);
 	struct hns3_pf *pf = &hns->pf;
 	uint16_t allocated_size = 0;
+	uint16_t wanted_umv_size;
 	int ret;
 
-	ret = hns3_set_umv_space(hw, pf->wanted_umv_size, &allocated_size,
+	wanted_umv_size = pf->cfg_umv_size;
+	if (wanted_umv_size == 0)
+		wanted_umv_size = pf->def_umv_size;
+	if (wanted_umv_size == 0)
+		wanted_umv_size = HNS3_DEFAULT_UMV_SPACE_PER_PF;
+
+	ret = hns3_set_umv_space(hw, wanted_umv_size, &allocated_size,
 				 true);
 	if (ret)
 		return ret;
 
-	if (allocated_size < pf->wanted_umv_size)
+	if (allocated_size < wanted_umv_size)
 		PMD_INIT_LOG(WARNING, "Alloc umv space failed, want %u, get %u",
-			     pf->wanted_umv_size, allocated_size);
+			     wanted_umv_size, allocated_size);
 
 	pf->max_umv_size = (!!allocated_size) ? allocated_size :
-						pf->wanted_umv_size;
+						wanted_umv_size;
 	pf->used_umv_size = 0;
 	return 0;
 }
@@ -2560,8 +2567,6 @@ hns3_parse_cfg(struct hns3_cfg *cfg, struct hns3_cmd_desc *desc)
 	cfg->umv_space = hns3_get_field(rte_le_to_cpu_32(req->param[1]),
 					HNS3_CFG_UMV_TBL_SPACE_M,
 					HNS3_CFG_UMV_TBL_SPACE_S);
-	if (!cfg->umv_space)
-		cfg->umv_space = HNS3_DEFAULT_UMV_SPACE_PER_PF;
 
 	ext_rss_size_max = hns3_get_field(rte_le_to_cpu_32(req->param[2]),
 					       HNS3_CFG_EXT_RSS_SIZE_M,
@@ -2792,7 +2797,7 @@ hns3_get_board_configuration(struct hns3_hw *hw)
 	hns3_set_bit(hw->dcb_info.hw_tc_map, 0, 1);
 	pf->tx_sch_mode = HNS3_FLAG_TC_BASE_SCH_MODE;
 
-	pf->wanted_umv_size = cfg.umv_space;
+	pf->cfg_umv_size = cfg.umv_space;
 
 	return ret;
 }

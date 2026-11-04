@@ -837,7 +837,8 @@ struct hns3_pf {
 	bool support_fc_autoneg;       /* support FC autonegotiate */
 	bool support_multi_tc_pause;
 
-	uint16_t wanted_umv_size;
+	uint16_t cfg_umv_size;
+	uint16_t def_umv_size;
 	uint16_t max_umv_size;
 	uint16_t used_umv_size;
 
