@@ -692,10 +692,10 @@ remap_segment(struct hugepage_file *hugepages, int seg_start, int seg_end)
 	uint64_t page_sz;
 	size_t memseg_len;
 	int socket_id;
-#ifndef RTE_ARCH_64
 	const struct internal_config *internal_conf =
 		eal_get_internal_configuration();
-#endif
+	const bool dirty = !internal_conf->hugepage_file.unlink_existing;
+
 	page_sz = hugepages[seg_start].size;
 	socket_id = hugepages[seg_start].socket_id;
 	seg_len = seg_end - seg_start;
@@ -816,6 +816,7 @@ remap_segment(struct hugepage_file *hugepages, int seg_start, int seg_end)
 		ms->socket_id = hfile->socket_id;
 		ms->nchannel = rte_memory_get_nchannel();
 		ms->nrank = rte_memory_get_nrank();
+		ms->flags = dirty ? RTE_MEMSEG_FLAG_DIRTY : 0;
 
 		rte_fbarray_set_used(arr, ms_idx);
 
