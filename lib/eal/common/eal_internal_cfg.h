@@ -44,7 +44,13 @@ struct simd_bitwidth {
 struct hugepage_file_discipline {
 	/** Unlink files before mapping them to leave no trace in hugetlbfs. */
 	bool unlink_before_mapping;
-	/** Unlink existing files at startup, re-create them before mapping. */
+	/**
+	 * Unlink existing files at startup and re-create them before mapping.
+	 * If false, the files are kept and mapped again. The kernel zeroes a
+	 * hugepage only the first time it is mapped from a given file, so
+	 * reused pages still hold the previous content and must be treated
+	 * as dirty.
+	 */
 	bool unlink_existing;
 };
 
