@@ -1524,7 +1524,11 @@ mlx5_get_mempool_ranges(struct rte_mempool *mp, bool is_extmem,
  * @param[in] is_extmem
  *   Whether the pool is contains only external pinned buffers.
  * @param[out] out
- *   Receives memory ranges to register, aligned to the system page size.
+ *   Receives memory ranges to register. For non-external memory, ranges
+ *   are aligned to the hugepage size if all ranges are on hugepages
+ *   of the same size, otherwise aligned to the system page size.
+ *   For external memory, if the entire pool resides within a single
+ *   hugepage, all ranges are combined into one of the hugepage size.
  *   The caller must release them with free().
  * @param[out] out_n
  *   Receives the number of @p out items.
@@ -1541,7 +1545,8 @@ mlx5_mempool_reg_analyze(struct rte_mempool *mp, bool is_extmem,
 {
 	struct mlx5_range *ranges = NULL;
 	unsigned int i, ranges_n = 0;
-	struct rte_memseg_list *msl;
+	uint64_t hugepage_sz = 0;
+	bool same_hugepage_sz = true;
 
 	if (mlx5_get_mempool_ranges(mp, is_extmem, &ranges, &ranges_n) < 0) {
 		DRV_LOG(ERR, "Cannot get address ranges for mempool %s",
@@ -1550,32 +1555,68 @@ mlx5_mempool_reg_analyze(struct rte_mempool *mp, bool is_extmem,
 	}
 	/* Check if the hugepage of the pool can be shared. */
 	*share_hugepage = false;
-	msl = rte_mem_virt2memseg_list((void *)ranges[0].start);
-	if (msl != NULL) {
-		uint64_t hugepage_sz = 0;
-
-		/* Check that all ranges are on pages of the same size. */
-		for (i = 0; i < ranges_n; i++) {
-			if (hugepage_sz != 0 && hugepage_sz != msl->page_sz)
-				break;
-			hugepage_sz = msl->page_sz;
+	/* Check that all ranges are on pages of the same size. */
+	for (i = 0; i < ranges_n; i++) {
+		struct rte_memseg_list *range_msl;
+		range_msl = rte_mem_virt2memseg_list((void *)ranges[i].start);
+		if (range_msl == NULL) {
+			same_hugepage_sz = false;
+			break;
 		}
-		if (i == ranges_n) {
-			/*
-			 * If the entire pool is within one hugepage,
-			 * combine all ranges into one of the hugepage size.
-			 */
-			uintptr_t reg_start = ranges[0].start;
-			uintptr_t reg_end = ranges[ranges_n - 1].end;
-			uintptr_t hugepage_start =
-				RTE_ALIGN_FLOOR(reg_start, hugepage_sz);
-			uintptr_t hugepage_end = hugepage_start + hugepage_sz;
-			if (reg_end < hugepage_end) {
-				ranges[0].start = hugepage_start;
+		if (hugepage_sz == 0)
+			hugepage_sz = range_msl->page_sz;
+		else if (range_msl->page_sz != hugepage_sz) {
+			same_hugepage_sz = false;
+			break;
+		}
+	}
+	/*
+	 * For non-external memory, align ranges to the hugepage boundaries
+	 * and merge adjacent ones. If the entire pool fits in a single
+	 * hugepage, the MR for this hugepage can be shared across mempools.
+	 */
+	if (!is_extmem && same_hugepage_sz &&
+	    hugepage_sz > rte_mem_page_size()) {
+		unsigned int orig_ranges_n = ranges_n;
+
+		for (i = 0; i < ranges_n; i++) {
+			ranges[i].start = RTE_ALIGN_FLOOR(ranges[i].start,
+							  hugepage_sz);
+			ranges[i].end = RTE_ALIGN_CEIL(ranges[i].end,
+							hugepage_sz);
+		}
+		ranges_n = 1;
+		for (i = 1; i < orig_ranges_n; i++) {
+			if (ranges[ranges_n - 1].end >= ranges[i].start)
+				ranges[ranges_n - 1].end =
+					RTE_MAX(ranges[ranges_n - 1].end,
+						ranges[i].end);
+			else
+				ranges[ranges_n++] = ranges[i];
+		}
+		if (ranges_n == 1) {
+			uintptr_t hugepage_end = ranges[0].start + hugepage_sz;
+
+			if (ranges[0].end <= hugepage_end) {
 				ranges[0].end = hugepage_end;
-				ranges_n = 1;
 				*share_hugepage = true;
 			}
+		}
+	} else if (is_extmem && same_hugepage_sz && hugepage_sz > 0) {
+		/*
+		 * If the entire pool is within one hugepage,
+		 * combine all ranges into one of the hugepage size.
+		 */
+		uintptr_t reg_start = ranges[0].start;
+		uintptr_t reg_end = ranges[ranges_n - 1].end;
+		uintptr_t hugepage_start =
+			RTE_ALIGN_FLOOR(reg_start, hugepage_sz);
+		uintptr_t hugepage_end = hugepage_start + hugepage_sz;
+		if (reg_end < hugepage_end) {
+			ranges[0].start = hugepage_start;
+			ranges[0].end = hugepage_end;
+			ranges_n = 1;
+			*share_hugepage = true;
 		}
 	}
 	*out = ranges;
