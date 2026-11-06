@@ -59,6 +59,21 @@ static struct iavf_event_handler event_handler = {
 	(var) = (tvar))
 #endif
 
+static void
+iavf_dev_reset_event_handle(struct iavf_event_element *elem)
+{
+	struct rte_eth_dev *dev = elem->dev;
+	struct iavf_adapter *adapter = dev->data->dev_private;
+
+	if (adapter->devargs.auto_reset)
+		iavf_handle_hw_reset(dev, false);
+	else
+		rte_eth_dev_callback_process(dev, elem->event, elem->param);
+
+	rte_atomic_fetch_sub_explicit(&adapter->vf.reset_events_pending, 1,
+			rte_memory_order_release);
+}
+
 static uint32_t
 iavf_dev_event_handle(void *param __rte_unused)
 {
@@ -80,15 +95,10 @@ iavf_dev_event_handle(void *param __rte_unused)
 		TAILQ_FOREACH_SAFE(pos, &pending, next, save_next) {
 			TAILQ_REMOVE(&pending, pos, next);
 
-			struct iavf_adapter *adapter = pos->dev->data->dev_private;
-			if (pos->event == RTE_ETH_EVENT_INTR_RESET &&
-			    adapter->devargs.auto_reset) {
-				iavf_handle_hw_reset(pos->dev, false);
-				rte_free(pos);
-				continue;
-			}
-
-			rte_eth_dev_callback_process(pos->dev, pos->event, pos->param);
+			if (pos->event == RTE_ETH_EVENT_INTR_RESET)
+				iavf_dev_reset_event_handle(pos);
+			else
+				rte_eth_dev_callback_process(pos->dev, pos->event, pos->param);
 			rte_free(pos);
 		}
 	}
@@ -96,7 +106,7 @@ iavf_dev_event_handle(void *param __rte_unused)
 	return 0;
 }
 
-void
+int
 iavf_dev_event_post(struct rte_eth_dev *dev,
 		enum rte_eth_event_type event,
 		void *param, size_t param_alloc_size)
@@ -105,7 +115,7 @@ iavf_dev_event_post(struct rte_eth_dev *dev,
 	char notify_byte = 0;
 	struct iavf_event_element *elem = rte_malloc(NULL, sizeof(*elem) + param_alloc_size, 0);
 	if (!elem)
-		return;
+		return -ENOMEM;
 
 	elem->dev = dev;
 	elem->event = event;
@@ -122,6 +132,55 @@ iavf_dev_event_post(struct rte_eth_dev *dev,
 
 	ssize_t nw = write(handler->fd[1], &notify_byte, 1);
 	RTE_SET_USED(nw);
+
+	return 0;
+}
+
+/*
+ * Enter the VF reset state. If this is a new reset, rather than one already
+ * in progress, gate the datapath and post the reset event.
+ * Returns true if this call started the reset.
+ */
+bool
+iavf_dev_enter_reset(struct rte_eth_dev *dev, bool drain_tx)
+{
+	struct iavf_adapter *adapter = IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct iavf_info *vf = &adapter->vf;
+	bool expected = false;
+
+	/*
+	 * Force link down to drop the cached link-up state; a fresh LSC up
+	 * event will be re-issued by the PF once the VF is reinitialised.
+	 */
+	vf->link_up = false;
+
+	/*
+	 * Count the event before vf_reset becomes visible. The watchdog clears
+	 * vf_reset once it sees it set with no events pending, so setting the
+	 * flag first would open a window in which the event is lost. If another
+	 * thread has already entered reset, back the count out: no event is
+	 * posted on this path.
+	 */
+	rte_atomic_fetch_add_explicit(&vf->reset_events_pending, 1, rte_memory_order_relaxed);
+	if (!rte_atomic_compare_exchange_strong_explicit(&vf->vf_reset, &expected, true,
+			rte_memory_order_release, rte_memory_order_acquire)) {
+		rte_atomic_fetch_sub_explicit(&vf->reset_events_pending, 1,
+				rte_memory_order_relaxed);
+		return false;
+	}
+
+	iavf_set_no_poll(adapter, false);
+	/* drain before posting the event, as the event handler tears down the queues */
+	if (drain_tx && adapter->devargs.no_poll_on_link_down)
+		iavf_dev_tx_drain(dev);
+
+	if (iavf_dev_event_post(dev, RTE_ETH_EVENT_INTR_RESET, NULL, 0) != 0) {
+		PMD_DRV_LOG(ERR, "VF \"%s\" failed to post reset event", dev->data->name);
+		rte_atomic_fetch_sub_explicit(&vf->reset_events_pending, 1,
+				rte_memory_order_release);
+	}
+
+	return true;
 }
 
 int
@@ -260,7 +319,7 @@ iavf_handle_link_change_event(struct rte_eth_dev *dev,
 	 * (link is down or a VF reset is in progress); the watchdog drives
 	 * auto-reset recovery, so it must remain armed in those cases.
 	 */
-	if (vf->link_up && !vf->vf_reset &&
+	if (vf->link_up && !rte_atomic_load_explicit(&vf->vf_reset, rte_memory_order_acquire) &&
 	    !rte_atomic_load_explicit(&vf->in_reset_recovery, rte_memory_order_relaxed))
 		iavf_dev_watchdog_disable(adapter);
 	else
@@ -324,23 +383,8 @@ iavf_read_msg_from_pf(struct iavf_adapter *adapter, uint16_t buf_len,
 			iavf_handle_link_change_event(dev, vpe);
 			break;
 		case VIRTCHNL_EVENT_RESET_IMPENDING:
-			/*
-			 * Force link down on impending reset to drop
-			 * the cached link-up state; a fresh LSC up
-			 * event will be re-issued by the PF once the
-			 * VF is reinitialised.
-			 */
-			vf->link_up = false;
-			if (!vf->vf_reset) {
-				vf->vf_reset = true;
-				iavf_set_no_poll(adapter, false);
+			if (iavf_dev_enter_reset(dev, true))
 				iavf_dev_watchdog_enable(adapter);
-				if (adapter->devargs.no_poll_on_link_down)
-					iavf_dev_tx_drain(dev);
-				iavf_dev_event_post(dev,
-					RTE_ETH_EVENT_INTR_RESET,
-					NULL, 0);
-			}
 			PMD_DRV_LOG(DEBUG, "VF is resetting");
 			break;
 		case VIRTCHNL_EVENT_PF_DRIVER_CLOSE:
@@ -485,7 +529,7 @@ iavf_execute_vf_cmd(struct iavf_adapter *adapter, struct iavf_cmd_info *args)
 	bool poll = iavf_op_needs_poll(vf);
 	int err;
 
-	if (vf->vf_reset)
+	if (rte_atomic_load_explicit(&vf->vf_reset, rte_memory_order_acquire))
 		return -EIO;
 
 	resp_count = iavf_get_cmd_resp_count(args->ops);
@@ -555,7 +599,6 @@ iavf_handle_pf_event_msg(struct rte_eth_dev *dev, uint8_t *msg,
 {
 	struct iavf_adapter *adapter =
 		IAVF_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
-	struct iavf_info *vf = &adapter->vf;
 	struct virtchnl_pf_event *pf_msg =
 			(struct virtchnl_pf_event *)msg;
 
@@ -571,16 +614,8 @@ iavf_handle_pf_event_msg(struct rte_eth_dev *dev, uint8_t *msg,
 	switch (pf_msg->event) {
 	case VIRTCHNL_EVENT_RESET_IMPENDING:
 		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_RESET_IMPENDING event");
-		vf->link_up = false;
-		if (!vf->vf_reset) {
-			vf->vf_reset = true;
-			iavf_set_no_poll(adapter, false);
+		if (iavf_dev_enter_reset(dev, true))
 			iavf_dev_watchdog_enable(adapter);
-			if (adapter->devargs.no_poll_on_link_down)
-				iavf_dev_tx_drain(dev);
-			iavf_dev_event_post(dev, RTE_ETH_EVENT_INTR_RESET,
-				NULL, 0);
-		}
 		break;
 	case VIRTCHNL_EVENT_LINK_CHANGE:
 		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_LINK_CHANGE event");
@@ -2394,13 +2429,13 @@ iavf_request_queues(struct rte_eth_dev *dev, uint16_t num)
 
 	/* wait for interrupt notification vf is resetting */
 	while (i++ < MAX_TRY_TIMES) {
-		if (vf->vf_reset)
+		if (rte_atomic_load_explicit(&vf->vf_reset, rte_memory_order_acquire))
 			break;
 		iavf_msec_delay(ASQ_DELAY_MS);
 	}
 
 	/* request queues succeeded, vf is resetting */
-	if (vf->vf_reset) {
+	if (rte_atomic_load_explicit(&vf->vf_reset, rte_memory_order_acquire)) {
 		PMD_DRV_LOG(INFO, "vf is resetting");
 		return 0;
 	}

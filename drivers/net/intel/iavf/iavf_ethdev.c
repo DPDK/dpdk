@@ -335,32 +335,27 @@ iavf_dev_watchdog(void *cb_arg)
 		return;
 
 	/* If in reset then poll vfr_inprogress register for completion */
-	if (adapter->vf.vf_reset) {
+	if (rte_atomic_load_explicit(&adapter->vf.vf_reset, rte_memory_order_acquire)) {
 		vfr_inprogress = iavf_vfr_inprogress(hw);
 
-		if (!vfr_inprogress) {
+		if (!vfr_inprogress &&
+		    rte_atomic_load_explicit(&adapter->vf.reset_events_pending,
+				rte_memory_order_acquire) == 0) {
 			PMD_DRV_LOG(INFO, "VF \"%s\" reset has completed",
 				dev->data->name);
-			adapter->vf.vf_reset = false;
+			rte_atomic_store_explicit(&adapter->vf.vf_reset, false,
+					rte_memory_order_release);
 			iavf_set_no_poll(adapter, false);
 		}
 	/* If not in reset then poll vfr_inprogress register for VFLR event */
 	} else {
 		vfr_inprogress = iavf_vfr_inprogress(hw);
 
-		if (vfr_inprogress) {
+		/* enter reset state with VFLR event */
+		if (vfr_inprogress && iavf_dev_enter_reset(dev, false))
 			PMD_DRV_LOG(INFO,
 				"VF \"%s\" reset event detected by watchdog",
 				dev->data->name);
-
-			/* enter reset state with VFLR event */
-			adapter->vf.vf_reset = true;
-			iavf_set_no_poll(adapter, false);
-			adapter->vf.link_up = false;
-
-			iavf_dev_event_post(dev, RTE_ETH_EVENT_INTR_RESET,
-				NULL, 0);
-		}
 	}
 
 	if (adapter->devargs.watchdog_period) {
@@ -3320,8 +3315,9 @@ iavf_dev_close(struct rte_eth_dev *dev)
 	 * effect.
 	 */
 out:
-	if (vf->vf_reset && !rte_pci_set_bus_master(pci_dev, true)) {
-		vf->vf_reset = false;
+	if (rte_atomic_load_explicit(&vf->vf_reset, rte_memory_order_acquire) &&
+	    !rte_pci_set_bus_master(pci_dev, true)) {
+		rte_atomic_store_explicit(&vf->vf_reset, false, rte_memory_order_release);
 		iavf_set_no_poll(adapter, false);
 	}
 
@@ -3657,7 +3653,7 @@ iavf_set_no_poll(struct iavf_adapter *adapter, bool link_change)
 	bool no_poll;
 
 	no_poll = (link_change & !vf->link_up) ||
-		vf->vf_reset ||
+		rte_atomic_load_explicit(&vf->vf_reset, rte_memory_order_acquire) ||
 		rte_atomic_load_explicit(&vf->in_reset_recovery, rte_memory_order_relaxed);
 
 	rte_atomic_store_explicit(&adapter->no_poll, no_poll,
@@ -3740,8 +3736,8 @@ iavf_resume_pending_start(struct rte_eth_dev *dev)
 	if (!vf->start_pending)
 		return;
 
-	if (vf->vf_reset || rte_atomic_load_explicit(&vf->in_reset_recovery,
-			rte_memory_order_acquire))
+	if (rte_atomic_load_explicit(&vf->vf_reset, rte_memory_order_acquire) ||
+	    rte_atomic_load_explicit(&vf->in_reset_recovery, rte_memory_order_acquire))
 		return;
 
 	/*

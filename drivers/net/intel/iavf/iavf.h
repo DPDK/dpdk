@@ -261,7 +261,7 @@ struct iavf_info {
 	uint16_t mc_addrs_num;   /* Multicast mac addresses number */
 
 	struct iavf_vsi vsi;
-	bool vf_reset;	/* true for VF reset pending, false for no VF reset */
+	RTE_ATOMIC(bool)vf_reset; /* true for VF reset pending, false for no VF reset */
 	iavf_pre_reset_cb_t pre_reset_cb; /* Pre reset callback function ptr */
 	iavf_post_reset_cb_t post_reset_cb; /* Post reset callback function ptr */
 	void *pre_reset_cb_arg; /* Pre reset callback argument */
@@ -290,6 +290,7 @@ struct iavf_info {
 	struct iavf_tm_conf tm_conf;
 
 	RTE_ATOMIC(bool)in_reset_recovery;
+	RTE_ATOMIC(uint32_t)reset_events_pending;
 	bool reset_pending;
 	bool pf_reset_in_progress;
 	bool start_pending;
@@ -455,9 +456,10 @@ struct iavf_cmd_info {
 
 int iavf_check_api_version(struct iavf_adapter *adapter);
 int iavf_get_vf_resource(struct iavf_adapter *adapter);
-void iavf_dev_event_post(struct rte_eth_dev *dev,
+int iavf_dev_event_post(struct rte_eth_dev *dev,
 		enum rte_eth_event_type event,
 		void *param, size_t param_alloc_size);
+bool iavf_dev_enter_reset(struct rte_eth_dev *dev, bool drain_tx);
 void iavf_dev_event_handler_fini(void);
 int iavf_dev_event_handler_init(void);
 void iavf_handle_virtchnl_msg(struct rte_eth_dev *dev);
