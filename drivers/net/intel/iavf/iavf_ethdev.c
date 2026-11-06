@@ -374,16 +374,19 @@ iavf_dev_watchdog_enable(struct iavf_adapter *adapter)
 {
 	if (!adapter->devargs.watchdog_period) {
 		PMD_DRV_LOG(INFO, "Device watchdog is disabled");
-	} else {
-		if (!adapter->vf.watchdog_enabled) {
-			PMD_DRV_LOG(INFO, "Enabling device watchdog, period is %dμs",
-						adapter->devargs.watchdog_period);
-			adapter->vf.watchdog_enabled = true;
-			if (rte_eal_alarm_set(adapter->devargs.watchdog_period,
-						&iavf_dev_watchdog, (void *)adapter))
-				PMD_DRV_LOG(ERR, "Failed to enable device watchdog");
-		}
+		return;
 	}
+
+	rte_spinlock_lock(&adapter->vf.watchdog_lock);
+	if (!adapter->vf.watchdog_enabled) {
+		PMD_DRV_LOG(INFO, "Enabling device watchdog, period is %dμs",
+					adapter->devargs.watchdog_period);
+		adapter->vf.watchdog_enabled = true;
+		if (rte_eal_alarm_set(adapter->devargs.watchdog_period,
+					&iavf_dev_watchdog, (void *)adapter))
+			PMD_DRV_LOG(ERR, "Failed to enable device watchdog");
+	}
+	rte_spinlock_unlock(&adapter->vf.watchdog_lock);
 }
 
 void
@@ -391,13 +394,16 @@ iavf_dev_watchdog_disable(struct iavf_adapter *adapter)
 {
 	if (!adapter->devargs.watchdog_period) {
 		PMD_DRV_LOG(INFO, "Device watchdog is not enabled");
-	} else {
-		if (adapter->vf.watchdog_enabled) {
-			PMD_DRV_LOG(INFO, "Disabling device watchdog");
-			adapter->vf.watchdog_enabled = false;
-			rte_eal_alarm_cancel(&iavf_dev_watchdog, (void *)adapter);
-		}
+		return;
 	}
+
+	rte_spinlock_lock(&adapter->vf.watchdog_lock);
+	if (adapter->vf.watchdog_enabled) {
+		PMD_DRV_LOG(INFO, "Disabling device watchdog");
+		adapter->vf.watchdog_enabled = false;
+		rte_eal_alarm_cancel(&iavf_dev_watchdog, (void *)adapter);
+	}
+	rte_spinlock_unlock(&adapter->vf.watchdog_lock);
 }
 
 static int
@@ -3077,6 +3083,7 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 	adapter->mac_primary_set = false;
 	adapter->tpid = RTE_ETHER_TYPE_VLAN; /* VLAN TPID set to 0x8100 by default */
 	rte_spinlock_init(&adapter->phc_sync_lock);
+	rte_spinlock_init(&vf->watchdog_lock);
 
 	if (!rte_atomic_load_explicit(&vf->in_reset_recovery, rte_memory_order_relaxed) &&
 	    iavf_dev_event_handler_init())
