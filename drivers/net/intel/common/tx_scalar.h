@@ -621,15 +621,26 @@ end_pkt:
 		 *   - tx_last = 34, so 35 >> 5 = 1 (next packet is in bucket 1)
 		 *   - Since 0 != 1, set RS bit on descriptor 34, and record rs_last_id[0] = 34
 		 */
+		const uint16_t nb_rs_buckets = txq->nb_tx_desc >> txq->log2_rs_thresh;
 		uint16_t next_rs_idx = ((tx_last + 1) >> txq->log2_rs_thresh);
 
+		if (next_rs_idx == nb_rs_buckets)
+			next_rs_idx = 0;
 		if (next_rs_idx != pkt_rs_idx) {
 			/* Packet crossed into a new bucket - set RS bit on last descriptor */
 			txd->cmd_type_offset_bsz |=
 					rte_cpu_to_le_64(CI_TX_DESC_CMD_RS << CI_TXD_QW1_CMD_S);
 
-			/* Record the last descriptor ID for the bucket we're leaving */
-			txq->rs_last_id[pkt_rs_idx] = tx_last;
+			/* A packet may consume more than one RS threshold bucket. The
+			 * last descriptor reports completion for every bucket crossed by
+			 * that packet, including buckets with no packet start.
+			 */
+			uint16_t rs_idx = pkt_rs_idx;
+			do {
+				txq->rs_last_id[rs_idx] = tx_last;
+				if (++rs_idx == nb_rs_buckets)
+					rs_idx = 0;
+			} while (rs_idx != next_rs_idx);
 		}
 
 		if (ts_fns != NULL)
