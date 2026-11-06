@@ -1065,6 +1065,9 @@ ice_acl_prof_free(struct ice_hw *hw)
 {
 	enum ice_fltr_ptype ptype;
 
+	if (hw->acl_prof == NULL)
+		return;
+
 	for (ptype = ICE_FLTR_PTYPE_NONF_NONE + 1;
 	     ptype < ICE_FLTR_PTYPE_MAX; ptype++) {
 		ice_free(hw, hw->acl_prof[ptype]);
