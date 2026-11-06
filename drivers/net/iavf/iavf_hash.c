@@ -769,7 +769,7 @@ iavf_hash_init(struct iavf_adapter *ad)
 	struct iavf_flow_parser *parser;
 	int ret;
 
-	if (vf->vf_reset)
+	if (rte_atomic_load_explicit(&vf->vf_reset, rte_memory_order_acquire))
 		return -EIO;
 
 	if (!vf->vf_res)
@@ -1669,7 +1669,7 @@ iavf_hash_destroy(__rte_unused struct iavf_adapter *ad,
 
 	rss_cfg = (struct virtchnl_rss_cfg *)flow->rule;
 
-	if (!vf->vf_reset) {
+	if (!rte_atomic_load_explicit(&vf->vf_reset, rte_memory_order_acquire)) {
 		ret = iavf_add_del_rss_cfg(ad, rss_cfg, false);
 		if (ret) {
 			PMD_DRV_LOG(ERR, "fail to del RSS configure");
@@ -1698,7 +1698,7 @@ iavf_hash_uninit(struct iavf_adapter *ad)
 	struct iavf_info *vf = IAVF_DEV_PRIVATE_TO_VF(ad);
 	struct rte_eth_rss_conf *rss_conf;
 
-	if (vf->vf_reset)
+	if (rte_atomic_load_explicit(&vf->vf_reset, rte_memory_order_acquire))
 		return;
 
 	if (!vf->vf_res)
