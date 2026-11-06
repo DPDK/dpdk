@@ -15,7 +15,6 @@ all_examples = [
         'dma',
         'ethtool',
         'eventdev_pipeline',
-        'fips_validation',
         'flow_filtering',
         'helloworld',
         'ip_fragmentation',

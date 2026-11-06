@@ -14,6 +14,7 @@ endif
 
 apps = [
         'dumpcap',
+        'fips_validation',
         'graph',
         'pdump',
         'proc-info',

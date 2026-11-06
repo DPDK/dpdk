@@ -1,11 +1,14 @@
 ..  SPDX-License-Identifier: BSD-3-Clause
     Copyright(c) 2018 Intel Corporation.
 
-Federal Information Processing Standards (FIPS) CryptoDev Validation
-====================================================================
+Cryptographic Validation Applications
+=====================================
+
+FIPS Validation
+---------------
 
 Overview
---------
+~~~~~~~~
 
 Federal Information Processing Standards (FIPS) are publicly announced standards
 developed by the United States federal government for use in computer systems by
@@ -22,10 +25,10 @@ and FIPS 140-3 (in case of ACVP) and must successfully complete the
 cryptographic algorithm validation process.
 
 Limitations
------------
+~~~~~~~~~~~
 
 CAVP
-----
+^^^^
 
 * The version of request file supported is ``CAVS 21.0``.
 * If the header comment in a ``.req`` file does not contain a Algo tag
@@ -52,7 +55,7 @@ CAVP
       VarText
 
 ACVP
-----
+^^^^
 
 * The application does not supply the test vectors. The user is expected to
   obtain the test vector files from `ACVP  <https://pages.nist.gov/ACVP>`_
@@ -76,7 +79,7 @@ ACVP
 
 
 Application Information
------------------------
+~~~~~~~~~~~~~~~~~~~~~~~
 
 If a ``.req`` is used as the input file after the application is finished
 running it will generate a response file or ``.rsp``. Differences between the
@@ -93,11 +96,16 @@ validating if the application has done the operation correctly.
 
 
 Compiling the Application
--------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 * Compile Application
 
-    To compile the sample application see :doc:`compiling`.
+    From the DPDK source tree, build the application with Meson:
+
+    .. code-block:: console
+
+       meson setup build -Denable_apps=fips_validation
+       meson compile -C build
 
 *  Run ``dos2unix`` on the request files
 
@@ -112,13 +120,13 @@ Compiling the Application
          dos2unix SHA/req/*
 
 Running the Application
------------------------
+~~~~~~~~~~~~~~~~~~~~~~~
 
 The application requires a number of command line options:
 
     .. code-block:: console
 
-         ./dpdk-fips_validation [EAL options]
+         ./build/app/dpdk-fips_validation [EAL options]
          -- --req-file FILE_PATH/FOLDER_PATH
          --rsp-file FILE_PATH/FOLDER_PATH
          [--cryptodev DEVICE_NAME] [--cryptodev-id ID] [--path-is-folder]
@@ -149,7 +157,7 @@ file for crypto_aesni_mb PMD, issue the command:
 
 .. code-block:: console
 
-    $ ./dpdk-fips_validation --vdev crypto_aesni_mb --
+    $ ./build/app/dpdk-fips_validation --vdev crypto_aesni_mb --
     --req-file /PATH/TO/REQUEST/FILE.req --rsp-file ./PATH/TO/RESPONSE/FILE.rsp
     --cryptodev crypto_aesni_mb
 
@@ -158,7 +166,7 @@ data files in one folder for crypto_aesni_gcm PMD, issue the command:
 
 .. code-block:: console
 
-    $ ./dpdk-fips_validation --vdev crypto_aesni_gcm0 --
+    $ ./build/app/dpdk-fips_validation --vdev crypto_aesni_gcm0 --
     --req-file /PATH/TO/REQUEST/FILE/FOLDER/
     --rsp-file ./PATH/TO/RESPONSE/FILE/FOLDER/
     --cryptodev-id 0 --path-is-folder

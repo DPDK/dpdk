@@ -19,6 +19,7 @@ DPDK Tools User Guides
     flow-perf
     securityperf
     testbbdev
+    crypto_validation
     cryptoperf
     comp_perf
     testeventdev

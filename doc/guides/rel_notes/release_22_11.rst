@@ -273,7 +273,7 @@ New Features
 * **Updated FIPS validation sample application.**
 
   Added support for asymmetric crypto algorithms.
-  See the :doc:`/sample_app_ug/fips_validation` for more details.
+  See the :doc:`/tools/crypto_validation` for more details.
 
 * **Rewrote pmdinfo script.**
 
