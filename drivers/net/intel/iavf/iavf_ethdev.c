@@ -3089,6 +3089,8 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 
 	if (iavf_init_vf(eth_dev) != 0) {
 		PMD_INIT_LOG(ERR, "Init vf failed");
+		if (!rte_atomic_load_explicit(&vf->in_reset_recovery, rte_memory_order_relaxed))
+			iavf_dev_event_handler_fini();
 		return -1;
 	}
 
@@ -3189,6 +3191,9 @@ flow_init_err:
 	rte_eal_alarm_cancel(iavf_dev_alarm_handler, eth_dev);
 
 	eth_dev->data->mac_addrs = NULL;
+
+	if (!rte_atomic_load_explicit(&vf->in_reset_recovery, rte_memory_order_relaxed))
+		iavf_dev_event_handler_fini();
 
 init_vf_err:
 	iavf_uninit_vf(eth_dev);
