@@ -246,6 +246,7 @@ struct iavf_info {
 
 	/** iAVF watchdog enable */
 	bool watchdog_enabled;
+	rte_spinlock_t watchdog_lock;
 
 	/* Event from pf */
 	bool dev_closed;
