@@ -1126,7 +1126,7 @@ memif_socket_init(struct rte_eth_dev *dev, const char *socket_filename)
 		if (ret < 0) {
 			MIF_LOG(ERR, "Failed to add socket to socket hash.");
 			if (socket->listener) {
-				rte_intr_callback_unregister(socket->intr_handle,
+				rte_intr_callback_unregister_sync(socket->intr_handle,
 					memif_listener_handler, socket);
 				rte_intr_fd_close(socket->intr_handle);
 				rte_intr_instance_free(socket->intr_handle);
@@ -1198,8 +1198,8 @@ memif_socket_remove_device(struct rte_eth_dev *dev)
 					socket->filename);
 		}
 		if (pmd->role != MEMIF_ROLE_CLIENT) {
-			rte_intr_callback_unregister(socket->intr_handle, memif_listener_handler,
-				socket);
+			rte_intr_callback_unregister_sync(socket->intr_handle,
+				memif_listener_handler, socket);
 			rte_intr_fd_close(socket->intr_handle);
 			rte_intr_instance_free(socket->intr_handle);
 		}
