@@ -2864,6 +2864,8 @@ iavf_dev_init(struct rte_eth_dev *eth_dev)
 
 	if (iavf_init_vf(eth_dev) != 0) {
 		PMD_INIT_LOG(ERR, "Init vf failed");
+		if (!vf->in_reset_recovery)
+			iavf_dev_event_handler_fini();
 		return -1;
 	}
 
@@ -2966,6 +2968,9 @@ flow_init_err:
 
 	rte_free(eth_dev->data->mac_addrs);
 	eth_dev->data->mac_addrs = NULL;
+
+	if (!vf->in_reset_recovery)
+		iavf_dev_event_handler_fini();
 
 init_vf_err:
 	iavf_uninit_vf(eth_dev);
