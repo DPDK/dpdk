@@ -32,6 +32,11 @@
 #include <unistd.h>
 #include <poll.h>
 
+/* Added in Linux 4.20. Older kernels reject it with ENOPROTOOPT. */
+#ifndef PACKET_IGNORE_OUTGOING
+#define PACKET_IGNORE_OUTGOING 23
+#endif
+
 /* Added in Linux 6.2. Older kernels ignore it. */
 #ifndef PACKET_FANOUT_FLAG_IGNORE_OUTGOING
 #define PACKET_FANOUT_FLAG_IGNORE_OUTGOING 0x4000
@@ -916,6 +921,7 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 	int qsockfd = -1;
 	unsigned int i, q, rdsize;
 	int fanout_arg;
+	bool pmd_filter;
 
 	for (k_idx = 0; k_idx < kvlist->count; k_idx++) {
 		pair = &kvlist->pairs[k_idx];
@@ -1053,10 +1059,16 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 #endif
 		}
 
+		pmd_filter = ignore_outgoing != 0 && nb_queues > 1;
 		if (ignore_outgoing != 0 && nb_queues == 1) {
 			rc = setsockopt(qsockfd, SOL_PACKET, PACKET_IGNORE_OUTGOING,
 					&ignore_outgoing, sizeof(ignore_outgoing));
-			if (rc == -1) {
+			if (rc == -1 && errno == ENOPROTOOPT) {
+				PMD_LOG(INFO,
+					"%s: PACKET_IGNORE_OUTGOING not supported by kernel, filtering in PMD",
+					name);
+				pmd_filter = true;
+			} else if (rc == -1) {
 				PMD_LOG_ERRNO(ERR,
 					"%s: could not set PACKET_IGNORE_OUTGOING "
 					"on AF_PACKET socket for %s",
@@ -1083,7 +1095,7 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 
 		rx_queue = &((*internals)->rx_queue[q]);
 		rx_queue->framecount = req->tp_frame_nr;
-		rx_queue->ignore_outgoing = ignore_outgoing != 0 && nb_queues > 1;
+		rx_queue->ignore_outgoing = pmd_filter;
 
 		rx_queue->map = mmap(NULL, 2 * req->tp_block_size * req->tp_block_nr,
 				    PROT_READ | PROT_WRITE, MAP_SHARED | MAP_LOCKED,
