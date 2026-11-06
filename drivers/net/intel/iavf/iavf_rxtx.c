@@ -4098,11 +4098,9 @@ iavf_dev_tx_drain(struct rte_eth_dev *dev)
 				RTE_ETH_QUEUE_STATE_STARTED)
 				continue;
 
-			/*
-			 * nb_tx_free == nb_tx_desc - 1 means the ring is
-			 * empty (one descriptor is always reserved).
-			 */
-			if (txq->nb_tx_free >= txq->nb_tx_desc - 1)
+			/* Only clean up once a full RS block is outstanding. */
+			if ((uint16_t)(txq->nb_tx_desc - 1 - txq->nb_tx_free) <
+			    txq->tx_rs_thresh)
 				continue;
 
 			any_pending = true;
