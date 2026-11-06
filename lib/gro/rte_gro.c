@@ -349,7 +349,7 @@ rte_gro_reassemble_burst(struct rte_mbuf **pkts,
 		}
 	}
 
-	return nb_after_gro;
+	return i;
 }
 
 RTE_EXPORT_SYMBOL(rte_gro_reassemble)
