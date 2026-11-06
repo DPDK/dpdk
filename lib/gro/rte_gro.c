@@ -352,7 +352,7 @@ rte_gro_reassemble_burst(struct rte_mbuf **pkts,
 		}
 	}
 
-	return nb_after_gro;
+	return i;
 }
 
 uint16_t
