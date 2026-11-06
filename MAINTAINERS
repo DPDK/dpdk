@@ -2009,6 +2009,12 @@ T: git://dpdk.org/next/dpdk-next-crypto
 F: app/fips_validation/
 F: doc/guides/tools/crypto_validation.rst
 
+Wycheproof validation application
+M: Kai Ji <kai.ji@intel.com>
+T: git://dpdk.org/next/dpdk-next-crypto
+F: app/wycheproof_validation/
+F: doc/guides/tools/crypto_validation.rst
+
 Eventdev test application
 M: Jerin Jacob <jerinj@marvell.com>
 T: git://dpdk.org/next/dpdk-next-eventdev

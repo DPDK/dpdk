@@ -170,3 +170,54 @@ data files in one folder for crypto_aesni_gcm PMD, issue the command:
     --req-file /PATH/TO/REQUEST/FILE/FOLDER/
     --rsp-file ./PATH/TO/RESPONSE/FILE/FOLDER/
     --cryptodev-id 0 --path-is-folder
+
+Wycheproof Validation
+---------------------
+
+Overview
+~~~~~~~~
+
+This application validates a DPDK cryptodev implementation
+against the Google Wycheproof JSON test vectors.
+
+The application reads one JSON file or a directory of JSON files at runtime
+and checks the supported algorithm families against the selected PMD.
+It can be used with a PMD that advertises AEAD, MAC, DSA, ECDH, or ECDSA support.
+
+Build
+~~~~~
+
+Build the application from the DPDK tree with Meson:
+
+.. code-block:: console
+
+   meson setup build -Denable_apps=wycheproof_validation \
+       -Denable_drivers=crypto/openssl
+   meson compile -C build
+
+Run
+~~~
+
+Run the application with an OpenSSL-backed cryptodev and a vector file:
+
+.. code-block:: console
+
+   ./build/app/dpdk-wycheproof_validation --vdev crypto_openssl -- \
+       --vectors ../wycheproof/testvectors_v1/aes_gcm_test.json \
+       --cryptodev crypto_openssl --debug
+
+The program accepts a single JSON file or a directory of JSON files.
+Use ``--debug`` to print each failed or skipped vector with its reason.
+The ``--mbuf-dataroom`` option sets the mbuf data room size in bytes (default 16384);
+vectors with messages larger than the data room minus the mbuf headroom are skipped,
+so increase it to cover larger messages.
+
+Asymmetric coverage (DSA, ECDH, ECDSA) requires a PMD
+that advertises the corresponding asymmetric xform capabilities.
+The ``crypto_openssl`` PMD used above does not advertise the ECDSA or ECDH xforms,
+so those vectors are skipped;
+select a PMD that advertises them to exercise the asymmetric families.
+
+The exit code is nonzero when a parsed and supported vector fails validation;
+unsupported vectors, capability-skipped cases, and acceptable results
+are reported in the summary without forcing a failure.

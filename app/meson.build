@@ -34,6 +34,7 @@ apps = [
         'test-sad',
         'test-security-perf',
         'validate-bpf',
+        'wycheproof_validation',
 ]
 
 if get_option('tests')
