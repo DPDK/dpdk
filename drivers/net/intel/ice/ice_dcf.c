@@ -886,11 +886,11 @@ ice_dcf_uninit_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw)
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
 	uint16_t i;
 
-	if (hw->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_QOS)
-		if (hw->tm_conf.committed) {
+	if (hw->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_QOS) {
+		if (hw->tm_conf.committed)
 			ice_dcf_clear_bw(hw);
-			ice_dcf_tm_conf_uninit(eth_dev);
-		}
+		ice_dcf_tm_conf_uninit(eth_dev);
+	}
 
 	ice_dcf_disable_irq0(hw);
 	rte_intr_disable(intr_handle);
