@@ -457,7 +457,7 @@ ice_dcf_init_parent_adapter(struct rte_eth_dev *eth_dev)
 	if (err) {
 		PMD_INIT_LOG(ERR, "failed to init the DCF parent hardware with error %d",
 			     err);
-		return err;
+		goto free_vsi;
 	}
 
 	if (hw->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_QOS) {
@@ -491,7 +491,7 @@ ice_dcf_init_parent_adapter(struct rte_eth_dev *eth_dev)
 	err = ice_flow_init(parent_adapter);
 	if (err) {
 		PMD_INIT_LOG(ERR, "Failed to initialize flow");
-		goto uninit_hw;
+		goto uninit_flow;
 	}
 
 	mac = (const struct rte_ether_addr *)hw->avf.mac.addr;
@@ -504,8 +504,13 @@ ice_dcf_init_parent_adapter(struct rte_eth_dev *eth_dev)
 
 	return 0;
 
+uninit_flow:
+	ice_flow_uninit(parent_adapter);
 uninit_hw:
 	ice_dcf_uninit_parent_hw(parent_hw);
+free_vsi:
+	rte_free(parent_adapter->pf.main_vsi);
+	parent_adapter->pf.main_vsi = NULL;
 	return err;
 }
 
