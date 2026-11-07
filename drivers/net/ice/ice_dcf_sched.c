@@ -725,6 +725,7 @@ static int ice_dcf_hierarchy_commit(struct rte_eth_dev *dev,
 	struct ice_dcf_hw *hw = &adapter->real_hw;
 	struct virtchnl_dcf_bw_cfg_list *vf_bw = NULL;
 	struct virtchnl_dcf_bw_cfg_list *tc_bw = NULL;
+	struct virtchnl_dcf_bw_cfg_list *bw_cfg;
 	struct ice_dcf_tm_node_list *vsi_list = &hw->tm_conf.vsi_list;
 	struct rte_tm_shaper_params *profile;
 	struct ice_dcf_tm_node *tm_node;
@@ -813,14 +814,14 @@ static int ice_dcf_hierarchy_commit(struct rte_eth_dev *dev,
 		if (ret_val)
 			goto fail_clear;
 
-		hw->qos_bw_cfg[vf_id] = rte_zmalloc("vf_bw_cfg", size, 0);
-		if (!hw->qos_bw_cfg[vf_id]) {
+		bw_cfg = rte_zmalloc("vf_bw_cfg", size, 0);
+		if (!bw_cfg) {
 			ret_val = ICE_ERR_NO_MEMORY;
 			goto fail_clear;
 		}
 		/* store the bandwidth information for replay */
-		ice_memcpy(hw->qos_bw_cfg[vf_id], vf_bw, size,
-			   ICE_NONDMA_TO_NONDMA);
+		ice_memcpy(bw_cfg, vf_bw, size, ICE_NONDMA_TO_NONDMA);
+		ice_dcf_replace_qos_bw_cfg(hw, vf_id, bw_cfg);
 		ice_memset(vf_bw, 0, size, ICE_NONDMA_MEM);
 	}
 
@@ -840,13 +841,13 @@ static int ice_dcf_hierarchy_commit(struct rte_eth_dev *dev,
 		goto fail_clear;
 
 	/* store TC node bw configuration */
-	hw->qos_bw_cfg[ICE_DCF_VFID] = rte_zmalloc("tc_bw_cfg", size, 0);
-	if (!hw->qos_bw_cfg[ICE_DCF_VFID]) {
+	bw_cfg = rte_zmalloc("tc_bw_cfg", size, 0);
+	if (!bw_cfg) {
 		ret_val = ICE_ERR_NO_MEMORY;
 		goto fail_clear;
 	}
-	ice_memcpy(hw->qos_bw_cfg[ICE_DCF_VFID], tc_bw, size,
-		   ICE_NONDMA_TO_NONDMA);
+	ice_memcpy(bw_cfg, tc_bw, size, ICE_NONDMA_TO_NONDMA);
+	ice_dcf_replace_qos_bw_cfg(hw, ICE_DCF_VFID, bw_cfg);
 
 	hw->tm_conf.committed = true;
 	free(vf_bw);
