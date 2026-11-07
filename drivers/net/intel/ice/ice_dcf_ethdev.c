@@ -1660,13 +1660,10 @@ ice_dcf_init_repr_info(struct ice_dcf_adapter *dcf_adapter)
 	return 0;
 }
 
-static int
-ice_dcf_dev_close(struct rte_eth_dev *dev)
+static void
+ice_dcf_dev_teardown(struct rte_eth_dev *dev)
 {
 	struct ice_dcf_adapter *adapter = dev->data->dev_private;
-
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return 0;
 
 	ice_dcf_vf_repr_notify_all(adapter, false);
 	(void)ice_dcf_dev_stop(dev);
@@ -1674,6 +1671,17 @@ ice_dcf_dev_close(struct rte_eth_dev *dev)
 	ice_free_queues(dev);
 	ice_dcf_uninit_parent_adapter(dev);
 	ice_dcf_uninit_hw(dev, &adapter->real_hw);
+}
+
+static int
+ice_dcf_dev_close(struct rte_eth_dev *dev)
+{
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
+	ice_dcf_dev_teardown(dev);
+	/* representor info survives ice_dcf_dev_reset, so only release it here */
+	ice_dcf_free_repr_info(dev->data->dev_private);
 
 	return 0;
 }
@@ -1861,9 +1869,8 @@ ice_dcf_dev_reset(struct rte_eth_dev *dev)
 		ice_dcf_reset_hw(dev, hw);
 	}
 
-	ret = ice_dcf_dev_close(dev);
-	if (ret)
-		return ret;
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+		ice_dcf_dev_teardown(dev);
 
 	ret = ice_dcf_dev_init(dev);
 
