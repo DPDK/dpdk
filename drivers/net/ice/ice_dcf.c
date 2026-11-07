@@ -1233,6 +1233,7 @@ ice_dcf_configure_queues(struct ice_dcf_hw *hw)
 				    "Queue[%d]", vc_qp->rxq.rxdid, i);
 		} else {
 			PMD_DRV_LOG(ERR, "RXDID 16 is not supported");
+			rte_free(vc_config);
 			return -EINVAL;
 		}
 #else
@@ -1245,6 +1246,7 @@ ice_dcf_configure_queues(struct ice_dcf_hw *hw)
 					"Queue[%d]", vc_qp->rxq.rxdid, i);
 		} else {
 			PMD_DRV_LOG(ERR, "RXDID == 0 is not supported");
+			rte_free(vc_config);
 			return -EINVAL;
 		}
 #endif
