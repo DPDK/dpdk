@@ -308,6 +308,8 @@ again:
 		roc_lmt_submit_steorl(wdata[1], pa[1]);
 	}
 
+	rte_io_wmb();
+
 	left -= (sz0 + sz1);
 	if (left)
 		goto again;
@@ -349,6 +351,13 @@ cn20k_sso_hws_enq_new_burst(void *port, const struct rte_event ev[], uint16_t nb
 	struct cn20k_sso_hws *ws = port;
 	uint8_t queue_id;
 	int32_t space;
+
+	if (nb_events < BIT(ROC_SSO_AW_PER_LMT_LINE_LOG2)) {
+		for (idx = 0; idx < nb_events; idx++)
+			if (!cn20k_sso_hws_new_event(ws, &ev[idx]))
+				break;
+		return idx;
+	}
 
 	/* Do a common back-pressure check and return */
 	space = sso_read_xaq_space(ws) - ws->xae_waes;
