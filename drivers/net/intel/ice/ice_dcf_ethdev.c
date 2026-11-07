@@ -2060,13 +2060,14 @@ eth_ice_dcf_pci_probe(__rte_unused struct rte_pci_driver *pci_drv,
 	if (ret < 0)
 		return ret;
 
+	if (eth_da.nb_representor_ports && eth_da.type != RTE_ETH_REPRESENTOR_VF)
+		return -ENOTSUP;
+
 	ret = rte_eth_dev_pci_generic_probe(pci_dev,
 					    sizeof(struct ice_dcf_adapter),
 					    ice_dcf_dev_init);
 	if (ret || !eth_da.nb_representor_ports)
 		return ret;
-	if (eth_da.type != RTE_ETH_REPRESENTOR_VF)
-		return -ENOTSUP;
 
 	dcf_ethdev = rte_eth_dev_allocated(pci_dev->device.name);
 	if (dcf_ethdev == NULL)
@@ -2075,14 +2076,14 @@ eth_ice_dcf_pci_probe(__rte_unused struct rte_pci_driver *pci_drv,
 	dcf_adapter = dcf_ethdev->data->dev_private;
 	ret = ice_dcf_init_repr_info(dcf_adapter);
 	if (ret)
-		return ret;
+		goto err_remove_dcf;
 
 	if (eth_da.nb_representor_ports > dcf_adapter->real_hw.num_vfs ||
 	    eth_da.nb_representor_ports >= RTE_MAX_ETHPORTS) {
 		PMD_DRV_LOG(ERR, "the number of port representors is too large: %u",
 			    eth_da.nb_representor_ports);
-		ice_dcf_free_repr_info(dcf_adapter);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto err_remove_dcf;
 	}
 
 	dcf_vsi_id = dcf_adapter->real_hw.vsi_id | VIRTCHNL_DCF_VF_VSI_VALID;
@@ -2132,6 +2133,20 @@ eth_ice_dcf_pci_probe(__rte_unused struct rte_pci_driver *pci_drv,
 		dcf_adapter->repr_infos[vf_id].vf_rep_eth_dev = vf_rep_eth_dev;
 		dcf_adapter->num_reprs++;
 	}
+
+	if (ret == 0)
+		return 0;
+
+	for (i = 0; i < dcf_adapter->real_hw.num_vfs; i++) {
+		struct rte_eth_dev *vf_rep_eth_dev =
+			dcf_adapter->repr_infos[i].vf_rep_eth_dev;
+
+		if (vf_rep_eth_dev != NULL)
+			rte_eth_dev_destroy(vf_rep_eth_dev, ice_dcf_vf_repr_uninit);
+	}
+
+err_remove_dcf:
+	rte_eth_dev_pci_generic_remove(pci_dev, ice_dcf_dev_uninit);
 
 	return ret;
 }
