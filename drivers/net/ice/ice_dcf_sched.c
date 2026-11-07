@@ -849,6 +849,8 @@ static int ice_dcf_hierarchy_commit(struct rte_eth_dev *dev,
 		   ICE_NONDMA_TO_NONDMA);
 
 	hw->tm_conf.committed = true;
+	free(vf_bw);
+	free(tc_bw);
 	return ret_val;
 
 fail_clear:
