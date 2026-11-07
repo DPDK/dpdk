@@ -853,14 +853,23 @@ ice_dcf_init_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw)
 
 	if ((hw->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_VLAN_V2) &&
 	    dcf_get_vlan_offload_caps_v2(hw))
-		goto err_rss;
+		goto err_intr;
 
 	return 0;
 
+err_intr:
+	ice_dcf_disable_irq0(hw);
+	rte_intr_disable(pci_dev->intr_handle);
+	rte_intr_callback_unregister_sync(pci_dev->intr_handle,
+				     ice_dcf_dev_interrupt_handler, hw);
+	rte_free(hw->qos_bw_cfg);
+	hw->qos_bw_cfg = NULL;
 err_rss:
 	rte_free(hw->rss_key);
 	rte_free(hw->rss_lut);
 err_alloc:
+	rte_free(hw->vf_vsi_map);
+	hw->vf_vsi_map = NULL;
 	rte_free(hw->vf_res);
 err_api:
 	iavf_shutdown_adminq(&hw->avf);
