@@ -162,6 +162,21 @@ ice_dcf_vsi_update_service_handler(void *param)
 	return 0;
 }
 
+void
+ice_dcf_replace_qos_bw_cfg(struct ice_dcf_hw *hw, uint16_t idx,
+			   struct virtchnl_dcf_bw_cfg_list *bw_cfg)
+{
+	struct virtchnl_dcf_bw_cfg_list *old;
+
+	/* the VF reset thread replays this config while holding the lock */
+	rte_spinlock_lock(&vsi_update_lock);
+	old = hw->qos_bw_cfg[idx];
+	hw->qos_bw_cfg[idx] = bw_cfg;
+	rte_spinlock_unlock(&vsi_update_lock);
+
+	rte_free(old);
+}
+
 static void
 start_vsi_reset_thread(struct ice_dcf_hw *dcf_hw, bool vfr, uint16_t vf_id)
 {

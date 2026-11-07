@@ -75,6 +75,8 @@ void ice_dcf_handle_pf_event_msg(struct ice_dcf_hw *dcf_hw,
 				 uint8_t *msg, uint16_t msglen);
 int ice_dcf_init_parent_adapter(struct rte_eth_dev *eth_dev);
 void ice_dcf_uninit_parent_adapter(struct rte_eth_dev *eth_dev);
+void ice_dcf_replace_qos_bw_cfg(struct ice_dcf_hw *hw, uint16_t idx,
+				struct virtchnl_dcf_bw_cfg_list *bw_cfg);
 
 int ice_devargs_check(struct rte_devargs *devargs, enum ice_dcf_devrarg devarg_type);
 int ice_dcf_vf_repr_init(struct rte_eth_dev *vf_rep_eth_dev, void *init_param);

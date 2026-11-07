@@ -884,6 +884,7 @@ ice_dcf_uninit_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw)
 {
 	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev);
 	struct rte_intr_handle *intr_handle = pci_dev->intr_handle;
+	uint16_t i;
 
 	if (hw->vf_res->vf_cap_flags & VIRTCHNL_VF_OFFLOAD_QOS)
 		if (hw->tm_conf.committed) {
@@ -918,6 +919,11 @@ ice_dcf_uninit_hw(struct rte_eth_dev *eth_dev, struct ice_dcf_hw *hw)
 
 	rte_free(hw->rss_key);
 	hw->rss_key = NULL;
+
+	if (hw->qos_bw_cfg != NULL) {
+		for (i = 0; i < hw->num_vfs; i++)
+			rte_free(hw->qos_bw_cfg[i]);
+	}
 
 	rte_free(hw->qos_bw_cfg);
 	hw->qos_bw_cfg = NULL;
