@@ -239,6 +239,9 @@ enum {
 RTE_ACL_RULE_DEF(acl4_rule, RTE_DIM(ipv4_defs));
 RTE_ACL_RULE_DEF(acl6_rule, RTE_DIM(ipv6_defs));
 
+/* Must be included before any L3FWDACL_DEBUG define check. */
+#include "l3fwd_acl.h"
+
 static struct {
 	struct rte_acl_ctx *acx_ipv4[NB_SOCKETS];
 	struct rte_acl_ctx *acx_ipv6[NB_SOCKETS];
@@ -254,8 +257,6 @@ static struct rte_acl_rule *acl_base_ipv4, *route_base_ipv4,
 		*acl_base_ipv6, *route_base_ipv6;
 static unsigned int acl_num_ipv4, route_num_ipv4,
 		acl_num_ipv6, route_num_ipv6;
-
-#include "l3fwd_acl.h"
 
 #include "l3fwd_acl_scalar.h"
 
@@ -859,17 +860,17 @@ print_one_ipv6_rule(struct acl6_rule *rule, int extra)
 
 #ifdef L3FWDACL_DEBUG
 static inline void
-dump_acl4_rule(struct rte_mbuf *m, uint32_t sig)
+dump_acl4_rule(const struct rte_mbuf *m, uint32_t sig)
 {
-	char abuf[INET6_ADDRSTRLEN];
+	char abuf[INET_ADDRSTRLEN];
 	uint32_t offset = sig & ~ACL_DENY_SIGNATURE;
 	struct rte_ipv4_hdr *ipv4_hdr =
 		rte_pktmbuf_mtod_offset(m, struct rte_ipv4_hdr *,
 					sizeof(struct rte_ether_hdr));
 
-	printf("Packet Src:%s ", inet_ntop(AF_INET, ipv4_hdr->src_addr,
+	printf("Packet Src:%s ", inet_ntop(AF_INET, &ipv4_hdr->src_addr,
 		abuf, sizeof(abuf)));
-	printf("Dst:%s ", inet_ntop(AF_INET, ipv4_hdr->dst_addr,
+	printf("Dst:%s ", inet_ntop(AF_INET, &ipv4_hdr->dst_addr,
 		abuf, sizeof(abuf)));
 
 	printf("Src port:%hu,Dst port:%hu ",
@@ -883,7 +884,7 @@ dump_acl4_rule(struct rte_mbuf *m, uint32_t sig)
 }
 
 static inline void
-dump_acl6_rule(struct rte_mbuf *m, uint32_t sig)
+dump_acl6_rule(const struct rte_mbuf *m, uint32_t sig)
 {
 	char abuf[INET6_ADDRSTRLEN];
 	uint32_t offset = sig & ~ACL_DENY_SIGNATURE;
@@ -892,10 +893,10 @@ dump_acl6_rule(struct rte_mbuf *m, uint32_t sig)
 					sizeof(struct rte_ether_hdr));
 
 	printf("Packet Src");
-	printf("%s", inet_ntop(AF_INET6, ipv6_hdr->src_addr,
+	printf("%s", inet_ntop(AF_INET6, &ipv6_hdr->src_addr,
 		abuf, sizeof(abuf)));
 	printf("\nDst");
-	printf("%s", inet_ntop(AF_INET6, ipv6_hdr->dst_addr,
+	printf("%s", inet_ntop(AF_INET6, &ipv6_hdr->dst_addr,
 		abuf, sizeof(abuf)));
 
 	printf("\nSrc port:%hu,Dst port:%hu ",
@@ -988,8 +989,8 @@ dump_denied_pkt(const struct rte_mbuf *pkt, uint32_t res)
 	if ((res & ACL_DENY_SIGNATURE) != 0) {
 		if (RTE_ETH_IS_IPV4_HDR(pkt->packet_type))
 			dump_acl4_rule(pkt, res);
-		else if (RTE_ETH_IS_IPV6_HDR(pkt[i]->packet_type))
-			dump_acl6_rule(pkt[i], res[i]);
+		else if (RTE_ETH_IS_IPV6_HDR(pkt->packet_type))
+			dump_acl6_rule(pkt, res);
 	}
 #else
 	RTE_SET_USED(pkt);

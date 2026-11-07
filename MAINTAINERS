@@ -1757,6 +1757,7 @@ F: lib/acl/
 F: doc/guides/prog_guide/packet_classif_access_ctrl.rst
 F: app/test-acl/
 F: app/test/test_acl.*
+F: examples/l3fwd/l3fwd_acl*
 
 EFD
 M: Yipeng Wang <yipeng1.wang@intel.com>
