@@ -3519,6 +3519,16 @@ mlx5_flow_validate_item_gre(const struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
 					  "multiple tunnel layers not"
 					  " supported");
+	if (item_flags & MLX5_FLOW_LAYER_OUTER_L4_UDP)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "GRE over UDP is not supported");
+	if (item_flags & (MLX5_FLOW_LAYER_OUTER_L4_TCP |
+			  MLX5_FLOW_LAYER_ICMP | MLX5_FLOW_LAYER_ICMP6 |
+			  MLX5_FLOW_ITEM_ESP))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "GRE cannot follow TCP, ICMP or ESP layer");
 	if (!mlx5_hws_active(dev)) {
 		if (!(item_flags & MLX5_FLOW_LAYER_OUTER_L3))
 			return rte_flow_error_set(error, ENOTSUP,
@@ -3894,6 +3904,16 @@ mlx5_flow_validate_item_nvgre(const struct rte_eth_dev *dev,
 					  RTE_FLOW_ERROR_TYPE_ITEM, item,
 					  "multiple tunnel layers not"
 					  " supported");
+	if (item_flags & MLX5_FLOW_LAYER_OUTER_L4_UDP)
+		return rte_flow_error_set(error, ENOTSUP,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "NVGRE over UDP is not supported");
+	if (item_flags & (MLX5_FLOW_LAYER_OUTER_L4_TCP |
+			  MLX5_FLOW_LAYER_ICMP | MLX5_FLOW_LAYER_ICMP6 |
+			  MLX5_FLOW_ITEM_ESP))
+		return rte_flow_error_set(error, EINVAL,
+					  RTE_FLOW_ERROR_TYPE_ITEM, item,
+					  "NVGRE cannot follow TCP, ICMP or ESP layer");
 	if (!mlx5_hws_active(dev)) {
 		if (!(item_flags & MLX5_FLOW_LAYER_OUTER_L3))
 			return rte_flow_error_set(error, ENOTSUP,
