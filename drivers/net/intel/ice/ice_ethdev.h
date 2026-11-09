@@ -498,6 +498,7 @@ struct ice_acl_conf {
  */
 struct ice_acl_info {
 	struct rte_bitmap *slots;
+	uint16_t max_entries;
 	uint64_t hw_entry_id[MAX_ACL_NORMAL_ENTRIES];
 };
 
