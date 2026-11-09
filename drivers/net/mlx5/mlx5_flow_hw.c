@@ -1572,7 +1572,8 @@ flow_hw_should_insert_nop(const struct mlx5_hw_modify_header_action *mhdr,
 			should_insert = new_cmd.field == last_cmd.field;
 		else if (last_type == MLX5_MODIFICATION_TYPE_COPY ||
 			 last_type == MLX5_MODIFICATION_TYPE_ADD_FIELD)
-			should_insert = new_cmd.field == last_cmd.dst_field;
+			should_insert = (new_cmd.field == last_cmd.dst_field ||
+					 new_cmd.field == last_cmd.field);
 		else if (last_type == MLX5_MODIFICATION_TYPE_NOP)
 			should_insert = false;
 		else
@@ -1587,7 +1588,8 @@ flow_hw_should_insert_nop(const struct mlx5_hw_modify_header_action *mhdr,
 		else if (last_type == MLX5_MODIFICATION_TYPE_COPY ||
 			 last_type == MLX5_MODIFICATION_TYPE_ADD_FIELD)
 			should_insert = (new_cmd.field == last_cmd.dst_field ||
-					 new_cmd.dst_field == last_cmd.dst_field);
+					 new_cmd.dst_field == last_cmd.dst_field ||
+					 new_cmd.dst_field == last_cmd.field);
 		else if (last_type == MLX5_MODIFICATION_TYPE_NOP)
 			should_insert = false;
 		else
