@@ -334,7 +334,7 @@ ice_dcf_init_check_api_version(struct ice_dcf_hw *hw)
 		PMD_INIT_LOG(ERR,
 			     "VIRTCHNL API version should not be lower than (%u.%u)",
 			     ICE_CPF_VIRTCHNL_VERSION_MAJOR_START,
-			     ICE_CPF_VIRTCHNL_VERSION_MAJOR_START);
+			     ICE_CPF_VIRTCHNL_VERSION_MINOR_START);
 		return -1;
 	} else if (pver->major > VIRTCHNL_VERSION_MAJOR ||
 		   (pver->major == VIRTCHNL_VERSION_MAJOR &&
