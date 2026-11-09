@@ -3392,6 +3392,11 @@ Limitations
 
 #. The decapsulation is always done up to the outermost tunnel detected by the HW.
 
+#. With :ref:`HW steering <mlx5_hws>`, on the HW root table:
+
+   - Encapsulating traffic into an L2 or L3 tunnel is supported only on egress.
+   - Decapsulating an L2 or L3 tunnel is supported only on ingress.
+
 
 .. _mlx5_modify:
 
