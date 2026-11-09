@@ -18,32 +18,26 @@
 
 /* ntuple filter list structure */
 struct txgbe_ntuple_filter_ele {
-	TAILQ_ENTRY(txgbe_ntuple_filter_ele) entries;
 	struct rte_eth_ntuple_filter filter_info;
 };
 /* ethertype filter list structure */
 struct txgbe_ethertype_filter_ele {
-	TAILQ_ENTRY(txgbe_ethertype_filter_ele) entries;
 	struct rte_eth_ethertype_filter filter_info;
 };
 /* syn filter list structure */
 struct txgbe_eth_syn_filter_ele {
-	TAILQ_ENTRY(txgbe_eth_syn_filter_ele) entries;
 	struct rte_eth_syn_filter filter_info;
 };
 /* fdir filter list structure */
 struct txgbe_fdir_rule_ele {
-	TAILQ_ENTRY(txgbe_fdir_rule_ele) entries;
 	struct txgbe_fdir_rule filter_info;
 };
 /* l2_tunnel filter list structure */
 struct txgbe_eth_l2_tunnel_conf_ele {
-	TAILQ_ENTRY(txgbe_eth_l2_tunnel_conf_ele) entries;
 	struct txgbe_l2_tunnel_conf filter_info;
 };
 /* rss filter list structure */
 struct txgbe_rss_conf_ele {
-	TAILQ_ENTRY(txgbe_rss_conf_ele) entries;
 	struct txgbe_rte_flow_rss_conf filter_info;
 };
 /* txgbe_flow memory list structure */
@@ -51,22 +45,6 @@ struct txgbe_flow_mem {
 	TAILQ_ENTRY(txgbe_flow_mem) entries;
 	struct rte_flow *flow;
 };
-
-TAILQ_HEAD(txgbe_ntuple_filter_list, txgbe_ntuple_filter_ele);
-TAILQ_HEAD(txgbe_ethertype_filter_list, txgbe_ethertype_filter_ele);
-TAILQ_HEAD(txgbe_syn_filter_list, txgbe_eth_syn_filter_ele);
-TAILQ_HEAD(txgbe_fdir_rule_filter_list, txgbe_fdir_rule_ele);
-TAILQ_HEAD(txgbe_l2_tunnel_filter_list, txgbe_eth_l2_tunnel_conf_ele);
-TAILQ_HEAD(txgbe_rss_filter_list, txgbe_rss_conf_ele);
-TAILQ_HEAD(txgbe_flow_mem_list, txgbe_flow_mem);
-
-static struct txgbe_ntuple_filter_list filter_ntuple_list;
-static struct txgbe_ethertype_filter_list filter_ethertype_list;
-static struct txgbe_syn_filter_list filter_syn_list;
-static struct txgbe_fdir_rule_filter_list filter_fdir_list;
-static struct txgbe_l2_tunnel_filter_list filter_l2_tunnel_list;
-static struct txgbe_rss_filter_list filter_rss_list;
-static struct txgbe_flow_mem_list txgbe_flow_list;
 
 /**
  * Endless loop will never happen with below assumption
@@ -3112,75 +3090,25 @@ txgbe_clear_rss_filter(struct rte_eth_dev *dev)
 }
 
 void
-txgbe_filterlist_init(void)
+txgbe_filterlist_init(struct rte_eth_dev *dev)
 {
-	TAILQ_INIT(&filter_ntuple_list);
-	TAILQ_INIT(&filter_ethertype_list);
-	TAILQ_INIT(&filter_syn_list);
-	TAILQ_INIT(&filter_fdir_list);
-	TAILQ_INIT(&filter_l2_tunnel_list);
-	TAILQ_INIT(&filter_rss_list);
-	TAILQ_INIT(&txgbe_flow_list);
+	struct txgbe_adapter *adapter = TXGBE_DEV_ADAPTER(dev);
+
+	TAILQ_INIT(&adapter->flow_list);
 }
 
 void
-txgbe_filterlist_flush(void)
+txgbe_filterlist_flush(struct rte_eth_dev *dev)
 {
-	struct txgbe_ntuple_filter_ele *ntuple_filter_ptr;
-	struct txgbe_ethertype_filter_ele *ethertype_filter_ptr;
-	struct txgbe_eth_syn_filter_ele *syn_filter_ptr;
-	struct txgbe_eth_l2_tunnel_conf_ele *l2_tn_filter_ptr;
-	struct txgbe_fdir_rule_ele *fdir_rule_ptr;
+	struct txgbe_adapter *adapter = TXGBE_DEV_ADAPTER(dev);
 	struct txgbe_flow_mem *txgbe_flow_mem_ptr;
-	struct txgbe_rss_conf_ele *rss_filter_ptr;
 
-	while ((ntuple_filter_ptr = TAILQ_FIRST(&filter_ntuple_list))) {
-		TAILQ_REMOVE(&filter_ntuple_list,
-				 ntuple_filter_ptr,
-				 entries);
-		rte_free(ntuple_filter_ptr);
-	}
+	while ((txgbe_flow_mem_ptr = TAILQ_FIRST(&adapter->flow_list))) {
+		struct rte_flow *flow = txgbe_flow_mem_ptr->flow;
 
-	while ((ethertype_filter_ptr = TAILQ_FIRST(&filter_ethertype_list))) {
-		TAILQ_REMOVE(&filter_ethertype_list,
-				 ethertype_filter_ptr,
-				 entries);
-		rte_free(ethertype_filter_ptr);
-	}
-
-	while ((syn_filter_ptr = TAILQ_FIRST(&filter_syn_list))) {
-		TAILQ_REMOVE(&filter_syn_list,
-				 syn_filter_ptr,
-				 entries);
-		rte_free(syn_filter_ptr);
-	}
-
-	while ((l2_tn_filter_ptr = TAILQ_FIRST(&filter_l2_tunnel_list))) {
-		TAILQ_REMOVE(&filter_l2_tunnel_list,
-				 l2_tn_filter_ptr,
-				 entries);
-		rte_free(l2_tn_filter_ptr);
-	}
-
-	while ((fdir_rule_ptr = TAILQ_FIRST(&filter_fdir_list))) {
-		TAILQ_REMOVE(&filter_fdir_list,
-				 fdir_rule_ptr,
-				 entries);
-		rte_free(fdir_rule_ptr);
-	}
-
-	while ((rss_filter_ptr = TAILQ_FIRST(&filter_rss_list))) {
-		TAILQ_REMOVE(&filter_rss_list,
-				 rss_filter_ptr,
-				 entries);
-		rte_free(rss_filter_ptr);
-	}
-
-	while ((txgbe_flow_mem_ptr = TAILQ_FIRST(&txgbe_flow_list))) {
-		TAILQ_REMOVE(&txgbe_flow_list,
-				 txgbe_flow_mem_ptr,
-				 entries);
-		rte_free(txgbe_flow_mem_ptr->flow);
+		TAILQ_REMOVE(&adapter->flow_list, txgbe_flow_mem_ptr, entries);
+		rte_free(flow->rule);
+		rte_free(flow);
 		rte_free(txgbe_flow_mem_ptr);
 	}
 }
@@ -3215,6 +3143,7 @@ txgbe_flow_create(struct rte_eth_dev *dev,
 	struct txgbe_fdir_rule_ele *fdir_rule_ptr = NULL;
 	struct txgbe_rss_conf_ele *rss_filter_ptr;
 	struct txgbe_flow_mem *txgbe_flow_mem_ptr;
+	struct txgbe_adapter *adapter = TXGBE_DEV_ADAPTER(dev);
 	struct txgbe_filter_info *filter_info = TXGBE_DEV_FILTER(dev);
 	uint8_t first_mask = FALSE;
 	bool fdir_configured = false;
@@ -3232,8 +3161,7 @@ txgbe_flow_create(struct rte_eth_dev *dev,
 		return NULL;
 	}
 	txgbe_flow_mem_ptr->flow = flow;
-	TAILQ_INSERT_TAIL(&txgbe_flow_list,
-				txgbe_flow_mem_ptr, entries);
+	TAILQ_INSERT_TAIL(&adapter->flow_list, txgbe_flow_mem_ptr, entries);
 
 	memset(&ntuple_filter, 0, sizeof(struct rte_eth_ntuple_filter));
 	ret = txgbe_parse_ntuple_filter(dev, attr, pattern,
@@ -3261,8 +3189,6 @@ txgbe_flow_create(struct rte_eth_dev *dev,
 				goto next;
 			goto out;
 		}
-		TAILQ_INSERT_TAIL(&filter_ntuple_list,
-			ntuple_filter_ptr, entries);
 		flow->rule = ntuple_filter_ptr;
 		flow->filter_type = RTE_ETH_FILTER_NTUPLE;
 		return flow;
@@ -3287,8 +3213,6 @@ next:
 			rte_free(ethertype_filter_ptr);
 			goto out;
 		}
-		TAILQ_INSERT_TAIL(&filter_ethertype_list,
-			ethertype_filter_ptr, entries);
 		flow->rule = ethertype_filter_ptr;
 		flow->filter_type = RTE_ETH_FILTER_ETHERTYPE;
 		return flow;
@@ -3311,8 +3235,6 @@ next:
 			rte_free(syn_filter_ptr);
 			goto out;
 		}
-		TAILQ_INSERT_TAIL(&filter_syn_list,
-			syn_filter_ptr, entries);
 		flow->rule = syn_filter_ptr;
 		flow->filter_type = RTE_ETH_FILTER_SYN;
 		return flow;
@@ -3339,8 +3261,6 @@ next:
 			}
 
 			fdir_rule_ptr->filter_info = fdir_rule;
-			TAILQ_INSERT_TAIL(&filter_fdir_list,
-					  fdir_rule_ptr, entries);
 			flow->rule = fdir_rule_ptr;
 			flow->filter_type = RTE_ETH_FILTER_FDIR;
 			return flow;
@@ -3426,8 +3346,6 @@ next:
 			goto fdir_out;
 
 		fdir_rule_ptr->filter_info = fdir_rule;
-		TAILQ_INSERT_TAIL(&filter_fdir_list,
-			fdir_rule_ptr, entries);
 		flow->rule = fdir_rule_ptr;
 		flow->filter_type = RTE_ETH_FILTER_FDIR;
 
@@ -3451,8 +3369,6 @@ next:
 			rte_free(l2_tn_filter_ptr);
 			goto out;
 		}
-		TAILQ_INSERT_TAIL(&filter_l2_tunnel_list,
-			l2_tn_filter_ptr, entries);
 		flow->rule = l2_tn_filter_ptr;
 		flow->filter_type = RTE_ETH_FILTER_L2_TUNNEL;
 		return flow;
@@ -3476,8 +3392,6 @@ next:
 		}
 		txgbe_rss_conf_init(&rss_filter_ptr->filter_info,
 				    &rss_conf.conf);
-		TAILQ_INSERT_TAIL(&filter_rss_list,
-			rss_filter_ptr, entries);
 		flow->rule = rss_filter_ptr;
 		flow->filter_type = RTE_ETH_FILTER_HASH;
 		return flow;
@@ -3492,8 +3406,7 @@ fdir_out:
 		fdir_conf->mode = RTE_FDIR_MODE_NONE;
 	}
 out:
-	TAILQ_REMOVE(&txgbe_flow_list,
-		txgbe_flow_mem_ptr, entries);
+	TAILQ_REMOVE(&adapter->flow_list, txgbe_flow_mem_ptr, entries);
 	rte_flow_error_set(error, -ret,
 			   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 			   "Failed to create flow.");
@@ -3567,7 +3480,7 @@ txgbe_flow_destroy(struct rte_eth_dev *dev,
 {
 	int ret = 0;
 	struct rte_flow *pmd_flow = flow;
-	enum rte_filter_type filter_type = pmd_flow->filter_type;
+	enum rte_filter_type filter_type;
 	struct rte_eth_ntuple_filter ntuple_filter;
 	struct rte_eth_ethertype_filter ethertype_filter;
 	struct rte_eth_syn_filter syn_filter;
@@ -3579,10 +3492,25 @@ txgbe_flow_destroy(struct rte_eth_dev *dev,
 	struct txgbe_eth_l2_tunnel_conf_ele *l2_tn_filter_ptr;
 	struct txgbe_fdir_rule_ele *fdir_rule_ptr;
 	struct txgbe_flow_mem *txgbe_flow_mem_ptr;
+	struct txgbe_adapter *adapter = TXGBE_DEV_ADAPTER(dev);
 	struct txgbe_hw_fdir_info *fdir_info = TXGBE_DEV_FDIR(dev);
 	struct rte_eth_fdir_conf *fdir_conf = TXGBE_DEV_FDIR_CONF(dev);
 	struct txgbe_rss_conf_ele *rss_filter_ptr;
 
+	/*
+	 * Confirm the handle is on this port before changing hardware.
+	 * A flow created on another port must not be removed here.
+	 */
+	TAILQ_FOREACH(txgbe_flow_mem_ptr, &adapter->flow_list, entries) {
+		if (txgbe_flow_mem_ptr->flow == pmd_flow)
+			break;
+	}
+	if (txgbe_flow_mem_ptr == NULL)
+		return rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				"Flow not found for this port");
+
+	filter_type = pmd_flow->filter_type;
 	switch (filter_type) {
 	case RTE_ETH_FILTER_NTUPLE:
 		ntuple_filter_ptr = (struct txgbe_ntuple_filter_ele *)
@@ -3591,11 +3519,8 @@ txgbe_flow_destroy(struct rte_eth_dev *dev,
 			&ntuple_filter_ptr->filter_info,
 			sizeof(struct rte_eth_ntuple_filter));
 		ret = txgbe_add_del_ntuple_filter(dev, &ntuple_filter, FALSE);
-		if (!ret) {
-			TAILQ_REMOVE(&filter_ntuple_list,
-			ntuple_filter_ptr, entries);
+		if (!ret)
 			rte_free(ntuple_filter_ptr);
-		}
 		break;
 	case RTE_ETH_FILTER_ETHERTYPE:
 		ethertype_filter_ptr = (struct txgbe_ethertype_filter_ele *)
@@ -3605,11 +3530,8 @@ txgbe_flow_destroy(struct rte_eth_dev *dev,
 			sizeof(struct rte_eth_ethertype_filter));
 		ret = txgbe_add_del_ethertype_filter(dev,
 				&ethertype_filter, FALSE);
-		if (!ret) {
-			TAILQ_REMOVE(&filter_ethertype_list,
-				ethertype_filter_ptr, entries);
+		if (!ret)
 			rte_free(ethertype_filter_ptr);
-		}
 		break;
 	case RTE_ETH_FILTER_SYN:
 		syn_filter_ptr = (struct txgbe_eth_syn_filter_ele *)
@@ -3618,11 +3540,8 @@ txgbe_flow_destroy(struct rte_eth_dev *dev,
 			&syn_filter_ptr->filter_info,
 			sizeof(struct rte_eth_syn_filter));
 		ret = txgbe_syn_filter_set(dev, &syn_filter, FALSE);
-		if (!ret) {
-			TAILQ_REMOVE(&filter_syn_list,
-				syn_filter_ptr, entries);
+		if (!ret)
 			rte_free(syn_filter_ptr);
-		}
 		break;
 	case RTE_ETH_FILTER_FDIR:
 		fdir_rule_ptr = (struct txgbe_fdir_rule_ele *)pmd_flow->rule;
@@ -3630,14 +3549,14 @@ txgbe_flow_destroy(struct rte_eth_dev *dev,
 			&fdir_rule_ptr->filter_info,
 			sizeof(struct txgbe_fdir_rule));
 		if (txgbe_is_pf(TXGBE_DEV_HW(dev)))
-			ret = txgbe_fdir_filter_program(dev, &fdir_rule, TRUE, FALSE);
+			ret = txgbe_fdir_filter_program(dev, &fdir_rule,
+							TRUE, FALSE);
 		else
-			ret = txgbevf_fdir_filter_program(dev, &fdir_rule, TRUE);
+			ret = txgbevf_fdir_filter_program(dev, &fdir_rule,
+							  TRUE);
 		if (!ret) {
-			TAILQ_REMOVE(&filter_fdir_list,
-				fdir_rule_ptr, entries);
 			rte_free(fdir_rule_ptr);
-			if (TAILQ_EMPTY(&filter_fdir_list)) {
+			if (TAILQ_EMPTY(&fdir_info->fdir_list)) {
 				memset(&fdir_info->mask, 0,
 					sizeof(struct txgbe_hw_fdir_mask));
 				fdir_info->mask_added = false;
@@ -3656,22 +3575,16 @@ txgbe_flow_destroy(struct rte_eth_dev *dev,
 		rte_memcpy(&l2_tn_filter, &l2_tn_filter_ptr->filter_info,
 			sizeof(struct txgbe_l2_tunnel_conf));
 		ret = txgbe_dev_l2_tunnel_filter_del(dev, &l2_tn_filter);
-		if (!ret) {
-			TAILQ_REMOVE(&filter_l2_tunnel_list,
-				l2_tn_filter_ptr, entries);
+		if (!ret)
 			rte_free(l2_tn_filter_ptr);
-		}
 		break;
 	case RTE_ETH_FILTER_HASH:
 		rss_filter_ptr = (struct txgbe_rss_conf_ele *)
 				pmd_flow->rule;
 		ret = txgbe_config_rss_filter(dev,
 					&rss_filter_ptr->filter_info, FALSE);
-		if (!ret) {
-			TAILQ_REMOVE(&filter_rss_list,
-				rss_filter_ptr, entries);
+		if (!ret)
 			rte_free(rss_filter_ptr);
-		}
 		break;
 	default:
 		PMD_DRV_LOG(WARNING, "Filter type (%d) not supported",
@@ -3687,15 +3600,8 @@ txgbe_flow_destroy(struct rte_eth_dev *dev,
 		return ret;
 	}
 
-	TAILQ_FOREACH(txgbe_flow_mem_ptr, &txgbe_flow_list, entries) {
-		if (txgbe_flow_mem_ptr->flow == pmd_flow)
-			break;
-	}
-	if (txgbe_flow_mem_ptr != NULL) {
-		TAILQ_REMOVE(&txgbe_flow_list,
-			txgbe_flow_mem_ptr, entries);
-		rte_free(txgbe_flow_mem_ptr);
-	}
+	TAILQ_REMOVE(&adapter->flow_list, txgbe_flow_mem_ptr, entries);
+	rte_free(txgbe_flow_mem_ptr);
 	rte_free(flow);
 
 	return ret;
@@ -3733,7 +3639,7 @@ txgbe_flow_flush(struct rte_eth_dev *dev,
 	txgbe_clear_rss_filter(dev);
 
 out:
-	txgbe_filterlist_flush();
+	txgbe_filterlist_flush(dev);
 
 	return 0;
 }

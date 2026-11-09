@@ -390,7 +390,7 @@ eth_txgbevf_dev_init(struct rte_eth_dev *eth_dev)
 	TAILQ_INIT(&filter_info->fivetuple_list);
 
 	/* initialize flow filter lists */
-	txgbe_filterlist_init();
+	txgbe_filterlist_init(eth_dev);
 
 	PMD_INIT_LOG(DEBUG, "port %d vendorID=0x%x deviceID=0x%x mac.type=%s",
 		     eth_dev->data->port_id, pci_dev->id.vendor_id,
@@ -882,7 +882,7 @@ txgbevf_dev_close(struct rte_eth_dev *dev)
 	txgbe_ntuple_filter_uninit(dev);
 
 	/* clear all the filters list */
-	txgbe_filterlist_flush();
+	txgbe_filterlist_flush(dev);
 
 	return ret;
 }

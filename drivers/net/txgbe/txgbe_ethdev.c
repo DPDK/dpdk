@@ -902,7 +902,7 @@ eth_txgbe_dev_init(struct rte_eth_dev *eth_dev, void *init_params __rte_unused)
 	txgbe_l2_tn_filter_init(eth_dev);
 
 	/* initialize flow filter lists */
-	txgbe_filterlist_init();
+	txgbe_filterlist_init(eth_dev);
 
 	/* initialize bandwidth configuration info */
 	memset(bw_conf, 0, sizeof(struct txgbe_bw_conf));
@@ -2352,7 +2352,7 @@ txgbe_dev_close(struct rte_eth_dev *dev)
 	txgbe_ntuple_filter_uninit(dev);
 
 	/* clear all the filters list */
-	txgbe_filterlist_flush();
+	txgbe_filterlist_flush(dev);
 
 	/* Remove all Traffic Manager configuration */
 	txgbe_tm_conf_uninit(dev);
