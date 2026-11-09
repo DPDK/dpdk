@@ -139,8 +139,9 @@ gve_tx_validate_pkt_limits(const struct rte_mbuf *tx_pkt, bool is_tso)
 	 * contained in the first segment; the payload must not be empty.
 	 */
 	headlen = tx_pkt->l2_len + tx_pkt->l3_len + tx_pkt->l4_len;
-	if (tx_pkt->l4_len == 0 || headlen > GVE_TX_MAX_HDR_SIZE_DQO ||
-	    tx_pkt->data_len < headlen || tx_pkt->pkt_len <= headlen)
+	if (tx_pkt->l4_len == 0 || headlen < GVE_TX_MIN_TSO_HDR_LEN_DQO ||
+	    headlen > GVE_TX_MAX_HDR_SIZE_DQO || tx_pkt->data_len < headlen ||
+	    tx_pkt->pkt_len <= headlen)
 		return false;
 
 	return tx_pkt->pkt_len - headlen <= GVE_TX_MAX_TSO_LEN_DQO &&
