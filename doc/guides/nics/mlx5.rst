@@ -2990,6 +2990,15 @@ With :ref:`HW steering <mlx5_hws>`:
    - Linux kernel >= 6.4 and rdma-core >= 60.0 for upstream drivers/libraries or,
    - DOCA >= 3.2.0 for drivers/libraries provided by NVIDIA.
 
+#. The synchronous flow API pre-allocates half of the NIC counter capacity
+   from hugepage memory when the first ``COUNT`` action is created.
+   Other allocations, such as large mbuf pools, can use up the hugepage heap first.
+   Counter creation then fails.
+
+   Reserve more hugepages, or call ``rte_flow_configure()`` with a smaller ``nb_counters``
+   before creating the first ``COUNT`` action.
+   An explicit configuration allocates only the requested number of counters.
+
 
 .. _mlx5_age:
 
