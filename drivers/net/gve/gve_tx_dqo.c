@@ -3,6 +3,8 @@
  * Copyright (c) 2022-2023 Intel Corporation
  */
 
+#include <rte_net.h>
+
 #include "gve_ethdev.h"
 #include "base/gve_adminq.h"
 #include "rte_malloc.h"
@@ -125,7 +127,7 @@ gve_tx_clean_descs_dqo(struct gve_tx_queue *txq, uint16_t nb_descs) {
 
 /* Validate packet lengths against the device limits. */
 static inline bool
-gve_tx_validate_pkt(const struct rte_mbuf *tx_pkt, bool is_tso)
+gve_tx_validate_pkt_limits(const struct rte_mbuf *tx_pkt, bool is_tso)
 {
 	uint32_t headlen;
 
@@ -284,6 +286,76 @@ gve_fill_tx_pkt_desc(struct gve_tx_queue *txq, uint16_t *tx_id,
 }
 
 uint16_t
+gve_tx_pkt_prepare_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	struct gve_tx_queue *txq = tx_queue;
+	uint16_t i;
+
+	for (i = 0; i < nb_pkts; i++) {
+		struct rte_mbuf *tx_pkt;
+		uint16_t nb_descs;
+		bool tso;
+		int err;
+
+		tx_pkt = tx_pkts[i];
+
+#ifdef RTE_ETHDEV_DEBUG_TX
+		const char *reason;
+
+		if (rte_mbuf_check(tx_pkt, true, &reason)) {
+			rte_errno = EINVAL;
+			return i;
+		}
+
+		err = rte_validate_tx_offload(tx_pkt);
+		if (err != 0) {
+			rte_errno = -err;
+			return i;
+		}
+#endif
+
+		tso = !!(tx_pkt->ol_flags & RTE_MBUF_F_TX_TCP_SEG);
+		if (!gve_tx_validate_pkt_limits(tx_pkt, tso)) {
+			rte_errno = EINVAL;
+			return i;
+		}
+
+		if (tso) {
+			nb_descs = gve_tx_pkt_nb_data_descs(tx_pkt) + 1;
+		} else {
+			/* Handle non-TSO packets by directly checking nb_segs.
+			 * The packet has already been validated to be no larger
+			 * than 9728B, so every descriptor is guaranteed to only
+			 * require a single descriptor.
+			 * If the packet does not meet the hardware descriptor
+			 * limits, fall back to the mbuf walk in case the
+			 * mbuf has empty segments.
+			 */
+			if (tx_pkt->nb_segs <= GVE_TX_MAX_DATA_DESCS)
+				continue;
+			nb_descs = gve_tx_pkt_nb_data_descs(tx_pkt);
+		}
+		if (!gve_tx_validate_descs(txq, tx_pkt, nb_descs, tso)) {
+			rte_errno = ENOTSUP;
+			return i;
+		}
+
+		/* If TSO is enabled, the L4 pseudo header checksum must be
+		 * seeded. In this case, headers must all be in the same buffer.
+		 */
+		if (tso) {
+			err = rte_net_intel_cksum_prepare(tx_pkt);
+			if (err != 0) {
+				rte_errno = -err;
+				return i;
+			}
+		}
+	}
+
+	return nb_pkts;
+}
+
+uint16_t
 gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
 	struct gve_tx_queue *txq = tx_queue;
@@ -329,7 +401,7 @@ gve_tx_burst_dqo(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		tso = !!(ol_flags & RTE_MBUF_F_TX_TCP_SEG);
 		csum = !!(ol_flags & GVE_TX_CKSUM_OFFLOAD_MASK_DQO);
 
-		if (!gve_tx_validate_pkt(tx_pkt, tso)) {
+		if (!gve_tx_validate_pkt_limits(tx_pkt, tso)) {
 			txq->stats.invalid_pkts++;
 			rte_pktmbuf_free(tx_pkt);
 			continue;
@@ -683,4 +755,5 @@ void
 gve_set_tx_function_dqo(struct rte_eth_dev *dev)
 {
 	dev->tx_pkt_burst = gve_tx_burst_dqo;
+	dev->tx_pkt_prepare = gve_tx_pkt_prepare_dqo;
 }
