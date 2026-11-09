@@ -17,7 +17,8 @@
 #define TCP_HDR_PSH_MASK ((uint8_t)0x08)
 #define TCP_HDR_FIN_MASK ((uint8_t)0x01)
 
-#define IS_IPV4_TCP(flag) (((flag) & (RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_IPV4)) == \
+#define IS_IPV4_TCP(flag) (((flag) & (RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_IPV4 | \
+				RTE_MBUF_F_TX_TUNNEL_MASK)) == \
 		(RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_IPV4))
 
 #define IS_IPV4_VXLAN_TCP4(flag) (((flag) & (RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_IPV4 | \
@@ -35,7 +36,8 @@
 		(RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_OUTER_IPV4 | \
 		 RTE_MBUF_F_TX_TUNNEL_GRE))
 
-#define IS_IPV4_UDP(flag) (((flag) & (RTE_MBUF_F_TX_UDP_SEG | RTE_MBUF_F_TX_IPV4)) == \
+#define IS_IPV4_UDP(flag) (((flag) & (RTE_MBUF_F_TX_UDP_SEG | RTE_MBUF_F_TX_IPV4 | \
+				RTE_MBUF_F_TX_TUNNEL_MASK)) == \
 		(RTE_MBUF_F_TX_UDP_SEG | RTE_MBUF_F_TX_IPV4))
 
 /**
