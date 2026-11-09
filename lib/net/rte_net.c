@@ -464,6 +464,9 @@ l3:
 			return pkt_type;
 		}
 		pkt_type |= ptype_l4(proto);
+	} else {
+		/* not an IP packet: there is no L4 header or tunnel to parse */
+		return pkt_type;
 	}
 
 	if ((pkt_type & RTE_PTYPE_L4_MASK) == RTE_PTYPE_L4_UDP) {
