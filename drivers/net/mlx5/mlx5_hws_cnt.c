@@ -31,8 +31,11 @@ __hws_cnt_id_load(struct mlx5_hws_cnt_pool *cpool)
 
 	cnt_arr = mlx5_malloc(MLX5_MEM_ANY | MLX5_MEM_ZERO,
 			      cnt_num * sizeof(cnt_id_t), 0, SOCKET_ID_ANY);
-	if (cnt_arr == NULL)
+	if (cnt_arr == NULL) {
+		DRV_LOG(ERR, "Failed to allocate counter ID array: %zu bytes.",
+			cnt_num * sizeof(cnt_id_t));
 		return -ENOMEM;
+	}
 	/*
 	 * Counter ID order is important for tracking the max number of in used
 	 * counter for querying, which means counter internal index order must
@@ -290,6 +293,8 @@ mlx5_hws_cnt_raw_data_alloc(struct mlx5_dev_ctx_shared *sh, uint32_t n,
 	mng->raw = mlx5_malloc(MLX5_MEM_ANY | MLX5_MEM_ZERO, sz, pgsz,
 			SOCKET_ID_ANY);
 	if (mng->raw == NULL) {
+		DRV_LOG(ERR, "Failed to allocate raw counter memory: %zu bytes.",
+			sz);
 		rte_flow_error_set(error, ENOMEM,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				   NULL, "failed to allocate raw counters memory");
@@ -469,6 +474,9 @@ mlx5_hws_cnt_pool_init(struct mlx5_dev_ctx_shared *sh,
 				 sizeof(struct mlx5_hws_cnt) * cnt_num,
 				 0, SOCKET_ID_ANY);
 	if (cntp->pool == NULL) {
+		DRV_LOG(ERR,
+			"Failed to allocate counter pool: %zu bytes for %" PRIu64 " counters.",
+			sizeof(struct mlx5_hws_cnt) * (size_t)cnt_num, cnt_num);
 		rte_flow_error_set(error, ENOMEM,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
 				   "failed to allocate counter pool context");
@@ -773,8 +781,12 @@ mlx5_hws_cnt_pool_create(struct rte_eth_dev *dev,
 		goto error;
 	}
 	ret = __hws_cnt_id_load(cpool);
-	if (ret != 0)
+	if (ret != 0) {
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "failed to allocate counter ID array");
 		goto error;
+	}
 	/*
 	 * Bump query gen right after pool create so the
 	 * pre-loaded counters can be used directly
@@ -805,6 +817,10 @@ success:
 	return 0;
 error:
 	MLX5_ASSERT(ret);
+	DRV_LOG(ERR, "Port %u failed to create counter pool for %u counters: %s",
+		dev->data->port_id, nb_counters,
+		(error != NULL && error->message != NULL) ?
+		error->message : "unspecified error");
 	mlx5_hws_cnt_pool_destroy(priv->sh, cpool);
 	priv->hws_cpool = NULL;
 	return ret;

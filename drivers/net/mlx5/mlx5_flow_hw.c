@@ -12768,13 +12768,10 @@ flow_hw_action_handle_validate(struct rte_eth_dev *dev, uint32_t queue,
 		}
 		break;
 	case RTE_FLOW_ACTION_TYPE_COUNT:
-		if (!priv->hws_cpool) {
-			if (flow_hw_allocate_actions(dev, MLX5_FLOW_ACTION_COUNT,
-						     error))
-				return rte_flow_error_set
-					(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
-					 NULL, "counters pool not initialized");
-		}
+		if (!priv->hws_cpool)
+			return flow_hw_allocate_actions(dev,
+							MLX5_FLOW_ACTION_COUNT,
+							error);
 		break;
 	case RTE_FLOW_ACTION_TYPE_CONNTRACK:
 		if (priv->hws_ctpool == NULL) {
