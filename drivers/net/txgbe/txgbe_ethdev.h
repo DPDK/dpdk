@@ -344,6 +344,9 @@ struct txgbe_tm_conf {
 	bool committed;
 };
 
+struct txgbe_flow_mem;
+TAILQ_HEAD(txgbe_flow_mem_list, txgbe_flow_mem);
+
 /*
  * Structure to store private data for each driver instance (for each port).
  */
@@ -360,6 +363,7 @@ struct txgbe_adapter {
 	struct txgbe_vf_info        *vfdata;
 	struct txgbe_uta_info       uta_info;
 	struct txgbe_filter_info    filter;
+	struct txgbe_flow_mem_list  flow_list;
 	struct txgbe_l2_tn_info     l2_tn;
 	struct txgbe_bw_conf        bw_conf;
 #ifdef RTE_LIB_SECURITY
@@ -546,8 +550,8 @@ txgbe_dev_l2_tunnel_filter_add(struct rte_eth_dev *dev,
 int
 txgbe_dev_l2_tunnel_filter_del(struct rte_eth_dev *dev,
 			       struct txgbe_l2_tunnel_conf *l2_tunnel);
-void txgbe_filterlist_init(void);
-void txgbe_filterlist_flush(void);
+void txgbe_filterlist_init(struct rte_eth_dev *dev);
+void txgbe_filterlist_flush(struct rte_eth_dev *dev);
 
 void txgbe_set_ivar_map(struct txgbe_hw *hw, int8_t direction,
 			       uint8_t queue, uint8_t msix_vector);
