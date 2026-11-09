@@ -778,7 +778,7 @@ iavf_check_api_version(struct iavf_adapter *adapter)
 		PMD_INIT_LOG(ERR, "VIRTCHNL API version should not be lower"
 			     " than (%u.%u) to support Adaptive VF",
 			     VIRTCHNL_VERSION_MAJOR_START,
-			     VIRTCHNL_VERSION_MAJOR_START);
+			     VIRTCHNL_VERSION_MINOR_START);
 		return -1;
 	} else if (vf->virtchnl_version.major > VIRTCHNL_VERSION_MAJOR ||
 		   (vf->virtchnl_version.major == VIRTCHNL_VERSION_MAJOR &&
