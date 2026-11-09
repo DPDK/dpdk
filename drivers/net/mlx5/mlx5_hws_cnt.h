@@ -5,6 +5,7 @@
 #ifndef _MLX5_HWS_CNT_H_
 #define _MLX5_HWS_CNT_H_
 
+#include <rte_memzone.h>
 #include <rte_ring.h>
 #include "mlx5_utils.h"
 #include "mlx5_flow.h"
@@ -87,7 +88,7 @@ struct mlx5_hws_cache_param {
 };
 
 struct mlx5_hws_cnt_pool_cfg {
-	char *name;
+	char name[RTE_MEMZONE_NAMESIZE];
 	uint32_t request_num;
 	uint32_t alloc_factor;
 	struct mlx5_hws_cnt_pool *host_cpool;

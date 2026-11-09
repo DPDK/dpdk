@@ -730,18 +730,11 @@ mlx5_hws_cnt_pool_create(struct rte_eth_dev *dev,
 	struct mlx5_priv *priv = dev->data->dev_private;
 	struct mlx5_hws_cache_param cparam = {0};
 	struct mlx5_hws_cnt_pool_cfg pcfg = {0};
-	char *mp_name;
 	int ret = 0;
 	size_t sz;
 
-	mp_name = mlx5_malloc(MLX5_MEM_ZERO, RTE_MEMZONE_NAMESIZE, 0, SOCKET_ID_ANY);
-	if (mp_name == NULL) {
-		ret = rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
-					 "failed to allocate counter pool name prefix");
-		goto error;
-	}
-	snprintf(mp_name, RTE_MEMZONE_NAMESIZE, "MLX5_HWS_CNT_P_%x", dev->data->port_id);
-	pcfg.name = mp_name;
+	snprintf(pcfg.name, sizeof(pcfg.name), "MLX5_HWS_CNT_P_%x",
+		 dev->data->port_id);
 	pcfg.request_num = nb_counters;
 	pcfg.alloc_factor = HWS_CNT_ALLOC_FACTOR_DEFAULT;
 	if (chost) {
@@ -814,7 +807,6 @@ error:
 	MLX5_ASSERT(ret);
 	mlx5_hws_cnt_pool_destroy(priv->sh, cpool);
 	priv->hws_cpool = NULL;
-	mlx5_free(mp_name);
 	return ret;
 }
 
@@ -842,7 +834,6 @@ mlx5_hws_cnt_pool_destroy(struct mlx5_dev_ctx_shared *sh,
 		mlx5_hws_cnt_pool_dcs_free(cpool);
 		mlx5_hws_cnt_raw_data_free(cpool->raw_mng);
 	}
-	mlx5_free((void *)cpool->cfg.name);
 	mlx5_hws_cnt_pool_deinit(cpool);
 }
 
