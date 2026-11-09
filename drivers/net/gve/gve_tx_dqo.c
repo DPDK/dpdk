@@ -191,7 +191,7 @@ gve_tx_validate_descs(const struct gve_tx_queue *txq, struct rte_mbuf *tx_pkt,
 			return false;
 
 		if (seg_remain < mbuf_len) {
-			seg_offset = mbuf_len % tso_segsz;
+			seg_offset = (mbuf_len - seg_remain) % tso_segsz;
 			/* The MSS is bound from above by 9728B, so a
 			 * single TSO segment in the middle of an mbuf
 			 * will be part of at most two descriptors, and
