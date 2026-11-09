@@ -5591,7 +5591,6 @@ __translate_group(struct rte_eth_dev *dev,
 						  "group index not supported");
 		*table_group = group + 1;
 	} else if (config->dv_esw_en &&
-		   config->dv_xmeta_en == MLX5_XMETA_MODE_META32_HWS &&
 		   external &&
 		   flow_attr->egress) {
 		/*
@@ -5600,9 +5599,8 @@ __translate_group(struct rte_eth_dev *dev,
 		 * These flow rules are inserted in group 0 and this group is reserved by PMD
 		 * for these purposes.
 		 *
-		 * As a result, if representor matching or extended metadata mode is enabled,
-		 * group provided by the user must be incremented to avoid inserting flow rules
-		 * in group 0.
+		 * Representor matching is always enabled, so the group provided by the user
+		 * must be incremented to avoid inserting flow rules in group 0.
 		 */
 		if (group > MLX5_HW_MAX_EGRESS_GROUP)
 			return rte_flow_error_set(error, EINVAL,
