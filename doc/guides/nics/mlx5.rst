@@ -2133,6 +2133,14 @@ how this support is implemented and limitations.
 HW steering flow engine
 ~~~~~~~~~~~~~~~~~~~~~~~
 
+The synchronous flow API sizes its default counter pool for half of the NIC counter capacity.
+This pool is allocated from hugepage memory when the first ``COUNT`` action is created.
+Other allocations, such as large mbuf pools, can use up the hugepage heap first,
+causing counter creation to fail.
+
+Reserve more hugepages, or call ``rte_flow_configure()`` with a smaller ``nb_counters``
+before creating the first ``COUNT`` action to reduce the pool's memory requirement.
+
 Flow counters are allocated from HW in bulks.
 A set of bulks forms a flow counter pool managed by PMD.
 When flow counters are queried from HW,
