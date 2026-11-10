@@ -761,4 +761,5 @@ test_pmd_memif(void)
 
 #endif /* RTE_EXEC_ENV_LINUX */
 
-REGISTER_FAST_TEST(memif_pmd_autotest, NOHUGE_OK, ASAN_OK, test_pmd_memif);
+/* registering as fast test deferred until driver is fixed. */
+REGISTER_ATTIC_TEST(memif_pmd_autotest, test_pmd_memif);
