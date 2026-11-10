@@ -17,6 +17,7 @@
 #include <rte_ip.h>
 #include <rte_ethdev.h>
 #include <rte_errno.h>
+#include <rte_alarm.h>
 #include <rte_cycles.h>
 
 #include <assert.h>
@@ -1796,26 +1797,23 @@ tap_mac_addr_remove(struct rte_eth_dev *dev __rte_unused,
 
 static void tap_dev_intr_handler(void *cb_arg);
 static int tap_lsc_intr_handle_set(struct rte_eth_dev *dev, int set);
+static void tap_lsc_register_alarm(void *arg);
 
-static int
-tap_netns_change(struct rte_eth_dev *dev)
-{
-	struct pmd_internals *pmd = dev->data->dev_private;
 #ifdef TUNGETDEVNETNS
-	int netns_fd, orig_netns_fd, new_nlsk_fd;
+static int
+tap_dev_ns_switch(struct pmd_internals *pmd, int *orig_netns_fd)
+{
+	int netns_fd;
 
 	netns_fd = ioctl(pmd->ka_fd, TUNGETDEVNETNS);
 	if (netns_fd < 0) {
 		TAP_LOG(INFO, "%s: interface deleted", pmd->name);
-		return 0;
+		return -1;
 	}
 
-	/* Interface was moved to another namespace */
-	pmd->if_index = 0;
-
 	/* Save current namespace */
-	orig_netns_fd = open("/proc/self/ns/net", O_RDONLY);
-	if (orig_netns_fd < 0) {
+	*orig_netns_fd = open("/proc/self/ns/net", O_RDONLY);
+	if (*orig_netns_fd < 0) {
 		TAP_LOG(ERR, "%s: failed to open original netns: %s",
 			pmd->name, strerror(errno));
 		close(netns_fd);
@@ -1827,9 +1825,36 @@ tap_netns_change(struct rte_eth_dev *dev)
 		TAP_LOG(ERR, "%s: failed to enter new netns: %s",
 			pmd->name, strerror(errno));
 		close(netns_fd);
-		close(orig_netns_fd);
+		close(*orig_netns_fd);
 		return -1;
 	}
+
+	close(netns_fd);
+	return 0;
+}
+
+static void
+tap_dev_ns_restore(struct pmd_internals *pmd, int orig_netns_fd)
+{
+	if (setns(orig_netns_fd, CLONE_NEWNET) < 0)
+		TAP_LOG(ERR, "%s: failed to restore original netns: %s",
+			pmd->name, strerror(errno));
+	close(orig_netns_fd);
+}
+#endif
+
+static int
+tap_netns_change(struct rte_eth_dev *dev)
+{
+	struct pmd_internals *pmd = dev->data->dev_private;
+#ifdef TUNGETDEVNETNS
+	int orig_netns_fd, new_nlsk_fd;
+
+	/* Interface was moved to another namespace */
+	pmd->if_index = 0;
+
+	if (tap_dev_ns_switch(pmd, &orig_netns_fd) < 0)
+		return 0;
 
 	/*
 	 * Update ifindex by querying interface name.
@@ -1840,22 +1865,7 @@ tap_netns_change(struct rte_eth_dev *dev)
 	/* Recreate netlink socket in new namespace */
 	new_nlsk_fd = tap_nl_init(0);
 
-	/* Recreate LSC interrupt netlink socket in new namespace */
-	rte_intr_callback_unregister_pending(pmd->intr_handle, tap_dev_intr_handler, dev, NULL);
-	if (tap_lsc_intr_handle_set(dev, 1) < 0)
-		TAP_LOG(WARNING, "%s: failed to recreate LSC interrupt socket",
-			pmd->name);
-
-	/* Force carrier back after switching netns */
-	tap_carrier_set(pmd, 1);
-
-	/* Switch back to original namespace */
-	if (setns(orig_netns_fd, CLONE_NEWNET) < 0)
-		TAP_LOG(ERR, "%s: failed to return to original netns: %s",
-			pmd->name, strerror(errno));
-
-	close(orig_netns_fd);
-	close(netns_fd);
+	tap_dev_ns_restore(pmd, orig_netns_fd);
 
 	if (pmd->if_index == 0) {
 		TAP_LOG(WARNING, "%s: interface moved to another namespace, "
@@ -1876,6 +1886,11 @@ tap_netns_change(struct rte_eth_dev *dev)
 	if (pmd->nlsk_fd >= 0)
 		tap_nl_final(pmd->nlsk_fd);
 	pmd->nlsk_fd = new_nlsk_fd;
+
+	/* Defer LSC re-registration outside callback context */
+	if (rte_eal_alarm_set(1, tap_lsc_register_alarm, dev) < 0)
+		TAP_LOG(ERR, "%s: failed to schedule LSC re-registration",
+			pmd->name);
 
 	TAP_LOG(INFO, "%s: interface moved to another namespace, new ifindex: %u",
 		pmd->name, pmd->if_index);
@@ -1929,6 +1944,7 @@ tap_lsc_intr_handle_set(struct rte_eth_dev *dev, int set)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
 	int ret;
+	int fd;
 
 	/* In any case, disable interrupt if the conf is no longer there. */
 	if (!dev->data->dev_conf.intr_conf.lsc) {
@@ -1953,26 +1969,58 @@ tap_lsc_intr_handle_set(struct rte_eth_dev *dev, int set)
 
 clean:
 	do {
-		ret = rte_intr_callback_unregister(pmd->intr_handle,
-			tap_dev_intr_handler, dev);
-		if (ret >= 0) {
-			break;
-		} else if (ret == -EAGAIN) {
+		rte_eal_alarm_cancel(tap_lsc_register_alarm, dev);
+		fd = rte_intr_fd_get(pmd->intr_handle);
+		if (fd < 0)
+			return 0;
+
+		do {
+			ret = rte_intr_callback_unregister(pmd->intr_handle, tap_dev_intr_handler,
+				dev);
+			if (ret >= 0 || ret == -ENOENT)
+				break;
+			if (ret != -EAGAIN) {
+				TAP_LOG(ERR, "intr callback unregister failed: %d", ret);
+				break;
+			}
 			rte_delay_ms(100);
-		} else {
-			TAP_LOG(ERR, "intr callback unregister failed: %d",
-				     ret);
+		} while (true);
+
+		/* Alarm may have replaced the fd while unregistering */
+		rte_eal_alarm_cancel(tap_lsc_register_alarm, dev);
+		if (rte_intr_fd_get(pmd->intr_handle) == fd)
 			break;
-		}
 	} while (true);
 
-	if (rte_intr_fd_get(pmd->intr_handle) >= 0) {
-		tap_nl_final(rte_intr_fd_get(pmd->intr_handle));
-		/* fd has been closed already, only clear reference here. */
-		rte_intr_fd_set(pmd->intr_handle, -1);
-	}
+	tap_nl_final(fd);
+	/* fd has been closed already, only clear reference here. */
+	rte_intr_fd_set(pmd->intr_handle, -1);
 
 	return 0;
+}
+
+static void
+tap_lsc_register_alarm(void *arg)
+{
+#ifdef TUNGETDEVNETNS
+	struct rte_eth_dev *dev = arg;
+	struct pmd_internals *pmd = dev->data->dev_private;
+	int orig_netns_fd;
+
+	if (tap_dev_ns_switch(pmd, &orig_netns_fd) < 0)
+		return;
+
+	tap_lsc_intr_handle_set(dev, 0);
+	if (tap_lsc_intr_handle_set(dev, 1) < 0)
+		TAP_LOG(ERR, "%s: failed to register LSC interrupt", pmd->name);
+
+	tap_dev_ns_restore(pmd, orig_netns_fd);
+
+	tap_carrier_set(pmd, 1);
+	tap_link_update(dev, 0);
+#else
+	RTE_SET_USED(arg);
+#endif
 }
 
 static int
