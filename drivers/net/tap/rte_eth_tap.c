@@ -1106,6 +1106,8 @@ tap_dev_close(struct rte_eth_dev *dev)
 		return 0;
 	}
 
+	tap_intr_handle_set(dev, 0);
+
 	if (!internals->persist)
 		tap_link_set_down(dev);
 
