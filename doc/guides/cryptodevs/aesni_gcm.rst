@@ -40,8 +40,8 @@ Installation
 To build DPDK with the AESNI_GCM_PMD the user is required to download the multi-buffer
 library from `here <https://github.com/01org/intel-ipsec-mb>`_
 and compile it on their user system before building DPDK.
-The latest version of the library supported by this PMD is v1.5, which
-can be downloaded in `<https://github.com/01org/intel-ipsec-mb/archive/v1.5.zip>`_.
+The latest version of the library supported by this PMD is v3.0, which
+can be downloaded from `<https://github.com/intel/intel-ipsec-mb/archive/refs/tags/v3.0.0.zip>`_.
 
 For Arm system, ARM64 port of the multi-buffer library can be downloaded from
 https://gitlab.arm.com/arm-reference-solutions/ipsec-mb/-/tree/main/.

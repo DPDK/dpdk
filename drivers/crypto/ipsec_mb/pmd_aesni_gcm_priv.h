@@ -79,41 +79,41 @@ enum aesni_gcm_key_length {
 
 typedef void (*aesni_gcm_t)(const struct gcm_key_data *gcm_key_data,
 			    struct gcm_context_data *gcm_ctx_data,
-			    uint8_t *out, const uint8_t *in,
-			    uint64_t plaintext_len, const uint8_t *iv,
-			    const uint8_t *aad, uint64_t aad_len,
-			    uint8_t *auth_tag, uint64_t auth_tag_len);
+			    void *out, const void *in,
+			    uint64_t plaintext_len, const void *iv,
+			    const void *aad, uint64_t aad_len,
+			    void *auth_tag, uint64_t auth_tag_len, IMB_MGR *state);
 
 typedef void (*aesni_gcm_pre_t)(const void *key,
-				struct gcm_key_data *gcm_data);
+				struct gcm_key_data *gcm_data, IMB_MGR *state);
 
 typedef void (*aesni_gcm_init_t)(const struct gcm_key_data *gcm_key_data,
 				 struct gcm_context_data *gcm_ctx_data,
-				 const uint8_t *iv, uint8_t const *aad,
-				 uint64_t aad_len);
+				 const void *iv, const void *aad,
+				 uint64_t aad_len, IMB_MGR *state);
 
 typedef void (*aesni_gcm_update_t)(const struct gcm_key_data *gcm_key_data,
 				   struct gcm_context_data *gcm_ctx_data,
-				   uint8_t *out, const uint8_t *in,
-				   uint64_t plaintext_len);
+				   void *out, const void *in,
+				   uint64_t plaintext_len, IMB_MGR *state);
 
 typedef void (*aesni_gcm_finalize_t)(const struct gcm_key_data *gcm_key_data,
 				     struct gcm_context_data *gcm_ctx_data,
-				     uint8_t *auth_tag, uint64_t auth_tag_len);
+				     void *auth_tag, uint64_t auth_tag_len, IMB_MGR *state);
 
 typedef void (*aesni_gmac_init_t)(const struct gcm_key_data *gcm_key_data,
 				  struct gcm_context_data *gcm_ctx_data,
-				  const uint8_t *iv, const uint64_t iv_len);
+				  const void *iv, const uint64_t iv_len, IMB_MGR *state);
 
 typedef void (*aesni_gmac_update_t)(const struct gcm_key_data *gcm_key_data,
 				    struct gcm_context_data *gcm_ctx_data,
-				    const uint8_t *in,
-				    const uint64_t plaintext_len);
+				    const void *in,
+				    const uint64_t plaintext_len, IMB_MGR *state);
 
 typedef void (*aesni_gmac_finalize_t)(const struct gcm_key_data *gcm_key_data,
 				      struct gcm_context_data *gcm_ctx_data,
-				      uint8_t *auth_tag,
-				      const uint64_t auth_tag_len);
+				      void *auth_tag,
+				      const uint64_t auth_tag_len, IMB_MGR *state);
 
 /** GCM operation handlers */
 struct aesni_gcm_ops {
@@ -128,6 +128,7 @@ struct aesni_gcm_ops {
 	aesni_gmac_init_t gmac_init;
 	aesni_gmac_update_t gmac_update;
 	aesni_gmac_finalize_t gmac_finalize;
+	IMB_MGR *mb_mgr;
 };
 
 RTE_DEFINE_PER_LCORE(struct aesni_gcm_ops, gcm_ops[GCM_NUM_KEY_TYPES]);

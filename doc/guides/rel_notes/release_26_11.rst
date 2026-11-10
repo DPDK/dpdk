@@ -291,6 +291,7 @@ New Features
   * Added support for SHA3-224, SHA3-256, SHA3-384, and SHA3-512 hash
     algorithms and their HMAC variants.
   * Added support for SHAKE-128 and SHAKE-256 hash algorithms.
+  * Added support for version 3.0 of IPsec MB Library.
 
 * **Added AMD AE4DMA DMA PMD.**
 

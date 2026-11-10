@@ -19,6 +19,15 @@
 
 #define MAX_NUM_SEGS 16
 
+/* bit len removed in 3.0 */
+#if IMB_VERSION(3, 0, 0) > IMB_VERSION_NUM
+#define IMB_CIPHER_SNOW3G_UEA2 IMB_CIPHER_SNOW3G_UEA2_BITLEN
+#define IMB_CIPHER_KASUMI_UEA1 IMB_CIPHER_KASUMI_UEA1_BITLEN
+#define IMB_AUTH_ZUC_EIA3 IMB_AUTH_ZUC_EIA3_BITLEN
+#define IMB_AUTH_SNOW3G_UIA2 IMB_AUTH_SNOW3G_UIA2_BITLEN
+#define IMB_AUTH_ZUC256_EIA3 IMB_AUTH_ZUC256_EIA3_BITLEN
+#endif
+
 int
 aesni_mb_session_configure(IMB_MGR * m __rte_unused, void *priv_sess,
 		const struct rte_crypto_sym_xform *xform);
@@ -573,18 +582,34 @@ static const struct rte_cryptodev_capabilities aesni_mb_capabilities[] = {
 				.block_size = 16,
 				.key_size = {
 					.min = 16,
+#if IMB_VERSION(3, 0, 0) > IMB_VERSION_NUM
 					.max = 32,
 					.increment = 16
+#else
+					.max = 16,
+					.increment = 0
+#endif
 				},
 				.digest_size = {
 					.min = 4,
+#if IMB_VERSION(3, 0, 0) > IMB_VERSION_NUM
 					.max = 16,
 					.increment = 4
 				},
+#else
+					.max = 4,
+					.increment = 0
+				},
+#endif
 				.iv_size = {
 					.min = 16,
+#if IMB_VERSION(3, 0, 0) > IMB_VERSION_NUM
 					.max = 25,
 					.increment = 9
+#else
+					.max = 16,
+					.increment = 0
+#endif
 				}
 			}, }
 		}, }
@@ -598,13 +623,23 @@ static const struct rte_cryptodev_capabilities aesni_mb_capabilities[] = {
 				.block_size = 16,
 				.key_size = {
 					.min = 16,
+#if IMB_VERSION(3, 0, 0) > IMB_VERSION_NUM
 					.max = 32,
 					.increment = 16
+#else
+					.max = 16,
+					.increment = 0
+#endif
 				},
 				.iv_size = {
 					.min = 16,
+#if IMB_VERSION(3, 0, 0) > IMB_VERSION_NUM
 					.max = 25,
 					.increment = 9
+#else
+					.max = 16,
+					.increment = 0
+#endif
 				},
 			}, }
 		}, }
@@ -1104,9 +1139,9 @@ static const unsigned int auth_blocksize[] = {
 		[IMB_AUTH_SHA_256]		= 64,
 		[IMB_AUTH_SHA_384]		= 128,
 		[IMB_AUTH_SHA_512]		= 128,
-		[IMB_AUTH_ZUC_EIA3_BITLEN]	= 16,
-		[IMB_AUTH_SNOW3G_UIA2_BITLEN]	= 16,
-		[IMB_AUTH_KASUMI_UIA1]		= 16,
+		[IMB_AUTH_ZUC_EIA3]		= 16,
+		[IMB_AUTH_SNOW3G_UIA2]	= 16,
+		[IMB_AUTH_KASUMI_UIA1]	= 16,
 #if IMB_VERSION(3, 0, 0) <= IMB_VERSION_NUM
 		[IMB_AUTH_SHA3_224]		= 144,
 		[IMB_AUTH_SHA3_256]		= 136,
@@ -1150,9 +1185,9 @@ static const unsigned int auth_truncated_digest_byte_lengths[] = {
 		[IMB_AUTH_SHA_256]		= 32,
 		[IMB_AUTH_SHA_384]		= 48,
 		[IMB_AUTH_SHA_512]		= 64,
-		[IMB_AUTH_ZUC_EIA3_BITLEN]	= 4,
-		[IMB_AUTH_SNOW3G_UIA2_BITLEN]	= 4,
-		[IMB_AUTH_KASUMI_UIA1]		= 4,
+		[IMB_AUTH_ZUC_EIA3]		= 4,
+		[IMB_AUTH_SNOW3G_UIA2]	= 4,
+		[IMB_AUTH_KASUMI_UIA1]	= 4,
 #if IMB_VERSION(3, 0, 0) <= IMB_VERSION_NUM
 		[IMB_AUTH_SHA3_224]		= 28,
 		[IMB_AUTH_SHA3_256]		= 32,
@@ -1197,9 +1232,9 @@ static const unsigned int auth_digest_byte_lengths[] = {
 		[IMB_AUTH_SHA_256]		= 32,
 		[IMB_AUTH_SHA_384]		= 48,
 		[IMB_AUTH_SHA_512]		= 64,
-		[IMB_AUTH_ZUC_EIA3_BITLEN]	= 4,
-		[IMB_AUTH_SNOW3G_UIA2_BITLEN]	= 4,
-		[IMB_AUTH_KASUMI_UIA1]		= 4,
+		[IMB_AUTH_ZUC_EIA3]		= 4,
+		[IMB_AUTH_SNOW3G_UIA2]	= 4,
+		[IMB_AUTH_KASUMI_UIA1]	= 4,
 #if IMB_VERSION(1, 5, 0) <= IMB_VERSION_NUM
 		[IMB_AUTH_SM3]			= 32,
 		[IMB_AUTH_HMAC_SM3]		= 32,
