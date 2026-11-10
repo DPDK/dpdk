@@ -340,6 +340,14 @@ New Features
   all branches feeding a converge node complete before that node is visited.
   Reducing the occurrence of double-visits.
 
+* **Added explicit link auto-negotiation control in testpmd.**
+
+  Added an optional ``autoneg on|off`` setting after ``duplex``
+  in the port speed configuration command.
+  For compatibility with older behavior, if unspecified,
+  auto-negotiation is disabled by default for numeric speeds,
+  and enabled for "auto" speed selection.
+
 * **Added BPF validation application.**
 
   Added ``dpdk-validate-bpf`` tool to pre-validate eBPF programs

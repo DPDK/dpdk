@@ -2167,7 +2167,17 @@ port config - speed
 Set the speed and duplex mode for all ports or a specific port::
 
    testpmd> port config (port_id|all) speed (10|100|1000|2500|5000|10000|25000|40000|50000|100000|200000|400000|800000|1600000|auto) \
-            duplex (half|full|auto)
+            duplex (half|full|auto) [autoneg (on|off)]
+
+With ``autoneg on``, the selected speed is advertised with link auto-negotiation enabled.
+With ``autoneg off``, link auto-negotiation is disabled and the selected speed is forced.
+If ``autoneg`` parameter is omitted for a numeric speed, link auto-negotiation is disabled.
+The ``auto`` speed advertises all supported speeds
+and enables link auto-negotiation if ``autoneg`` is omitted.
+
+.. note::
+
+   Combining ``auto`` speed with ``autoneg off`` is an error.
 
 port config - queues/descriptors
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
