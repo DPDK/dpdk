@@ -356,6 +356,12 @@ typedef int (*ipsec_mb_session_configure_t)(IMB_MGR *mbr_mgr,
 		void *session_private,
 		const struct rte_crypto_sym_xform *xform);
 
+typedef int (*ipsec_mb_asym_session_configure_t)(IMB_MGR *mbr_mgr,
+		void *session_private,
+		const struct rte_crypto_asym_xform *xform);
+
+typedef void (*ipsec_mb_asym_session_clear_t)(void *session_private);
+
 /** Configure internals PMD type specific data */
 typedef int (*ipsec_mb_dev_configure_t)(struct rte_cryptodev *dev);
 
@@ -366,6 +372,9 @@ struct ipsec_mb_internals {
 	ipsec_mb_dev_configure_t dev_config;
 	ipsec_mb_queue_pair_configure_t queue_pair_configure;
 	ipsec_mb_session_configure_t session_configure;
+	ipsec_mb_asym_session_configure_t asym_session_configure;
+	ipsec_mb_asym_session_clear_t asym_session_clear;
+	bool asym_session_created;
 	const struct rte_cryptodev_capabilities *caps;
 	struct rte_cryptodev_ops *ops;
 	struct rte_security_ops *security_ops;
@@ -423,10 +432,21 @@ int ipsec_mb_sym_session_configure(
 	struct rte_crypto_sym_xform *xform,
 	struct rte_cryptodev_sym_session *sess);
 
+/** Configure an aesni multi-buffer asym session from a crypto xform chain */
+int ipsec_mb_asym_session_configure(
+	struct rte_cryptodev *dev,
+	struct rte_crypto_asym_xform *xform,
+	struct rte_cryptodev_asym_session *sess);
+
 /** Clear the memory of session so it does not leave key material behind */
 void
 ipsec_mb_sym_session_clear(struct rte_cryptodev *dev,
 				struct rte_cryptodev_sym_session *sess);
+
+/** Clear the asym session memory */
+void
+ipsec_mb_asym_session_clear(struct rte_cryptodev *dev,
+				struct rte_cryptodev_asym_session *sess);
 
 /** Get session from op. If sessionless create a session */
 static __rte_always_inline void *

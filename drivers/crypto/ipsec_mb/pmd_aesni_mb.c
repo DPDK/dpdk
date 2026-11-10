@@ -930,7 +930,7 @@ aesni_mb_set_session_aead_parameters(IMB_MGR *mb_mgr,
 }
 
 /** Configure a aesni multi-buffer session from a crypto xform chain */
-int
+static int
 aesni_mb_session_configure(IMB_MGR *mb_mgr,
 		void *priv_sess,
 		const struct rte_crypto_sym_xform *xform)
@@ -1020,6 +1020,97 @@ aesni_mb_session_configure(IMB_MGR *mb_mgr,
 
 	return 0;
 }
+
+#if IMB_VERSION(3, 0, 0) <= IMB_VERSION_NUM
+/** Configure a aesni multi-buffer asym session from a crypto xform chain */
+static int
+aesni_mb_asym_session_configure(IMB_MGR *mb_mgr,
+		void *priv_sess,
+		const struct rte_crypto_asym_xform *xform)
+{
+	(void)mb_mgr;
+	struct aesni_mb_session *sess = (struct aesni_mb_session *) priv_sess;
+	int ret = 0;
+
+	sess->asym.xform_type = xform->xform_type;
+
+	switch (sess->asym.xform_type) {
+	case RTE_CRYPTO_ASYM_XFORM_ML_KEM:
+	{
+		switch (xform->mlkem.type) {
+		case RTE_CRYPTO_ML_KEM_512:
+			sess->asym.ml_kem.alg = IMB_ML_KEM_512;
+			break;
+		case RTE_CRYPTO_ML_KEM_768:
+			sess->asym.ml_kem.alg = IMB_ML_KEM_768;
+			break;
+		case RTE_CRYPTO_ML_KEM_1024:
+			sess->asym.ml_kem.alg = IMB_ML_KEM_1024;
+			break;
+		default:
+			ret = -ENOTSUP;
+			IPSEC_MB_LOG(ERR, "Unsupported type");
+			return ret;
+		}
+		ret = imb_ml_kem_new(mb_mgr, sess->asym.ml_kem.alg, &sess->asym.ml_kem.ctx);
+		if (ret) {
+			IPSEC_MB_LOG(ERR, "Failed to create ML KEM session");
+			return ret;
+		}
+		IMB_ML_KEM_KEYGEN_PARAMS_INIT(&sess->asym.ml_kem.keygen_params);
+		IMB_ML_KEM_ENCAP_PARAMS_INIT(&sess->asym.ml_kem.encap_params);
+	}
+	break;
+	case RTE_CRYPTO_ASYM_XFORM_ML_DSA:
+	{
+		switch (xform->mldsa.type) {
+		case RTE_CRYPTO_ML_DSA_44:
+			sess->asym.ml_dsa.alg = IMB_ML_DSA_44;
+			break;
+		case RTE_CRYPTO_ML_DSA_65:
+			sess->asym.ml_dsa.alg = IMB_ML_DSA_65;
+			break;
+		case RTE_CRYPTO_ML_DSA_87:
+			sess->asym.ml_dsa.alg = IMB_ML_DSA_87;
+			break;
+		default:
+			ret = -ENOTSUP;
+			IPSEC_MB_LOG(ERR, "Unsupported type");
+			return ret;
+		}
+		ret = imb_ml_dsa_new(mb_mgr, sess->asym.ml_dsa.alg, &sess->asym.ml_dsa.ctx);
+		if (ret) {
+			IPSEC_MB_LOG(ERR, "Failed to create ML DSA session");
+			return ret;
+		}
+		IMB_ML_DSA_KEYGEN_PARAMS_INIT(&sess->asym.ml_dsa.keygen_params);
+		IMB_ML_DSA_SIGN_PARAMS_INIT(&sess->asym.ml_dsa.sign_params);
+		IMB_ML_DSA_VERIFY_PARAMS_INIT(&sess->asym.ml_dsa.verify_params);
+	}
+	break;
+	default:
+		ret = -ENOTSUP;
+		IPSEC_MB_LOG(ERR, "Unsupported algorithm");
+		return ret;
+	};
+
+	return ret;
+}
+
+static void
+aesni_mb_asym_session_clear(void *priv_sess)
+{
+	struct aesni_mb_session *sess = (struct aesni_mb_session *) priv_sess;
+	if (sess->asym.xform_type == RTE_CRYPTO_ASYM_XFORM_ML_KEM) {
+		imb_ml_kem_free(sess->asym.ml_kem.ctx);
+		sess->asym.ml_kem.ctx = NULL;
+	} else if (sess->asym.xform_type == RTE_CRYPTO_ASYM_XFORM_ML_DSA) {
+		imb_ml_dsa_free(sess->asym.ml_dsa.ctx);
+		sess->asym.ml_dsa.ctx = NULL;
+	}
+}
+
+#endif
 
 /** Check DOCSIS security session configuration is valid */
 static int
@@ -2454,7 +2545,237 @@ set_job_null_op(IMB_JOB *job, struct rte_crypto_op *op)
 	return job;
 }
 
-uint16_t
+#if IMB_VERSION(3, 0, 0) <= IMB_VERSION_NUM
+static inline size_t aesni_mb_ml_kem_ek_sz(const IMB_ML_KEM_ALG alg)
+{
+		switch (alg) {
+		case IMB_ML_KEM_512:
+				return IMB_ML_KEM_512_PUBKEY_BYTES;
+		case IMB_ML_KEM_768:
+				return IMB_ML_KEM_768_PUBKEY_BYTES;
+		case IMB_ML_KEM_1024:
+				return IMB_ML_KEM_1024_PUBKEY_BYTES;
+		}
+		return 0;
+}
+static inline size_t aesni_mb_ml_kem_dk_sz(const IMB_ML_KEM_ALG alg)
+{
+		switch (alg) {
+		case IMB_ML_KEM_512:
+				return IMB_ML_KEM_512_PRIVKEY_BYTES;
+		case IMB_ML_KEM_768:
+				return IMB_ML_KEM_768_PRIVKEY_BYTES;
+		case IMB_ML_KEM_1024:
+				return IMB_ML_KEM_1024_PRIVKEY_BYTES;
+		}
+		return 0;
+}
+static inline size_t aesni_mb_ml_kem_ct_sz(const IMB_ML_KEM_ALG alg)
+{
+		switch (alg) {
+		case IMB_ML_KEM_512:
+				return IMB_ML_KEM_512_CIPHERTEXT_BYTES;
+		case IMB_ML_KEM_768:
+				return IMB_ML_KEM_768_CIPHERTEXT_BYTES;
+		case IMB_ML_KEM_1024:
+				return IMB_ML_KEM_1024_CIPHERTEXT_BYTES;
+		}
+		return 0;
+}
+static inline size_t aesni_mb_ml_dsa_pk_sz(const IMB_ML_DSA_ALG alg)
+{
+		switch (alg) {
+		case IMB_ML_DSA_44:
+				return IMB_ML_DSA_44_PUBKEY_BYTES;
+		case IMB_ML_DSA_65:
+				return IMB_ML_DSA_65_PUBKEY_BYTES;
+		case IMB_ML_DSA_87:
+				return IMB_ML_DSA_87_PUBKEY_BYTES;
+		}
+		return 0;
+}
+static inline size_t aesni_mb_ml_dsa_sk_sz(const IMB_ML_DSA_ALG alg)
+{
+		switch (alg) {
+		case IMB_ML_DSA_44:
+				return IMB_ML_DSA_44_PRIVKEY_BYTES;
+		case IMB_ML_DSA_65:
+				return IMB_ML_DSA_65_PRIVKEY_BYTES;
+		case IMB_ML_DSA_87:
+				return IMB_ML_DSA_87_PRIVKEY_BYTES;
+		}
+		return 0;
+}
+static inline size_t aesni_mb_ml_dsa_sig_sz(const IMB_ML_DSA_ALG alg)
+{
+		switch (alg) {
+		case IMB_ML_DSA_44:
+				return IMB_ML_DSA_44_SIG_BYTES;
+		case IMB_ML_DSA_65:
+				return IMB_ML_DSA_65_SIG_BYTES;
+		case IMB_ML_DSA_87:
+				return IMB_ML_DSA_87_SIG_BYTES;
+		}
+		return 0;
+}
+
+static void
+aesni_mb_asym_process(struct rte_crypto_op *op)
+{
+	struct rte_crypto_asym_op *aop = op->asym;
+	struct aesni_mb_session *sess =
+		CRYPTODEV_GET_ASYM_SESS_PRIV(aop->session);
+	op->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
+	int rc = 0;
+
+	switch (sess->asym.xform_type) {
+	case RTE_CRYPTO_ASYM_XFORM_ML_KEM:
+	{
+		struct rte_crypto_ml_kem_op *mlkem = &aop->mlkem;
+		switch (mlkem->op) {
+		case RTE_CRYPTO_ML_KEM_OP_KEYGEN:
+		{
+			uint8_t seed_d_z[64];
+			struct rte_crypto_ml_kem_keygen_op *keygen = &mlkem->keygen;
+			memcpy(seed_d_z,      keygen->d.data, 32);
+			memcpy(&seed_d_z[32], keygen->z.data, 32);
+			sess->asym.ml_kem.keygen_params.seed_d_z = seed_d_z;
+			sess->asym.ml_kem.keygen_params.seed_d_z_len = 64;
+			keygen->ek.length = aesni_mb_ml_kem_ek_sz(sess->asym.ml_kem.alg);
+			keygen->dk.length = aesni_mb_ml_kem_dk_sz(sess->asym.ml_kem.alg);
+			rc = imb_ml_kem_keypair(sess->asym.ml_kem.ctx,
+				keygen->ek.data, keygen->ek.length,
+				keygen->dk.data, keygen->dk.length,
+				&sess->asym.ml_kem.keygen_params);
+		}
+			break;
+		case RTE_CRYPTO_ML_KEM_OP_ENCAP:
+		{
+			struct rte_crypto_ml_kem_encap_op *encap = &mlkem->encap;
+			sess->asym.ml_kem.encap_params.m_32 = encap->message.data;
+			sess->asym.ml_kem.encap_params.m_len = encap->message.length;
+			encap->ek.length = aesni_mb_ml_kem_ek_sz(sess->asym.ml_kem.alg);
+			encap->cipher.length = aesni_mb_ml_kem_ct_sz(sess->asym.ml_kem.alg);
+			rc = imb_ml_kem_set_pubkey(sess->asym.ml_kem.ctx,
+				encap->ek.data, encap->ek.length);
+			if (rc == 0)
+				rc = imb_ml_kem_encap(sess->asym.ml_kem.ctx,
+					encap->cipher.data, encap->cipher.length,
+					encap->sk.data, encap->sk.length,
+					&sess->asym.ml_kem.encap_params);
+		}
+			break;
+		case RTE_CRYPTO_ML_KEM_OP_DECAP:
+		{
+			struct rte_crypto_ml_kem_decap_op *decap = &mlkem->decap;
+			decap->dk.length = aesni_mb_ml_kem_dk_sz(sess->asym.ml_kem.alg);
+			decap->cipher.length = aesni_mb_ml_kem_ct_sz(sess->asym.ml_kem.alg);
+			rc = imb_ml_kem_set_privkey(sess->asym.ml_kem.ctx,
+				decap->dk.data, decap->dk.length);
+			if (rc == 0)
+				rc = imb_ml_kem_decap(sess->asym.ml_kem.ctx,
+					decap->sk.data, decap->sk.length,
+					decap->cipher.data, decap->cipher.length,
+					NULL);
+		}
+			break;
+		default:
+			op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+			break;
+		};
+	}
+	break;
+	case RTE_CRYPTO_ASYM_XFORM_ML_DSA:
+	{
+		struct rte_crypto_ml_dsa_op *mldsa = &aop->mldsa;
+		switch (mldsa->op) {
+		case RTE_CRYPTO_ML_DSA_OP_KEYGEN:
+		{
+			struct rte_crypto_ml_dsa_keygen_op *keygen = &mldsa->keygen;
+			sess->asym.ml_dsa.keygen_params.xi_32 = keygen->seed.data;
+			sess->asym.ml_dsa.keygen_params.xi_len = keygen->seed.length;
+			keygen->pubkey.length =
+				aesni_mb_ml_dsa_pk_sz(sess->asym.ml_dsa.alg);
+			keygen->privkey.length =
+				aesni_mb_ml_dsa_sk_sz(sess->asym.ml_dsa.alg);
+			rc = imb_ml_dsa_keypair(sess->asym.ml_dsa.ctx,
+				keygen->pubkey.data, keygen->pubkey.length,
+				keygen->privkey.data, keygen->privkey.length,
+				&sess->asym.ml_dsa.keygen_params);
+		}
+		break;
+		case RTE_CRYPTO_ML_DSA_OP_SIGN:
+		{
+			struct rte_crypto_ml_dsa_siggen_op *siggen = &mldsa->siggen;
+			void *md;
+			size_t md_len;
+			sess->asym.ml_dsa.sign_params.ctx = siggen->ctx.data;
+			sess->asym.ml_dsa.sign_params.ctx_len = siggen->ctx.length;
+			sess->asym.ml_dsa.sign_params.rnd_32 = siggen->seed.data;
+			sess->asym.ml_dsa.sign_params.rnd_len = siggen->seed.length;
+			if (siggen->mu.length) {
+				md = siggen->mu.data;
+				md_len = siggen->mu.length;
+				sess->asym.ml_dsa.sign_params.msg_is_mu = 1;
+			} else {
+				md = siggen->message.data;
+				md_len = siggen->message.length;
+				sess->asym.ml_dsa.sign_params.msg_is_mu = 0;
+			}
+			rc = imb_ml_dsa_set_privkey(sess->asym.ml_dsa.ctx,
+				siggen->privkey.data, siggen->privkey.length);
+			if (rc == 0)
+				rc = imb_ml_dsa_sign(sess->asym.ml_dsa.ctx,
+					siggen->sign.data, &siggen->sign.length,
+					md, md_len, &sess->asym.ml_dsa.sign_params);
+		}
+		break;
+		case RTE_CRYPTO_ML_DSA_OP_VERIFY:
+		{
+			struct rte_crypto_ml_dsa_sigver_op *sigver = &mldsa->sigver;
+			void *md;
+			size_t md_len;
+			sess->asym.ml_dsa.verify_params.ctx = sigver->ctx.data;
+			sess->asym.ml_dsa.verify_params.ctx_len = sigver->ctx.length;
+			if (sigver->mu.length) {
+				md = sigver->mu.data;
+				md_len = sigver->mu.length;
+				sess->asym.ml_dsa.verify_params.msg_is_mu = 1;
+			} else {
+				md = sigver->message.data;
+				md_len = sigver->message.length;
+				sess->asym.ml_dsa.verify_params.msg_is_mu = 0;
+			}
+			rc = imb_ml_dsa_set_pubkey(sess->asym.ml_dsa.ctx,
+				sigver->pubkey.data, sigver->pubkey.length);
+			if (rc == 0)
+				rc = imb_ml_dsa_verify(sess->asym.ml_dsa.ctx,
+					md, md_len, sigver->sign.data, sigver->sign.length,
+					&sess->asym.ml_dsa.verify_params);
+		}
+		break;
+		default:
+			op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+			break;
+		};
+
+	}
+	break;
+	default:
+		op->status = RTE_CRYPTO_OP_STATUS_ERROR;
+		break;
+	}
+	if (op->status == RTE_CRYPTO_OP_STATUS_NOT_PROCESSED)
+		op->status = (rc == 0) ? RTE_CRYPTO_OP_STATUS_SUCCESS :
+			RTE_CRYPTO_OP_STATUS_ERROR;
+#ifdef RTE_LIBRTE_PMD_AESNI_MB_DEBUG
+	if (rc)
+		IPSEC_MB_LOG(ERR, "%s", imb_get_strerror(rc));
+#endif
+}
+#endif
+
+static uint16_t
 aesni_mb_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 		uint16_t nb_ops)
 {
@@ -2519,8 +2840,38 @@ aesni_mb_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 		 * the IMB_MGR can use that pointer again in next
 		 * get_next calls.
 		 */
+#if IMB_VERSION(3, 0, 0) <= IMB_VERSION_NUM
+		{
+			struct ipsec_mb_internals *pmd_data =
+				&ipsec_mb_pmds[qp->pmd_type];
+			/* If there is at least one asym session created process
+			 * the asym ops here and copy the sym ops to deqd_ops array
+			 */
+			if (pmd_data->asym_session_created) {
+				struct rte_crypto_op *tmp_dq[IMB_MAX_BURST_SIZE];
+				uint16_t sym_cnt = 0;
+				nb_submit_ops = rte_ring_dequeue_burst(qp->ingress_queue,
+								(void **)tmp_dq, n, NULL);
+				for (i = 0; i < nb_submit_ops; i++) {
+					if (tmp_dq[i]->type == RTE_CRYPTO_OP_TYPE_ASYMMETRIC) {
+						aesni_mb_asym_process(tmp_dq[i]);
+						ops[processed_jobs++] = tmp_dq[i];
+					} else {
+						deqd_ops[sym_cnt++] = tmp_dq[i];
+					}
+				}
+				/* What remains are only symmetric ops. */
+				nb_submit_ops = sym_cnt;
+			} else {
+				/* No asym session created, all ops are sym*/
+				nb_submit_ops = rte_ring_dequeue_burst(qp->ingress_queue,
+								(void **)deqd_ops, n, NULL);
+			}
+		}
+#else
 		nb_submit_ops = rte_ring_dequeue_burst(qp->ingress_queue,
 						(void **)deqd_ops, n, NULL);
+#endif
 		for (i = 0; i < nb_submit_ops; i++) {
 			job = jobs[i];
 			op = deqd_ops[i];
@@ -2650,7 +3001,7 @@ verify_sync_dgst(struct rte_crypto_sym_vec *vec,
 	return k;
 }
 
-uint32_t
+static uint32_t
 aesni_mb_process_bulk(struct rte_cryptodev *dev __rte_unused,
 	struct rte_cryptodev_sym_session *sess, union rte_crypto_sym_ofs sofs,
 	struct rte_crypto_sym_vec *vec)
@@ -2737,7 +3088,12 @@ struct rte_cryptodev_ops aesni_mb_pmd_ops = {
 
 	.sym_session_get_size = ipsec_mb_sym_session_get_size,
 	.sym_session_configure = ipsec_mb_sym_session_configure,
-	.sym_session_clear = ipsec_mb_sym_session_clear
+	.sym_session_clear = ipsec_mb_sym_session_clear,
+#if IMB_VERSION(3, 0, 0) <= IMB_VERSION_NUM
+	.asym_session_get_size = ipsec_mb_sym_session_get_size,
+	.asym_session_configure = ipsec_mb_asym_session_configure,
+	.asym_session_clear = ipsec_mb_asym_session_clear,
+#endif
 };
 
 /**
@@ -2863,7 +3219,11 @@ RTE_INIT(ipsec_mb_register_aesni_mb)
 			RTE_CRYPTODEV_FF_OOP_LB_IN_LB_OUT |
 			RTE_CRYPTODEV_FF_SYM_CPU_CRYPTO |
 #if IMB_VERSION(3, 0, 0) > IMB_VERSION_NUM
+			/* removed in 3.0 */
 			RTE_CRYPTODEV_FF_NON_BYTE_ALIGNED_DATA |
+#else
+			/* added in 3.0 */
+			RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO |
 #endif
 			RTE_CRYPTODEV_FF_SYM_SESSIONLESS |
 			RTE_CRYPTODEV_FF_IN_PLACE_SGL |
@@ -2880,5 +3240,9 @@ RTE_INIT(ipsec_mb_register_aesni_mb)
 	aesni_mb_data->security_ops = &aesni_mb_pmd_sec_ops;
 	aesni_mb_data->dev_config = aesni_mb_configure_dev;
 	aesni_mb_data->session_configure = aesni_mb_session_configure;
+#if IMB_VERSION(3, 0, 0) <= IMB_VERSION_NUM
+	aesni_mb_data->asym_session_configure = aesni_mb_asym_session_configure;
+	aesni_mb_data->asym_session_clear = aesni_mb_asym_session_clear;
+#endif
 	aesni_mb_data->session_priv_size = sizeof(struct aesni_mb_session);
 }
