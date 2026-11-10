@@ -292,6 +292,9 @@ New Features
        - NEA4, NIA4, NCA4: Snow 5G confidentiality, integrity and AEAD modes.
        - NEA5, NIA5, NCA5: AES 256 confidentiality, integrity and AEAD modes.
        - NEA6, NIA6, NCA6: ZUC 256 confidentiality, integrity and AEAD modes.
+  * Added support for the following PQC asymmetric algorithms:
+       - ML-KEM: Module-Lattice-Based Key-Encapsulation Mechanism.
+       - ML-DSA: Module-Lattice-Based Digital Signature Algorithm.
 
 * **Updated Intel QuickAssist Technology (QAT) crypto driver.**
 

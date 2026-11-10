@@ -453,3 +453,52 @@ void
 ipsec_mb_sym_session_clear(struct rte_cryptodev *dev __rte_unused,
 		struct rte_cryptodev_sym_session *sess __rte_unused)
 {}
+
+/** Configure pmd specific multi-buffer asym session from a crypto xform chain */
+int
+ipsec_mb_asym_session_configure(
+	struct rte_cryptodev *dev, struct rte_crypto_asym_xform *xform,
+	struct rte_cryptodev_asym_session *sess)
+{
+	struct ipsec_mb_dev_private *internals = dev->data->dev_private;
+	struct ipsec_mb_internals *pmd_data =
+		&ipsec_mb_pmds[internals->pmd_type];
+	struct ipsec_mb_qp *qp = dev->data->queue_pairs[0];
+	IMB_MGR *mb_mgr = NULL;
+	int ret = 0;
+
+	if (qp != NULL)
+		mb_mgr = qp->mb_mgr;
+
+	if (!mb_mgr)
+		return -ENOMEM;
+
+	if (unlikely(sess == NULL)) {
+		IPSEC_MB_LOG(ERR, "invalid session struct");
+		if (qp == NULL)
+			free_mb_mgr(mb_mgr);
+		return -EINVAL;
+	}
+
+	ret = (*pmd_data->asym_session_configure)(mb_mgr,
+			CRYPTODEV_GET_ASYM_SESS_PRIV(sess), xform);
+	if (ret != 0) {
+		IPSEC_MB_LOG(ERR, "failed configure asym session parameters");
+		return ret;
+	}
+
+	pmd_data->asym_session_created = true;
+	return 0;
+}
+
+/** Clear the asym session memory */
+void
+ipsec_mb_asym_session_clear(struct rte_cryptodev *dev __rte_unused,
+		struct rte_cryptodev_asym_session *sess)
+{
+	struct ipsec_mb_dev_private *internals = dev->data->dev_private;
+	struct ipsec_mb_internals *pmd_data =
+		&ipsec_mb_pmds[internals->pmd_type];
+
+	(*pmd_data->asym_session_clear)(CRYPTODEV_GET_ASYM_SESS_PRIV(sess));
+}

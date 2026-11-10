@@ -28,18 +28,6 @@
 #define IMB_AUTH_ZUC256_EIA3 IMB_AUTH_ZUC256_EIA3_BITLEN
 #endif
 
-int
-aesni_mb_session_configure(IMB_MGR * m __rte_unused, void *priv_sess,
-		const struct rte_crypto_sym_xform *xform);
-
-uint16_t
-aesni_mb_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
-		uint16_t nb_ops);
-
-uint32_t
-aesni_mb_process_bulk(struct rte_cryptodev *dev __rte_unused,
-	struct rte_cryptodev_sym_session *sess, union rte_crypto_sym_ofs sofs,
-	struct rte_crypto_sym_vec *vec);
 
 static const struct rte_cryptodev_capabilities aesni_mb_capabilities[] = {
 	{	/* MD5 HMAC */
@@ -1330,6 +1318,60 @@ static const struct rte_cryptodev_capabilities aesni_mb_capabilities[] = {
 			}, }
 		}, }
 	},
+	{
+		/* ML-KEM */
+		.op = RTE_CRYPTO_OP_TYPE_ASYMMETRIC,
+		.asym = {
+			.xform_capa = {
+				.xform_type = RTE_CRYPTO_ASYM_XFORM_ML_KEM,
+				.op_types =
+				((1 << RTE_CRYPTO_ML_KEM_OP_KEYGEN) |
+				 (1 << RTE_CRYPTO_ML_KEM_OP_ENCAP) |
+				 (1 << RTE_CRYPTO_ML_KEM_OP_DECAP)),
+				.mlkem_capa = {
+					[RTE_CRYPTO_ML_KEM_OP_KEYGEN] =
+						(1 << RTE_CRYPTO_ML_KEM_512) |
+						(1 << RTE_CRYPTO_ML_KEM_768) |
+						(1 << RTE_CRYPTO_ML_KEM_1024),
+					[RTE_CRYPTO_ML_KEM_OP_ENCAP] =
+						(1 << RTE_CRYPTO_ML_KEM_512) |
+						(1 << RTE_CRYPTO_ML_KEM_768) |
+						(1 << RTE_CRYPTO_ML_KEM_1024),
+					[RTE_CRYPTO_ML_KEM_OP_DECAP] =
+						(1 << RTE_CRYPTO_ML_KEM_512) |
+						(1 << RTE_CRYPTO_ML_KEM_768) |
+						(1 << RTE_CRYPTO_ML_KEM_1024)
+				}
+			}
+		}
+	},
+	{
+		/* ML-DSA */
+		.op = RTE_CRYPTO_OP_TYPE_ASYMMETRIC,
+		.asym = {
+			.xform_capa = {
+				.xform_type = RTE_CRYPTO_ASYM_XFORM_ML_DSA,
+				.op_types =
+				((1 << RTE_CRYPTO_ML_DSA_OP_SIGN) |
+				 (1 << RTE_CRYPTO_ML_DSA_OP_KEYGEN) |
+				 (1 << RTE_CRYPTO_ML_DSA_OP_VERIFY)),
+				.mldsa_capa = {
+					[RTE_CRYPTO_ML_DSA_OP_KEYGEN] =
+						(1 << RTE_CRYPTO_ML_DSA_44) |
+						(1 << RTE_CRYPTO_ML_DSA_65) |
+						(1 << RTE_CRYPTO_ML_DSA_87),
+					[RTE_CRYPTO_ML_DSA_OP_SIGN] =
+						(1 << RTE_CRYPTO_ML_DSA_44) |
+						(1 << RTE_CRYPTO_ML_DSA_65) |
+						(1 << RTE_CRYPTO_ML_DSA_87),
+					[RTE_CRYPTO_ML_DSA_OP_VERIFY] =
+						(1 << RTE_CRYPTO_ML_DSA_44) |
+						(1 << RTE_CRYPTO_ML_DSA_65) |
+						(1 << RTE_CRYPTO_ML_DSA_87)
+				}
+			}
+		}
+	},
 #endif
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
@@ -1613,6 +1655,26 @@ struct __rte_cache_aligned aesni_mb_session {
 		uint16_t req_digest_len;
 
 	} auth;
+#if IMB_VERSION(3, 0, 0) <= IMB_VERSION_NUM
+	struct {
+		enum rte_crypto_asym_xform_type xform_type;
+		union {
+			struct {
+				IMB_ML_KEM *ctx;
+				IMB_ML_KEM_ALG alg;
+				IMB_ML_KEM_KEYGEN_PARAMS keygen_params;
+				IMB_ML_KEM_ENCAP_PARAMS encap_params;
+			} ml_kem;
+			struct {
+				IMB_ML_DSA *ctx;
+				IMB_ML_DSA_ALG alg;
+				IMB_ML_DSA_KEYGEN_PARAMS keygen_params;
+				IMB_ML_DSA_SIGN_PARAMS sign_params;
+				IMB_ML_DSA_VERIFY_PARAMS verify_params;
+			} ml_dsa;
+		};
+	} asym;
+	#endif
 };
 
 typedef void (*hash_one_block_t)(const void *data, void *digest);
