@@ -449,7 +449,7 @@ xsc_vfio_link_get(struct xsc_dev *xdev, struct rte_eth_link *link)
 static int
 xsc_vfio_modify_qp_status(struct xsc_dev *xdev, uint32_t qpn, int num, int opcode)
 {
-	int i, ret;
+	int i, ret = 0;
 	int in_len, out_len, cmd_len;
 	struct xsc_cmd_modify_qp_mbox_in *in;
 	struct xsc_cmd_modify_qp_mbox_out *out;
