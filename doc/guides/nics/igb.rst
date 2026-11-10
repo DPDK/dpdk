@@ -10,9 +10,9 @@ support for Intel 1GbE nics.
 Supported Chipsets and NICs
 ---------------------------
 
-- Intel 82576EB 10 Gigabit Ethernet Controller
-- Intel 82580EB 10 Gigabit Ethernet Controller
-- Intel 82580DB 10 Gigabit Ethernet Controller
+- Intel 82576EB Gigabit Ethernet Controller
+- Intel 82580EB Gigabit Ethernet Controller
+- Intel 82580DB Gigabit Ethernet Controller
 - Intel Ethernet Controller I210
 - Intel Ethernet Controller I350
 
