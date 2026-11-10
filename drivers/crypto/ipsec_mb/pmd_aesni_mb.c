@@ -163,20 +163,22 @@ aesni_mb_set_session_auth_parameters(IMB_MGR *mb_mgr,
 
 	if (xform->auth.algo == RTE_CRYPTO_AUTH_ZUC_EIA3) {
 		if (xform->auth.key.length == 16) {
-			sess->template_job.hash_alg = IMB_AUTH_ZUC_EIA3_BITLEN;
+			sess->template_job.hash_alg = IMB_AUTH_ZUC_EIA3;
 
 			if (sess->auth.req_digest_len != 4) {
 				IPSEC_MB_LOG(ERR, "Invalid digest size");
 				return -EINVAL;
 			}
+#if IMB_VERSION(3, 0, 0) > IMB_VERSION_NUM
 		} else if (xform->auth.key.length == 32) {
-			sess->template_job.hash_alg = IMB_AUTH_ZUC256_EIA3_BITLEN;
+			sess->template_job.hash_alg = IMB_AUTH_ZUC256_EIA3;
 			if (sess->auth.req_digest_len != 4 &&
 					sess->auth.req_digest_len != 8 &&
 					sess->auth.req_digest_len != 16) {
 				IPSEC_MB_LOG(ERR, "Invalid digest size");
 				return -EINVAL;
 			}
+#endif
 		} else {
 			IPSEC_MB_LOG(ERR, "Invalid authentication key length");
 			return -EINVAL;
@@ -189,10 +191,10 @@ aesni_mb_set_session_auth_parameters(IMB_MGR *mb_mgr,
 		sess->template_job.u.ZUC_EIA3._key = sess->auth.zuc_auth_key;
 		return 0;
 	} else if (xform->auth.algo == RTE_CRYPTO_AUTH_SNOW3G_UIA2) {
-		sess->template_job.hash_alg = IMB_AUTH_SNOW3G_UIA2_BITLEN;
+		sess->template_job.hash_alg = IMB_AUTH_SNOW3G_UIA2;
 		uint16_t snow3g_uia2_digest_len =
 			get_truncated_digest_byte_length(
-						IMB_AUTH_SNOW3G_UIA2_BITLEN);
+						IMB_AUTH_SNOW3G_UIA2);
 		if (sess->auth.req_digest_len != snow3g_uia2_digest_len) {
 			IPSEC_MB_LOG(ERR, "Invalid digest size");
 			return -EINVAL;
@@ -381,7 +383,7 @@ aesni_mb_set_session_auth_parameters(IMB_MGR *mb_mgr,
 
 /** Set session cipher parameters */
 static int
-aesni_mb_set_session_cipher_parameters(const IMB_MGR *mb_mgr,
+aesni_mb_set_session_cipher_parameters(IMB_MGR *mb_mgr,
 		struct aesni_mb_session *sess,
 		const struct rte_crypto_sym_xform *xform)
 {
@@ -451,11 +453,11 @@ aesni_mb_set_session_cipher_parameters(const IMB_MGR *mb_mgr,
 		is_zuc = 1;
 		break;
 	case RTE_CRYPTO_CIPHER_SNOW3G_UEA2:
-		sess->template_job.cipher_mode = IMB_CIPHER_SNOW3G_UEA2_BITLEN;
+		sess->template_job.cipher_mode = IMB_CIPHER_SNOW3G_UEA2;
 		is_snow3g = 1;
 		break;
 	case RTE_CRYPTO_CIPHER_KASUMI_F8:
-		sess->template_job.cipher_mode = IMB_CIPHER_KASUMI_UEA1_BITLEN;
+		sess->template_job.cipher_mode = IMB_CIPHER_KASUMI_UEA1;
 		is_kasumi = 1;
 		break;
 	case RTE_CRYPTO_CIPHER_NULL:
@@ -584,8 +586,11 @@ aesni_mb_set_session_cipher_parameters(const IMB_MGR *mb_mgr,
 		sess->template_job.dec_keys = sess->cipher.exp_3des_keys.ks_ptr;
 		sess->template_job.key_len_in_bytes = 24;
 	} else if (is_zuc) {
-		if (xform->cipher.key.length != 16 &&
-				xform->cipher.key.length != 32) {
+		if (xform->cipher.key.length != 16
+#if IMB_VERSION(3, 0, 0) > IMB_VERSION_NUM
+				&& xform->cipher.key.length != 32
+#endif
+			) {
 			IPSEC_MB_LOG(ERR, "Invalid cipher key length");
 			return -EINVAL;
 		}
@@ -1229,19 +1234,23 @@ sgl_linear_cipher_auth_len(IMB_JOB *job, uint64_t *auth_len)
 {
 	uint64_t cipher_len;
 
-	if (job->cipher_mode == IMB_CIPHER_SNOW3G_UEA2_BITLEN ||
-			job->cipher_mode == IMB_CIPHER_KASUMI_UEA1_BITLEN)
+#if IMB_VERSION(3, 0, 0) > IMB_VERSION_NUM
+	if (job->cipher_mode == IMB_CIPHER_SNOW3G_UEA2 ||
+			job->cipher_mode == IMB_CIPHER_KASUMI_UEA1)
 		cipher_len = (job->msg_len_to_cipher_in_bits >> 3) +
 				(job->cipher_start_src_offset_in_bits >> 3);
 	else
+#endif
 		cipher_len = job->msg_len_to_cipher_in_bytes +
 				job->cipher_start_src_offset_in_bytes;
 
-	if (job->hash_alg == IMB_AUTH_SNOW3G_UIA2_BITLEN ||
-			job->hash_alg == IMB_AUTH_ZUC_EIA3_BITLEN)
+#if IMB_VERSION(3, 0, 0) > IMB_VERSION_NUM
+	if (job->hash_alg == IMB_AUTH_SNOW3G_UIA2 ||
+			job->hash_alg == IMB_AUTH_ZUC_EIA3)
 		*auth_len = (job->msg_len_to_hash_in_bits >> 3) +
 				job->hash_start_src_offset_in_bytes;
 	else
+#endif
 		*auth_len = job->msg_len_to_hash_in_bytes +
 				job->hash_start_src_offset_in_bytes;
 
@@ -1509,18 +1518,20 @@ aesni_mb_digest_appended_in_src(struct rte_crypto_op *op, IMB_JOB *job,
 		return NULL;
 
 	if (job->cipher_mode == IMB_CIPHER_ZUC_EEA3 ||
-		job->cipher_mode == IMB_CIPHER_SNOW3G_UEA2_BITLEN ||
-		job->cipher_mode == IMB_CIPHER_KASUMI_UEA1_BITLEN) {
+		job->cipher_mode == IMB_CIPHER_SNOW3G_UEA2 ||
+		job->cipher_mode == IMB_CIPHER_KASUMI_UEA1) {
 		cipher_size = (op->sym->cipher.data.offset >> 3) +
 			(op->sym->cipher.data.length >> 3);
 	} else {
 		cipher_size = (op->sym->cipher.data.offset) +
 			(op->sym->cipher.data.length);
 	}
-	if (job->hash_alg == IMB_AUTH_ZUC_EIA3_BITLEN ||
-		job->hash_alg == IMB_AUTH_SNOW3G_UIA2_BITLEN ||
-		job->hash_alg == IMB_AUTH_KASUMI_UIA1 ||
-		job->hash_alg == IMB_AUTH_ZUC256_EIA3_BITLEN) {
+	if (job->hash_alg == IMB_AUTH_ZUC_EIA3 ||
+		job->hash_alg == IMB_AUTH_SNOW3G_UIA2 ||
+#if IMB_VERSION(3, 0, 0) > IMB_VERSION_NUM
+		job->hash_alg == IMB_AUTH_ZUC256_EIA3 ||
+#endif
+		job->hash_alg == IMB_AUTH_KASUMI_UIA1) {
 		auth_size = (op->sym->auth.data.offset >> 3) +
 			(op->sym->auth.data.length >> 3);
 	} else {
@@ -1637,12 +1648,14 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 		job->u.GMAC._iv = rte_crypto_op_ctod_offset(op, uint8_t *,
 						session->auth_iv.offset);
 		break;
-	case IMB_AUTH_ZUC_EIA3_BITLEN:
-	case IMB_AUTH_ZUC256_EIA3_BITLEN:
+	case IMB_AUTH_ZUC_EIA3:
+#if IMB_VERSION(3, 0, 0) > IMB_VERSION_NUM
+	case IMB_AUTH_ZUC256_EIA3:
+#endif
 		job->u.ZUC_EIA3._iv = rte_crypto_op_ctod_offset(op, uint8_t *,
 						session->auth_iv.offset);
 		break;
-	case IMB_AUTH_SNOW3G_UIA2_BITLEN:
+	case IMB_AUTH_SNOW3G_UIA2:
 		job->u.SNOW3G_UIA2._iv =
 			rte_crypto_op_ctod_offset(op, uint8_t *,
 						session->auth_iv.offset);
@@ -1670,12 +1683,19 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 	else
 		m_offset = op->sym->cipher.data.offset;
 
+#if IMB_VERSION(3, 0, 0) > IMB_VERSION_NUM
 	if (cipher_mode == IMB_CIPHER_ZUC_EEA3)
 		m_offset >>= 3;
-	else if (cipher_mode == IMB_CIPHER_SNOW3G_UEA2_BITLEN)
+	else if (cipher_mode == IMB_CIPHER_SNOW3G_UEA2)
 		m_offset = 0;
-	else if (cipher_mode == IMB_CIPHER_KASUMI_UEA1_BITLEN)
+	else if (cipher_mode == IMB_CIPHER_KASUMI_UEA1)
 		m_offset = 0;
+#else
+	if (cipher_mode == IMB_CIPHER_ZUC_EEA3 ||
+		cipher_mode == IMB_CIPHER_SNOW3G_UEA2 ||
+		cipher_mode == IMB_CIPHER_KASUMI_UEA1)
+		m_offset >>= 3;
+#endif
 
 	/* Set digest output location */
 	if (job->hash_alg != IMB_AUTH_NULL &&
@@ -1755,9 +1775,11 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 				session->iv.offset);
 		break;
 	/* ZUC and SNOW3G require length in bits and offset in bytes */
-	case IMB_AUTH_ZUC_EIA3_BITLEN:
-	case IMB_AUTH_ZUC256_EIA3_BITLEN:
-	case IMB_AUTH_SNOW3G_UIA2_BITLEN:
+	case IMB_AUTH_ZUC_EIA3:
+#if IMB_VERSION(3, 0, 0) > IMB_VERSION_NUM
+	case IMB_AUTH_ZUC256_EIA3:
+#endif
+	case IMB_AUTH_SNOW3G_UIA2:
 		auth_off_in_bytes = op->sym->auth.data.offset >> 3;
 		ciph_off_in_bytes = op->sym->cipher.data.offset >> 3;
 		auth_len_in_bytes = op->sym->auth.data.length >> 3;
@@ -1768,7 +1790,11 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 				session, oop, auth_off_in_bytes,
 				ciph_off_in_bytes, auth_len_in_bytes,
 				ciph_len_in_bytes, lb_sgl);
+#if IMB_VERSION(3, 0, 0) > IMB_VERSION_NUM
 		job->msg_len_to_hash_in_bits = op->sym->auth.data.length;
+#else
+		job->msg_len_to_hash_in_bytes = op->sym->auth.data.length >> 3;
+#endif
 
 		job->iv = rte_crypto_op_ctod_offset(op, uint8_t *,
 			session->iv.offset);
@@ -1828,12 +1854,19 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 					op->sym->cipher.data.length >> 3;
 		break;
 	/* ZUC and SNOW3G require length and offset in bits */
-	case IMB_CIPHER_SNOW3G_UEA2_BITLEN:
-	case IMB_CIPHER_KASUMI_UEA1_BITLEN:
+	case IMB_CIPHER_SNOW3G_UEA2:
+	case IMB_CIPHER_KASUMI_UEA1:
+#if IMB_VERSION(3, 0, 0) > IMB_VERSION_NUM
 		job->cipher_start_src_offset_in_bits =
 					op->sym->cipher.data.offset;
 		job->msg_len_to_cipher_in_bits =
 					op->sym->cipher.data.length;
+#else
+		job->cipher_start_src_offset_in_bytes =
+					op->sym->cipher.data.offset >> 3;
+		job->msg_len_to_cipher_in_bytes =
+					op->sym->cipher.data.length >> 3;
+#endif
 		break;
 	case IMB_CIPHER_GCM:
 		job->cipher_start_src_offset_in_bytes =
@@ -2106,8 +2139,8 @@ post_process_mb_job(struct ipsec_mb_qp *qp, IMB_JOB *job)
 				aesni_mb_digest_appended_in_src(op, job, oop) != NULL) {
 					unsigned int auth_size, cipher_size;
 					int unencrypted_bytes = 0;
-					if (job->cipher_mode == IMB_CIPHER_SNOW3G_UEA2_BITLEN ||
-						job->cipher_mode == IMB_CIPHER_KASUMI_UEA1_BITLEN ||
+					if (job->cipher_mode == IMB_CIPHER_SNOW3G_UEA2 ||
+						job->cipher_mode == IMB_CIPHER_KASUMI_UEA1 ||
 						job->cipher_mode == IMB_CIPHER_ZUC_EEA3) {
 						cipher_size = (op->sym->cipher.data.offset >> 3) +
 							(op->sym->cipher.data.length >> 3);
@@ -2115,10 +2148,12 @@ post_process_mb_job(struct ipsec_mb_qp *qp, IMB_JOB *job)
 						cipher_size = (op->sym->cipher.data.offset) +
 							(op->sym->cipher.data.length);
 					}
-					if (job->hash_alg == IMB_AUTH_ZUC_EIA3_BITLEN ||
-						job->hash_alg == IMB_AUTH_SNOW3G_UIA2_BITLEN ||
-						job->hash_alg == IMB_AUTH_KASUMI_UIA1 ||
-						job->hash_alg == IMB_AUTH_ZUC256_EIA3_BITLEN) {
+					if (job->hash_alg == IMB_AUTH_ZUC_EIA3 ||
+						job->hash_alg == IMB_AUTH_SNOW3G_UIA2 ||
+#if IMB_VERSION(3, 0, 0) > IMB_VERSION_NUM
+						job->hash_alg == IMB_AUTH_ZUC256_EIA3 ||
+#endif
+						job->hash_alg == IMB_AUTH_KASUMI_UIA1) {
 						auth_size = (op->sym->auth.data.offset >> 3) +
 							(op->sym->auth.data.length >> 3);
 					} else {
@@ -2609,7 +2644,9 @@ RTE_INIT(ipsec_mb_register_aesni_mb)
 			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
 			RTE_CRYPTODEV_FF_OOP_LB_IN_LB_OUT |
 			RTE_CRYPTODEV_FF_SYM_CPU_CRYPTO |
+#if IMB_VERSION(3, 0, 0) > IMB_VERSION_NUM
 			RTE_CRYPTODEV_FF_NON_BYTE_ALIGNED_DATA |
+#endif
 			RTE_CRYPTODEV_FF_SYM_SESSIONLESS |
 			RTE_CRYPTODEV_FF_IN_PLACE_SGL |
 			RTE_CRYPTODEV_FF_OOP_SGL_IN_SGL_OUT |

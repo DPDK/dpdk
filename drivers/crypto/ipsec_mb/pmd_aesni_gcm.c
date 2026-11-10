@@ -6,56 +6,205 @@
 
 #include "pmd_aesni_gcm_priv.h"
 
+/* wrapper functions for library versions < 3.0.0 */
+#if IMB_VERSION(3, 0, 0) > IMB_VERSION_NUM
+
+#define _fn(bitlen) static void imb_aes##bitlen##_gcm_pre(const void *key, \
+		struct gcm_key_data *key_data, IMB_MGR *state) \
+{ \
+	state->gcm##bitlen##_pre(key, key_data); \
+}
+_fn(128)
+_fn(192)
+_fn(256)
+#undef _fn
+
+#define _fn(bitlen) static void imb_aes##bitlen##_gcm_init( \
+		const struct gcm_key_data *key_data, \
+		struct gcm_context_data *context_data, const void *iv, \
+		const void *aad, uint64_t aad_len, IMB_MGR *state) \
+{ \
+	state->gcm##bitlen##_init(key_data, context_data, iv, aad, aad_len); \
+}
+_fn(128)
+_fn(192)
+_fn(256)
+#undef _fn
+
+#define _fn(bitlen) static void imb_aes##bitlen##_gcm_enc( \
+		const struct gcm_key_data *key_data, \
+		struct gcm_context_data *context_data, void *out, \
+		const void *in, uint64_t len, const void *iv, \
+		const void *aad, uint64_t aad_len, void *auth_tag, \
+		uint64_t auth_tag_len, IMB_MGR *state) \
+{ \
+	state->gcm##bitlen##_enc(key_data, context_data, out, in, len, iv, \
+			aad, aad_len, auth_tag, auth_tag_len); \
+}
+_fn(128)
+_fn(192)
+_fn(256)
+#undef _fn
+
+#define _fn(bitlen) static void imb_aes##bitlen##_gcm_enc_update( \
+		const struct gcm_key_data *key_data, \
+		struct gcm_context_data *context_data, void *out, \
+		const void *in, const uint64_t len, IMB_MGR *state) \
+{ \
+	state->gcm##bitlen##_enc_update(key_data, context_data, out, in, len); \
+}
+_fn(128)
+_fn(192)
+_fn(256)
+#undef _fn
+
+#define _fn(bitlen) static void imb_aes##bitlen##_gcm_enc_finalize( \
+		const struct gcm_key_data *key_data, \
+		struct gcm_context_data *context_data, void *auth_tag, \
+		const uint64_t auth_tag_len, IMB_MGR *state) \
+{ \
+	state->gcm##bitlen##_enc_finalize(key_data, context_data, auth_tag, \
+			auth_tag_len); \
+}
+_fn(128)
+_fn(192)
+_fn(256)
+#undef _fn
+
+#define _fn(bitlen) static void imb_aes##bitlen##_gcm_dec( \
+		const struct gcm_key_data *key_data, \
+		struct gcm_context_data *context_data, void *out, \
+		const void *in, uint64_t len, const void *iv, \
+		const void *aad, uint64_t aad_len, void *auth_tag, \
+		uint64_t auth_tag_len, IMB_MGR *state) \
+{ \
+	state->gcm##bitlen##_dec(key_data, context_data, out, in, len, iv, \
+			aad, aad_len, auth_tag, auth_tag_len); \
+}
+_fn(128)
+_fn(192)
+_fn(256)
+#undef _fn
+
+#define _fn(bitlen) static void imb_aes##bitlen##_gcm_dec_update( \
+		const struct gcm_key_data *key_data, \
+		struct gcm_context_data *context_data, void *out, \
+		const void *in, const uint64_t len, IMB_MGR *state) \
+{ \
+	state->gcm##bitlen##_dec_update(key_data, context_data, out, in, len); \
+}
+_fn(128)
+_fn(192)
+_fn(256)
+#undef _fn
+
+#define _fn(bitlen) static void imb_aes##bitlen##_gcm_dec_finalize( \
+		const struct gcm_key_data *key_data, \
+		struct gcm_context_data *context_data, void *auth_tag, \
+		const uint64_t auth_tag_len, IMB_MGR *state) \
+{ \
+	state->gcm##bitlen##_dec_finalize(key_data, context_data, auth_tag, \
+			auth_tag_len); \
+}
+_fn(128)
+_fn(192)
+_fn(256)
+#undef _fn
+
+#define _fn(bitlen) static void imb_aes##bitlen##_gmac_init( \
+		const struct gcm_key_data *key_data, \
+		struct gcm_context_data *context_data, const void *iv, \
+		const uint64_t iv_len, IMB_MGR *state) \
+{ \
+	state->gmac##bitlen##_init(key_data, context_data, iv, iv_len); \
+}
+_fn(128)
+_fn(192)
+_fn(256)
+#undef _fn
+
+#define _fn(bitlen) static void imb_aes##bitlen##_gmac_update( \
+		const struct gcm_key_data *key_data, \
+		struct gcm_context_data *context_data, const void *in, \
+		const uint64_t len, IMB_MGR *state) \
+{ \
+	state->gmac##bitlen##_update(key_data, context_data, in, len); \
+}
+_fn(128)
+_fn(192)
+_fn(256)
+#undef _fn
+
+#define _fn(bitlen) static void imb_aes##bitlen##_gmac_finalize( \
+		const struct gcm_key_data *key_data, \
+		struct gcm_context_data *context_data, void *auth_tag, \
+		const uint64_t auth_tag_len, IMB_MGR *state) \
+{ \
+	state->gmac##bitlen##_finalize(key_data, context_data, auth_tag, \
+			auth_tag_len); \
+}
+_fn(128)
+_fn(192)
+_fn(256)
+#undef _fn
+
+#endif
+
 static void
 aesni_gcm_set_ops(struct aesni_gcm_ops *ops, IMB_MGR *mb_mgr)
 {
+	/* Set IMB_MGR pointers. */
+	ops[GCM_KEY_128].mb_mgr = mb_mgr;
+	ops[GCM_KEY_192].mb_mgr = mb_mgr;
+	ops[GCM_KEY_256].mb_mgr = mb_mgr;
+
 	/* Set 128 bit function pointers. */
-	ops[GCM_KEY_128].pre = mb_mgr->gcm128_pre;
-	ops[GCM_KEY_128].init = mb_mgr->gcm128_init;
+	ops[GCM_KEY_128].pre = imb_aes128_gcm_pre;
+	ops[GCM_KEY_128].init = imb_aes128_gcm_init;
 
-	ops[GCM_KEY_128].enc = mb_mgr->gcm128_enc;
-	ops[GCM_KEY_128].update_enc = mb_mgr->gcm128_enc_update;
-	ops[GCM_KEY_128].finalize_enc = mb_mgr->gcm128_enc_finalize;
+	ops[GCM_KEY_128].enc = imb_aes128_gcm_enc;
+	ops[GCM_KEY_128].update_enc = imb_aes128_gcm_enc_update;
+	ops[GCM_KEY_128].finalize_enc = imb_aes128_gcm_enc_finalize;
 
-	ops[GCM_KEY_128].dec = mb_mgr->gcm128_dec;
-	ops[GCM_KEY_128].update_dec = mb_mgr->gcm128_dec_update;
-	ops[GCM_KEY_128].finalize_dec = mb_mgr->gcm128_dec_finalize;
+	ops[GCM_KEY_128].dec = imb_aes128_gcm_dec;
+	ops[GCM_KEY_128].update_dec = imb_aes128_gcm_dec_update;
+	ops[GCM_KEY_128].finalize_dec = imb_aes128_gcm_dec_finalize;
 
-	ops[GCM_KEY_128].gmac_init = mb_mgr->gmac128_init;
-	ops[GCM_KEY_128].gmac_update = mb_mgr->gmac128_update;
-	ops[GCM_KEY_128].gmac_finalize = mb_mgr->gmac128_finalize;
+	ops[GCM_KEY_128].gmac_init = imb_aes128_gmac_init;
+	ops[GCM_KEY_128].gmac_update = imb_aes128_gmac_update;
+	ops[GCM_KEY_128].gmac_finalize = imb_aes128_gmac_finalize;
 
 	/* Set 192 bit function pointers. */
-	ops[GCM_KEY_192].pre = mb_mgr->gcm192_pre;
-	ops[GCM_KEY_192].init = mb_mgr->gcm192_init;
+	ops[GCM_KEY_192].pre = imb_aes192_gcm_pre;
+	ops[GCM_KEY_192].init = imb_aes192_gcm_init;
 
-	ops[GCM_KEY_192].enc = mb_mgr->gcm192_enc;
-	ops[GCM_KEY_192].update_enc = mb_mgr->gcm192_enc_update;
-	ops[GCM_KEY_192].finalize_enc = mb_mgr->gcm192_enc_finalize;
+	ops[GCM_KEY_192].enc = imb_aes192_gcm_enc;
+	ops[GCM_KEY_192].update_enc = imb_aes192_gcm_enc_update;
+	ops[GCM_KEY_192].finalize_enc = imb_aes192_gcm_enc_finalize;
 
-	ops[GCM_KEY_192].dec = mb_mgr->gcm192_dec;
-	ops[GCM_KEY_192].update_dec = mb_mgr->gcm192_dec_update;
-	ops[GCM_KEY_192].finalize_dec = mb_mgr->gcm192_dec_finalize;
+	ops[GCM_KEY_192].dec = imb_aes192_gcm_dec;
+	ops[GCM_KEY_192].update_dec = imb_aes192_gcm_dec_update;
+	ops[GCM_KEY_192].finalize_dec = imb_aes192_gcm_dec_finalize;
 
-	ops[GCM_KEY_192].gmac_init = mb_mgr->gmac192_init;
-	ops[GCM_KEY_192].gmac_update = mb_mgr->gmac192_update;
-	ops[GCM_KEY_192].gmac_finalize = mb_mgr->gmac192_finalize;
+	ops[GCM_KEY_192].gmac_init = imb_aes192_gmac_init;
+	ops[GCM_KEY_192].gmac_update = imb_aes192_gmac_update;
+	ops[GCM_KEY_192].gmac_finalize = imb_aes192_gmac_finalize;
 
 	/* Set 256 bit function pointers. */
-	ops[GCM_KEY_256].pre = mb_mgr->gcm256_pre;
-	ops[GCM_KEY_256].init = mb_mgr->gcm256_init;
+	ops[GCM_KEY_256].pre = imb_aes256_gcm_pre;
+	ops[GCM_KEY_256].init = imb_aes256_gcm_init;
 
-	ops[GCM_KEY_256].enc = mb_mgr->gcm256_enc;
-	ops[GCM_KEY_256].update_enc = mb_mgr->gcm256_enc_update;
-	ops[GCM_KEY_256].finalize_enc = mb_mgr->gcm256_enc_finalize;
+	ops[GCM_KEY_256].enc = imb_aes256_gcm_enc;
+	ops[GCM_KEY_256].update_enc = imb_aes256_gcm_enc_update;
+	ops[GCM_KEY_256].finalize_enc = imb_aes256_gcm_enc_finalize;
 
-	ops[GCM_KEY_256].dec = mb_mgr->gcm256_dec;
-	ops[GCM_KEY_256].update_dec = mb_mgr->gcm256_dec_update;
-	ops[GCM_KEY_256].finalize_dec = mb_mgr->gcm256_dec_finalize;
+	ops[GCM_KEY_256].dec = imb_aes256_gcm_dec;
+	ops[GCM_KEY_256].update_dec = imb_aes256_gcm_dec_update;
+	ops[GCM_KEY_256].finalize_dec = imb_aes256_gcm_dec_finalize;
 
-	ops[GCM_KEY_256].gmac_init = mb_mgr->gmac256_init;
-	ops[GCM_KEY_256].gmac_update = mb_mgr->gmac256_update;
-	ops[GCM_KEY_256].gmac_finalize = mb_mgr->gmac256_finalize;
+	ops[GCM_KEY_256].gmac_init = imb_aes256_gmac_init;
+	ops[GCM_KEY_256].gmac_update = imb_aes256_gmac_update;
+	ops[GCM_KEY_256].gmac_finalize = imb_aes256_gmac_finalize;
 }
 
 static int
@@ -135,15 +284,15 @@ aesni_gcm_session_configure(IMB_MGR *mb_mgr, void *session,
 	switch (key_length) {
 	case 16:
 		sess->key_length = GCM_KEY_128;
-		mb_mgr->gcm128_pre(key, &sess->gdata_key);
+		imb_aes128_gcm_pre(key, &sess->gdata_key, mb_mgr);
 		break;
 	case 24:
 		sess->key_length = GCM_KEY_192;
-		mb_mgr->gcm192_pre(key, &sess->gdata_key);
+		imb_aes192_gcm_pre(key, &sess->gdata_key, mb_mgr);
 		break;
 	case 32:
 		sess->key_length = GCM_KEY_256;
-		mb_mgr->gcm256_pre(key, &sess->gdata_key);
+		imb_aes256_gcm_pre(key, &sess->gdata_key, mb_mgr);
 		break;
 	default:
 		IPSEC_MB_LOG(ERR, "Invalid key length");
@@ -324,10 +473,10 @@ process_gcm_crypto_op(struct ipsec_mb_qp *qp, struct rte_crypto_op *op,
 	if (session->op == IPSEC_MB_OP_AEAD_AUTHENTICATED_ENCRYPT) {
 		ops->init(&session->gdata_key, &qp_data->gcm_ctx_data, iv_ptr,
 				sym_op->aead.aad.data,
-				(uint64_t)session->aad_length);
+				(uint64_t)session->aad_length, ops->mb_mgr);
 
 		ops->update_enc(&session->gdata_key, &qp_data->gcm_ctx_data,
-				dst, src, (uint64_t)part_len);
+				dst, src, (uint64_t)part_len, ops->mb_mgr);
 		total_len = data_length - part_len;
 
 		while (total_len) {
@@ -345,7 +494,7 @@ process_gcm_crypto_op(struct ipsec_mb_qp *qp, struct rte_crypto_op *op,
 
 			ops->update_enc(&session->gdata_key,
 					&qp_data->gcm_ctx_data,
-					dst, src, (uint64_t)part_len);
+					dst, src, (uint64_t)part_len, ops->mb_mgr);
 			total_len -= part_len;
 		}
 
@@ -355,14 +504,14 @@ process_gcm_crypto_op(struct ipsec_mb_qp *qp, struct rte_crypto_op *op,
 			tag = sym_op->aead.digest.data;
 
 		ops->finalize_enc(&session->gdata_key, &qp_data->gcm_ctx_data,
-				tag, session->gen_digest_length);
+				tag, session->gen_digest_length, ops->mb_mgr);
 	} else if (session->op == IPSEC_MB_OP_AEAD_AUTHENTICATED_DECRYPT) {
 		ops->init(&session->gdata_key, &qp_data->gcm_ctx_data, iv_ptr,
 				sym_op->aead.aad.data,
-				(uint64_t)session->aad_length);
+				(uint64_t)session->aad_length, ops->mb_mgr);
 
 		ops->update_dec(&session->gdata_key, &qp_data->gcm_ctx_data,
-				dst, src, (uint64_t)part_len);
+				dst, src, (uint64_t)part_len, ops->mb_mgr);
 		total_len = data_length - part_len;
 
 		while (total_len) {
@@ -380,19 +529,19 @@ process_gcm_crypto_op(struct ipsec_mb_qp *qp, struct rte_crypto_op *op,
 
 			ops->update_dec(&session->gdata_key,
 					&qp_data->gcm_ctx_data,
-					dst, src, (uint64_t)part_len);
+					dst, src, (uint64_t)part_len, ops->mb_mgr);
 			total_len -= part_len;
 		}
 
 		tag = qp_data->temp_digest;
 		ops->finalize_dec(&session->gdata_key, &qp_data->gcm_ctx_data,
-				tag, session->gen_digest_length);
+				tag, session->gen_digest_length, ops->mb_mgr);
 	} else if (session->op == IPSEC_MB_OP_HASH_GEN_ONLY) {
 		ops->gmac_init(&session->gdata_key, &qp_data->gcm_ctx_data,
-				iv_ptr, session->iv.length);
+				iv_ptr, session->iv.length, ops->mb_mgr);
 
 		ops->gmac_update(&session->gdata_key, &qp_data->gcm_ctx_data,
-				src, (uint64_t)part_len);
+				src, (uint64_t)part_len, ops->mb_mgr);
 		total_len = data_length - part_len;
 
 		while (total_len) {
@@ -406,7 +555,7 @@ process_gcm_crypto_op(struct ipsec_mb_qp *qp, struct rte_crypto_op *op,
 
 			ops->gmac_update(&session->gdata_key,
 					&qp_data->gcm_ctx_data, src,
-					(uint64_t)part_len);
+					(uint64_t)part_len, ops->mb_mgr);
 			total_len -= part_len;
 		}
 
@@ -416,13 +565,13 @@ process_gcm_crypto_op(struct ipsec_mb_qp *qp, struct rte_crypto_op *op,
 			tag = sym_op->auth.digest.data;
 
 		ops->gmac_finalize(&session->gdata_key, &qp_data->gcm_ctx_data,
-				tag, session->gen_digest_length);
+				tag, session->gen_digest_length, ops->mb_mgr);
 	} else { /* IPSEC_MB_OP_HASH_VERIFY_ONLY */
 		ops->gmac_init(&session->gdata_key, &qp_data->gcm_ctx_data,
-				iv_ptr, session->iv.length);
+				iv_ptr, session->iv.length, ops->mb_mgr);
 
 		ops->gmac_update(&session->gdata_key, &qp_data->gcm_ctx_data,
-				src, (uint64_t)part_len);
+				src, (uint64_t)part_len, ops->mb_mgr);
 		total_len = data_length - part_len;
 
 		while (total_len) {
@@ -436,14 +585,14 @@ process_gcm_crypto_op(struct ipsec_mb_qp *qp, struct rte_crypto_op *op,
 
 			ops->gmac_update(&session->gdata_key,
 					&qp_data->gcm_ctx_data, src,
-					(uint64_t)part_len);
+					(uint64_t)part_len, ops->mb_mgr);
 			total_len -= part_len;
 		}
 
 		tag = qp_data->temp_digest;
 
 		ops->gmac_finalize(&session->gdata_key, &qp_data->gcm_ctx_data,
-				tag, session->gen_digest_length);
+				tag, session->gen_digest_length, ops->mb_mgr);
 	}
 	return 0;
 }
@@ -540,11 +689,11 @@ aesni_gcm_sgl_op_finalize_encryption(const struct aesni_gcm_session *s,
 		uint8_t tmpdigest[s->gen_digest_length];
 
 		ops.finalize_enc(&s->gdata_key, gdata_ctx, tmpdigest,
-				s->gen_digest_length);
+				s->gen_digest_length, ops.mb_mgr);
 		memcpy(digest, tmpdigest, s->req_digest_length);
 	} else {
 		ops.finalize_enc(&s->gdata_key, gdata_ctx, digest,
-				s->gen_digest_length);
+				s->gen_digest_length, ops.mb_mgr);
 	}
 
 	return 0;
@@ -558,7 +707,7 @@ aesni_gcm_sgl_op_finalize_decryption(const struct aesni_gcm_session *s,
 	uint8_t tmpdigest[s->gen_digest_length];
 
 	ops.finalize_dec(&s->gdata_key, gdata_ctx, tmpdigest,
-			s->gen_digest_length);
+			s->gen_digest_length, ops.mb_mgr);
 
 	return rte_memeq_timingsafe(digest, tmpdigest, s->req_digest_length) ? 0 : EBADMSG;
 }
@@ -573,7 +722,7 @@ aesni_gcm_process_gcm_sgl_op(const struct aesni_gcm_session *s,
 
 	/* init crypto operation */
 	ops.init(&s->gdata_key, gdata_ctx, iv, aad,
-		    (uint64_t)s->aad_length);
+		    (uint64_t)s->aad_length, ops.mb_mgr);
 
 	/* update with sgl data */
 	for (i = 0; i < sgl->num; i++) {
@@ -582,11 +731,11 @@ aesni_gcm_process_gcm_sgl_op(const struct aesni_gcm_session *s,
 		switch (s->op) {
 		case IPSEC_MB_OP_AEAD_AUTHENTICATED_ENCRYPT:
 			ops.update_enc(&s->gdata_key, gdata_ctx,
-			      vec->base, vec->base, vec->len);
+			      vec->base, vec->base, vec->len, ops.mb_mgr);
 			break;
 		case IPSEC_MB_OP_AEAD_AUTHENTICATED_DECRYPT:
 			ops.update_dec(&s->gdata_key, gdata_ctx,
-			      vec->base, vec->base, vec->len);
+			      vec->base, vec->base, vec->len, ops.mb_mgr);
 			break;
 		default:
 			IPSEC_MB_LOG(ERR, "Invalid session op");
@@ -603,7 +752,7 @@ aesni_gcm_process_gmac_sgl_op(const struct aesni_gcm_session *s,
 			      struct aesni_gcm_ops ops)
 {
 	ops.init(&s->gdata_key, gdata_ctx, iv, sgl->vec[0].base,
-		    sgl->vec[0].len);
+		    sgl->vec[0].len, ops.mb_mgr);
 }
 
 static inline uint32_t
