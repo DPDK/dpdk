@@ -16,7 +16,48 @@
 #include <stdlib.h>
 #include <sys/eventfd.h>
 #include <sys/ioctl.h>
+#include <sys/queue.h>
 #include <unistd.h>
+
+/*
+ * EAL interrupt sources are keyed by interrupt handle pointer and read the
+ * handle FD at epoll/dispatch time, so each MSI-X vector needs its own
+ * handle holding that vector's eventfd.
+ */
+struct plt_irq_vec {
+	TAILQ_ENTRY(plt_irq_vec) next;
+	const struct plt_intr_handle *dev_handle;
+	struct plt_intr_handle *handle;
+	plt_intr_callback_fn cb;
+	void *data;
+	unsigned int vec;
+};
+
+static TAILQ_HEAD(, plt_irq_vec) plt_irq_vec_list = TAILQ_HEAD_INITIALIZER(plt_irq_vec_list);
+static plt_spinlock_t plt_irq_vec_lock = RTE_SPINLOCK_INITIALIZER;
+
+static struct plt_irq_vec *
+irq_vec_find(const struct plt_intr_handle *dev_handle, unsigned int vec)
+{
+	struct plt_irq_vec *irq_vec;
+
+	TAILQ_FOREACH(irq_vec, &plt_irq_vec_list, next) {
+		if (irq_vec->dev_handle == dev_handle && irq_vec->vec == vec)
+			return irq_vec;
+	}
+
+	return NULL;
+}
+
+static void
+irq_vec_free(struct plt_irq_vec *irq_vec)
+{
+	if (irq_vec->handle != NULL) {
+		plt_intr_fd_close(irq_vec->handle);
+		plt_intr_instance_free(irq_vec->handle);
+	}
+	free(irq_vec);
+}
 
 static int
 irq_get_info(struct plt_intr_handle *intr_handle)
@@ -150,7 +191,7 @@ int
 plt_irq_register(struct plt_intr_handle *intr_handle, plt_intr_callback_fn cb, void *data,
 		 unsigned int vec)
 {
-	struct plt_intr_handle *tmp_handle;
+	struct plt_irq_vec *irq_vec;
 	uint32_t nb_efd, tmp_nb_efd;
 	int rc, fd;
 
@@ -166,25 +207,61 @@ plt_irq_register(struct plt_intr_handle *intr_handle, plt_intr_callback_fn cb, v
 		return -EINVAL;
 	}
 
-	tmp_handle = intr_handle;
+	irq_vec = calloc(1, sizeof(*irq_vec));
+	if (irq_vec == NULL)
+		return -ENOMEM;
+	irq_vec->dev_handle = intr_handle;
+	irq_vec->cb = cb;
+	irq_vec->data = data;
+	irq_vec->vec = vec;
+
+	irq_vec->handle = plt_intr_instance_alloc(RTE_INTR_INSTANCE_F_PRIVATE);
+	if (irq_vec->handle == NULL) {
+		rc = -ENOMEM;
+		goto free_vec;
+	}
+
 	/* Create new eventfd for interrupt vector */
 	fd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
-	if (fd == -1)
-		return -ENODEV;
+	if (fd == -1) {
+		rc = -ENODEV;
+		goto free_vec;
+	}
 
-	if (plt_intr_fd_set(tmp_handle, fd))
-		return -errno;
+	if (plt_intr_fd_set(irq_vec->handle, fd)) {
+		close(fd);
+		rc = -EINVAL;
+		goto free_vec;
+	}
+
+	/* EAL reads the 8 byte eventfd counter only for VFIO handle types */
+	if (plt_intr_type_set(irq_vec->handle, plt_intr_type_get(intr_handle))) {
+		rc = -EINVAL;
+		goto free_vec;
+	}
+
+	plt_spinlock_lock(&plt_irq_vec_lock);
+	if (irq_vec_find(intr_handle, vec) != NULL) {
+		plt_spinlock_unlock(&plt_irq_vec_lock);
+		plt_err("Vector:0x%x irq already registered", vec);
+		rc = -EEXIST;
+		goto free_vec;
+	}
+	TAILQ_INSERT_TAIL(&plt_irq_vec_list, irq_vec, next);
+	plt_spinlock_unlock(&plt_irq_vec_lock);
 
 	/* Register vector interrupt callback */
-	rc = plt_intr_callback_register(tmp_handle, cb, data);
+	rc = plt_intr_callback_register(irq_vec->handle, cb, data);
 	if (rc) {
 		plt_err("Failed to register vector:0x%x irq callback.", vec);
-		return rc;
+		goto remove_vec;
 	}
 
 	rc = plt_intr_efds_index_set(intr_handle, vec, fd);
-	if (rc)
-		return rc;
+	if (rc) {
+		plt_intr_callback_unregister(irq_vec->handle, cb, data);
+		goto remove_vec;
+	}
 
 	nb_efd = (vec > (uint32_t)plt_intr_nb_efd_get(intr_handle)) ?
 			 vec :
@@ -199,15 +276,23 @@ plt_irq_register(struct plt_intr_handle *intr_handle, plt_intr_callback_fn cb, v
 
 	/* Enable MSIX vectors to VFIO */
 	return irq_config(intr_handle, vec);
+
+remove_vec:
+	plt_spinlock_lock(&plt_irq_vec_lock);
+	TAILQ_REMOVE(&plt_irq_vec_list, irq_vec, next);
+	plt_spinlock_unlock(&plt_irq_vec_lock);
+free_vec:
+	irq_vec_free(irq_vec);
+	return rc;
 }
 
 void
 plt_irq_unregister(struct plt_intr_handle *intr_handle, plt_intr_callback_fn cb, void *data,
 		   unsigned int vec)
 {
-	struct plt_intr_handle *tmp_handle;
+	struct plt_irq_vec *irq_vec;
 	uint8_t retries = 5; /* 5 ms */
-	int rc, fd;
+	int rc;
 
 	if (vec > (uint32_t)plt_intr_max_intr_get(intr_handle)) {
 		plt_err("Error unregistering MSI-X interrupts vec:%d > %d", vec,
@@ -215,17 +300,23 @@ plt_irq_unregister(struct plt_intr_handle *intr_handle, plt_intr_callback_fn cb,
 		return;
 	}
 
-	tmp_handle = intr_handle;
-	fd = plt_intr_efds_index_get(intr_handle, vec);
-	if (fd == -1)
+	plt_spinlock_lock(&plt_irq_vec_lock);
+	irq_vec = irq_vec_find(intr_handle, vec);
+	plt_spinlock_unlock(&plt_irq_vec_lock);
+	if (irq_vec == NULL) {
+		if (plt_intr_efds_index_get(intr_handle, vec) != -1)
+			plt_err("Error unregistering MSI-X vec %d cb, not registered", vec);
 		return;
+	}
 
-	if (plt_intr_fd_set(tmp_handle, fd))
+	if (irq_vec->cb != cb || irq_vec->data != data) {
+		plt_err("MSI-X vec %d registered with a different callback", vec);
 		return;
+	}
 
 	do {
 		/* Un-register callback func from platform lib */
-		rc = plt_intr_callback_unregister(tmp_handle, cb, data);
+		rc = plt_intr_callback_unregister(irq_vec->handle, cb, data);
 		/* Retry only if -EAGAIN */
 		if (rc != -EAGAIN)
 			break;
@@ -238,15 +329,18 @@ plt_irq_unregister(struct plt_intr_handle *intr_handle, plt_intr_callback_fn cb,
 		return;
 	}
 
+	plt_spinlock_lock(&plt_irq_vec_lock);
+	TAILQ_REMOVE(&plt_irq_vec_list, irq_vec, next);
+	plt_spinlock_unlock(&plt_irq_vec_lock);
+
 	plt_base_dbg("Disable vector:0x%x for vfio (efds: %d, max:%d)", vec,
 		     plt_intr_nb_efd_get(intr_handle), plt_intr_max_intr_get(intr_handle));
 
-	if (plt_intr_efds_index_get(intr_handle, vec) != -1)
-		close(plt_intr_efds_index_get(intr_handle, vec));
 	/* Disable MSIX vectors from VFIO */
 	plt_intr_efds_index_set(intr_handle, vec, -1);
-
 	irq_config(intr_handle, vec);
+
+	irq_vec_free(irq_vec);
 }
 #endif
 
