@@ -18,11 +18,16 @@ struct aesni_mb_op_buf_data {
 static inline int
 is_aead_algo(IMB_HASH_ALG hash_alg, IMB_CIPHER_MODE cipher_mode)
 {
-	return (hash_alg == IMB_AUTH_CHACHA20_POLY1305 ||
-		hash_alg == IMB_AUTH_AES_CCM ||
-		cipher_mode == IMB_CIPHER_GCM
+	return (hash_alg == IMB_AUTH_CHACHA20_POLY1305
+		|| hash_alg == IMB_AUTH_AES_CCM
+		|| cipher_mode == IMB_CIPHER_GCM
 #if IMB_VERSION(1, 5, 0) < IMB_VERSION_NUM
 		|| cipher_mode == IMB_CIPHER_SM4_GCM
+#endif
+#if IMB_VERSION(3, 0, 0) <= IMB_VERSION_NUM
+		|| cipher_mode == IMB_CIPHER_SNOW5G_NCA4
+		|| cipher_mode == IMB_CIPHER_AES_NCA5
+		|| cipher_mode == IMB_CIPHER_ZUC_NCA6
 #endif
 		);
 }
@@ -223,6 +228,36 @@ aesni_mb_set_session_auth_parameters(IMB_MGR *mb_mgr,
 		return 0;
 	}
 
+#if IMB_VERSION(3, 0, 0) <= IMB_VERSION_NUM
+	if (xform->auth.algo == RTE_CRYPTO_AUTH_SNOW5G_NIA4) {
+		sess->template_job.hash_alg = IMB_AUTH_SNOW5G_NIA4;
+		sess->template_job.auth_tag_output_len_in_bytes =
+			sess->auth.req_digest_len;
+		memcpy(sess->auth.snow5g_auth_key, xform->auth.key.data,
+			xform->auth.key.length);
+		sess->template_job.u.NIA._key = sess->auth.snow5g_auth_key;
+		return 0;
+	} else if (xform->auth.algo == RTE_CRYPTO_AUTH_AES_NIA5) {
+		sess->template_job.hash_alg = IMB_AUTH_AES_NIA5;
+		sess->template_job.auth_tag_output_len_in_bytes =
+			sess->auth.req_digest_len;
+		IMB_AES_KEYEXP_256(mb_mgr, xform->auth.key.data,
+			sess->cipher.expanded_nia5_keys.encode,
+			sess->cipher.expanded_nia5_keys.decode);
+		sess->template_job.u.NIA._key =
+			(uint8_t *)sess->cipher.expanded_nia5_keys.encode;
+		return 0;
+	} else if (xform->auth.algo == RTE_CRYPTO_AUTH_ZUC_NIA6) {
+		sess->template_job.hash_alg = IMB_AUTH_ZUC_NIA6;
+		sess->template_job.auth_tag_output_len_in_bytes =
+			sess->auth.req_digest_len;
+		memcpy(sess->auth.zuc_auth_key, xform->auth.key.data,
+			xform->auth.key.length);
+		sess->template_job.u.NIA._key = sess->auth.zuc_auth_key;
+		return 0;
+	}
+#endif
+
 	switch (xform->auth.algo) {
 	case RTE_CRYPTO_AUTH_MD5_HMAC:
 		sess->template_job.hash_alg = IMB_AUTH_MD5;
@@ -396,6 +431,10 @@ aesni_mb_set_session_cipher_parameters(IMB_MGR *mb_mgr,
 #if IMB_VERSION(1, 5, 0) <= IMB_VERSION_NUM
 	uint8_t is_sm4 = 0;
 #endif
+#if IMB_VERSION(3, 0, 0) <= IMB_VERSION_NUM
+	uint8_t is_nxan = 0;
+	uint8_t is_nxan_exp_key = 0;
+#endif
 
 	if (xform == NULL) {
 		sess->template_job.cipher_mode = IMB_CIPHER_NULL;
@@ -480,6 +519,21 @@ aesni_mb_set_session_cipher_parameters(IMB_MGR *mb_mgr,
 	case RTE_CRYPTO_CIPHER_SM4_CTR:
 		sess->template_job.cipher_mode = IMB_CIPHER_SM4_CNTR;
 		is_sm4 = 1;
+		break;
+#endif
+#if IMB_VERSION(3, 0, 0) <= IMB_VERSION_NUM
+	case RTE_CRYPTO_CIPHER_SNOW5G_NEA4:
+		sess->template_job.cipher_mode = IMB_CIPHER_SNOW5G_NEA4;
+		is_nxan = 1;
+		break;
+	case RTE_CRYPTO_CIPHER_AES_NEA5:
+		sess->template_job.cipher_mode = IMB_CIPHER_AES_NEA5;
+		is_nxan = 1;
+		is_nxan_exp_key = 1;
+		break;
+	case RTE_CRYPTO_CIPHER_ZUC_NEA6:
+		sess->template_job.cipher_mode = IMB_CIPHER_ZUC_NEA6;
+		is_nxan = 1;
 		break;
 #endif
 	default:
@@ -627,6 +681,29 @@ aesni_mb_set_session_cipher_parameters(IMB_MGR *mb_mgr,
 				sess->cipher.expanded_sm4_keys.decode);
 		sess->template_job.enc_keys = sess->cipher.expanded_sm4_keys.encode;
 		sess->template_job.dec_keys = sess->cipher.expanded_sm4_keys.decode;
+#endif
+#if IMB_VERSION(3, 0, 0) <= IMB_VERSION_NUM
+	} else if (is_nxan) {
+		if (xform->cipher.key.length != 32) {
+			IPSEC_MB_LOG(ERR, "Invalid cipher key length");
+			return -EINVAL;
+		}
+		if (xform->cipher.iv.length != 16) {
+			IPSEC_MB_LOG(ERR, "Invalid cipher IV length");
+			return -EINVAL;
+		}
+		sess->template_job.key_len_in_bytes = 32;
+		if (is_nxan_exp_key) {
+			IMB_AES_KEYEXP_256(mb_mgr, xform->cipher.key.data,
+					sess->cipher.expanded_nea5_keys.encode,
+					sess->cipher.expanded_nea5_keys.decode);
+			sess->template_job.enc_keys = sess->cipher.expanded_nea5_keys.encode;
+			sess->template_job.dec_keys = sess->cipher.expanded_nea5_keys.decode;
+		} else {
+			memcpy(sess->cipher.nxa_cipher_key, xform->cipher.key.data, 32);
+			sess->template_job.enc_keys = sess->cipher.nxa_cipher_key;
+			sess->template_job.dec_keys = sess->cipher.nxa_cipher_key;
+		}
 #endif
 	} else {
 		if (xform->cipher.key.length != 8) {
@@ -781,6 +858,67 @@ aesni_mb_set_session_aead_parameters(IMB_MGR *mb_mgr,
 		imb_sm4_gcm_pre(mb_mgr, xform->aead.key.data, &sess->cipher.gcm_key);
 		sess->template_job.enc_keys = &sess->cipher.gcm_key;
 		sess->template_job.dec_keys = &sess->cipher.gcm_key;
+		break;
+#endif
+#if IMB_VERSION(3, 0, 0) <= IMB_VERSION_NUM
+	case RTE_CRYPTO_AEAD_SNOW5G_NCA4:
+		sess->template_job.cipher_mode = IMB_CIPHER_SNOW5G_NCA4;
+		sess->template_job.hash_alg = IMB_AUTH_SNOW5G_NCA4;
+		sess->template_job.u.NCA.aad_len_in_bytes = xform->aead.aad_length;
+		if (xform->aead.key.length != 32) {
+			IPSEC_MB_LOG(ERR, "Invalid key length");
+			return -EINVAL;
+		}
+		sess->template_job.key_len_in_bytes = 32;
+		memcpy(sess->cipher.nxa_cipher_key, xform->aead.key.data, 32);
+		sess->template_job.enc_keys = sess->cipher.nxa_cipher_key;
+		sess->template_job.dec_keys = sess->cipher.nxa_cipher_key;
+		/* digest size must be between 4 and 16 */
+		if (sess->auth.req_digest_len < 4 ||
+				sess->auth.req_digest_len > 16) {
+			IPSEC_MB_LOG(ERR, "Invalid digest size");
+			return -EINVAL;
+		}
+		break;
+	case RTE_CRYPTO_AEAD_AES_NCA5:
+		sess->template_job.cipher_mode = IMB_CIPHER_AES_NCA5;
+		sess->template_job.hash_alg = IMB_AUTH_AES_NCA5;
+		sess->template_job.u.NCA.aad_len_in_bytes = xform->aead.aad_length;
+		if (xform->aead.key.length != 32) {
+			IPSEC_MB_LOG(ERR, "Invalid key length");
+			return -EINVAL;
+		}
+		sess->template_job.key_len_in_bytes = 32;
+		IMB_AES_KEYEXP_256(mb_mgr, xform->aead.key.data,
+			sess->cipher.expanded_aes_keys.encode,
+			sess->cipher.expanded_aes_keys.decode);
+		sess->template_job.enc_keys = sess->cipher.expanded_aes_keys.encode;
+		sess->template_job.dec_keys = sess->cipher.expanded_aes_keys.decode;
+		/* digest size must be between 4 and 16 */
+		if (sess->auth.req_digest_len < 4 ||
+				sess->auth.req_digest_len > 16) {
+			IPSEC_MB_LOG(ERR, "Invalid digest size");
+			return -EINVAL;
+		}
+		break;
+	case RTE_CRYPTO_AEAD_ZUC_NCA6:
+		sess->template_job.cipher_mode = IMB_CIPHER_ZUC_NCA6;
+		sess->template_job.hash_alg = IMB_AUTH_ZUC_NCA6;
+		sess->template_job.u.NCA.aad_len_in_bytes = xform->aead.aad_length;
+		if (xform->aead.key.length != 32) {
+			IPSEC_MB_LOG(ERR, "Invalid key length");
+			return -EINVAL;
+		}
+		sess->template_job.key_len_in_bytes = 32;
+		memcpy(sess->cipher.nxa_cipher_key, xform->aead.key.data, 32);
+		sess->template_job.enc_keys = sess->cipher.nxa_cipher_key;
+		sess->template_job.dec_keys = sess->cipher.nxa_cipher_key;
+		/* digest size must be between 4 and 16 */
+		if (sess->auth.req_digest_len < 4 ||
+				sess->auth.req_digest_len > 16) {
+			IPSEC_MB_LOG(ERR, "Invalid digest size");
+			return -EINVAL;
+		}
 		break;
 #endif
 	default:
@@ -1113,6 +1251,18 @@ set_cpu_mb_job_params(IMB_JOB *job, struct aesni_mb_session *session,
 		job->u.GCM.aad = aad->va;
 		break;
 #endif
+#if IMB_VERSION(3, 0, 0) <= IMB_VERSION_NUM
+	case IMB_AUTH_SNOW5G_NCA4:
+	case IMB_AUTH_AES_NCA5:
+	case IMB_AUTH_ZUC_NCA6:
+		job->u.NCA.aad = aad->va;
+		break;
+	case IMB_AUTH_SNOW5G_NIA4:
+	case IMB_AUTH_AES_NIA5:
+	case IMB_AUTH_ZUC_NIA6:
+		job->u.NIA._iv = iv->va;
+		break;
+#endif
 
 	default:
 		break;
@@ -1287,8 +1437,17 @@ handle_sgl_linear(IMB_JOB *job, struct rte_crypto_op *op, uint32_t dst_offset,
 	job->dst = linear_buf + dst_offset;
 	job->user_data2 = linear_buf;
 
+#if IMB_VERSION(3, 0, 0) <= IMB_VERSION_NUM
 	if (job->hash_alg == IMB_AUTH_AES_GMAC)
 		job->u.GCM.aad = linear_buf;
+	else if (job->hash_alg == IMB_AUTH_SNOW5G_NCA4 ||
+			 job->hash_alg == IMB_AUTH_AES_NCA5 ||
+			 job->hash_alg == IMB_AUTH_ZUC_NCA6)
+		job->u.NCA.aad = linear_buf;
+#else
+	if (job->hash_alg == IMB_AUTH_AES_GMAC)
+		job->u.GCM.aad = linear_buf;
+#endif
 
 	if (session->auth.operation == RTE_CRYPTO_AUTH_OP_VERIFY)
 		job->auth_tag_output = linear_buf + lb_offset;
@@ -1674,6 +1833,20 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 		job->u.GCM.aad = op->sym->aead.aad.data;
 		break;
 #endif
+#if IMB_VERSION(3, 0, 0) <= IMB_VERSION_NUM
+	case IMB_AUTH_SNOW5G_NCA4:
+	case IMB_AUTH_AES_NCA5:
+	case IMB_AUTH_ZUC_NCA6:
+		job->u.NCA.aad = op->sym->aead.aad.data;
+		break;
+	case IMB_AUTH_SNOW5G_NIA4:
+	case IMB_AUTH_AES_NIA5:
+	case IMB_AUTH_ZUC_NIA6:
+		job->u.NIA._iv = rte_crypto_op_ctod_offset(op, uint8_t *,
+			session->auth_iv.offset);
+		break;
+#endif
+
 	default:
 		break;
 	}
@@ -1693,7 +1866,10 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 #else
 	if (cipher_mode == IMB_CIPHER_ZUC_EEA3 ||
 		cipher_mode == IMB_CIPHER_SNOW3G_UEA2 ||
-		cipher_mode == IMB_CIPHER_KASUMI_UEA1)
+		cipher_mode == IMB_CIPHER_KASUMI_UEA1 ||
+		cipher_mode == IMB_CIPHER_SNOW5G_NEA4 ||
+		cipher_mode == IMB_CIPHER_AES_NEA5 ||
+		cipher_mode == IMB_CIPHER_ZUC_NEA6)
 		m_offset >>= 3;
 #endif
 
@@ -1831,6 +2007,29 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 				session->iv.offset);
 		break;
 #endif
+#if IMB_VERSION(3, 0, 0) <= IMB_VERSION_NUM
+	case IMB_AUTH_SNOW5G_NCA4:
+	case IMB_AUTH_AES_NCA5:
+	case IMB_AUTH_ZUC_NCA6:
+		job->hash_start_src_offset_in_bytes =
+				op->sym->aead.data.offset;
+		job->msg_len_to_hash_in_bytes =
+				op->sym->aead.data.length;
+		job->cipher_start_src_offset_in_bytes =
+			op->sym->aead.data.offset;
+		job->msg_len_to_cipher_in_bytes = op->sym->aead.data.length;
+		job->iv = rte_crypto_op_ctod_offset(op, uint8_t *,
+			session->iv.offset);
+		break;
+	case IMB_AUTH_SNOW5G_NIA4:
+	case IMB_AUTH_AES_NIA5:
+	case IMB_AUTH_ZUC_NIA6:
+		job->hash_start_src_offset_in_bytes =
+				op->sym->auth.data.offset >> 3;
+		job->msg_len_to_hash_in_bytes =
+				op->sym->auth.data.length >> 3;
+		break;
+#endif
 
 	default:
 		job->hash_start_src_offset_in_bytes = auth_start_offset(
@@ -1886,6 +2085,25 @@ set_mb_job_params(IMB_JOB *job, struct ipsec_mb_qp *qp,
 		break;
 #if IMB_VERSION(1, 5, 0) < IMB_VERSION_NUM
 	case IMB_CIPHER_SM4_GCM:
+		job->msg_len_to_cipher_in_bytes = op->sym->aead.data.length;
+		break;
+#endif
+#if IMB_VERSION(3, 0, 0) <= IMB_VERSION_NUM
+	case IMB_CIPHER_SNOW5G_NEA4:
+	case IMB_CIPHER_AES_NEA5:
+	case IMB_CIPHER_ZUC_NEA6:
+		job->cipher_start_src_offset_in_bytes =
+					op->sym->cipher.data.offset >> 3;
+		job->msg_len_to_cipher_in_bytes =
+					op->sym->cipher.data.length >> 3;
+		job->iv = rte_crypto_op_ctod_offset(op, uint8_t *,
+			session->iv.offset);
+		break;
+	case IMB_CIPHER_SNOW5G_NCA4:
+	case IMB_CIPHER_AES_NCA5:
+	case IMB_CIPHER_ZUC_NCA6:
+		job->cipher_start_src_offset_in_bytes =
+			op->sym->aead.data.offset;
 		job->msg_len_to_cipher_in_bytes = op->sym->aead.data.length;
 		break;
 #endif
