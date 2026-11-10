@@ -574,6 +574,75 @@ parse_l4_proto(const struct rte_mbuf *m, uint32_t off, uint32_t ptype, bool in_t
 }
 
 /*
+ * rte_net_get_ptype() recognizes VXLAN-GPE and GENEVE only on their default
+ * UDP ports. Present the configured port as the corresponding default port,
+ * or hide a default port that has been replaced, while calling the parser.
+ * Plain VXLAN stays on RTE_VXLAN_DEFAULT_PORT: the csum engine has no
+ * equivalent option for it.
+ */
+static uint32_t
+parse_tunnel_udp_custom_port(struct rte_mbuf *m, uint32_t ptype,
+			     struct rte_net_hdr_lens *hdr_lens)
+{
+	uint32_t off = hdr_lens->l2_len + hdr_lens->l3_len;
+	struct rte_net_hdr_lens parsed = {0};
+	struct rte_udp_hdr *uh;
+	uint32_t tunnel_type;
+	uint16_t default_port;
+	rte_be16_t saved_port;
+	uint16_t dst_port;
+	uint32_t new_ptype;
+
+	if (vxlan_gpe_udp_port == RTE_VXLAN_GPE_DEFAULT_PORT &&
+	    geneve_udp_port == RTE_GENEVE_DEFAULT_PORT)
+		return ptype;
+
+	if (rte_pktmbuf_data_len(m) < off + sizeof(*uh))
+		return ptype;
+
+	uh = rte_pktmbuf_mtod_offset(m, struct rte_udp_hdr *, off);
+	dst_port = rte_be_to_cpu_16(uh->dst_port);
+	tunnel_type = ptype & RTE_PTYPE_TUNNEL_MASK;
+	if (dst_port == vxlan_gpe_udp_port)
+		default_port = RTE_VXLAN_GPE_DEFAULT_PORT;
+	else if (dst_port == geneve_udp_port)
+		default_port = RTE_GENEVE_DEFAULT_PORT;
+	else if ((tunnel_type == RTE_PTYPE_TUNNEL_VXLAN_GPE &&
+		  vxlan_gpe_udp_port != RTE_VXLAN_GPE_DEFAULT_PORT) ||
+		 (tunnel_type == RTE_PTYPE_TUNNEL_GENEVE &&
+		  geneve_udp_port != RTE_GENEVE_DEFAULT_PORT))
+		default_port = 0;
+	else
+		return ptype;
+
+	saved_port = uh->dst_port;
+	if (saved_port == rte_cpu_to_be_16(default_port))
+		return ptype;
+	uh->dst_port = rte_cpu_to_be_16(default_port);
+	new_ptype = rte_net_get_ptype(m, &parsed, RTE_PTYPE_ALL_MASK);
+	uh->dst_port = saved_port;
+
+	*hdr_lens = parsed;
+	return new_ptype;
+}
+
+static bool
+can_process_inner_headers(const struct rte_mbuf *m, uint32_t ptype,
+			  const struct rte_net_hdr_lens *hdr_lens)
+{
+	uint32_t headers_len;
+
+	if ((ptype & RTE_PTYPE_INNER_L3_MASK) == 0)
+		return false;
+
+	headers_len = hdr_lens->l2_len + hdr_lens->l3_len +
+		hdr_lens->inner_l2_len + hdr_lens->inner_l3_len +
+		hdr_lens->inner_l4_len;
+
+	return rte_pktmbuf_data_len(m) >= headers_len;
+}
+
+/*
  * Receive a burst of packets, and for each packet:
  *  - parse packet, and try to recognize a supported packet type (1)
  *  - if it's not a supported packet type, don't touch the packet, else:
@@ -669,6 +738,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 
 	for (i = 0; i < nb_rx; i++) {
 		struct rte_net_hdr_lens hdr_lens = {0};
+		bool process_inner = false;
 
 		if (likely(i < nb_rx - 1))
 			rte_prefetch0(rte_pktmbuf_mtod(pkts_burst[i + 1],
@@ -703,6 +773,9 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 		}
 
 		ptype = rte_net_get_ptype(m, &hdr_lens, RTE_PTYPE_ALL_MASK);
+		if (txp->parse_tunnel &&
+		    (ptype & RTE_PTYPE_L4_MASK) == RTE_PTYPE_L4_UDP)
+			ptype = parse_tunnel_udp_custom_port(m, ptype, &hdr_lens);
 		info.l2_len = hdr_lens.l2_len;
 		info.l3_len = hdr_lens.l3_len;
 		info.l4_len = hdr_lens.l4_len;
@@ -718,10 +791,16 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 			info.l2_len = hdr_lens.inner_l2_len;
 			info.l3_len = hdr_lens.inner_l3_len;
 			info.l4_len = hdr_lens.inner_l4_len;
-			eth_hdr = (struct rte_ether_hdr *)((char *)l3_hdr +
-				hdr_lens.l3_len + hdr_lens.l4_len + hdr_lens.tunnel_len);
-			info.ethertype = get_ethertype_by_ptype(eth_hdr,
-						ptype & RTE_PTYPE_INNER_L3_MASK);
+			process_inner = can_process_inner_headers(m, ptype, &hdr_lens);
+			if (process_inner) {
+				eth_hdr = (struct rte_ether_hdr *)((char *)l3_hdr +
+					hdr_lens.l3_len + hdr_lens.l4_len +
+					hdr_lens.tunnel_len);
+				info.ethertype = get_ethertype_by_ptype(eth_hdr,
+							ptype & RTE_PTYPE_INNER_L3_MASK);
+			} else {
+				info.ethertype = 0;
+			}
 			tx_ol_flags |= get_tunnel_ol_flags_by_ptype(ptype);
 		}
 		/* update l3_hdr and outer_l3_hdr if a tunnel was parsed */
@@ -730,7 +809,8 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 
 			outer_l3_hdr = l3_hdr;
 			l3_hdr = (char *)l3_hdr + info.outer_l3_len + info.l2_len;
-			info.l4_proto = parse_l4_proto(m, l3_off, ptype, true);
+			if (process_inner)
+				info.l4_proto = parse_l4_proto(m, l3_off, ptype, true);
 		}
 		/* step 2: depending on user command line configuration,
 		 * recompute checksum either in software or flag the
