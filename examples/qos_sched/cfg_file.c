@@ -438,6 +438,9 @@ cfg_load_subport(struct rte_cfgfile *cfg, struct rte_sched_subport_params *subpo
 			}
 
 			int n_entries = rte_cfgfile_section_num_entries(cfg, sec_name);
+			if (n_entries < 0)
+				return -1;
+
 			struct rte_cfgfile_entry entries[n_entries];
 
 			rte_cfgfile_section_entries(cfg, sec_name, entries, n_entries);
