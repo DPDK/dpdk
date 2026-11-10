@@ -2012,6 +2012,14 @@ ice_flow_init(struct ice_adapter *ad)
 
 		ret = engine->init(ad);
 		if (ret) {
+			/* The PF may refuse the ACL capability to a DCF. Run without it. */
+			if (ad->hw.dcf_enabled && engine->type == ICE_FLOW_ENGINE_ACL) {
+				PMD_INIT_LOG(WARNING, "ACL engine not available, disabling it");
+				if (engine->uninit)
+					engine->uninit(ad);
+				ad->disabled_engine_mask |= BIT(ICE_FLOW_ENGINE_ACL);
+				continue;
+			}
 			PMD_INIT_LOG(ERR, "Failed to initialize engine %d",
 					engine->type);
 			return ret;

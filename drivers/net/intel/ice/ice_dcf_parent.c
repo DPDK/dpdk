@@ -497,6 +497,8 @@ ice_dcf_init_parent_adapter(struct rte_eth_dev *eth_dev)
 
 	ice_dcf_update_vf_vsi_map(parent_hw, hw->num_vfs, hw->vf_vsi_map);
 
+	/* Retry ACL initialization after reset unless disabled by devargs. */
+	parent_adapter->disabled_engine_mask &= ~BIT(ICE_FLOW_ENGINE_ACL);
 	if (ice_devargs_check(eth_dev->device->devargs, ICE_DCF_DEVARG_ACL))
 		parent_adapter->disabled_engine_mask |= BIT(ICE_FLOW_ENGINE_ACL);
 
