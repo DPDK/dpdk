@@ -292,6 +292,10 @@ New Features
     algorithms and their HMAC variants.
   * Added support for SHAKE-128 and SHAKE-256 hash algorithms.
   * Added support for version 3.0 of IPsec MB Library.
+  * Added support for the following wireless algorithms:
+       - NEA4, NIA4, NCA4: Snow 5G confidentiality, integrity and AEAD modes.
+       - NEA5, NIA5, NCA5: AES 256 confidentiality, integrity and AEAD modes.
+       - NEA6, NIA6, NCA6: ZUC 256 confidentiality, integrity and AEAD modes.
 
 * **Added AMD AE4DMA DMA PMD.**
 
