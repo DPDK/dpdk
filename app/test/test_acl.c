@@ -1274,6 +1274,7 @@ test_invalid_rules(void)
 	int ret;
 
 	struct rte_acl_ipv4vlan_rule rule;
+	struct acl_ipv4vlan_rule rv;
 
 	acx = rte_acl_create(&acl_param);
 	if (acx == NULL) {
@@ -1334,6 +1335,31 @@ test_invalid_rules(void)
 	ret = rte_acl_ipv4vlan_add_rules(acx, &rule, 1);
 	if (ret == 0) {
 		printf("Line %i: Adding rules to ACL context "
+				"should have failed!\n", __LINE__);
+		goto err;
+	}
+
+	/* test inverted high/low destination ports added through the
+	 * generic API: rte_acl_add_rules() doesn't know the field types,
+	 * so the rule has to be rejected by rte_acl_build().
+	 */
+	rule = acl_rule;
+	rule.data.userdata = 1;
+	rule.dst_port_low = 0xfff0;
+	rule.dst_port_high = 0x0010;
+
+	acl_ipv4vlan_convert_rule(&rule, &rv);
+	ret = rte_acl_add_rules(acx, (struct rte_acl_rule *)&rv, 1);
+	if (ret != 0) {
+		printf("Line %i: Adding rules to ACL context failed!\n",
+			__LINE__);
+		goto err;
+	}
+
+	ret = rte_acl_ipv4vlan_build(acx, ipv4_7tuple_layout,
+		RTE_ACL_MAX_CATEGORIES);
+	if (ret != -EINVAL) {
+		printf("Line %i: Building ACL context "
 				"should have failed!\n", __LINE__);
 		goto err;
 	}

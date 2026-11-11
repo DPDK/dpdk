@@ -1549,6 +1549,71 @@ acl_bld(struct acl_build_context *bcx, struct rte_acl_ctx *ctx,
 }
 
 /*
+ * Check that for all RANGE fields lower bound doesn't exceed upper bound.
+ */
+static int
+acl_check_rule_range(const struct rte_acl_config *cfg,
+	const struct rte_acl_rule *rule)
+{
+	uint32_t n;
+	uint64_t lo, hi;
+	const struct rte_acl_field *fld;
+
+	for (n = 0; n != cfg->num_fields; n++) {
+		if (cfg->defs[n].type != RTE_ACL_FIELD_TYPE_RANGE)
+			continue;
+
+		fld = rule->field + cfg->defs[n].field_index;
+		switch (cfg->defs[n].size) {
+		case sizeof(uint8_t):
+			lo = fld->value.u8;
+			hi = fld->mask_range.u8;
+			break;
+		case sizeof(uint16_t):
+			lo = fld->value.u16;
+			hi = fld->mask_range.u16;
+			break;
+		case sizeof(uint32_t):
+			lo = fld->value.u32;
+			hi = fld->mask_range.u32;
+			break;
+		default:
+			lo = fld->value.u64;
+			hi = fld->mask_range.u64;
+			break;
+		}
+
+		if (lo > hi)
+			return -EINVAL;
+	}
+
+	return 0;
+}
+
+/*
+ * Check that rules added to the context are valid for the given config.
+ */
+static int
+acl_check_rules(const struct rte_acl_ctx *ctx, const struct rte_acl_config *cfg)
+{
+	uint32_t i;
+	const struct rte_acl_rule *rule;
+
+	for (i = 0; i != ctx->num_rules; i++) {
+		rule = (const struct rte_acl_rule *)
+			((uintptr_t)ctx->rules + ctx->rule_sz * i);
+		if (acl_check_rule_range(cfg, rule) != 0) {
+			ACL_LOG(ERR,
+			"ACL context: %s, rule[%u] (userdata: %u): low bound exceeds high bound of a range field",
+			ctx->name, i, rule->data.userdata);
+			return -EINVAL;
+		}
+	}
+
+	return 0;
+}
+
+/*
  * Check that parameters for acl_build() are valid.
  */
 static int
@@ -1588,7 +1653,7 @@ acl_check_bld_param(struct rte_acl_ctx *ctx, const struct rte_acl_config *cfg)
 		}
 	}
 
-	return 0;
+	return acl_check_rules(ctx, cfg);
 }
 
 /*
