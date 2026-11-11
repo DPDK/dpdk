@@ -950,7 +950,13 @@ ntb_dev_start(struct rte_rawdev *dev)
 		goto err_up;
 	}
 
-	hw->peer_used_mws = (*hw->ntb_ops->spad_read)(dev, SPAD_USED_MWS, 0);
+	peer_val = (*hw->ntb_ops->spad_read)(dev, SPAD_USED_MWS, 0);
+	if (peer_val > hw->mw_cnt) {
+		NTB_LOG(ERR, "Peer used mws %u > mw cnt %u.", peer_val, hw->mw_cnt);
+		ret = -EINVAL;
+		goto err_up;
+	}
+	hw->peer_used_mws = peer_val;
 
 	for (i = 0; i < hw->peer_used_mws; i++) {
 		peer_base_h = (*hw->ntb_ops->spad_read)(dev,
