@@ -845,12 +845,6 @@ open_packet_iface(const char *key __rte_unused,
 #define PACKET_FANOUT_INVALID -1
 
 static int
-get_fanout_group_id(int if_index)
-{
-	return (getpid() ^ if_index) & 0xffff;
-}
-
-static int
 get_fanout_mode(const char *fanout_mode)
 {
 	int load_balance = PACKET_FANOUT_FLAG_DEFRAG |
@@ -882,11 +876,11 @@ get_fanout_mode(const char *fanout_mode)
 }
 
 static int
-get_fanout(const char *fanout_mode, int if_index)
+get_fanout(const char *fanout_mode)
 {
 	int load_balance = get_fanout_mode(fanout_mode);
 	if (load_balance != PACKET_FANOUT_INVALID)
-		return get_fanout_group_id(if_index) | (load_balance << 16);
+		return load_balance << 16;
 	else
 		return PACKET_FANOUT_INVALID;
 }
@@ -1002,11 +996,12 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 	sockaddr.sll_protocol = htons(ETH_P_ALL);
 	sockaddr.sll_ifindex = (*internals)->if_index;
 
-	fanout_arg = get_fanout(fanout_mode, (*internals)->if_index);
+	fanout_arg = get_fanout(fanout_mode);
 	if (fanout_arg == PACKET_FANOUT_INVALID) {
 		PMD_LOG(ERR, "Invalid fanout mode: %s", fanout_mode);
 		goto error;
 	}
+	fanout_arg |= PACKET_FANOUT_FLAG_UNIQUEID << 16;
 
 	/*
 	 * Set the flag opportunistically if multiple queues are requested.
@@ -1153,6 +1148,20 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 					"on AF_PACKET socket for %s",
 					name, pair->value);
 				goto error;
+			}
+
+			/* read back the fanout arg so later queues join the same fanout group */
+			if (q == 0) {
+				socklen_t fanout_arg_len = sizeof(fanout_arg);
+				rc = getsockopt(qsockfd, SOL_PACKET, PACKET_FANOUT, &fanout_arg,
+						&fanout_arg_len);
+				if (rc == -1) {
+					PMD_LOG_ERRNO(ERR,
+						"%s: could not get PACKET_FANOUT "
+						"on AF_PACKET socket for %s",
+						name, pair->value);
+					goto error;
+				}
 			}
 		}
 	}
