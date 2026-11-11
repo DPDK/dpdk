@@ -23,11 +23,12 @@ static: build/$(APP)-static
 	ln -sf $(APP)-static build/$(APP)
 
 CFLAGS += -D_FILE_OFFSET_BITS=64
-LDFLAGS += -pthread -lrte_raw_ntb
+LDFLAGS += -pthread
 
 PC_FILE := $(shell $(PKGCONF) --path libdpdk 2>/dev/null)
 CFLAGS += -O3 $(shell $(PKGCONF) --cflags libdpdk) -I build/
 LDFLAGS_SHARED = $(shell $(PKGCONF) --libs libdpdk)
+LDFLAGS_SHARED += -lrte_raw_ntb
 LDFLAGS_STATIC = $(shell $(PKGCONF) --static --libs libdpdk)
 
 build/commands.h: commands.list Makefile
