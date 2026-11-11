@@ -48,6 +48,12 @@ static struct rte_rawdev_xstats_name ntb_xstats_names[] = {
 };
 #define NTB_XSTATS_NUM RTE_DIM(ntb_xstats_names)
 
+static inline bool
+ntb_peer_dev_is_up(struct ntb_hw *hw)
+{
+	return rte_atomic_load_explicit(&hw->peer_dev_up, rte_memory_order_acquire) != 0;
+}
+
 static void
 ntb_dev_intr_handler(void *param)
 {
@@ -69,14 +75,14 @@ ntb_dev_intr_handler(void *param)
 		 * Peer dev is already up. All mw settings are already done.
 		 * Skip them.
 		 */
-		if (hw->peer_dev_up)
+		if (ntb_peer_dev_is_up(hw))
 			return;
 
 		/* Check that the peer memory-window layout matches local. */
 		if ((*hw->ntb_ops->peer_mw_validate)(dev) < 0)
 			return;
 
-		hw->peer_dev_up = 1;
+		rte_atomic_store_explicit(&hw->peer_dev_up, 1, rte_memory_order_release);
 
 		/**
 		 * Handshake with peer. Scratchpad and translation programming
@@ -104,7 +110,7 @@ ntb_dev_intr_handler(void *param)
 		/* Peer device will be down, So clean local side too. */
 		(*hw->ntb_ops->link_cleanup)(dev);
 
-		hw->peer_dev_up = 0;
+		rte_atomic_store_explicit(&hw->peer_dev_up, 0, rte_memory_order_release);
 		/* Response peer's dev_stop request. */
 		(*hw->ntb_ops->peer_db_set)(dev, 2);
 		return;
@@ -114,7 +120,7 @@ ntb_dev_intr_handler(void *param)
 		NTB_LOG(INFO, "DB2: Peer device agrees dev to be down.");
 		/* Clear received doorbell. */
 		(*hw->ntb_ops->db_clear)(dev, (1 << 2));
-		hw->peer_dev_up = 0;
+		rte_atomic_store_explicit(&hw->peer_dev_up, 0, rte_memory_order_release);
 		return;
 	}
 
@@ -549,7 +555,7 @@ ntb_enqueue_bufs(struct rte_rawdev *dev,
 	void *buf_addr;
 	int i;
 
-	if (unlikely(dev->started == 0 || hw->peer_dev_up == 0)) {
+	if (unlikely(dev->started == 0 || !ntb_peer_dev_is_up(hw))) {
 		NTB_LOG(DEBUG, "Link is not up.");
 		return nb_tx;
 	}
@@ -660,7 +666,7 @@ ntb_dequeue_bufs(struct rte_rawdev *dev,
 	uint16_t off, last_avail, used_cnt, used_nb, nb_segs;
 	int i;
 
-	if (unlikely(dev->started == 0 || hw->peer_dev_up == 0)) {
+	if (unlikely(dev->started == 0 || !ntb_peer_dev_is_up(hw))) {
 		NTB_LOG(DEBUG, "Link is not up");
 		return nb_rx;
 	}
@@ -853,7 +859,7 @@ ntb_dev_start(struct rte_rawdev *dev)
 	uint32_t i;
 	int ret;
 
-	if (!hw->link_status || !hw->peer_dev_up)
+	if (!hw->link_status || !ntb_peer_dev_is_up(hw))
 		return -EINVAL;
 
 	/* Set total stats. */
@@ -907,7 +913,7 @@ ntb_dev_stop(struct rte_rawdev *dev)
 	uint32_t time_out;
 	int status, i;
 
-	if (!hw->peer_dev_up)
+	if (!ntb_peer_dev_is_up(hw))
 		goto clean;
 
 	(*hw->ntb_ops->link_cleanup)(dev);
@@ -926,7 +932,7 @@ ntb_dev_stop(struct rte_rawdev *dev)
 	time_out = 1000000;
 
 	/* Wait for cleanup work down before db mask clear. */
-	while (hw->peer_dev_up && time_out) {
+	while (ntb_peer_dev_is_up(hw) && time_out) {
 		time_out -= 10;
 		rte_delay_us(10);
 	}
@@ -1061,7 +1067,7 @@ ntb_attr_get(struct rte_rawdev *dev, const char *attr_name,
 
 	if (!strncmp(attr_name, NTB_LINK_STATUS_NAME, NTB_ATTR_NAME_LEN)) {
 		/* hw->link_status only indicates hw link status. */
-		*attr_value = hw->link_status && hw->peer_dev_up;
+		*attr_value = hw->link_status && ntb_peer_dev_is_up(hw);
 		NTB_LOG(DEBUG, "Attribute (%s) Value (%" PRIu64 ")",
 			attr_name, *attr_value);
 		return 0;
@@ -1325,7 +1331,7 @@ ntb_init_hw(struct rte_rawdev *dev, struct rte_pci_device *pci_dev)
 	int ret, i;
 
 	hw->pci_dev = pci_dev;
-	hw->peer_dev_up = 0;
+	rte_atomic_store_explicit(&hw->peer_dev_up, 0, rte_memory_order_release);
 	hw->link_status = NTB_LINK_DOWN;
 	hw->link_speed = NTB_SPEED_NONE;
 	hw->link_width = NTB_WIDTH_NONE;

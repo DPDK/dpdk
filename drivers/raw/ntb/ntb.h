@@ -7,6 +7,8 @@
 
 #include <stdbool.h>
 
+#include <rte_stdatomic.h>
+
 extern int ntb_logtype;
 #define RTE_LOGTYPE_NTB ntb_logtype
 
@@ -226,7 +228,8 @@ struct ntb_hw {
 	struct rte_intr_handle **db_intr_handles;
 	uint16_t nb_db_intr_handles;
 
-	uint8_t peer_dev_up;
+	/* Written by the interrupt thread, read by control and data paths. */
+	RTE_ATOMIC(uint8_t) peer_dev_up;
 	uint64_t mw_size[NTB_MAX_MW];
 	/* remote mem base addr */
 	uint64_t *peer_mw_base;
