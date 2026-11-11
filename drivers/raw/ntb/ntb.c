@@ -246,6 +246,20 @@ ntb_rxq_release(struct ntb_rx_queue *rxq)
 	rte_free(rxq);
 }
 
+/* The ring indexes wrap with a mask and the bursts use on-stack arrays. */
+static int
+ntb_queue_nb_desc_check(uint16_t nb_desc)
+{
+	if (nb_desc < NTB_MIN_DESC_SIZE || nb_desc > NTB_MAX_DESC_SIZE ||
+			!rte_is_power_of_2(nb_desc)) {
+		NTB_LOG(ERR, "Number of descriptors %u must be a power of 2 within [%u, %u].",
+			nb_desc, NTB_MIN_DESC_SIZE, NTB_MAX_DESC_SIZE);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 static int
 ntb_rxq_setup(struct rte_rawdev *dev,
 	      uint16_t qp_id,
@@ -259,6 +273,14 @@ ntb_rxq_setup(struct rte_rawdev *dev,
 	if (conf_size != sizeof(*rxq_conf))
 		return -EINVAL;
 
+	if (rxq_conf->rx_mp == NULL) {
+		NTB_LOG(ERR, "Invalid null mempool pointer.");
+		return -EINVAL;
+	}
+
+	if (ntb_queue_nb_desc_check(rxq_conf->nb_desc) < 0)
+		return -EINVAL;
+
 	/* Allocate the rx queue data structure */
 	rxq = rte_zmalloc_socket("ntb rx queue",
 				 sizeof(struct ntb_rx_queue),
@@ -270,10 +292,6 @@ ntb_rxq_setup(struct rte_rawdev *dev,
 		return -ENOMEM;
 	}
 
-	if (rxq_conf->rx_mp == NULL) {
-		NTB_LOG(ERR, "Invalid null mempool pointer.");
-		return -EINVAL;
-	}
 	rxq->nb_rx_desc = rxq_conf->nb_desc;
 	rxq->mpool = rxq_conf->rx_mp;
 	rxq->port_id = dev->dev_id;
@@ -340,10 +358,23 @@ ntb_txq_setup(struct rte_rawdev *dev,
 	struct ntb_queue_conf *txq_conf = queue_conf;
 	struct ntb_hw *hw = dev->dev_private;
 	struct ntb_tx_queue *txq;
-	uint16_t i, prev;
+	uint16_t i, prev, tx_free_thresh;
 
 	if (conf_size != sizeof(*txq_conf))
 		return -EINVAL;
+
+	if (ntb_queue_nb_desc_check(txq_conf->nb_desc) < 0)
+		return -EINVAL;
+
+	tx_free_thresh = txq_conf->tx_free_thresh ?
+		txq_conf->tx_free_thresh :
+		NTB_DFLT_TX_FREE_THRESH;
+	if (tx_free_thresh >= txq_conf->nb_desc - 3) {
+		NTB_LOG(ERR,
+			"tx_free_thresh must be less than nb_desc - 3. (tx_free_thresh=%u qp_id=%u)",
+			tx_free_thresh, qp_id);
+		return -EINVAL;
+	}
 
 	/* Allocate the TX queue data structure. */
 	txq = rte_zmalloc_socket("ntb tx queue",
@@ -383,15 +414,7 @@ ntb_txq_setup(struct rte_rawdev *dev,
 		prev = i;
 	}
 
-	txq->tx_free_thresh = txq_conf->tx_free_thresh ?
-			      txq_conf->tx_free_thresh :
-			      NTB_DFLT_TX_FREE_THRESH;
-	if (txq->tx_free_thresh >= txq->nb_tx_desc - 3) {
-		NTB_LOG(ERR, "tx_free_thresh must be less than nb_desc - 3. "
-			"(tx_free_thresh=%u qp_id=%u)", txq->tx_free_thresh,
-			qp_id);
-		return -EINVAL;
-	}
+	txq->tx_free_thresh = tx_free_thresh;
 
 	hw->tx_queues[qp_id] = txq;
 
