@@ -7,7 +7,7 @@
 
 #include <stdint.h>
 
-/* NTB vendor and device IDs (EPYC Embedded Turin/Genoa/Siena). */
+/* NTB vendor and device IDs (EPYC Embedded 9004/9005/8004). */
 #define NTB_AMD_VENDOR_ID		0x1022
 #define NTB_AMD_DEV_ID_PRI		0x14c0	/* Primary NTB endpoint. */
 #define NTB_AMD_DEV_ID_SEC		0x14c3	/* Secondary NTB endpoint. */

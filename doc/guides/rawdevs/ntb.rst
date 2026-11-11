@@ -41,7 +41,7 @@ AMD EPYC Embedded NTB
 ---------------------
 
 The driver also supports the NTB endpoints integrated in AMD EPYC Embedded
-"Turin", "Genoa" and "Siena" processors.
+9004/9005/8004 processors.
 These use a primary/secondary topology rather than the Intel back-to-back topology:
 one endpoint is enumerated as the primary (device ID ``0x14c0``) and
 the other as the secondary (device ID ``0x14c3``).
@@ -183,7 +183,7 @@ Limitation
 
 This PMD is supported on:
 
-- AMD EPYC Embedded "Turin", "Genoa" and "Siena" processors.
+- AMD EPYC Embedded 9004/9005/8004 processors.
 - 4th Generation Intel® Xeon® Scalable Processors.
 - 3rd Generation Intel® Xeon® Scalable Processors.
 - 2nd Generation Intel® Xeon® Scalable Processors.
