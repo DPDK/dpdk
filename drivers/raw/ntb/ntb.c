@@ -650,13 +650,14 @@ ntb_dequeue_bufs(struct rte_rawdev *dev,
 	struct ntb_rx_queue *rxq = hw->rx_queues[(size_t)context];
 	struct ntb_rx_entry *sw_ring = rxq->sw_ring;
 	struct ntb_desc rx_desc[NTB_MAX_DESC_SIZE];
-	struct rte_mbuf *first, *rxm_t;
+	struct rte_mbuf *new_mbufs[NTB_MAX_DESC_SIZE];
+	struct rte_mbuf *first = NULL, *rxm_t;
 	struct rte_mbuf *prev = NULL;
 	volatile struct ntb_used *rx_item;
 	uint16_t nb_mbufs = 0;
 	uint16_t nb_rx = 0;
 	uint64_t bytes = 0;
-	uint16_t off, last_avail, used_cnt, used_nb;
+	uint16_t off, last_avail, used_cnt, used_nb, nb_segs;
 	int i;
 
 	if (unlikely(dev->started == 0 || hw->peer_dev_up == 0)) {
@@ -673,13 +674,24 @@ ntb_dequeue_bufs(struct rte_rawdev *dev,
 	used_nb = (used_cnt - rxq->last_used) & (rxq->nb_rx_desc - 1);
 	count = RTE_MIN(count, used_nb);
 	for (nb_rx = 0; nb_rx < count; nb_rx++) {
-		i = 0;
-		while (true) {
-			if (unlikely(nb_mbufs >= rxq->nb_rx_desc)) {
-				NTB_LOG(ERR, "Malformed rx stream (no EOP); "
-					"aborting to avoid desc overflow.");
+		/* Only take a packet once the peer has published all of it. */
+		for (nb_segs = 1; ; nb_segs++) {
+			if (nb_segs > used_nb)
 				goto end_of_rx;
-			}
+			rx_item = rxq->rx_used_ring + ((rxq->last_used + nb_segs - 1) &
+						       (rxq->nb_rx_desc - 1));
+			if (rx_item->flags & NTB_FLAG_EOP)
+				break;
+		}
+
+		/* Get the refill mbufs first so a packet is never partially consumed. */
+		if (unlikely(rte_mbuf_raw_alloc_bulk(rxq->mpool, new_mbufs, nb_segs))) {
+			NTB_LOG(ERR, "recv alloc mbuf failed.");
+			goto end_of_rx;
+		}
+		used_nb -= nb_segs;
+
+		for (i = 0; i < nb_segs; i++) {
 			rx_item = rxq->rx_used_ring + rxq->last_used;
 			rxm_t = sw_ring[rxq->last_used].mbuf;
 			rxm_t->data_len = rx_item->len;
@@ -701,15 +713,9 @@ ntb_dequeue_bufs(struct rte_rawdev *dev,
 			rxq->last_used = (rxq->last_used + 1) &
 					 (rxq->nb_rx_desc - 1);
 
-			/* alloc new mbuf */
-			rxm_t = rte_mbuf_raw_alloc(rxq->mpool);
-			if (unlikely(rxm_t == NULL)) {
-				NTB_LOG(ERR, "recv alloc mbuf failed.");
-				goto end_of_rx;
-			}
+			rxm_t = new_mbufs[i];
 			rxm_t->port = rxq->port_id;
 			sw_ring[rxq->last_avail].mbuf = rxm_t;
-			i++;
 
 			/* fill new desc */
 			rx_desc[nb_mbufs].addr =
@@ -718,9 +724,6 @@ ntb_dequeue_bufs(struct rte_rawdev *dev,
 						  RTE_PKTMBUF_HEADROOM;
 			rxq->last_avail = (rxq->last_avail + 1) &
 					  (rxq->nb_rx_desc - 1);
-
-			if (rx_item->flags & NTB_FLAG_EOP)
-				break;
 		}
 		/* update stats */
 		bytes += first->pkt_len;
