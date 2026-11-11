@@ -166,7 +166,7 @@ amd_ntb_ioremap(const struct rte_rawdev *dev, uint64_t addr)
 
 	for (i = 0; i < ntb->peer_used_mws; i++) {
 		if (addr >= ntb->peer_mw_base[i] &&
-				addr <= ntb->peer_mw_base[i] + ntb->mw_size[i]) {
+				addr < ntb->peer_mw_base[i] + ntb->mw_size[i]) {
 			base = amd_ntb_get_peer_mw_addr(dev, i);
 			mapped = (void *)(size_t)(addr - ntb->peer_mw_base[i] + (size_t)base);
 			break;
