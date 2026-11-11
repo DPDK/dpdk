@@ -53,6 +53,7 @@ amd_ntb_dev_init(const struct rte_rawdev *dev)
 	NTB_LOG(INFO, "Device topology: %s (sideinfo 0x%" PRIx32 ")",
 		ntb->topo == NTB_TOPO_SEC ? "secondary" : "primary", sideinfo);
 
+	RTE_BUILD_BUG_ON(AMD_MW_COUNT > NTB_MAX_MW);
 	ntb->mw_cnt = AMD_MW_COUNT;
 	ntb->db_cnt = AMD_DB_COUNT;
 	/* The 16-register scratchpad bank is split into two halves, so only
@@ -60,11 +61,6 @@ amd_ntb_dev_init(const struct rte_rawdev *dev)
 	 */
 	ntb->spad_cnt = AMD_SPAD_PER_SIDE;
 
-	ntb->mw_size = rte_zmalloc("ntb_mw_size", ntb->mw_cnt * sizeof(uint64_t), 0);
-	if (ntb->mw_size == NULL) {
-		NTB_LOG(ERR, "Cannot allocate memory for mw size.");
-		return -ENOMEM;
-	}
 	for (i = 0; i < ntb->mw_cnt; i++) {
 		bar = amd_ntb_bar[i];
 		ntb->mw_size[i] = ntb->pci_dev->mem_resource[bar].len;

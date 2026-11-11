@@ -17,6 +17,9 @@ extern int ntb_logtype;
 #define NTB_SPAD_USER               "spad_user_"
 #define NTB_SPAD_USER_LEN           (sizeof(NTB_SPAD_USER) - 1)
 #define NTB_SPAD_USER_MAX_NUM       4
+
+/* Maximum number of memory windows of supported devices. */
+#define NTB_MAX_MW                  2
 #define NTB_ATTR_NAME_LEN           30
 
 #define NTB_DFLT_TX_FREE_THRESH     256
@@ -220,7 +223,7 @@ struct ntb_hw {
 	char *hw_addr;
 
 	uint8_t peer_dev_up;
-	uint64_t *mw_size;
+	uint64_t mw_size[NTB_MAX_MW];
 	/* remote mem base addr */
 	uint64_t *peer_mw_base;
 

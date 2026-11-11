@@ -194,16 +194,10 @@ intel_ntb_dev_init(const struct rte_rawdev *dev)
 	if (ret)
 		return ret;
 
+	RTE_BUILD_BUG_ON(XEON_MW_COUNT > NTB_MAX_MW);
 	hw->mw_cnt = XEON_MW_COUNT;
 	hw->db_cnt = XEON_DB_COUNT;
 	hw->spad_cnt = XEON_SPAD_COUNT;
-
-	hw->mw_size = rte_zmalloc("ntb_mw_size",
-				  hw->mw_cnt * sizeof(uint64_t), 0);
-	if (hw->mw_size == NULL) {
-		NTB_LOG(ERR, "Cannot allocate memory for mw size.");
-		return -ENOMEM;
-	}
 
 	for (i = 0; i < hw->mw_cnt; i++) {
 		bar = intel_ntb_bar[i];
