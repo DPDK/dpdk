@@ -33,6 +33,8 @@ static const struct rte_pci_id pci_id_ntb_map[] = {
 	{ .vendor_id = 0, /* sentinel */ },
 };
 
+static const struct rte_rawdev_ops ntb_ops;
+
 /* Align with enum ntb_xstats_idx */
 static struct rte_rawdev_xstats_name ntb_xstats_names[] = {
 	{"Tx-packets"},
@@ -722,15 +724,15 @@ rte_pmd_ntb_get_mem_align(uint16_t dev_id, uint32_t mw_id, uint64_t mw_len)
 	struct rte_rawdev *dev;
 	struct ntb_hw *hw;
 
-	if (dev_id >= RTE_RAWDEV_MAX_DEVS)
+	if (dev_id >= RTE_RAWDEV_MAX_DEVS || !rte_rawdev_pmd_is_valid_dev(dev_id))
 		return 0;
 	dev = rte_rawdev_pmd_get_dev(dev_id);
-	if (dev->dev_private == NULL)
+	if (dev->dev_ops != &ntb_ops)
 		return 0;
 
 	hw = dev->dev_private;
 	if (mw_id >= hw->mw_cnt)
-		return RTE_CACHE_LINE_SIZE;
+		return 0;
 
 	return (*hw->ntb_ops->mem_align)(dev, mw_id, mw_len);
 }
