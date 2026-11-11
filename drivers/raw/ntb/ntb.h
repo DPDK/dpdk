@@ -222,6 +222,10 @@ struct ntb_hw {
 	struct rte_pci_device *pci_dev;
 	char *hw_addr;
 
+	/* Interrupt handles for the MSI-X doorbell vectors besides vector 0. */
+	struct rte_intr_handle **db_intr_handles;
+	uint16_t nb_db_intr_handles;
+
 	uint8_t peer_dev_up;
 	uint64_t mw_size[NTB_MAX_MW];
 	/* remote mem base addr */

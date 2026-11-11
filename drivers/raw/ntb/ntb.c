@@ -3,6 +3,7 @@
  */
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 
@@ -11,6 +12,7 @@
 #include <rte_lcore.h>
 #include <rte_cycles.h>
 #include <rte_eal.h>
+#include <rte_errno.h>
 #include <rte_log.h>
 #include <rte_pci.h>
 #include <rte_mbuf.h>
@@ -122,6 +124,69 @@ ntb_dev_intr_handler(void *param)
 	/* Let the vendor process any hardware-specific events. */
 	if (hw->ntb_ops->handle_hw_event != NULL)
 		(*hw->ntb_ops->handle_hw_event)(dev);
+}
+
+static void
+ntb_db_intr_unregister(struct rte_rawdev *dev)
+{
+	struct ntb_hw *hw = dev->dev_private;
+	struct rte_intr_handle *handle;
+	uint16_t i;
+
+	for (i = 0; i < hw->nb_db_intr_handles; i++) {
+		handle = hw->db_intr_handles[i];
+		rte_intr_callback_unregister_sync(handle, ntb_dev_intr_handler, dev);
+		/* The eventfd is owned by the PCI device interrupt handle. */
+		rte_intr_fd_set(handle, -1);
+		rte_intr_instance_free(handle);
+	}
+	free(hw->db_intr_handles);
+	hw->db_intr_handles = NULL;
+	hw->nb_db_intr_handles = 0;
+}
+
+/*
+ * With MSI-X, only vector 0 is serviced through the PCI device interrupt handle.
+ * Each other doorbell raises its own vector, signalled on the eventfds created
+ * by rte_intr_efd_enable(): register the handler on them.
+ */
+static int
+ntb_db_intr_register(struct rte_rawdev *dev, struct rte_intr_handle *intr_handle)
+{
+	struct ntb_hw *hw = dev->dev_private;
+	int nb_efd = rte_intr_nb_efd_get(intr_handle);
+	struct rte_intr_handle *handle;
+	int i, ret;
+
+	hw->db_intr_handles = calloc(nb_efd, sizeof(*hw->db_intr_handles));
+	if (hw->db_intr_handles == NULL)
+		return -ENOMEM;
+
+	for (i = 0; i < nb_efd; i++) {
+		handle = rte_intr_instance_alloc(RTE_INTR_INSTANCE_F_PRIVATE);
+		if (handle == NULL) {
+			ret = -ENOMEM;
+			goto err;
+		}
+		hw->db_intr_handles[hw->nb_db_intr_handles++] = handle;
+
+		if (rte_intr_type_set(handle, RTE_INTR_HANDLE_VFIO_MSIX) ||
+				rte_intr_fd_set(handle, rte_intr_efds_index_get(intr_handle, i))) {
+			ret = -rte_errno;
+			goto err;
+		}
+
+		ret = rte_intr_callback_register(handle, ntb_dev_intr_handler, dev);
+		if (ret)
+			goto err;
+	}
+
+	return 0;
+
+err:
+	NTB_LOG(ERR, "Failed to register doorbell interrupt %d.", i + 1);
+	ntb_db_intr_unregister(dev);
+	return ret;
 }
 
 static int
@@ -902,6 +967,8 @@ ntb_dev_close(struct rte_rawdev *dev)
 	    !rte_intr_max_intr_get(intr_handle))
 		return 0;
 
+	ntb_db_intr_unregister(dev);
+
 	/* Clean datapath event and vec mapping */
 	rte_intr_efd_disable(intr_handle);
 	rte_intr_vec_list_free(intr_handle);
@@ -1305,7 +1372,11 @@ ntb_init_hw(struct rte_rawdev *dev, struct rte_pci_device *pci_dev)
 	 * by default for intel gen3. They are mapped to msix vec 1-32,
 	 * and hardware intr is mapped to 0. Map all to 0 for uio.
 	 */
-	if (!rte_intr_cap_multiple(intr_handle)) {
+	if (rte_intr_cap_multiple(intr_handle)) {
+		ret = ntb_db_intr_register(dev, intr_handle);
+		if (ret)
+			return ret;
+	} else {
 		for (i = 0; i < hw->db_cnt; i++) {
 			ret = (*hw->ntb_ops->vector_bind)(dev, i, 0);
 			if (ret)
