@@ -694,6 +694,7 @@ ntb_dequeue_bufs(struct rte_rawdev *dev,
 		for (i = 0; i < nb_segs; i++) {
 			rx_item = rxq->rx_used_ring + rxq->last_used;
 			rxm_t = sw_ring[rxq->last_used].mbuf;
+			sw_ring[rxq->last_used].mbuf = NULL;
 			rxm_t->data_len = rx_item->len;
 			rxm_t->data_off = RTE_PKTMBUF_HEADROOM;
 			rxm_t->port = rxq->port_id;
