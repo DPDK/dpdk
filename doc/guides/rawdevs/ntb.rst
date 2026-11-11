@@ -66,6 +66,10 @@ Different NTB hardware imposes different alignment constraints,
 so applications should not assume any particular value:
 reserve each memory window memzone with the alignment returned by ``rte_pmd_ntb_get_mem_align()``
 for that window and length. The ``ntb_fwd`` example shows this usage.
+The memzone alignment applies to its virtual address.
+With IOVA as PA, the IOVA of a memzone larger than the hugepage size is not guaranteed
+to be aligned, and the device configuration fails:
+use IOVA as VA mode, or hugepages at least as large as the memory window.
 
 Device Setup
 ------------
