@@ -53,6 +53,10 @@ The AMD NTB hardware exposes two memory windows (BAR23 and BAR45),
 The scratchpad bank is split into two disjoint 8-register sets, one owned by each side,
 so the driver uses a packed handshake layout that fits within 8 registers.
 
+The AMD NTB hardware events (link up/down, peer reset, power state changes) are not handled:
+a peer going away is only detected through the doorbell handshake done
+when the peer device is stopped.
+
 The AMD NTB uses an outbound translation window:
 a write to a memory window offset is forwarded to ``(base | offset)`` in the peer's memory
 rather than ``(base + offset)``.

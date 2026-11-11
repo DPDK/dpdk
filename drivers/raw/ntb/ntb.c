@@ -126,10 +126,6 @@ ntb_dev_intr_handler(void *param)
 
 	/* Clear other received doorbells. */
 	(*hw->ntb_ops->db_clear)(dev, db_bits);
-
-	/* Let the vendor process any hardware-specific events. */
-	if (hw->ntb_ops->handle_hw_event != NULL)
-		(*hw->ntb_ops->handle_hw_event)(dev);
 }
 
 static void

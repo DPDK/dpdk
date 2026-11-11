@@ -16,7 +16,6 @@
 #define AMD_MW_COUNT			2
 #define AMD_DB_COUNT			16
 #define AMD_SPAD_COUNT			16
-#define AMD_MSIX_VECTOR_COUNT		24
 
 /* Peer register window: peer register = primary offset + 0x400. */
 #define AMD_PEER_OFFSET			0x400
@@ -37,10 +36,6 @@
 #define AMD_DBREQ_OFFSET		0x454	/* Doorbell request. */
 #define AMD_DBMASK_OFFSET		0x45C	/* Doorbell mask. */
 #define AMD_DBSTAT_OFFSET		0x460	/* Doorbell status. */
-#define AMD_INTMASK_OFFSET		0x470	/* Interrupt mask. */
-#define AMD_INTSTAT_OFFSET		0x474	/* Interrupt status. */
-#define AMD_PMESTAT_OFFSET		0x480	/* PME status. */
-#define AMD_SMUACK_OFFSET		0x4A0	/* SMU control (PSMU_ACK). */
 
 /* Link Status Register (0x408) bits, spec Table 5. */
 #define AMD_SIDE_MASK			(1 << 0) /* 0: primary, 1: secondary. */
@@ -49,22 +44,6 @@
 /* Link Control Register (0x200) bits, spec Table 2. */
 #define AMD_SMM_REG_CTL			(1 << 20)
 #define AMD_PMM_REG_CTL			(1 << 21)
-
-/* Interrupt Status/Mask event bits, spec Table 7. */
-#define AMD_PEER_FLUSH_EVENT		(1 << 0)
-#define AMD_PEER_RESET_EVENT		(1 << 1)
-#define AMD_PEER_D3_EVENT		(1 << 2)
-#define AMD_PEER_PMETO_EVENT		(1 << 3)
-#define AMD_PEER_D0_EVENT		(1 << 4)
-#define AMD_LINK_UP_EVENT		(1 << 5)
-#define AMD_LINK_DOWN_EVENT		(1 << 6)
-#define AMD_EVENT_INTMASK		(AMD_PEER_FLUSH_EVENT | \
-					 AMD_PEER_RESET_EVENT | \
-					 AMD_PEER_D3_EVENT | \
-					 AMD_PEER_PMETO_EVENT | \
-					 AMD_PEER_D0_EVENT | \
-					 AMD_LINK_UP_EVENT | \
-					 AMD_LINK_DOWN_EVENT)
 
 /* PCIe link status decoding (link speed/width). */
 #define AMD_LNK_STA_SPEED_MASK		0x000f

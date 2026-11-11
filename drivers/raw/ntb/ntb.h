@@ -107,8 +107,6 @@ enum ntb_spad_idx {
  * @link_cleanup: Tear down the local scratchpad/translation state so the
  * peer can no longer reach local memory.
  * @mem_align: Base-address alignment required for a memory window memzone of a given length.
- * @handle_hw_event: Optional. Process vendor-specific hardware events from
- * the common interrupt handler. May be NULL.
  */
 struct ntb_dev_ops {
 	int (*ntb_dev_init)(const struct rte_rawdev *dev);
@@ -131,7 +129,6 @@ struct ntb_dev_ops {
 	int (*read_peer_config)(const struct rte_rawdev *dev);
 	void (*link_cleanup)(const struct rte_rawdev *dev);
 	uint64_t (*mem_align)(const struct rte_rawdev *dev, uint32_t mw_id, uint64_t mw_len);
-	void (*handle_hw_event)(const struct rte_rawdev *dev);
 };
 
 struct ntb_desc {

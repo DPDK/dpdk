@@ -441,7 +441,7 @@ static int
 amd_ntb_vector_bind(const struct rte_rawdev *dev __rte_unused, uint8_t intr __rte_unused,
 		uint8_t msix __rte_unused)
 {
-	/* Each doorbell/event maps to its MSI-X vector by default. */
+	/* Each doorbell maps to its MSI-X vector by default. */
 	return 0;
 }
 
@@ -565,45 +565,6 @@ amd_ntb_link_cleanup(const struct rte_rawdev *dev)
 		amd_ntb_mw_set_trans(dev, i, 0, 0);
 }
 
-/* Handle link/power-management events and acknowledge the SMU. Invoked from
- * the common interrupt handler when no inter-device doorbell is pending.
- */
-static void
-amd_ntb_handle_hw_event(const struct rte_rawdev *dev)
-{
-	struct ntb_hw *ntb = dev->dev_private;
-	uint32_t event, ack;
-
-	event = rte_read32((char *)ntb->hw_addr + AMD_INTSTAT_OFFSET);
-	event &= AMD_EVENT_INTMASK;
-	if (event == 0)
-		return;
-
-	switch (event) {
-	case AMD_PEER_FLUSH_EVENT:
-		NTB_LOG(INFO, "Peer flush event.");
-		break;
-	case AMD_PEER_D0_EVENT:
-		ack = rte_read32((char *)ntb->hw_addr + AMD_PMESTAT_OFFSET);
-		if (ack & 0x1)
-			NTB_LOG(INFO, "D0 wakeup completed for NTB.");
-		/* fall through to ack the SMU */
-		/* Falls through. */
-	case AMD_PEER_RESET_EVENT:
-	case AMD_LINK_DOWN_EVENT:
-	case AMD_PEER_D3_EVENT:
-	case AMD_PEER_PMETO_EVENT:
-	case AMD_LINK_UP_EVENT:
-		ack = rte_read32((char *)ntb->hw_addr + AMD_SMUACK_OFFSET);
-		ack |= event;
-		rte_write32(ack, (char *)ntb->hw_addr + AMD_SMUACK_OFFSET);
-		break;
-	default:
-		NTB_LOG(ERR, "Unknown interrupt event 0x%" PRIx32, event);
-		break;
-	}
-}
-
 static uint64_t
 amd_ntb_get_mem_align(const struct rte_rawdev *dev __rte_unused, uint32_t mw_id __rte_unused,
 		uint64_t mw_len)
@@ -630,5 +591,4 @@ const struct ntb_dev_ops amd_ntb_ops = {
 	.read_peer_config	= amd_ntb_read_peer_config,
 	.link_cleanup		= amd_ntb_link_cleanup,
 	.mem_align		= amd_ntb_get_mem_align,
-	.handle_hw_event	= amd_ntb_handle_hw_event,
 };
