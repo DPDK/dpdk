@@ -716,6 +716,8 @@ ABI Changes
 * cryptodev: The struct ``rte_crypto_rsa_op_param``
   was updated to include ``pss_salt``.
 
+* raw/ntb: The ``mw_size_align`` field was removed from ``struct ntb_dev_info``.
+
 
 Known Issues
 ------------
