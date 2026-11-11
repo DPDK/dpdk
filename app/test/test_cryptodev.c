@@ -15191,21 +15191,14 @@ test_enqdeq_callback_null_cipher(void)
 
 	/* Setup Cipher Parameters */
 	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
-	ut_params->cipher_xform.next = &ut_params->auth_xform;
+	ut_params->cipher_xform.next = NULL;
 
 	ut_params->cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_NULL;
 	ut_params->cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_ENCRYPT;
 
-	/* Setup Auth Parameters */
-	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
-	ut_params->auth_xform.next = NULL;
-
-	ut_params->auth_xform.auth.algo = RTE_CRYPTO_AUTH_NULL;
-	ut_params->auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_GENERATE;
-
 	/* Create Crypto session */
 	ut_params->sess = rte_cryptodev_sym_session_create(ts_params->valid_devs[0],
-				&ut_params->auth_xform, ts_params->session_mpool);
+				&ut_params->cipher_xform, ts_params->session_mpool);
 	if (ut_params->sess == NULL && rte_errno == ENOTSUP)
 		return TEST_SKIPPED;
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
