@@ -502,7 +502,7 @@ static int
 amd_ntb_read_peer_config(const struct rte_rawdev *dev)
 {
 	struct ntb_hw *ntb = dev->dev_private;
-	uint32_t info, peer_qps, peer_qsz, lo, hi;
+	uint32_t info, peer_qps, peer_qsz, peer_used_mws, lo, hi;
 	int i;
 
 	info = amd_ntb_spad_read(dev, AMD_SPAD_CNT_INFO, 0);
@@ -520,7 +520,13 @@ amd_ntb_read_peer_config(const struct rte_rawdev *dev)
 		return -EINVAL;
 	}
 
-	ntb->peer_used_mws = (info >> 16) & 0xff;
+	peer_used_mws = (info >> 16) & 0xff;
+	if (peer_used_mws > ntb->mw_cnt) {
+		NTB_LOG(ERR, "Peer used mws %u > mw cnt %u.", peer_used_mws, ntb->mw_cnt);
+		return -EINVAL;
+	}
+	ntb->peer_used_mws = peer_used_mws;
+
 	for (i = 0; i < ntb->peer_used_mws; i++) {
 		lo = amd_ntb_spad_read(dev, AMD_SPAD_MW0_BA_L + 2 * i, 0);
 		hi = amd_ntb_spad_read(dev, AMD_SPAD_MW0_BA_H + 2 * i, 0);

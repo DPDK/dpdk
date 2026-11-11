@@ -724,7 +724,12 @@ intel_ntb_read_peer_config(const struct rte_rawdev *dev)
 		return -EINVAL;
 	}
 
-	hw->peer_used_mws = intel_ntb_spad_read(dev, SPAD_USED_MWS, 0);
+	peer_val = intel_ntb_spad_read(dev, SPAD_USED_MWS, 0);
+	if (peer_val > hw->mw_cnt) {
+		NTB_LOG(ERR, "Peer used mws %u > mw cnt %u.", peer_val, hw->mw_cnt);
+		return -EINVAL;
+	}
+	hw->peer_used_mws = peer_val;
 
 	for (i = 0; i < hw->peer_used_mws; i++) {
 		peer_base_h = intel_ntb_spad_read(dev, SPAD_MW0_BA_H + 2 * i, 0);
