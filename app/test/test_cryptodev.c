@@ -8360,6 +8360,10 @@ test_mixed_auth_cipher(const struct mixed_cipher_auth_test_data *tdata,
 
 	uint64_t feat_flags = dev_info.feature_flags;
 
+	if (!(feat_flags & RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING)) {
+		printf("Device doesn't support operation chaining.\n");
+		return TEST_SKIPPED;
+	}
 	if (!(feat_flags & RTE_CRYPTODEV_FF_DIGEST_ENCRYPTED)) {
 		printf("Device doesn't support digest encrypted.\n");
 		return TEST_SKIPPED;
