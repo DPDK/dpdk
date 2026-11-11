@@ -25,14 +25,12 @@
 
 /* Primary-side MMIO register offsets (BAR0), spec Table 1. */
 #define AMD_CNTL_OFFSET			0x200	/* Link Control. */
-#define AMD_SPADMUTEX_OFFSET		0x20C	/* Scratchpad mutex. */
 #define AMD_SPAD_OFFSET			0x210	/* Scratchpad registers. */
 #define AMD_SIDEINFO_OFFSET		0x408	/* Link Status (PSIDE_INFO). */
 #define AMD_BAR23_LIMIT_OFFSET		0x418	/* MW BAR23 size. */
 #define AMD_BAR45_LIMIT_OFFSET		0x420	/* MW BAR45 size. */
 #define AMD_BAR23_XLAT_OFFSET		0x438	/* MW BAR23 translation. */
 #define AMD_BAR45_XLAT_OFFSET		0x440	/* MW BAR45 translation. */
-#define AMD_DBFM_OFFSET			0x450	/* Doorbell flush mode. */
 #define AMD_DBREQ_OFFSET		0x454	/* Doorbell request. */
 #define AMD_DBMASK_OFFSET		0x45C	/* Doorbell mask. */
 #define AMD_DBSTAT_OFFSET		0x460	/* Doorbell status. */
