@@ -235,10 +235,8 @@ ntb_rxq_release_mbufs(struct ntb_rx_queue *q)
 static void
 ntb_rxq_release(struct ntb_rx_queue *rxq)
 {
-	if (!rxq) {
-		NTB_LOG(ERR, "Pointer to rxq is NULL");
+	if (!rxq)
 		return;
-	}
 
 	ntb_rxq_release_mbufs(rxq);
 
@@ -272,11 +270,6 @@ ntb_rxq_setup(struct rte_rawdev *dev,
 
 	if (conf_size != sizeof(*rxq_conf))
 		return -EINVAL;
-
-	if (rxq_conf->rx_mp == NULL) {
-		NTB_LOG(ERR, "Invalid null mempool pointer.");
-		return -EINVAL;
-	}
 
 	if (ntb_queue_nb_desc_check(rxq_conf->nb_desc) < 0)
 		return -EINVAL;
@@ -338,10 +331,8 @@ ntb_txq_release_mbufs(struct ntb_tx_queue *q)
 static void
 ntb_txq_release(struct ntb_tx_queue *txq)
 {
-	if (!txq) {
-		NTB_LOG(ERR, "Pointer to txq is NULL");
+	if (!txq)
 		return;
-	}
 
 	ntb_txq_release_mbufs(txq);
 
@@ -423,27 +414,6 @@ ntb_txq_setup(struct rte_rawdev *dev,
 
 
 static int
-ntb_queue_setup(struct rte_rawdev *dev,
-		uint16_t queue_id,
-		rte_rawdev_obj_t queue_conf,
-		size_t conf_size)
-{
-	struct ntb_hw *hw = dev->dev_private;
-	int ret;
-
-	if (queue_id >= hw->queue_pairs)
-		return -EINVAL;
-
-	ret = ntb_txq_setup(dev, queue_id, queue_conf, conf_size);
-	if (ret < 0)
-		return ret;
-
-	ret = ntb_rxq_setup(dev, queue_id, queue_conf, conf_size);
-
-	return ret;
-}
-
-static int
 ntb_queue_release(struct rte_rawdev *dev, uint16_t queue_id)
 {
 	struct ntb_hw *hw = dev->dev_private;
@@ -457,6 +427,46 @@ ntb_queue_release(struct rte_rawdev *dev, uint16_t queue_id)
 	hw->rx_queues[queue_id] = NULL;
 
 	return 0;
+}
+
+static int
+ntb_queue_setup(struct rte_rawdev *dev,
+		uint16_t queue_id,
+		rte_rawdev_obj_t queue_conf,
+		size_t conf_size)
+{
+	struct ntb_queue_conf *conf = queue_conf;
+	struct ntb_hw *hw = dev->dev_private;
+	int ret;
+
+	if (queue_id >= hw->queue_pairs)
+		return -EINVAL;
+
+	if (conf == NULL || conf_size != sizeof(*conf))
+		return -EINVAL;
+
+	if (conf->rx_mp == NULL) {
+		NTB_LOG(ERR, "Invalid null mempool pointer.");
+		return -EINVAL;
+	}
+
+	if (dev->started) {
+		NTB_LOG(ERR, "Cannot setup queue %u of a started device.", queue_id);
+		return -EBUSY;
+	}
+
+	/* Release the queues of a previous setup. */
+	ntb_queue_release(dev, queue_id);
+
+	ret = ntb_txq_setup(dev, queue_id, queue_conf, conf_size);
+	if (ret < 0)
+		return ret;
+
+	ret = ntb_rxq_setup(dev, queue_id, queue_conf, conf_size);
+	if (ret < 0)
+		ntb_queue_release(dev, queue_id);
+
+	return ret;
 }
 
 static uint16_t
