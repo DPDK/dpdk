@@ -2548,8 +2548,7 @@ mlx5dr_definer_conv_item_meter_color(struct mlx5dr_definer_conv_data *cd,
 
 static struct mlx5dr_definer_fc *
 mlx5dr_definer_get_flex_parser_fc(struct mlx5dr_definer_conv_data *cd,
-				  uint32_t byte_off,
-				  int item_idx)
+				  uint32_t byte_off)
 {
 	uint32_t byte_off_fp7 = MLX5_BYTE_OFF(definer_hl, flex_parser.flex_parser_7);
 	uint32_t byte_off_fp0 = MLX5_BYTE_OFF(definer_hl, flex_parser.flex_parser_0);
@@ -2560,32 +2559,6 @@ mlx5dr_definer_get_flex_parser_fc(struct mlx5dr_definer_conv_data *cd,
 	if (byte_off < byte_off_fp7 || byte_off > byte_off_fp0) {
 		rte_errno = EINVAL;
 		return NULL;
-	}
-
-	/* To match on ESP we must match on ip_protocol and optionally on l4_dport */
-	if (!cd->relaxed) {
-		bool over_udp;
-
-		fc = &cd->fc[DR_CALC_FNAME(IP_PROTOCOL, false)];
-		over_udp = fc->tag_set == &mlx5dr_definer_udp_protocol_set;
-
-		if (over_udp) {
-			fc = &cd->fc[DR_CALC_FNAME(L4_DPORT, false)];
-			if (!fc->tag_set) {
-				fc->item_idx = item_idx;
-				fc->tag_mask_set = &mlx5dr_definer_ones_set;
-				fc->tag_set = &mlx5dr_definer_ipsec_udp_port_set;
-				DR_CALC_SET(fc, eth_l4, destination_port, false);
-			}
-		} else {
-			fc = &cd->fc[DR_CALC_FNAME(IP_PROTOCOL, false)];
-			if (!fc->tag_set) {
-				fc->item_idx = item_idx;
-				fc->tag_set = &mlx5dr_definer_ipsec_protocol_set;
-				fc->tag_mask_set = &mlx5dr_definer_ones_set;
-				DR_CALC_SET(fc, eth_l3, protocol_next_header, false);
-			}
-		}
 	}
 
 	idx = (byte_off_fp0 - byte_off) / (sizeof(uint32_t));
@@ -2639,7 +2612,7 @@ mlx5dr_definer_conv_item_ipv6_routing_ext(struct mlx5dr_definer_conv_data *cd,
 
 	if (m->hdr.next_hdr || m->hdr.type || m->hdr.segments_left) {
 		byte_off = flow_hw_get_srh_flex_parser_byte_off_from_ctx(cd->ctx);
-		fc = mlx5dr_definer_get_flex_parser_fc(cd, byte_off, item_idx);
+		fc = mlx5dr_definer_get_flex_parser_fc(cd, byte_off);
 		if (!fc)
 			return rte_errno;
 
@@ -2761,7 +2734,7 @@ mlx5dr_definer_conv_item_ecpri(struct mlx5dr_definer_conv_data *cd,
 		if (!mask)
 			continue;
 		mask = htobe32(mask);
-		fc = mlx5dr_definer_get_flex_parser_fc(cd, byte_off[i], item_idx);
+		fc = mlx5dr_definer_get_flex_parser_fc(cd, byte_off[i]);
 		if (!fc)
 			return rte_errno;
 
