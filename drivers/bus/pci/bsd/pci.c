@@ -110,7 +110,7 @@ pci_uio_alloc_resource(struct rte_pci_device *dev,
 	snprintf(devname, sizeof(devname), "/dev/uio@pci:%u:%u:%u",
 			dev->addr.bus, dev->addr.devid, dev->addr.function);
 
-	fd = open(devname, O_RDWR);
+	fd = open(devname, O_RDWR | O_NONBLOCK);
 	if (fd < 0) {
 		if (errno == ENOENT) {
 			PCI_LOG(WARNING, PCI_PRI_FMT" not managed by UIO driver, skipping",
