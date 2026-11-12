@@ -2606,18 +2606,6 @@ static inline size_t aesni_mb_ml_dsa_sk_sz(const IMB_ML_DSA_ALG alg)
 		}
 		return 0;
 }
-static inline size_t aesni_mb_ml_dsa_sig_sz(const IMB_ML_DSA_ALG alg)
-{
-		switch (alg) {
-		case IMB_ML_DSA_44:
-				return IMB_ML_DSA_44_SIG_BYTES;
-		case IMB_ML_DSA_65:
-				return IMB_ML_DSA_65_SIG_BYTES;
-		case IMB_ML_DSA_87:
-				return IMB_ML_DSA_87_SIG_BYTES;
-		}
-		return 0;
-}
 
 static void
 aesni_mb_asym_process(struct rte_crypto_op *op)
