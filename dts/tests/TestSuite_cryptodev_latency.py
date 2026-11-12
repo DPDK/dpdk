@@ -248,10 +248,10 @@ class TestCryptodevLatency(TestSuite):
 
             # result did not meet the matching parameter, check if within delta.
             if getattr(result, "avg_cycles") > expected_cycles:
-                if self.delta_tolerance > measured_delta_cycles:
+                if self.delta_tolerance < measured_delta_cycles:
                     test_result = False
             if getattr(result, "avg_time_us") > expected_time:
-                if self.delta_tolerance > measured_delta_time:
+                if self.delta_tolerance < measured_delta_time:
                     test_result = False
 
             result_list.append(
