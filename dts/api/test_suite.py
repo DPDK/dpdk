@@ -107,10 +107,10 @@ class TestSuite(TestProtocol):
         determine the type of test suite.
 
         Args:
-            test_suite_type: A functional, performance, or cryptodev test suite.
+            test_suite_type: A functional or performance test suite.
 
         Returns:
-            The decorator of a functional, performance, or cryptodev test suite.
+            The decorator of a functional or performance test suite.
         """
 
         def _decorator(test_suite_cls: TestSuiteClassType) -> TestSuiteClassType:
@@ -497,6 +497,33 @@ class TestSuiteSpec:
                 get_dts_logger().warning(err)
 
         return test_suites
+
+
+class PerfTestParameters(FrozenModel):
+    """Generic performance test suite parameters."""
+
+    #: Ethernet frame size in bytes.
+    frame_size: int
+    #: RX/TX ring descriptor count.
+    num_descriptors: int
+    #: Baseline throughput target.
+    expected_mpps: float
+
+
+class PerfSuiteConfig(BaseConfig):
+    """Default test configuration for performance test suites."""
+
+    #: Default performance test parameters.
+    test_parameters: list[PerfTestParameters] = [
+        PerfTestParameters(frame_size=64, num_descriptors=1024, expected_mpps=1.00),
+        PerfTestParameters(frame_size=128, num_descriptors=1024, expected_mpps=1.00),
+        PerfTestParameters(frame_size=256, num_descriptors=1024, expected_mpps=1.00),
+        PerfTestParameters(frame_size=512, num_descriptors=1024, expected_mpps=1.00),
+        PerfTestParameters(frame_size=1024, num_descriptors=1024, expected_mpps=1.00),
+        PerfTestParameters(frame_size=1518, num_descriptors=1024, expected_mpps=1.00),
+    ]
+    #: Default allowed performance delta variance.
+    delta_tolerance: float = 0.05
 
 
 AVAILABLE_TEST_SUITES: list[TestSuiteSpec] = TestSuiteSpec.discover_all()
