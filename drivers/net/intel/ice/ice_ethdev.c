@@ -6750,6 +6750,8 @@ ice_get_module_eeprom(struct rte_eth_dev *dev,
 		 * SFP modules only ever use page 0.
 		 */
 		if (page == 0 || !(data[0x2] & 0x4)) {
+			uint32_t copy_len;
+
 			/* If i2c bus is busy due to slow page change or
 			 * link management access, call can fail.
 			 * This is normal. So we retry this a few times.
@@ -6777,9 +6779,12 @@ ice_get_module_eeprom(struct rte_eth_dev *dev,
 				break;
 			}
 
-			/* Make sure we have enough room for the new block */
-			if ((i + SFF_READ_BLOCK_SIZE) <= info->length)
-				memcpy(data + i, value, SFF_READ_BLOCK_SIZE);
+			/* Clamp the copy to the bytes actually requested: the final
+			 * block is shorter than SFF_READ_BLOCK_SIZE whenever
+			 * info->length is not a multiple of it.
+			 */
+			copy_len = RTE_MIN((uint32_t)SFF_READ_BLOCK_SIZE, info->length - i);
+			memcpy(data + i, value, copy_len);
 		}
 	}
 
