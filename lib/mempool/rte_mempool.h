@@ -1433,9 +1433,6 @@ rte_mempool_do_generic_put(struct rte_mempool *mp, void * const *obj_table,
 	RTE_MEMPOOL_CACHE_STAT_ADD(cache, put_bulk, 1);
 	RTE_MEMPOOL_CACHE_STAT_ADD(cache, put_objs, n);
 
-	__rte_assume(cache->size <= RTE_MEMPOOL_CACHE_MAX_SIZE);
-	__rte_assume(cache->size / 2 <= RTE_MEMPOOL_CACHE_MAX_SIZE / 2);
-	__rte_assume(cache->len <= RTE_MEMPOOL_CACHE_MAX_SIZE);
 	__rte_assume(cache->len <= cache->size);
 	if (likely(cache->len + n <= cache->size)) {
 		/* Sufficient room in the cache for the objects. */
@@ -1575,7 +1572,7 @@ rte_mempool_do_generic_get(struct rte_mempool *mp, void **obj_table,
 	/* The cache is a stack, so copy will be in reverse order. */
 	cache_objs = &cache->objs[cache->len];
 
-	__rte_assume(cache->len <= RTE_MEMPOOL_CACHE_MAX_SIZE);
+	__rte_assume(cache->len <= cache->size);
 	if (likely(n <= cache->len)) {
 		/* The entire request can be satisfied from the cache. */
 		RTE_MEMPOOL_CACHE_STAT_ADD(cache, get_success_bulk, 1);
@@ -1600,7 +1597,6 @@ rte_mempool_do_generic_get(struct rte_mempool *mp, void **obj_table,
 		*obj_table++ = *--cache_objs;
 
 	/* Dequeue below would exceed the cache bounce buffer limit? */
-	__rte_assume(cache->size / 2 <= RTE_MEMPOOL_CACHE_MAX_SIZE / 2);
 	if (unlikely(remaining > cache->size / 2))
 		goto driver_dequeue;
 
@@ -1619,8 +1615,6 @@ rte_mempool_do_generic_get(struct rte_mempool *mp, void **obj_table,
 	RTE_MEMPOOL_CACHE_STAT_ADD(cache, get_success_bulk, 1);
 	RTE_MEMPOOL_CACHE_STAT_ADD(cache, get_success_objs, n);
 
-	__rte_assume(cache->size / 2 <= RTE_MEMPOOL_CACHE_MAX_SIZE / 2);
-	__rte_assume(remaining <= RTE_MEMPOOL_CACHE_MAX_SIZE / 2);
 	__rte_assume(remaining <= cache->size / 2);
 	cache_objs = &cache->objs[cache->size / 2];
 	cache->len = cache->size / 2 - remaining;
