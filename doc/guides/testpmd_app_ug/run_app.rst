@@ -315,8 +315,8 @@ The command line options are:
 
 *   ``--mbcache=N``
 
-    Set the cache of mbuf memory pools to N, where 0 <= N <= 512.
-    The default value is 16.
+    Set the cache of mbuf memory pools to N, where 0 <= N <= 65535.
+    The default value is 250.
 
 *   ``--rxpt=N``
 

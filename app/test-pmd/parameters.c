@@ -1455,13 +1455,12 @@ launch_args_parse(int argc, char** argv)
 			break;
 		case TESTPMD_OPT_MBCACHE_NUM:
 			n = atoi(optarg);
-			if ((n >= 0) &&
-					(n <= RTE_MEMPOOL_CACHE_MAX_SIZE))
+			if ((n >= 0) && (n <= UINT16_MAX))
 				mb_mempool_cache = (uint16_t) n;
 			else
 				rte_exit(EXIT_FAILURE,
 					"mbcache must be >= 0 and <= %d\n",
-					RTE_MEMPOOL_CACHE_MAX_SIZE);
+					UINT16_MAX);
 			break;
 		case TESTPMD_OPT_TXFREET_NUM:
 			n = atoi(optarg);
