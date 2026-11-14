@@ -226,7 +226,7 @@ queue_missed_stat_get(struct rte_eth_dev *dev, unsigned int qid)
 
 static int
 eth_pcap_rx_jumbo(struct rte_mempool *mb_pool, struct rte_mbuf *mbuf,
-		const u_char *data, uint16_t data_len)
+		const u_char *data, uint32_t data_len)
 {
 	/* Copy the first segment. */
 	uint16_t len = rte_pktmbuf_tailroom(mbuf);
@@ -237,9 +237,12 @@ eth_pcap_rx_jumbo(struct rte_mempool *mb_pool, struct rte_mbuf *mbuf,
 	data += len;
 
 	while (data_len > 0) {
+		/* Avoid excessively long chain */
+		if (mbuf->nb_segs + 1 > RTE_MBUF_MAX_NB_SEGS)
+			return -1;
+
 		/* Allocate next mbuf and point to that. */
 		m->next = rte_pktmbuf_alloc(mb_pool);
-
 		if (unlikely(!m->next))
 			return -1;
 
