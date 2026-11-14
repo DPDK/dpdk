@@ -26,11 +26,17 @@ Linux Prerequisites
 - Please follow the matching list to download specific kernel driver, firmware and DDP package from
   `https://www.intel.com/content/www/us/en/search.html?ws=text#q=e810&t=Downloads&layout=table`.
 
-- To understand what is DDP package and how it works, please review `Intel® Ethernet Controller E810 Dynamic
-  Device Personalization (DDP) for Telecommunications Technology Guide <https://cdrdv2.intel.com/v1/dl/getContent/617015>`_.
+- To understand what a DDP package is and how it works, please review
+  `Intel® Ethernet 800 Series Dynamic Device Personalization (DDP) Technology Guide
+  <https://cdrdv2.intel.com/v1/dl/getContent/617015>`_.
 
-- To understand DDP for COMMs usage with DPDK, please review `Intel® Ethernet 800 Series Telecommunication (Comms)
-  Dynamic Device Personalization (DDP) Package <https://cdrdv2.intel.com/v1/dl/getContent/618651>`_.
+- To understand DDP for Comms usage with DPDK, please review
+  `Intel® Ethernet 800 Series DDP for Comms Technology Guide
+  <https://cdrdv2.intel.com/v1/dl/getContent/618651>`_.
+
+- To understand DDP for Wireless Edge usage with DPDK, please review
+  `Intel® Ethernet 800 Series DDP for Wireless Edge Technology Guide
+  <https://cdrdv2.intel.com/v1/dl/getContent/637554>`_.
 
 Windows Prerequisites
 ---------------------
@@ -191,7 +197,7 @@ Runtime Configuration
   ``field_name`` is the name of mbuf dynamic field for protocol extraction data.
   ``field_offs`` and ``field_name`` will be checked whether it is valid. If invalid,
   an error print will be returned: ``Invalid field offset or name, no match dynfield``,
-  and the proto_ext function will not be enabled.
+  and the ``proto_xtr`` function will not be enabled.
 
   Protocol is : ``vlan, ipv4, ipv6, ipv6_flow, tcp, ip_offset``.
 
@@ -386,7 +392,7 @@ are chosen based on 2 conditions.
   is set to 512, AVX512 paths will be chosen.
 
 - ``Offload features``
-  The supported HW offload features are described in the document ice.ini,
+  The supported HW offload features are described in the document ``ice.ini``.
   A value "P" means the offload feature is not supported by vector path.
   If any not supported features are used, ICE vector PMD is disabled and the
   normal paths are chosen.
@@ -625,7 +631,7 @@ Generic Flow Support
 
 The ice PMD provides support for the Generic Flow API (RTE_FLOW), enabling
 users to offload various flow classification tasks to the E810 NIC.
-The E810 NIC's  packet processing pipeline consists of the following stages:
+The E810 NIC's packet processing pipeline consists of the following stages:
 
 Switch: Supports exact match and limited wildcard matching with a large flow
 capacity.
@@ -679,7 +685,7 @@ Raw patterns consist of two key components:
 **Pattern Mask**
   An ASCII hexadecimal string of the same length as the spec
   that determines which specific fields within the packet will be extracted and used for matching.
-  The mask control field extraction without affecting the packet type identification.
+  The mask controls field extraction without affecting the packet type identification.
 
 .. note::
 
@@ -868,7 +874,7 @@ Equivalent C code using the flow API:
    };
 
    struct rte_flow_error error;
-   struct rte_flow *flow = flow = rte_flow_create(port_id, &attr, pattern, actions, &error);
+   struct rte_flow *flow = rte_flow_create(port_id, &attr, pattern, actions, &error);
 
 To use masked bits (IPv4 source/destination addresses) to distribute such packets via RSS:
 
@@ -941,6 +947,7 @@ Additional Options
   By default, all flow engines are enabled. But if user does not need the
   ACL engine related functions, user can set ``devargs`` parameter
   ``acl=off`` to disable the ACL engine and shorten the startup time.
+  For example::
 
     -a 18:01.0,cap=dcf,acl=off
 
@@ -971,8 +978,8 @@ Additional Options
 
 #. Send the packet, and it should be displayed on tcpdump::
 
-      sendp(Ether(src='3c:fd:fe:aa:bb:78', dst='00:00:00:01:02:03')/IP(src=' \
-      192.168.0.2', dst="192.168.0.3")/TCP(flags='S')/Raw(load='XXXXXXXXXX'), \
+      sendp(Ether(src='3c:fd:fe:aa:bb:78', dst='00:00:00:01:02:03')/ \
+      IP(src='192.168.0.2', dst='192.168.0.3')/TCP(flags='S')/Raw(load='XXXXXXXXXX'), \
       iface="enp24s0f0", count=10)
 
 Per-Queue Tx Rate Limiting
