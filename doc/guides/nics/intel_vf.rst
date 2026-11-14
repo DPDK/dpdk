@@ -10,7 +10,7 @@ Supported Intel® Ethernet Controllers (see the *DPDK Release Notes* for details
 support the following modes of operation in a virtualized environment:
 
 *   **SR-IOV mode**: Involves direct assignment of part of the port resources to different guest operating systems
-    using the PCI-SIG Single Root I/O Virtualization (SR IOV) standard,
+    using the PCI-SIG Single Root I/O Virtualization (SR-IOV) standard,
     also known as "native mode" or "pass-through" mode.
     In this chapter, this mode is referred to as IOV mode.
 
@@ -157,7 +157,7 @@ Intel\ |reg| E800 Series Ethernet devices:
 
 * When using the Intel out-of-tree "ice" PF/kernel driver v1.13.7 or later,
   to create VFs with >16 queues (aka. "large VFs"),
-  it is necessary to change the rss_lut_vf_addr setting in sysfs from the default of 64 to 512.
+  it is necessary to change the ``rss_lut_vf_attr`` setting in sysfs from the default of 64 to 512.
   This can be done using the following command for the first VF on an interface:
   ``echo 512 > /sys/class/net/<PF interface>/device/virtfn0/rss_lut_vf_attr``
 
@@ -177,7 +177,7 @@ For example,
     .. code-block:: console
 
         rmmod fm10k (To remove the fm10k module)
-        insmod fm0k.ko max_vfs=2,2 (To enable two Virtual Functions per port)
+        insmod fm10k.ko max_vfs=2,2 (To enable two Virtual Functions per port)
 
 Virtual Function enumeration is performed in the following sequence by the Linux* pci driver for a dual-port NIC.
 When you enable the four Virtual Functions with the above command, the four enabled functions have a Function#
@@ -250,7 +250,7 @@ For example,
     .. code-block:: console
 
         rmmod ixgbe (To remove the ixgbe module)
-        insmod ixgbe max_vfs=2,2 (To enable two Virtual Functions per port)
+        insmod ixgbe.ko max_vfs=2,2 (To enable two Virtual Functions per port)
 
 *   Using the DPDK PMD PF ixgbe driver, bind the PF device to ``vfio_pci`` or ``igb_uio`` and
     create VF devices. See :ref:`linux_gsg_binding_kernel`.
@@ -318,7 +318,7 @@ A pool is a group of queue pairs for assignment to the same VF, used for transmi
 The controller has eight pools, with each pool containing two queue pairs, that is, two TX and two RX queues assigned to each VF.
 
 In a virtualized environment, an Intel® Ethernet Controller I350 family device serves up to eight virtual machines (VMs) per port.
-The eight queues can be accessed by eight different VMs if configured correctly (the i350 has 4x1GbE ports each with 8T X and 8 RX queues),
+The eight queues can be accessed by eight different VMs if configured correctly (the i350 has 4x1GbE ports each with 8 TX and 8 RX queues),
 that means, one Transmit and one Receive queue assigned to each VF.
 
 For example,
@@ -328,7 +328,7 @@ For example,
     .. code-block:: console
 
         rmmod igb (To remove the igb module)
-        insmod igb max_vfs=2,2 (To enable two Virtual Functions per port)
+        insmod igb.ko max_vfs=2,2 (To enable two Virtual Functions per port)
 
 *   Using the DPDK PMD PF igb driver, bind the PF device to ``vfio_pci`` or ``igb_uio`` and
     create VF devices. See :ref:`linux_gsg_binding_kernel`.
@@ -361,11 +361,11 @@ Validated Hypervisors
 
 The validated hypervisor is:
 
-*   KVM (Kernel Virtual Machine) with  Qemu, version 0.14.0
+*   KVM (Kernel Virtual Machine) with Qemu, version 0.14.0
 
 However, the hypervisor is bypassed to configure the Virtual Function devices using the Mailbox interface,
 the solution is hypervisor-agnostic.
-Xen* and VMware* (when SR- IOV is supported) will also be able to support the DPDK with Virtual Function driver support.
+Xen* and VMware* (when SR-IOV is supported) will also be able to support the DPDK with Virtual Function driver support.
 
 Expected Guest Operating System in Virtual Machine
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -571,7 +571,7 @@ The setup procedure is as follows:
 .. note::
 
     If you are unable to compile the DPDK and you are getting "error: CPU you selected does not support x86-64 instruction set",
-    power off the Guest OS and start the virtual machine with the correct -cpu option in the qemu- system-x86_64 command as shown in step 9.
+    power off the Guest OS and start the virtual machine with the correct -cpu option in the qemu-system-x86_64 command as shown in step 9.
     You must select the best x86_64 cpu_model to emulate or you can select host option if available.
 
 .. note::
