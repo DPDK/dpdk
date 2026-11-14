@@ -43,7 +43,7 @@ Features of the i40e PMD are:
 - Dynamic Device Personalization (DDP)
 - Queue region configuration
 - Virtual Function Port Representors
-- Malicious Device Drive event catch and notify
+- Malicious Driver Detection event catch and notify
 - Generic flow API
 
 Linux Prerequisites
@@ -537,7 +537,7 @@ Display information about a GTP profile:
 
 Input set configuration
 ~~~~~~~~~~~~~~~~~~~~~~~
-Input set for any PCTYPE can be configured with user defined configuration,
+Input set for any PCTYPE can be configured with user defined configuration.
 For example, to use only 48bit prefix for IPv6 src address for IPv6 TCP RSS:
 
 .. code-block:: console
@@ -669,7 +669,7 @@ If a TC is set to strict priority mode, it can consume unlimited bandwidth.
 It means if APP has set the max bandwidth for that TC, it comes to no
 effect.
 It's suggested to set the strict priority mode for a TC that is latency
-sensitive but no consuming much bandwidth.
+sensitive but not consuming much bandwidth.
 
 DCB function
 ~~~~~~~~~~~~
@@ -721,7 +721,7 @@ Set flowtype mapping on a RSS queue region on a port::
 
 where:
 
-* For the flowtype(pctype) of packet,the specific index for each type has
+* For the flowtype(pctype) of packet, the specific index for each type has
   been defined in file i40e_type.h as enum i40e_filter_pctype.
 
 Set user priority mapping on a RSS queue region on a port::
@@ -734,13 +734,12 @@ Flush all queue region related configuration on a port::
 
 where:
 
-* ``on``: is just an enable function which server for other configuration,
-  it is for all configuration about queue region from up layer,
-  at first will only keep in DPDK software stored in driver,
-  only after "flush on", it commit all configuration to HW.
+* ``on``: applies all pending queue region configuration to the hardware.
+  The queue region commands above only store their configuration in the driver,
+  and none of it takes effect until this command is run.
 
-* ``"off``: is just clean all configuration about queue region just now,
-  and restore all to DPDK i40e driver default config when start up.
+* ``off``: discards all queue region configuration,
+  and restores the hardware to the driver default of a single region spanning all queues.
 
 Show all queue region related configuration info on a port::
 
@@ -765,7 +764,7 @@ set allmulticast (for VF)
 
 Set the multicast promiscuous mode for a VF from PF.
 It's supported by Intel i40e NICs now.
-In promiscuous mode packets are not dropped if they aren't for the specified MAC address::
+In all-multicast mode all multicast packets are received regardless of the multicast address filter::
 
    testpmd> set vf allmulti (port_id) (vf_id) (on|off)
 
@@ -858,7 +857,7 @@ where:
 
 * ``target``: A specific software ptype or a mask to represent a group of software ptypes.
 
-* ``mask``: A flag indicate if "target" is a specific software ptype(=0) or a ptype mask(=1).
+* ``mask``: A flag indicates whether "target" is a specific software ptype(=0) or a ptype mask(=1).
 
 * ``pkt_type``: The new software ptype to replace the old ones.
 
