@@ -41,7 +41,7 @@ Vector PMD for IXGBE
 --------------------
 
 Vector PMD uses Intel® SIMD instructions to optimize packet I/O.
-It improves load/store bandwidth efficiency of L1 data cache by using a wider SSE/AVX register 1 (1).
+It improves load/store bandwidth efficiency of L1 data cache by using a wider SSE/AVX register.
 The wider register gives space to hold multiple packet buffers so as to save instruction number when processing bulk of packets.
 
 There is no change to PMD API. The RX/TX handler are the only two entries for vPMD packet I/O.
@@ -62,7 +62,7 @@ The following prerequisites apply:
 
 Ensure that the following pre-conditions are satisfied:
 
-*   rxq->rx_free_thresh >= RTE_PMD_IXGBE_RX_MAX_BURST
+*   rxq->rx_free_thresh >= IXGBE_RX_MAX_BURST
 
 *   rxq->rx_free_thresh < rxq->nb_rx_desc
 
@@ -74,7 +74,7 @@ Ensure that the following pre-conditions are satisfied:
 
 These conditions are checked in the code.
 
-By default, IXGBE_MAX_RING_DESC is set to 8192 and RTE_PMD_IXGBE_RX_MAX_BURST is set to 32.
+By default, IXGBE_MAX_RING_DESC is set to 8192 and IXGBE_RX_MAX_BURST is set to 32.
 
 Windows Prerequisites and Pre-conditions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -131,7 +131,7 @@ be passed as part of EAL arguments. For example,
 
 .. code-block:: console
 
-   dpdk-testpmd -a fiber_sdp3_no_tx_disable=1 -- -i
+   dpdk-testpmd -a 81:00.0,fiber_sdp3_no_tx_disable=1 -- -i
 
 - ``fiber_sdp3_no_tx_disable`` (default **0**)
 
@@ -178,14 +178,14 @@ Prerequisite
 ^^^^^^^^^^^^
 
 The only prerequisite is related to tx_rs_thresh.
-The tx_rs_thresh value must be greater than or equal to RTE_PMD_IXGBE_TX_MAX_BURST,
-but less or equal to RTE_IXGBE_TX_MAX_FREE_BUF_SZ.
+The tx_rs_thresh value must be greater than or equal to IXGBE_TX_MAX_BURST,
+but less than or equal to IXGBE_TX_MAX_FREE_BUF_SZ.
 Consequently, by default the tx_rs_thresh value is in the range 32 to 64.
 
 Feature not Supported by TX Vector PMD
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-TX vPMD only works when offloads is set to 0
+TX vPMD only works when offloads is set to 0.
 
 This means that it does not support any TX offload.
 
@@ -247,7 +247,7 @@ remain consistent. Running a DPDK application without polling the statistics wil
 cause registers on hardware to count to the maximum value, and "stick" at
 that value.
 
-In order to avoid statistic registers every reaching the maximum value,
+In order to avoid statistic registers ever reaching the maximum value,
 read the statistics from the hardware using ``rte_eth_stats_get()`` or
 ``rte_eth_xstats_get()``.
 
@@ -414,7 +414,7 @@ port config bypass
 
 Enable/disable bypass feature::
 
-   port config bypass (port_id) (on|off)
+   testpmd> port config bypass (port_id) (on|off)
 
 set bypass mode
 ~~~~~~~~~~~~~~~
@@ -426,7 +426,7 @@ Set the bypass mode for the lowest port on bypass enabled NIC::
 set bypass event
 ~~~~~~~~~~~~~~~~
 
-Set the event required to initiate specified bypass mode for the lowest port on a bypass enabled::
+Set the event required to initiate specified bypass mode for the lowest port on a bypass enabled NIC::
 
    testpmd> set bypass event (timeout|os_on|os_off|power_on|power_off) \
             mode (normal|bypass|isolate) (port_id)
