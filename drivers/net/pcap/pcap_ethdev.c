@@ -60,9 +60,6 @@ static struct timespec start_time;
 static uint64_t start_cycles;
 static uint64_t hz;
 
-static uint64_t timestamp_rx_dynflag;
-static int timestamp_dynfield_offset = -1;
-
 struct queue_stat {
 	volatile unsigned long pkts;
 	volatile unsigned long bytes;
@@ -122,6 +119,8 @@ struct pmd_internals {
 	bool rx_scatter;
 	bool timestamp_offloading;
 	bool lsc_active;
+	int timestamp_dynfield_offset;
+	uint64_t timestamp_rx_dynflag;
 };
 
 struct pmd_process_private {
@@ -268,6 +267,7 @@ eth_pcap_rx_infinite(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 {
 	int i;
 	struct pcap_rx_queue *pcap_q = queue;
+	struct pmd_internals *internals = rte_eth_devices[pcap_q->port_id].data->dev_private;
 	uint32_t rx_bytes = 0;
 
 	if (unlikely(nb_pkts == 0))
@@ -296,9 +296,9 @@ eth_pcap_rx_infinite(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			struct timespec ts;
 
 			timespec_get(&ts, TIME_UTC);
-			*RTE_MBUF_DYNFIELD(bufs[i], timestamp_dynfield_offset,
+			*RTE_MBUF_DYNFIELD(bufs[i], internals->timestamp_dynfield_offset,
 					   rte_mbuf_timestamp_t *) = rte_timespec_to_ns(&ts);
-			bufs[i]->ol_flags |= timestamp_rx_dynflag;
+			bufs[i]->ol_flags |= internals->timestamp_rx_dynflag;
 		}
 
 		rx_bytes += bufs[i]->data_len;
@@ -420,10 +420,10 @@ eth_pcap_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			uint64_t ns = (uint64_t)header->ts.tv_sec * NSEC_PER_SEC
 				+  header->ts.tv_usec;
 
-			*RTE_MBUF_DYNFIELD(mbuf, timestamp_dynfield_offset,
+			*RTE_MBUF_DYNFIELD(mbuf, internals->timestamp_dynfield_offset,
 					   rte_mbuf_timestamp_t *) = ns;
 
-			mbuf->ol_flags |= timestamp_rx_dynflag;
+			mbuf->ol_flags |= internals->timestamp_rx_dynflag;
 		}
 
 		mbuf->port = pcap_q->port_id;
@@ -1027,9 +1027,9 @@ eth_dev_configure(struct rte_eth_dev *dev)
 	internals->rx_scatter = !!(rxmode->offloads & RTE_ETH_RX_OFFLOAD_SCATTER);
 	internals->timestamp_offloading = !!(rxmode->offloads & RTE_ETH_RX_OFFLOAD_TIMESTAMP);
 
-	if (internals->timestamp_offloading && timestamp_rx_dynflag == 0) {
-		int ret = rte_mbuf_dyn_rx_timestamp_register(&timestamp_dynfield_offset,
-							     &timestamp_rx_dynflag);
+	if (internals->timestamp_offloading && internals->timestamp_rx_dynflag == 0) {
+		int ret = rte_mbuf_dyn_rx_timestamp_register(&internals->timestamp_dynfield_offset,
+							     &internals->timestamp_rx_dynflag);
 		if (ret != 0) {
 			PMD_LOG(ERR, "Failed to register Rx timestamp field/flag");
 			return ret;
