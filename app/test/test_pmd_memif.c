@@ -81,7 +81,7 @@ find_port(const char *frag)
 	char name[RTE_ETH_NAME_MAX_LEN];
 
 	RTE_ETH_FOREACH_DEV(port_id) {
-		if (rte_eth_dev_get_name_by_port(port_id, name) == 0 &&
+		if (rte_eth_dev_get_name_by_port(port_id, name, sizeof(name)) == 0 &&
 		    strstr(name, frag) != NULL)
 			return port_id;
 	}

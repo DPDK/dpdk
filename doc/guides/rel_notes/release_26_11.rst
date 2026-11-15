@@ -666,6 +666,9 @@ API Changes
     ``rte_event_port_profile_links_get`` and
     ``rte_event_port_profile_unlink``
 
+* ethdev: Added ``size`` parameter to ``rte_eth_dev_get_name_by_port()``
+  to prevent buffer overflows.
+
 * raw/ntb: Removed the ``mw_size_align`` field from ``struct ntb_dev_info``.
   Applications must now query the required memory window base-address alignment
   with the new ``rte_pmd_ntb_get_mem_align()`` function instead of relying on this field.

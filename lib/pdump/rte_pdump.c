@@ -726,7 +726,7 @@ pdump_validate_flags(uint32_t flags)
 }
 
 static int
-pdump_validate_port(uint16_t port, char *name)
+pdump_validate_port(uint16_t port, char *name, size_t len)
 {
 	int ret = 0;
 
@@ -736,7 +736,7 @@ pdump_validate_port(uint16_t port, char *name)
 		return -1;
 	}
 
-	ret = rte_eth_dev_get_name_by_port(port, name);
+	ret = rte_eth_dev_get_name_by_port(port, name, len);
 	if (ret < 0) {
 		PDUMP_LOG_LINE(ERR, "port %u to name mapping failed",
 			  port);
@@ -818,7 +818,7 @@ pdump_enable(uint16_t port, uint16_t queue,
 	int ret;
 	char name[RTE_DEV_NAME_MAX_LEN];
 
-	ret = pdump_validate_port(port, name);
+	ret = pdump_validate_port(port, name, sizeof(name));
 	if (ret < 0)
 		return ret;
 	ret = pdump_validate_ring_mp(ring, mp);
@@ -912,7 +912,7 @@ rte_pdump_disable(uint16_t port, uint16_t queue, uint32_t flags)
 	int ret = 0;
 	char name[RTE_DEV_NAME_MAX_LEN];
 
-	ret = pdump_validate_port(port, name);
+	ret = pdump_validate_port(port, name, sizeof(name));
 	if (ret < 0)
 		return ret;
 	ret = pdump_validate_flags(flags);

@@ -99,10 +99,6 @@ Deprecation Notices
   The legacy actions should be removed
   once ``MODIFY_FIELD`` alternative is implemented in drivers.
 
-* ethdev: Starting in 26.11, the function ``rte_eth_dev_get_name_by_port()``
-  will take a size parameter as well as the string buffer.
-  This will detect and prevent accidental overwriting of caller provided buffer.
-
 * bus/vmbus: Starting DPDK 25.11, all the vmbus API defined in
   ``drivers/bus/vmbus/rte_bus_vmbus.h`` will become internal to DPDK.
   Those API functions are used internally by DPDK core and netvsc PMD.
