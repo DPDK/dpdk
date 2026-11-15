@@ -77,19 +77,25 @@ The application has a number of command line options::
                              [-P]
                              [--lookup LOOKUP_METHOD]
                              --config(port,queue,lcore)[,(port,queue,lcore)]
+                             [--eth-link-speed SPEED]
+                             [--rx-queue-size NPKTS]
+                             [--tx-queue-size NPKTS]
                              [--rx-burst NPKTS]
                              [--tx-burst NPKTS]
+                             [--mbcache CACHESZ]
                              [--eth-dest=X,MM:MM:MM:MM:MM:MM]
                              [--max-pkt-len PKTLEN]
                              [--no-numa]
-                             [--hash-entry-num]
                              [--ipv6]
                              [--parse-ptype]
+                             [--disable-rss]
+                             [--relax-rx-offload]
                              [--per-port-pool]
                              [--mode]
                              [--eventq-sched]
                              [--event-eth-rxqs]
                              [--event-vector [--event-vector-size SIZE] [--event-vector-tmo NS]]
+                             [--alg ALG]
                              [-E]
                              [-L]
 
@@ -115,9 +121,17 @@ Where,
 
 * ``--config (port,queue,lcore)[,(port,queue,lcore)]:`` Determines which queues from which ports are mapped to which cores.
 
+* ``--eth-link-speed SPEED:`` Optional, forces link speed (e.g. 1000, 10000, 25000, 40000, 100000 Mbps).
+
+* ``--rx-queue-size NPKTS:`` Optional, sets the number of Rx descriptors per queue (default 1024).
+
+* ``--tx-queue-size NPKTS:`` Optional, sets the number of Tx descriptors per queue (default 1024).
+
 * ``--rx-burst NPKTS:`` Optional, Rx burst size in decimal (default 32).
 
 * ``--tx-burst NPKTS:`` Optional, Tx burst size in decimal (default 32).
+
+* ``--mbcache CACHESZ:`` Optional, sets the mbuf pool cache size per lcore (default 512).
 
 * ``--eth-dest=X,MM:MM:MM:MM:MM:MM:`` Optional, ethernet destination for port X.
 
@@ -125,11 +139,17 @@ Where,
 
 * ``--no-numa:`` Optional, disables numa awareness.
 
-* ``--hash-entry-num:`` Optional, specifies the hash entry number in hexadecimal to be setup.
-
 * ``--ipv6:`` Optional, set if running ipv6 packets.
 
 * ``--parse-ptype:`` Optional, set to use software to analyze packet type. Without this option, hardware will check the packet type.
+
+* ``--disable-rss:`` Optional, disables RSS (Receive Side Scaling).
+
+* ``--relax-rx-offload:`` Optional, relaxes Rx offload requirements based on device capabilities.
+  When requested offloads (such as Rx checksum offload) are not supported by the device
+  (e.g., virtual devices such as ``vhost``, ``virtio``, or ``pcap``),
+  unsupported offloads are masked off so the device can be configured successfully,
+  but note that software validation is not enabled on all forwarding paths.
 
 * ``--per-port-pool:`` Optional, set to use independent buffer pools per port. Without this option, single buffer pool is used for all ports.
 
@@ -322,9 +342,6 @@ for the convenience to execute hash performance test on 4M/8M/16M flows.
 .. note::
 
     Value of global variable ipv6 can be specified with --ipv6 in the command line.
-    Value of global variable hash_entry_number,
-    which is used to specify the total hash entry number for all used ports in hash performance test,
-    can be specified with --hash-entry-num VALUE in command line, being its default value 4.
 
 .. code-block:: c
 
