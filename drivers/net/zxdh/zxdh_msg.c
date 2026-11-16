@@ -1009,7 +1009,12 @@ zxdh_bar_irq_recv(uint8_t src, uint8_t dst, uint64_t virt_addr, void *dev)
 		return -1;
 	}
 
-	recved_msg = rte_malloc(NULL, msg_header.len, 0);
+	/*
+	 * The sender chooses the length, but the receive callbacks access the
+	 * payload as a full struct zxdh_msg_info: always give them a zeroed
+	 * buffer of the maximum payload size.
+	 */
+	recved_msg = rte_zmalloc(NULL, ZXDH_BAR_MSG_PAYLOAD_MAX_LEN, 0);
 	if (recved_msg == NULL) {
 		PMD_MSG_LOG(ERR, "malloc temp buff failed");
 		return -1;
