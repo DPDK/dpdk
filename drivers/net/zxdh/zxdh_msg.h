@@ -618,6 +618,9 @@ struct zxdh_msg_info {
 	} data;
 };
 
+static_assert(sizeof(struct zxdh_msg_info) <= ZXDH_BAR_MSG_PAYLOAD_MAX_LEN,
+		"receive buffer smaller than struct zxdh_msg_info");
+
 struct inic_to_vcb {
 	uint16_t vqm_vfid;
 	uint16_t opcode;  /* 0:get 1:set */
