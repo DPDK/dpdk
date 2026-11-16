@@ -304,7 +304,7 @@ int bman_release(struct bman_pool *pool, const struct bm_buffer *bufs, u8 num,
 {
 	struct bman_portal *p;
 	struct bm_rcr_entry *r;
-	u32 i = num - 1;
+	u32 i;
 	u8 avail;
 
 #ifdef RTE_LIBRTE_DPAA_HWDEBUG
@@ -329,11 +329,9 @@ int bman_release(struct bman_pool *pool, const struct bm_buffer *bufs, u8 num,
 	r->bufs[0].opaque =
 		cpu_to_be64(((u64)pool->params.bpid << 48) |
 			    (bufs[0].opaque & MAX_U48));
-	if (i) {
-		for (i = 1; i < num; i++)
-			r->bufs[i].opaque =
-				cpu_to_be64(bufs[i].opaque & MAX_U48);
-	}
+	for (i = 1; i < num; i++)
+		r->bufs[i].opaque =
+			cpu_to_be64(bufs[i].opaque & MAX_U48);
 
 	bm_rcr_pvb_commit(&p->p, BM_RCR_VERB_CMD_BPID_SINGLE |
 			  (num & BM_RCR_VERB_BUFCOUNT_MASK));
