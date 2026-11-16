@@ -1023,11 +1023,8 @@ zxdh_bar_irq_recv(uint8_t src, uint8_t dst, uint64_t virt_addr, void *dev)
 		goto exit;
 	}
 	zxdh_bar_chan_msg_valid_set(recv_addr, ZXDH_BAR_MSG_CHAN_USABLE);
-	if (msg_header.ack == ZXDH_BAR_CHAN_MSG_ACK) {
+	if (msg_header.ack == ZXDH_BAR_CHAN_MSG_ACK)
 		zxdh_bar_msg_ack_async_msg_proc(&msg_header, recved_msg);
-		goto exit;
-	}
-	return 0;
 
 exit:
 	rte_free(recved_msg);
