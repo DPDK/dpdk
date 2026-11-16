@@ -960,7 +960,7 @@ static uint16_t
 zxdh_bar_chan_msg_header_check(struct zxdh_bar_msg_header *msg_header)
 {
 	uint16_t len = 0;
-	uint8_t module_id = 0;
+	uint16_t module_id = 0;
 
 	if (msg_header->valid != ZXDH_BAR_MSG_CHAN_USED) {
 		PMD_MSG_LOG(ERR, "recv header ERR: valid label is not used");
@@ -968,7 +968,7 @@ zxdh_bar_chan_msg_header_check(struct zxdh_bar_msg_header *msg_header)
 	}
 	module_id = msg_header->module_id;
 
-	if (module_id >= (uint8_t)ZXDH_BAR_MSG_MODULE_NUM) {
+	if (module_id >= ZXDH_BAR_MSG_MODULE_NUM) {
 		PMD_MSG_LOG(ERR, "recv header ERR: invalid module_id: %u", module_id);
 		return ZXDH_BAR_MSG_ERR_MODULE;
 	}
