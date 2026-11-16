@@ -349,7 +349,7 @@ zxdh_del_mac_table(struct zxdh_hw *hw, uint16_t vport, struct rte_ether_addr *ad
 	struct zxdh_mac_multicast_table multicast_table = {0};
 	union zxdh_virport_num vport_num = (union zxdh_virport_num)vport;
 	uint16_t vfid = zxdh_vport_to_vfid(vport_num);
-	uint16_t del_flag, group_id = 0;
+	uint16_t del_flag = 0, group_id = 0;
 	int32_t ret = 0;
 
 	if (rte_is_unicast_ether_addr(addr)) {
