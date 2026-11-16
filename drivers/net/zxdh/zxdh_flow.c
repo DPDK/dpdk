@@ -1137,7 +1137,7 @@ zxdh_hw_flow_query(struct rte_eth_dev *dev, struct zxdh_flow *dh_flow,
 	struct zxdh_hw *hw = dev->data->dev_private;
 	int ret = 0;
 	struct zxdh_flow_info *flow = &dh_flow->flowentry;
-	ZXDH_DTB_USER_ENTRY_T dtb_entry;
+	ZXDH_DTB_USER_ENTRY_T dtb_entry = {0};
 	uint16_t handle_idx;
 
 	handle_idx = zxdh_fd_flow_to_dtbentry(hw, flow, &dtb_entry);
