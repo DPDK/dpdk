@@ -2397,6 +2397,24 @@ static const zxdh_msg_process_callback zxdh_proc_cb[] = {
 	[ZXDH_FLOW_HW_FLUSH] = zxdh_vf_flow_hw_flush,
 };
 
+/*
+ * The msg head is written by the VF driver: the vport and pcieid it carries
+ * must name one VF of this PF, not the PF itself or a port of another PF.
+ */
+static bool
+zxdh_msg_head_is_own_vf(struct zxdh_hw *hw, struct zxdh_msg_head *msghead)
+{
+	union zxdh_virport_num vport = {.vport = msghead->vport};
+
+	if ((msghead->pcieid & ZXDH_PCIEID_IS_PF_MASK) ||
+			ZXDH_PF_PCIE_ID(msghead->pcieid) != hw->pcie_id)
+		return false;
+
+	return vport.vf_flag &&
+		vport.epid == hw->vport.epid &&
+		vport.pfid == hw->vport.pfid;
+}
+
 static inline int
 zxdh_config_process_callback(struct zxdh_hw *hw, struct zxdh_msg_info *msg_info,
 	void *res, uint16_t *res_len)
@@ -2408,7 +2426,12 @@ zxdh_config_process_callback(struct zxdh_hw *hw, struct zxdh_msg_info *msg_info,
 		PMD_DRV_LOG(ERR, " invalid param");
 		return -1;
 	}
-	if (zxdh_proc_cb[msghead->msg_type]) {
+
+	if (!zxdh_msg_head_is_own_vf(hw, msghead)) {
+		PMD_DRV_LOG(ERR, "msg_type %d vport 0x%x pcieid 0x%x is not a VF of PF pcieid 0x%x",
+			msghead->msg_type, msghead->vport, msghead->pcieid, hw->pcie_id);
+		ZXDH_SET(msg_reply_body, res, flag, ZXDH_REPS_INVALID);
+	} else if (zxdh_proc_cb[msghead->msg_type]) {
 		ret = zxdh_proc_cb[msghead->msg_type](hw, msghead->vport, msghead->pcieid,
 					(void *)&msg_info->data, res, res_len);
 		if (!ret)
