@@ -703,6 +703,11 @@ zxdh_bar_chan_sync_msg_reps_get(uint64_t subchan_addr,
 
 	zxdh_bar_chan_msg_header_get(subchan_addr, &msg_header);
 	msg_id = msg_header.msg_id;
+	if (msg_id >= ZXDH_BAR_SEQID_NUM_MAX) {
+		PMD_MSG_LOG(ERR, "msg_id %u is invalid", msg_id);
+		return ZXDH_BAR_MSG_ERR_REPLY;
+	}
+
 	struct zxdh_seqid_item *reps_info = &g_seqid_ring.reps_info_tbl[msg_id];
 
 	if (reps_info->flag != ZXDH_REPS_INFO_FLAG_USED) {
@@ -886,7 +891,13 @@ static void
 zxdh_bar_msg_ack_async_msg_proc(struct zxdh_bar_msg_header *msg_header,
 		uint8_t *receiver_buff)
 {
-	struct zxdh_seqid_item *reps_info = &g_seqid_ring.reps_info_tbl[msg_header->msg_id];
+	struct zxdh_seqid_item *reps_info;
+
+	if (msg_header->msg_id >= ZXDH_BAR_SEQID_NUM_MAX) {
+		PMD_MSG_LOG(ERR, "msg_id: %u is invalid", msg_header->msg_id);
+		return;
+	}
+	reps_info = &g_seqid_ring.reps_info_tbl[msg_header->msg_id];
 
 	if (reps_info->flag != ZXDH_REPS_INFO_FLAG_USED) {
 		PMD_MSG_LOG(ERR, "msg_id: %u is released", msg_header->msg_id);
