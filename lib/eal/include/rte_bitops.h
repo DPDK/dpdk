@@ -1261,10 +1261,16 @@ rte_is_power_of_2(uint32_t n)
  * Aligns input parameter to the next power of 2
  *
  * @param x
- *   The integer value to align
+ *   The integer value to align.
+ *   Must be less than or equal to 1 << 31 (0x80000000).
  *
  * @return
- *   The smallest power of 2 which is greater than or equal to @c x.
+ *   The smallest power of 2 which is greater than or equal to @c x,
+ *   or 0 if @c x is 0.
+ *
+ * @note If the input parameter exceeds 1 << 31 (0x80000000),
+ *       then the expected result is unrepresentable and the return value is invalid.
+ * @note For the input value 0, this function returns 0, which is not a power of 2.
  */
 static inline uint32_t
 rte_align32pow2(uint32_t x)
@@ -1296,10 +1302,16 @@ rte_align32prevpow2(uint32_t x)
  * Aligns 64b input parameter to the next power of 2
  *
  * @param v
- *   The 64b value to align
+ *   The 64b value to align.
+ *   Must be less than or equal to 1 << 63 (0x8000000000000000).
  *
  * @return
- *   The smallest power of 2 which is greater than or equal to @c v.
+ *   The smallest power of 2 which is greater than or equal to @c v,
+ *   or 0 if @c v is 0.
+ *
+ * @note If the input parameter exceeds 1 << 63 (0x8000000000000000),
+ *       then the expected result is unrepresentable and the return value is invalid.
+ * @note For the input value 0, this function returns 0, which is not a power of 2.
  */
 static inline uint64_t
 rte_align64pow2(uint64_t v)
