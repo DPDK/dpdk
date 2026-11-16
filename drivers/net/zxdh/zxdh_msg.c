@@ -1552,7 +1552,12 @@ zxdh_vf_vlan_filter_table_process(struct zxdh_hw *hw, uint16_t vport,
 	void *reply_data_addr = ZXDH_ADDR_OF(msg_reply_body, res_info, reply_data);
 	int ret = 0;
 
-	ret = zxdh_vlan_filter_table_set(hw, vport, vlan_id, enable);
+	if (vlan_id > RTE_ETHER_MAX_VLAN_ID) {
+		PMD_DRV_LOG(ERR, "vlan id %d is invalid", vlan_id);
+		ret = -EINVAL;
+	} else {
+		ret = zxdh_vlan_filter_table_set(hw, vport, vlan_id, enable);
+	}
 	if (ret)
 		sprintf(str, "vlan filter op-code[%d] vlan id:%d failed, code:%d\n",
 			enable, vlan_id, ret);
