@@ -32,9 +32,12 @@ return &scheme_params->param.key_ext_and_hash.extract_array[hdr_idx];
 	SCH_EXT_HDR(scheme_params, hdr_idx).extract_by_hdr_type.full_field
 
 /* FMAN mac indexes mappings (0 is unused, first 8 are for 1G, next for 10G
- * ports).
+ * ports). Indexed by fman_if.mac_idx, which the bus validates against
+ * FMAN_MAX_MAC_IDX_NUM when deriving it from the device tree.
  */
 static const uint8_t mac_idx[] = {-1, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1};
+static_assert(RTE_DIM(mac_idx) == FMAN_MAX_MAC_IDX_NUM,
+	"mac_idx[] out of sync with FMAN_MAX_MAC_IDX_NUM");
 
 /* FM global info */
 struct dpaa_fm_info {
