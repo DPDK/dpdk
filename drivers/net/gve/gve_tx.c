@@ -19,6 +19,7 @@ gve_free_bulk_mbuf(struct rte_mbuf **txep, int num)
 	for (s = 0; s < num; s++) {
 		if (txep[s] != NULL) {
 			m = rte_pktmbuf_prefree_seg(txep[s]);
+			txep[s] = NULL;
 			if (m != NULL)
 				break;
 		}
