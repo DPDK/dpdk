@@ -276,6 +276,11 @@ Refer to the document :doc:`build_and_test` for details.
   and thus disabling hardware based packet handling at driver level,
   e.g. ``dpaa:fm1-mac3,recv_err_pkts=1``.
 
+* For a shared MAC interface the kernel network interface name is looked up
+  in sysfs from the device tree node the port was created from,
+  so a kernel interface that does not follow
+  the ``fmX-macY`` naming style is handled without extra configuration.
+
 ``drv_bh_port``
    Name of the back-half port associated with an offline (O/H) port device.
    It is passed on the offline port device itself, which is named
@@ -306,7 +311,6 @@ port identified by its ``port_id``, via the experimental
 ``rte_pmd_dpaa_ol_set_classif_info()``, ``rte_pmd_dpaa_ol_reset_classif_info()``,
 ``rte_pmd_dpaa_ol_set_lgw_info()`` and ``rte_pmd_dpaa_ol_reset_lgw_info()``
 APIs declared in ``rte_pmd_dpaa_oldev.h``.
-
 
 FMAN Config
 -----------
