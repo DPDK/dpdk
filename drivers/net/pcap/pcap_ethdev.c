@@ -607,16 +607,6 @@ eth_tx_drop(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 /*
  * Send a burst of packets to a pcap device.
- *
- * On Linux, pcap_sendpacket() calls send() on a blocking PF_PACKET
- * socket with default kernel buffer sizes and no TX ring (PACKET_TX_RING).
- * The send() call only blocks when the kernel socket send buffer is full,
- * providing limited backpressure.
- *
- * On error, pcap_sendpacket() returns non-zero and the loop breaks,
- * leaving remaining packets unsent.
- *
- * Bottom line: backpressure is not an error.
  */
 static uint16_t
 eth_pcap_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
@@ -666,10 +656,20 @@ eth_pcap_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		data = rte_pktmbuf_read(mbuf, 0, len, temp_data);
 		RTE_ASSERT(data != NULL);
 
+		/*
+		 * pcap_sendpacket() does not document errno,
+		 * but it is the only way to tell back pressure from a hard error.
+		 */
+		errno = 0;
 		if (unlikely(pcap_sendpacket(pcap, data, len) != 0)) {
-			/* Assume failure is backpressure */
-			PMD_LOG(ERR, "pcap_sendpacket() failed: %s", pcap_geterr(pcap));
-			break;
+			/* nothing sent, caller should retry */
+			if (errno == EAGAIN || errno == EWOULDBLOCK)
+				break;
+
+			PMD_TX_LOG(ERR, "pcap_sendpacket() failed: %s", pcap_geterr(pcap));
+			rte_pktmbuf_free(mbuf);
+			tx_queue->tx_stat.err_pkts++;
+			continue;
 		}
 		num_tx++;
 		tx_bytes += len;
