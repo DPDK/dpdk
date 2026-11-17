@@ -2993,3 +2993,64 @@ qman_shutdown_fq(struct qman_fq *fq)
 out:
 	return ret;
 }
+
+int qman_pending_fq_by_cgrid_range(u32 cgrid_start, u32 cgrid_num,
+	u32 start_fqid, u32 *fqid, u32 *cgrid)
+{
+	struct qman_fq fq = {
+		.fqid = start_fqid ? start_fqid : 1
+	};
+	struct qm_mcr_queryfq_np np;
+	struct qm_fqd fqd;
+	int err;
+
+	/*
+	 * Do not use the CGR byte count to decide whether to scan. An FQ is a
+	 * member of the group whenever it is scheduled with CGE set and a
+	 * matching cgid, whether or not it currently holds any frames, and the
+	 * group cannot be deleted while such a member exists. Skipping the
+	 * scan for an empty CGR would let an idle stale FQ survive and its
+	 * CGRID be released while still referenced. This runs once per CGRID
+	 * range at device probe, so the scan cost is acceptable.
+	 *
+	 * The whole CGRID range of a port is matched in a single pass, so a
+	 * port with many congestion groups does not need one full FQID space
+	 * scan per group.
+	 */
+	DPAA_BUS_DEBUG("Scanning FQs for cgrid(0x%x..0x%x)",
+		cgrid_start, cgrid_start + cgrid_num - 1);
+
+	/* FQID space is 24 bits wide; stop before wrapping. */
+	for (; fq.fqid <= QMAN_MAX_FQID; fq.fqid++) {
+		err = qman_query_fq_np(&fq, &np);
+		if (err == -ERANGE) {
+			/*
+			 * FQID is not implemented on this device, so there is
+			 * nothing beyond it either.
+			 */
+			break;
+		} else if (err) {
+			DPAA_BUS_WARN("Failed(%d) to Query np FQ(fqid=0x%x)",
+				err, fq.fqid);
+			return err;
+		}
+		if ((np.state & QM_MCR_NP_STATE_MASK) != QM_MCR_NP_STATE_OOS) {
+			err = qman_query_fq(&fq, &fqd);
+			if (err) {
+				DPAA_BUS_WARN("Failed(%d) to Query FQ(fqid=0x%x)",
+					err, fq.fqid);
+			} else if ((fqd.fq_ctrl & QM_FQCTRL_CGE) &&
+				fqd.cgid >= cgrid_start &&
+				fqd.cgid < cgrid_start + cgrid_num) {
+				if (fqid)
+					*fqid = fq.fqid;
+				if (cgrid)
+					*cgrid = fqd.cgid;
+				return 0;
+			}
+		}
+	}
+	DPAA_BUS_DEBUG("No FQ left in cgrid(0x%x..0x%x)",
+		cgrid_start, cgrid_start + cgrid_num - 1);
+	return -ERANGE;
+}
