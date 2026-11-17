@@ -605,9 +605,30 @@ static int axgbe_phy_sfp_get_mux(struct axgbe_port *pdata)
 	return axgbe_phy_i2c_xfer(pdata, &i2c_op);
 }
 
+/*
+ * The I2C and MDIO buses are shared by all ports on the device.
+ * axgbe_phy_get_comm_ownership() takes the per-port phy_mutex, which
+ * does not stop two ports in the same process from using the bus at
+ * once, causing I2C failures and wrong link status reporting.
+ *
+ * Add a single, driver-wide mutex, taken before the per-port one and
+ * before the hardware XP_I2C_MUTEX/XP_MDIO_MUTEX acquire sequence, so
+ * that only one port in this process is ever inside that sequence at
+ * a time. This matches xgbe_phy_comm_lock in the Linux xgbe driver,
+ * which this DPDK PMD lost when its equivalent global lock became the
+ * per-port pdata->phy_mutex.
+ *
+ * This only arbitrates ports owned by this process. If ports of the
+ * same device are split across separate processes, or one port stays
+ * with the kernel xgbe driver, the hardware mutex registers remain
+ * the only arbitration between them.
+ */
+static pthread_mutex_t axgbe_i2c_mdio_bus_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 static void axgbe_phy_put_comm_ownership(struct axgbe_port *pdata)
 {
 	pthread_mutex_unlock(&pdata->phy_mutex);
+	pthread_mutex_unlock(&axgbe_i2c_mdio_bus_mutex);
 }
 
 static int axgbe_phy_get_comm_ownership(struct axgbe_port *pdata)
@@ -615,6 +636,8 @@ static int axgbe_phy_get_comm_ownership(struct axgbe_port *pdata)
 	struct axgbe_phy_data *phy_data = pdata->phy_data;
 	uint64_t timeout;
 	unsigned int mutex_id;
+
+	pthread_mutex_lock(&axgbe_i2c_mdio_bus_mutex);
 
 	/* The I2C and MDIO/GPIO bus is multiplexed between multiple devices,
 	 * the driver needs to take the software mutex and then the hardware
@@ -648,6 +671,7 @@ static int axgbe_phy_get_comm_ownership(struct axgbe_port *pdata)
 	}
 
 	pthread_mutex_unlock(&pdata->phy_mutex);
+	pthread_mutex_unlock(&axgbe_i2c_mdio_bus_mutex);
 
 	PMD_DRV_LOG_LINE(ERR, "unable to obtain hardware mutexes");
 
