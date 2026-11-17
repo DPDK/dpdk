@@ -210,6 +210,16 @@ New Features
   * Increased the maximum number of secondary unicast MAC addresses from 128 to up to 4096
     (depending on devlink configuration on the associated kernel netdevice).
 
+* **Added NXP DPAA offline (O/H) port support.**
+
+  Added a DPAA offline (O/H) port type that loops Rx/Tx frame queues through
+  the FMAN and exposes them as a DPDK port, with uplink classification and
+  LGW subnet configuration forwarded to the ASK/CDX kernel module via the
+  experimental ``rte_pmd_dpaa_ol_set_classif_info()``,
+  ``rte_pmd_dpaa_ol_reset_classif_info()``, ``rte_pmd_dpaa_ol_set_lgw_info()``
+  and ``rte_pmd_dpaa_ol_reset_lgw_info()`` APIs declared in
+  ``rte_pmd_dpaa_oldev.h``.
+
 * **Updated NXP DPAA drivers.**
 
   * Changed the default number of Rx queues in FMCLESS mode

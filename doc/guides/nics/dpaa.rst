@@ -276,6 +276,38 @@ Refer to the document :doc:`build_and_test` for details.
   and thus disabling hardware based packet handling at driver level,
   e.g. ``dpaa:fm1-mac3,recv_err_pkts=1``.
 
+``drv_bh_port``
+   Name of the back-half port associated with an offline (O/H) port device.
+   It is passed on the offline port device itself, which is named
+   ``oldev1``, e.g. ``-a dpaa_bus:oldev1,drv_bh_port=fm1-mac5``.
+
+The DPAA offline (O/H) port device is only created, and therefore only
+probed, when it is explicitly named on the EAL ``-a`` command line, e.g.::
+
+   -a dpaa_bus:oldev1,drv_bh_port=fm1-mac5
+
+Passing any ``-a`` argument for the DPAA bus switches the bus to allowlist
+scan mode, so from that point on only the devices named with ``-a`` are
+probed. Using the offline port therefore requires listing the offline port
+itself and every Ethernet port the application needs, for example::
+
+   -a dpaa_bus:oldev1,drv_bh_port=fm1-mac5 \
+   -a dpaa_bus:fm1-mac5 -a dpaa_bus:fm1-mac6
+
+Omitting an ``fmX-macY`` port in that case silently drops that port.
+
+The offline port requires the ``/dev/cdx_ctrl`` kernel control device to be
+present; it is provided by the NXP vendor ``cdx`` kernel driver, which is
+not part of this DPDK driver and must be obtained and loaded separately
+(see the NXP LSDK release matching the DPAA SoC family). The uplink
+classification and local-gateway (LGW) configuration exposed through that
+control device can be programmed by the application, for the offline
+port identified by its ``port_id``, via the experimental
+``rte_pmd_dpaa_ol_set_classif_info()``, ``rte_pmd_dpaa_ol_reset_classif_info()``,
+``rte_pmd_dpaa_ol_set_lgw_info()`` and ``rte_pmd_dpaa_ol_reset_lgw_info()``
+APIs declared in ``rte_pmd_dpaa_oldev.h``.
+
+
 FMAN Config
 -----------
 
