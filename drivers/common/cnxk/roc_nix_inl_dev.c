@@ -420,6 +420,18 @@ exit:
 	return rc;
 }
 
+/*
+ * With CPT CQ enabled, inbound LF IRQs are registered later by
+ * nix_inl_cpt_cq_inb_setup() with the CQ-aware done callback.
+ */
+static bool
+nix_inl_cpt_irq_defer(struct nix_inl_dev *inl_dev, int lf_id)
+{
+	return roc_feature_nix_has_cpt_cq_support() && inl_dev->cpt_cq_ena &&
+	       lf_id >= inl_dev->inb_cpt_lf_id &&
+	       lf_id < inl_dev->inb_cpt_lf_id + inl_dev->nb_inb_cptlfs;
+}
+
 static int
 nix_inl_cpt_setup(struct nix_inl_dev *inl_dev, bool inl_dev_sso)
 {
@@ -458,7 +470,7 @@ nix_inl_cpt_setup(struct nix_inl_dev *inl_dev, bool inl_dev_sso)
 		lf->msixoff = inl_dev->cpt_msixoff[i];
 		lf->pci_dev = inl_dev->pci_dev;
 
-		rc = cpt_lf_init(lf, false);
+		rc = cpt_lf_init(lf, nix_inl_cpt_irq_defer(inl_dev, i));
 		if (rc) {
 			plt_err("Failed to initialize CPT LF, rc=%d", rc);
 			goto lf_free;
@@ -485,7 +497,7 @@ nix_inl_cpt_setup(struct nix_inl_dev *inl_dev, bool inl_dev_sso)
 lf_fini:
 	for (i = 0; i < inl_dev->nb_cptlf; i++) {
 		struct roc_cpt_lf *lf = &inl_dev->cpt_lf[i];
-		cpt_lf_fini(lf, false);
+		cpt_lf_fini(lf, nix_inl_cpt_irq_defer(inl_dev, i));
 	}
 lf_free:
 	rc |= cpt_lfs_free(dev);
