@@ -412,8 +412,11 @@ gve_tx_burst_ra(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		if (ol_flags & RTE_MBUF_F_TX_TCP_SEG)
 			nb_used++;
 
-		if (txq->nb_free < nb_used)
-			goto end_of_tx;
+		if (txq->nb_free < nb_used) {
+			gve_tx_clean(txq);
+			if (txq->nb_free < nb_used)
+				goto end_of_tx;
+		}
 
 		tx_offload.l2_len = tx_pkt->l2_len;
 		tx_offload.l3_len = tx_pkt->l3_len;
@@ -425,7 +428,7 @@ gve_tx_burst_ra(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		hlen = ol_flags & RTE_MBUF_F_TX_TCP_SEG ?
 			(uint32_t)(tx_offload.l2_len + tx_offload.l3_len + tx_offload.l4_len) :
-			tx_pkt->pkt_len;
+			tx_pkt->data_len;
 		/*
 		 * if tso, the driver needs to fill 2 descs for 1 mbuf
 		 * so only put this mbuf into the 1st tx entry in sw ring
@@ -466,7 +469,6 @@ end_of_tx:
 
 		txq->stats.packets += nb_tx;
 		txq->stats.bytes += bytes;
-		txq->stats.errors += nb_pkts - nb_tx;
 	}
 
 	return nb_tx;
