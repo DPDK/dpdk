@@ -3007,7 +3007,7 @@ create_wireless_algo_cipher_operation(const uint8_t *iv, uint8_t iv_len,
 	sym_op->m_src = ut_params->ibuf;
 
 	/* iv */
-	rte_memcpy(rte_crypto_op_ctod_offset(ut_params->op, uint8_t *, IV_OFFSET),
+	memcpy(rte_crypto_op_ctod_offset(ut_params->op, uint8_t *, IV_OFFSET),
 			iv, iv_len);
 	sym_op->cipher.data.length = cipher_len;
 	sym_op->cipher.data.offset = cipher_offset;
@@ -3038,7 +3038,7 @@ create_wireless_algo_cipher_operation_oop(const uint8_t *iv, uint8_t iv_len,
 	sym_op->m_dst = ut_params->obuf;
 
 	/* iv */
-	rte_memcpy(rte_crypto_op_ctod_offset(ut_params->op, uint8_t *, IV_OFFSET),
+	memcpy(rte_crypto_op_ctod_offset(ut_params->op, uint8_t *, IV_OFFSET),
 			iv, iv_len);
 	sym_op->cipher.data.length = cipher_len;
 	sym_op->cipher.data.offset = cipher_offset;
