@@ -68,6 +68,11 @@
 #define FMAN_RTC_MAX_NUM_OF_PERIODIC_PULSES	4
 #define FMAN_RTC_MAX_NUM_OF_EXT_TRIGGERS	3
 
+/*
+ * Maximum number of MAC/offline port indexes.
+ */
+#define FMAN_MAX_MAC_IDX_NUM	11
+
 /* Represents the different flavour of network interface */
 enum fman_mac_type {
 	fman_offline_internal = 0,
@@ -475,7 +480,6 @@ struct __fman_if {
 	void *qmi_map;
 };
 
-#define MEMMAC_REG_OFFSET(reg) offsetof(struct memac_regs, reg)
 #define BMI_RX_REG_OFFSET(reg) offsetof(struct rx_bmi_regs, reg)
 #define BMI_TX_REG_OFFSET(reg) offsetof(struct tx_bmi_regs, reg)
 

@@ -205,6 +205,9 @@ static void fman_if_vsp_init(struct __fman_if *__if)
 	size_t lenp;
 	const uint8_t mac_idx[] = {-1, 0, 1, 2, 3, 4, 5, 6, 7, 0, 1};
 
+	static_assert(RTE_DIM(mac_idx) == FMAN_MAX_MAC_IDX_NUM,
+		      "mac_idx[] out of sync with FMAN_MAX_MAC_IDX_NUM");
+
 	if (__if->__if.mac_idx <= 8) {
 		for_each_compatible_node(dev, NULL,
 			"fsl,fman-port-1g-rx-extended-args") {
@@ -543,6 +546,14 @@ fman_if_init(const struct device_node *dpa_node, int fd)
 		assert(lenp == sizeof(*cell_idx));
 		cell_idx_host = of_read_number(cell_idx,
 					       lenp / sizeof(phandle));
+
+		if (cell_idx_host >= FMAN_MAX_MAC_IDX_NUM) {
+			FMAN_ERR(-EINVAL,
+				 "%s: cell-index(%" PRIu64 ") >= max(%d)",
+				 oh_node->full_name, cell_idx_host,
+				 FMAN_MAX_MAC_IDX_NUM);
+			goto err;
+		}
 
 		__if->__if.mac_idx = cell_idx_host;
 	}
@@ -957,6 +968,14 @@ static int fman_if_init_onic(const struct device_node *dpa_node)
 	assert(lenp == sizeof(*cell_idx));
 
 	cell_idx_host = of_read_number(cell_idx, lenp / sizeof(phandle));
+
+	if (cell_idx_host >= FMAN_MAX_MAC_IDX_NUM) {
+		FMAN_ERR(-EINVAL, "%s: cell-index(%" PRIu64 ") >= max(%d)",
+			 tx_oh_node->full_name, cell_idx_host,
+			 FMAN_MAX_MAC_IDX_NUM);
+		goto err;
+	}
+
 	__if->__if.mac_idx = cell_idx_host;
 
 	fman_node = of_get_parent(fman_tx_oh_node);
