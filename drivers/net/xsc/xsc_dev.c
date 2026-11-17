@@ -375,6 +375,7 @@ xsc_dev_init(struct rte_pci_device *pci_dev, struct xsc_dev **xdev)
 	d->dev_ops = xsc_dev_ops_get(pci_dev->kdrv);
 	if (d->dev_ops == NULL) {
 		PMD_DRV_LOG(ERR, "Could not get dev_ops, kdrv=%d", pci_dev->kdrv);
+		rte_free(d);
 		return -ENODEV;
 	}
 
