@@ -12,7 +12,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
 
 #include <jansson.h>
 
@@ -2031,19 +2030,16 @@ process_file(const char *path, struct app_stats *stats)
 static int
 process_path(const char *path, struct app_stats *stats)
 {
-	struct stat path_stat;
 	DIR *directory;
 	struct dirent *entry;
 	int ret = 0;
 
-	if (stat(path, &path_stat) != 0)
-		return -errno;
-	if (!S_ISDIR(path_stat.st_mode))
-		return process_file(path, stats);
-
 	directory = opendir(path);
-	if (directory == NULL)
+	if (directory == NULL) {
+		if (errno == ENOTDIR)
+			return process_file(path, stats);
 		return -errno;
+	}
 	while ((entry = readdir(directory)) != NULL) {
 		char file_path[PATH_MAX];
 		size_t name_length = strlen(entry->d_name);
