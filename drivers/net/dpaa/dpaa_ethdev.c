@@ -9,12 +9,14 @@
 #include <inttypes.h>
 #include <unistd.h>
 #include <limits.h>
+#include <stdlib.h>
 #include <sched.h>
 #include <signal.h>
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/syscall.h>
 #include <sys/ioctl.h>
+#include <dirent.h>
 
 #include <eal_export.h>
 #include <rte_string_fns.h>
@@ -56,6 +58,61 @@
 #define MAX_REPEAT_TIME         90   /* 9s (90 * 100ms) in total */
 #define DRIVER_RECV_ERR_PKTS      "recv_err_pkts"
 #define RTE_PRIORITY_103 103
+
+#define DPAA_OF_BASE_PATH "/sys/firmware/devicetree/base"
+
+/*
+ * Get the kernel netdev name bound to the same device tree node as this
+ * port, by matching each /sys/class/net/<ifname>/device/of_node against
+ * node_path. Returns 1 on success, 0 if none was found, negative on error.
+ */
+static int
+dpaa_get_kernel_ifname(const char *node_path, char *name, size_t size)
+{
+	char path[PATH_MAX], resolved[PATH_MAX];
+	struct dirent *entry;
+	DIR *dir;
+	int ret;
+
+	if (!node_path || node_path[0] == '\0')
+		return 0;
+
+	dir = opendir("/sys/class/net");
+	if (!dir)
+		return 0;
+
+	ret = 0;
+	while ((entry = readdir(dir)) != NULL) {
+		if (entry->d_name[0] == '.')
+			continue;
+
+		if (snprintf(path, sizeof(path),
+			     "/sys/class/net/%s/device/of_node",
+			     entry->d_name) >= (int)sizeof(path))
+			continue;
+
+		if (realpath(path, resolved) == NULL)
+			continue;
+
+		if (strncmp(resolved, DPAA_OF_BASE_PATH,
+			    strlen(DPAA_OF_BASE_PATH)) != 0)
+			continue;
+
+		if (strcmp(resolved + strlen(DPAA_OF_BASE_PATH),
+			   node_path) != 0)
+			continue;
+
+		if (rte_strscpy(name, entry->d_name, size) < 0) {
+			ret = -ENAMETOOLONG;
+			break;
+		}
+		ret = 1;
+		break;
+	}
+
+	closedir(dir);
+	return ret;
+}
 
 /* Supported Rx offloads */
 static uint64_t dev_rx_offloads_sup =
@@ -251,6 +308,7 @@ dpaa_eth_dev_configure(struct rte_eth_dev *dev)
 	int speed, duplex;
 	int ret, rx_status, socket_fd;
 	struct ifreq ifr;
+	char sh_if_name[IFNAMSIZ];
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -272,7 +330,15 @@ dpaa_eth_dev_configure(struct rte_eth_dev *dev)
 			DPAA_PMD_ERR("Cannot open IF socket");
 			return -errno;
 		}
-		strlcpy(ifr.ifr_name, dpaa_intf->name, IFNAMSIZ);
+
+		/* The DPDK port name matches the netdev only for fmX-macY. */
+		sh_if_name[0] = '\0';
+		ret = dpaa_get_kernel_ifname(__fif->node_path, sh_if_name,
+					     sizeof(sh_if_name));
+		if (ret <= 0 || sh_if_name[0] == '\0')
+			strlcpy(ifr.ifr_name, dpaa_intf->name, IFNAMSIZ);
+		else
+			strlcpy(ifr.ifr_name, sh_if_name, IFNAMSIZ);
 
 		if (ioctl(socket_fd, SIOCGIFMTU, &ifr) < 0) {
 			DPAA_PMD_ERR("Cannot get interface mtu");
