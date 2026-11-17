@@ -57,6 +57,7 @@ The public API headers are grouped by topics:
   [cnxk_gpio](@ref rte_pmd_cnxk_gpio.h),
   [cnxk_mempool](@ref rte_pmd_cnxk_mempool.h),
   [dpaa](@ref rte_pmd_dpaa.h),
+  [dpaa_oldev](@ref rte_pmd_dpaa_oldev.h),
   [dpaa2](@ref rte_pmd_dpaa2.h),
   [mlx5](@ref rte_pmd_mlx5.h),
   [ntnic](@ref rte_pmd_ntnic.h),

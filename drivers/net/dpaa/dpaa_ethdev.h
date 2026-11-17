@@ -114,6 +114,10 @@ enum {
 
 #define DPAA_DEFAULT_RXQ_VSP_ID		1
 
+/* Device argument to name the offline (O/H) port back-half port */
+#define DRIVER_OL_BH_PORT		"drv_bh_port"
+#define DPAA_OL_MAX_BH_PORT_NAME_LEN	12
+
 #define FMC_FILE "/tmp/fmc.bin"
 
 struct dpaa_if_vsp {
@@ -173,6 +177,14 @@ struct dpaa_if {
 	struct qman_fq *next_tx_conf_queue;
 
 	struct dpaa_if_vsp vsp[DPAA_VSP_PROFILE_MAX_NUM];
+
+	/* Control device fd, used by the offline port PMD only. */
+	int ol_fd;
+	/* Backhaul port name from the drv_bh_port devarg, used by the
+	 * offline port PMD only.
+	 */
+	char ol_bh_port_name[DPAA_OL_MAX_BH_PORT_NAME_LEN];
+	bool ol_fq_info_set;
 };
 
 struct dpaa_if_stats {
