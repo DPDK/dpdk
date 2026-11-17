@@ -163,6 +163,12 @@ New Features
     gated behind the new ``func-error-support`` devarg (default off).
     Added a ``func_error_recovery`` xstat to report the recovery count.
 
+* **Updated Intel cpfl driver.**
+
+  * Added support for the timesync API to enable,
+    disable and read the device PTP hardware clock (PHC).
+    Once enabled, the Rx hardware timestamp offload reports valid nanosecond values.
+
 * **Updated Intel i40e driver.**
 
   * Advertised ``RTE_ETH_DEV_CAPA_FLOW_RULE_KEEP`` capability,
@@ -177,6 +183,8 @@ New Features
     The old name is no longer accepted.
   * Increased the maximum number of secondary unicast MAC addresses from 64 to 32k.
     This increases a VF port memory footprint by ~192kB.
+  * Added support for reading the PTP hardware clock (PHC) time with ``rte_eth_timesync_read_time()``,
+    when allowed by the PF.
 
 * **Updated Intel ice driver.**
 
