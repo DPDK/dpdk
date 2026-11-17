@@ -28,10 +28,9 @@ static void mlx5dr_rule_skip(struct mlx5dr_matcher *matcher,
 
 	if (mt->item_flags & MLX5_FLOW_ITEM_REPRESENTED_PORT) {
 		v = items[mt->vport_item_id].spec;
-		if (unlikely(!v)) {
-			DR_LOG(NOTICE, "Fail to get vport item, ignoring");
+		/* Without a port specification, keep both rule directions. */
+		if (unlikely(v == NULL))
 			return;
-		}
 		vport = flow_hw_conv_port_id(matcher->tbl->ctx, v->port_id);
 		if (unlikely(!vport)) {
 			DR_LOG(ERR, "Fail to map port ID %d, ignoring", v->port_id);
