@@ -70,7 +70,7 @@ M: Patrick Robb <patrickrobb1997@gmail.com>
 T: git://dpdk.org/next/dpdk-next-dts
 
 Stable Branches
-M: Luca Boccassi <bluca@debian.org>
+M: Luca Boccassi <luca.boccassi@gmail.com>
 M: Kevin Traynor <ktraynor@redhat.com>
 M: Xueming Li <xuemingl@nvidia.com>
 T: git://dpdk.org/dpdk-stable
