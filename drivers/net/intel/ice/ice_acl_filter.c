@@ -998,6 +998,15 @@ ice_acl_parse(struct ice_adapter *ad,
 		goto error;
 	}
 
+	/* MAC fields are only in the ACL profile with fewer than 4 PFs */
+	if (ad->hw.dev_caps.num_funcs >= 4 &&
+			(input_set & (ICE_INSET_SMAC | ICE_INSET_DMAC)) != 0) {
+		ret = rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM_SPEC, pattern,
+				"MAC address match not supported by ACL on this device");
+		goto error;
+	}
+
 	ret = ice_acl_parse_action(&parsed_actions, filter, error);
 	if (ret)
 		goto error;
