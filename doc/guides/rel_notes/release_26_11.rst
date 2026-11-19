@@ -920,3 +920,33 @@ Tested Platforms
   * DOCA:
 
     * DOCA 3.6.0-069000 and above
+
+* IBM Power11 platforms with NVIDIA\ |reg| NICs combinations
+
+  * CPU:
+
+    * Power11 2.0 (pvr 0082 0200)
+
+  * OS:
+
+    * Red Hat Enterprise Linux 10.2 (6.12.0-211.20.1.el10_2.ppc64le)
+    * SUSE Linux Enterprise Server 16.0 (6.12.0-160000.36)
+    * PowerVM Logical Partitions via pHyp Hypervisor
+
+  * NICs:
+
+    * NVIDIA\ |reg| ConnectX\ |reg|-7 25GbE MCX713104AS-ADAT (4x25GbE)
+
+      * Host interface: PCIe 4.0 x16
+      * Driver version: 2607.0.100
+      * Firmware version: 28.47.1088 (MT_0000000834)
+
+    * NVIDIA\ |reg| ConnectX\ |reg|-7 200GbE MCX755106AS-HEAT (2x200GbE)
+
+      * Host interface: PCIe 5.0x16 with x16 PCIe extension option
+      * Driver version: 2607.0.100
+      * Firmware version: 28.47.1088 (MT_0000000834)
+
+  * DOCA:
+
+    * DOCA 3.5.0-082000.ppc64le
