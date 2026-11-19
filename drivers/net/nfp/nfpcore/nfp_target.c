@@ -728,7 +728,7 @@ nfp_encode_basic(uint64_t *addr,
 			 * address but we can verify if the existing contents
 			 * will point to a valid island.
 			 */
-			return nfp_encode_basic_qdr(*addr, cpp_tgt, dest_island,
+			return nfp_encode_basic_qdr(*addr, dest_island, cpp_tgt,
 					mode, addr40, isld1, isld0);
 		}
 
@@ -741,7 +741,7 @@ nfp_encode_basic(uint64_t *addr,
 		return 0;
 	case 1:
 		if (cpp_tgt == NFP_CPP_TARGET_QDR && addr40 == 0) {
-			return nfp_encode_basic_qdr(*addr, cpp_tgt, dest_island,
+			return nfp_encode_basic_qdr(*addr, dest_island, cpp_tgt,
 					mode, addr40, isld1, isld0);
 		}
 
@@ -763,7 +763,7 @@ nfp_encode_basic(uint64_t *addr,
 		if (cpp_tgt == NFP_CPP_TARGET_QDR && addr40 == 0) {
 			/* iid<0> = addr<30> = channel<0> */
 			/* channel<1> = addr<31> = Index */
-			return nfp_encode_basic_qdr(*addr, cpp_tgt, dest_island,
+			return nfp_encode_basic_qdr(*addr, dest_island, cpp_tgt,
 					mode, addr40, isld1, isld0);
 		}
 
@@ -786,7 +786,7 @@ nfp_encode_basic(uint64_t *addr,
 			 * iid<1> = addr<30> = channel<0>
 			 * channel<1> = addr<31> = Index
 			 */
-			return nfp_encode_basic_qdr(*addr, cpp_tgt, dest_island,
+			return nfp_encode_basic_qdr(*addr, dest_island, cpp_tgt,
 					mode, addr40, isld1, isld0);
 		}
 
