@@ -55,6 +55,16 @@ New Features
      Also, make sure to start the actual text at the margin.
      =======================================================
 
+* **Added FreeBSD PCI control interrupt support.**
+
+  The ``nic_uio`` module and FreeBSD EAL now support a single MSI-X vector
+  per PCI function for control events. PMDs can use interrupt callbacks for
+  AdminQ and link notifications. Older modules remain usable with PMDs that
+  support polling fallback. Per-queue Rx interrupts are not supported.
+  Interrupt control requires a writable descriptor. Bus mastering is enabled
+  on the first writable open and disabled on the last writable close,
+  including process exit.
+
 * **Added division round up macro.**
 
   Added the ``RTE_DIV_ROUND_UP`` macro in ``rte_common.h``

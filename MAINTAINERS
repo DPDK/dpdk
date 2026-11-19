@@ -240,7 +240,7 @@ Interrupt Subsystem
 M: Harman Kalra <hkalra@marvell.com>
 F: lib/eal/include/rte_epoll.h
 F: lib/eal/*/*interrupts.*
-F: app/test/test_interrupts.c
+F: app/test/test_interrupts*.c
 
 Keep alive
 F: lib/eal/include/rte_keepalive.h
@@ -383,6 +383,7 @@ F: drivers/bus/pci/linux/*vfio*
 FreeBSD EAL (with overlaps)
 M: Bruce Richardson <bruce.richardson@intel.com>
 F: lib/eal/freebsd/
+F: app/test/test_interrupts_freebsd.c
 F: doc/guides/freebsd_gsg/
 
 FreeBSD contigmem
@@ -392,6 +393,7 @@ F: kernel/freebsd/contigmem/
 FreeBSD UIO
 M: Bruce Richardson <bruce.richardson@intel.com>
 F: kernel/freebsd/nic_uio/
+F: app/test/test_nic_uio.py
 
 Windows support
 M: Dmitry Kozlyuk <dmitry.kozliuk@gmail.com>

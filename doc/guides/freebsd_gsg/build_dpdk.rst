@@ -158,6 +158,31 @@ To avoid this error, reduce the number of buffers or the buffer size.
 Loading the DPDK nic_uio Module
 -------------------------------
 
+The module supports one MSI-X vector per PCI function for control events,
+such as AdminQ messages and link changes. Interrupt resources are allocated
+only when an application registers an interrupt callback. The application
+retains responsibility for acknowledging and rearming device interrupt causes.
+Per-queue Rx interrupts, MSI, and legacy INTx interrupts are not supported.
+
+The interrupt interface is optional. An updated application can continue
+to use an older module with a PMD that supports polling fallback. Older
+applications can use the updated module without allocating interrupts.
+The file description that initializes interrupts owns the vector until its
+last reference is closed; other opens can still map device BARs. Detaching
+the device is refused while device files remain open.
+
+Interrupt-control ioctls require a writable descriptor. Bus mastering is
+enabled by the first writable open and disabled by the last writable close,
+including process exit. Temporary BAR-mapping opens do not interrupt DMA
+while another writable descriptor remains open. Applications must retain a
+writable descriptor while using DMA; a BAR mapping or read-only descriptor
+alone does not keep it enabled. This does not provide IOMMU isolation.
+
+The hardware lifecycle test requires an idle MSI-X device already bound to
+``nic_uio``. Run it as root with its device node and matching PCI selector::
+
+    python3 app/test/test_nic_uio.py /dev/uio@pci:2:16:0 pci0:2:16:0
+
 After loading the contigmem module, the ``nic_uio`` module must also be loaded into the
 running kernel prior to running any DPDK application, e.g. using::
 
