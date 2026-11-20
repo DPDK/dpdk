@@ -133,6 +133,7 @@ New Features
   * Added vport statistics, including CIR drop, and VF link
     aggregation (LAG) support.
   * Added FEC mode get and set support.
+  * Added Class of Service (COS) mask and map support.
   * Added mailbox message counter reporting through the device private dump API.
 
 * **Updated Intel iavf driver.**
