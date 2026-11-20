@@ -10,6 +10,7 @@
 #include "base/hinic3_eqs.h"
 #include "base/hinic3_cmdq.h"
 #include "base/hinic3_hwdev.h"
+#include "base/hinic3_mbox.h"
 #include "base/hinic3_hwif.h"
 #include "base/hinic3_hw_cfg.h"
 #include "base/hinic3_hw_comm.h"
@@ -3557,6 +3558,32 @@ hinic3_fec_capability_get(struct rte_eth_dev *dev,
 	return HINIC3_FEC_CAPA_NUM_PER_SPEED;
 }
 
+static int
+hinic3_eth_dev_priv_dump(struct rte_eth_dev *dev, FILE *file)
+{
+	struct hinic3_nic_dev *nic_dev = HINIC3_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	struct rte_pci_device *pci_dev = RTE_CLASS_TO_BUS_DEVICE(dev, *pci_dev);
+	struct hinic3_hwdev *hwdev;
+
+	if (file == NULL)
+		return -EINVAL;
+
+	hwdev = nic_dev->hwdev;
+	if (hwdev == NULL || hwdev->func_to_func == NULL)
+		return 0;
+
+	fprintf(file, "mbox_send_cnt: %" PRIu64 "\n",
+		hwdev->func_to_func->mbox_send_cnt);
+	fprintf(file, "mbox_ack_cnt: %" PRIu64 "\n",
+		hwdev->func_to_func->mbox_ack_cnt);
+
+	hinic3_dump_aeq_info(hwdev, file);
+	if (hwdev->func_to_func->mbox_error)
+		hinic3_dump_aeq_mbox_info(hwdev, pci_dev, file);
+
+	return 0;
+}
+
 static const struct eth_dev_ops hinic3_pmd_ops = {
 	.dev_configure                 = hinic3_dev_configure,
 	.dev_infos_get                 = hinic3_dev_infos_get,
@@ -3606,6 +3633,7 @@ static const struct eth_dev_ops hinic3_pmd_ops = {
 	.fec_get_capability            = hinic3_fec_capability_get,
 	.fec_get                       = hinic3_fec_get,
 	.fec_set                       = hinic3_fec_set,
+	.eth_dev_priv_dump             = hinic3_eth_dev_priv_dump,
 };
 
 static const struct eth_dev_ops hinic3_pmd_vf_ops = {
@@ -3650,6 +3678,7 @@ static const struct eth_dev_ops hinic3_pmd_vf_ops = {
 	.mac_addr_add                  = hinic3_mac_addr_add,
 	.set_mc_addr_list              = hinic3_set_mc_addr_list,
 	.flow_ops_get                  = hinic3_dev_filter_ctrl,
+	.eth_dev_priv_dump             = hinic3_eth_dev_priv_dump,
 };
 
 static void hinic3_nic_tx_rx_ops_init(struct hinic3_nic_dev *nic_dev)

@@ -711,6 +711,27 @@ send_tlp_mbox_seg(struct hinic3_mbox *func_to_func, uint64_t header, uint16_t ds
 	return 0;
 }
 
+static void hinic3_record_mbox_info(struct hinic3_mbox *func_to_func,
+				    enum hinic3_mod_type mod, uint16_t cmd,
+				    uint8_t msg_id)
+{
+	struct mbox_send_info send_mbox;
+
+	send_mbox.cmd = cmd;
+	send_mbox.mod = mod;
+	send_mbox.send_msg_id = msg_id;
+
+	uint8_t pos = (func_to_func->save_mbox->start + func_to_func->save_mbox->count) %
+		      HINIC3_MBOX_SAVE_NUM;
+	func_to_func->save_mbox->send_info[pos] = send_mbox;
+
+	if (func_to_func->save_mbox->count < HINIC3_MBOX_SAVE_NUM)
+		func_to_func->save_mbox->count++;
+	else
+		func_to_func->save_mbox->start = (func_to_func->save_mbox->start + 1) %
+						 HINIC3_MBOX_SAVE_NUM;
+}
+
 static int
 send_mbox_to_func(struct hinic3_mbox *func_to_func, enum hinic3_mod_type mod,
 		struct hinic3_handler_info *handler_info, struct mbox_msg_info *msg_info)
@@ -723,6 +744,9 @@ send_mbox_to_func(struct hinic3_mbox *func_to_func, enum hinic3_mod_type mod,
 	uint64_t header = 0;
 
 	rsp_aeq_id = HINIC3_MBOX_RSP_MSG_AEQ;
+
+	hinic3_record_mbox_info(func_to_func, mod, handler_info->cmd,
+				msg_info->msg_id);
 
 	/* Set the header message. */
 	header = HINIC3_MSG_HEADER_SET(handler_info->in_size, MSG_LEN) |
@@ -781,6 +805,9 @@ send_tlp_mbox_to_func(struct hinic3_mbox *func_to_func, enum hinic3_mod_type mod
 	uint64_t header = 0;
 
 	rsp_aeq_id = HINIC3_MBOX_RSP_MSG_AEQ;
+
+	hinic3_record_mbox_info(func_to_func, mod, handler_info->cmd,
+				msg_info->msg_id);
 
 	/* Set the header message. */
 	header = HINIC3_MSG_HEADER_SET(MBOX_TLP_HEADER_SZ, MSG_LEN) |
@@ -873,6 +900,7 @@ hinic3_mbox_to_func(struct hinic3_mbox *func_to_func, enum hinic3_mod_type mod,
 		goto send_err;
 	}
 
+	func_to_func->mbox_send_cnt++;
 	/* Wait for the response message. */
 	time = timeout ? timeout : HINIC3_MBOX_COMP_TIME;
 	aeq = &func_to_func->hwdev->aeqs->aeq[HINIC3_MBOX_RSP_MSG_AEQ];
@@ -884,6 +912,7 @@ hinic3_mbox_to_func(struct hinic3_mbox *func_to_func, enum hinic3_mod_type mod,
 		goto send_err;
 	}
 
+	func_to_func->mbox_ack_cnt++;
 	/* Check whether mod and command of the rsp message match the sent message. */
 	if (mod != mbox_for_resp->mod || handler_info->cmd != mbox_for_resp->cmd) {
 		PMD_DRV_LOG(ERR,
@@ -917,6 +946,8 @@ hinic3_mbox_to_func(struct hinic3_mbox *func_to_func, enum hinic3_mod_type mod,
 		*handler_info->out_size = mbox_for_resp->mbox_len;
 	}
 send_err:
+	if (err != 0)
+		func_to_func->mbox_error = true;
 	return err;
 }
 
@@ -1129,6 +1160,16 @@ hinic3_func_to_func_init(struct hinic3_hwdev *hwdev)
 
 	hwdev->func_to_func = func_to_func;
 	func_to_func->hwdev = hwdev;
+
+	struct save_mbox_info *save_mbox = rte_zmalloc("save_mbox_info",
+						      sizeof(struct save_mbox_info), 0);
+	if (!save_mbox) {
+		err = -ENOMEM;
+		goto alloc_save_mbox_err;
+	}
+
+	func_to_func->save_mbox = save_mbox;
+
 	rte_spinlock_init(&func_to_func->mbox_lock);
 
 	/* Alloc the memory required by the mailbox. */
@@ -1170,6 +1211,9 @@ alloc_mbox_for_resp_err:
 	free_mbox_info(func_to_func->mbox_send);
 
 alloc_mbox_for_send_err:
+	rte_free(save_mbox);
+alloc_save_mbox_err:
+	hwdev->func_to_func = NULL;
 	rte_free(func_to_func);
 
 	return err;
@@ -1184,5 +1228,6 @@ hinic3_func_to_func_free(struct hinic3_hwdev *hwdev)
 	free_mbox_tlp_buffer(func_to_func);
 	free_mbox_info(func_to_func->mbox_resp);
 	free_mbox_info(func_to_func->mbox_send);
+	rte_free(func_to_func->save_mbox);
 	rte_free(func_to_func);
 }

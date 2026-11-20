@@ -553,7 +553,7 @@ hinic3_aeqs_free(struct hinic3_hwdev *hwdev)
 }
 
 void
-hinic3_dump_aeq_info(struct hinic3_hwdev *hwdev)
+hinic3_dump_aeq_info(struct hinic3_hwdev *hwdev, FILE *file)
 {
 	struct hinic3_aeq_elem *aeqe_pos = NULL;
 	struct hinic3_eq *eq = NULL;
@@ -580,10 +580,64 @@ hinic3_dump_aeq_info(struct hinic3_hwdev *hwdev)
 		addr = HINIC3_CSR_AEQ_PROD_IDX_ADDR;
 		pi = hinic3_hwif_read_reg(hwdev->hwif, addr);
 		aeqe_pos = GET_AEQ_ELEM(eq, eq->cons_idx);
-		PMD_DRV_LOG(ERR,
-			    "Aeq id: %d, idx: %u, ctrl0: 0x%08x, wrap: %d, pi: 0x%x, ci: 0x%08x, desc: 0x%x",
-			    q_id, idx, ctrl0, eq->wrapped, pi, ci,
-			    rte_be_to_cpu_32(aeqe_pos->desc));
+		fprintf(file, "Aeq id: %d, idx: %u, ctrl0: 0x%08x, wrap: %d, pi: 0x%x, ci: 0x%08x, desc: 0x%x\n",
+				q_id, idx, ctrl0, eq->wrapped, pi, ci,
+				rte_be_to_cpu_32(aeqe_pos->desc));
+	}
+}
+
+void
+hinic3_dump_aeq_mbox_info(struct hinic3_hwdev *hwdev,
+			  struct rte_pci_device *pci_dev, FILE *file)
+{
+	struct save_mbox_info *save_mbox = NULL;
+	struct hinic3_eq *aeq = NULL;
+	struct hinic3_aeq_elem *aeqe_pos = NULL;
+	uint32_t i, pos;
+	uint8_t src, size, wrapped, seq_id, seg_len, msg_id, mod;
+	uint8_t data[HINIC3_AEQE_DATA_SIZE];
+	uint16_t src_func_idx, cmd;
+	uint32_t aeqe_desc;
+	uint64_t mbox_header;
+	enum hinic3_aeq_type event;
+
+	save_mbox = hwdev->func_to_func->save_mbox;
+	aeq = &hwdev->aeqs->aeq[HINIC3_MBOX_RSP_MSG_AEQ];
+
+	fprintf(file, "Sending the latest mbox messages:\n");
+	for (i = 0; i < save_mbox->count; i++) {
+		pos = (save_mbox->start + i) % HINIC3_MBOX_SAVE_NUM;
+		fprintf(file, "send_msg_id: %u, cmd: %u, mod: %u\n",
+			save_mbox->send_info[pos].send_msg_id, save_mbox->send_info[pos].cmd,
+			save_mbox->send_info[pos].mod);
+	}
+
+	fprintf(file, "dump aeqe info:\n");
+	fprintf(file, "port: %u, eq cid: %u, func id: %u, bus: %u, devid: %u, wrapped: %u\n",
+		hwdev->port_id, aeq->cons_idx, pci_dev->addr.function, pci_dev->addr.bus,
+		pci_dev->addr.devid, aeq->wrapped);
+	for (i = 0; i < aeq->eq_len; i++) {
+		/* Parsing the data field. */
+		aeqe_pos = GET_AEQ_ELEM(aeq, i);
+		aeqe_desc = rte_be_to_cpu_32(aeqe_pos->desc);
+		memcpy(data, aeqe_pos->aeqe_data, HINIC3_AEQE_DATA_SIZE);
+		hinic3_be32_to_cpu(data, HINIC3_AEQE_DATA_SIZE);
+		memcpy(&mbox_header, data, sizeof(mbox_header));
+		seq_id = HINIC3_MSG_HEADER_GET(mbox_header, SEQID);
+		seg_len = HINIC3_MSG_HEADER_GET(mbox_header, SEG_LEN);
+		src_func_idx = HINIC3_MSG_HEADER_GET(mbox_header, SRC_GLB_FUNC_IDX);
+		msg_id = HINIC3_MSG_HEADER_GET(mbox_header, MSG_ID);
+		mod = HINIC3_MSG_HEADER_GET(mbox_header, MODULE);
+		cmd = HINIC3_MSG_HEADER_GET(mbox_header, CMD);
+		/* Parsing the desc field. */
+		event = EQ_ELEM_DESC_GET(aeqe_desc, TYPE);
+		src = EQ_ELEM_DESC_GET(aeqe_desc, SRC);
+		size = EQ_ELEM_DESC_GET(aeqe_desc, SIZE);
+		wrapped = EQ_ELEM_DESC_GET(aeqe_desc, WRAPPED);
+
+		fprintf(file, "index: %d, msg_id: %u, mod: %u, cmd: %u, seq_id: %u, seg_len: %u, src_func_idx: %u, event: %u, src: %u, size: %u, wrapped: %u\n",
+			i, msg_id, mod, cmd, seq_id, seg_len, src_func_idx,
+			event, src, size, wrapped);
 	}
 }
 
