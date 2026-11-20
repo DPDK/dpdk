@@ -310,6 +310,10 @@ struct ixgbe_5tuple_filter {
 	(RTE_ALIGN(IXGBE_MAX_FTQF_FILTERS, (sizeof(uint32_t) * NBBY)) / \
 	 (sizeof(uint32_t) * NBBY))
 
+/* Last ETQF slot is reserved for 1588, Rx path maps its index to PTP flag. */
+#define IXGBE_ETQF_FILTER_TIMESYNC	(IXGBE_MAX_ETQF_FILTERS - 1)
+#define IXGBE_ETQF_TABLE_SIZE		(IXGBE_MAX_ETQF_FILTERS - 1)
+
 /* Shared EtherType (ETQF) filter table. */
 struct ixgbe_ethertype_table {
 	struct ixgbe_ethertype_entry {
@@ -317,7 +321,7 @@ struct ixgbe_ethertype_table {
 		uint16_t ethertype; /* ethertype, for dedup */
 		uint32_t etqf; /* ETQF register value */
 		uint32_t etqs; /* ETQS register value */
-	} entries[IXGBE_MAX_ETQF_FILTERS];
+	} entries[IXGBE_ETQF_TABLE_SIZE];
 };
 
 /*
@@ -333,9 +337,6 @@ struct ixgbe_filter_info {
 	struct ixgbe_rte_flow_rss_conf rss_info;
 	/* shared EtherType (ETQF) slot table */
 	struct ixgbe_ethertype_table ethertype_table;
-	/* 1588 timestamping ETQF slot (valid when timesync_installed) */
-	bool timesync_installed;
-	uint8_t timesync_idx;
 	/* Tx anti-spoof ETQF slot (valid when antispoof_installed) */
 	bool antispoof_installed;
 	uint8_t antispoof_idx;
