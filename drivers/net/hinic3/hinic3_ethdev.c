@@ -80,11 +80,24 @@ struct hinic3_xstats_name_off {
 	uint32_t offset;
 };
 
+#define HINIC3_CIR_DROP_STAT(_stat_item)                                   \
+	{                                                                  \
+		.name = #_stat_item,                                       \
+		.offset = offsetof(struct hinic3_cir_drop, _stat_item),    \
+	}
+
 #define HINIC3_FUNC_STAT(_stat_item)                                       \
 	{                                                                  \
 		.name = #_stat_item,                                       \
 		.offset = offsetof(struct hinic3_vport_stats, _stat_item), \
 	}
+
+
+static struct hinic3_xstats_name_off hinic3_cir_drop_stats_strings[] = {
+	HINIC3_CIR_DROP_STAT(rx_discard_phy),
+};
+
+#define HINIC3_CIR_DROP_XSTATS_NUM  RTE_DIM(hinic3_cir_drop_stats_strings)
 
 static const struct hinic3_xstats_name_off hinic3_vport_stats_strings[] = {
 	HINIC3_FUNC_STAT(tx_unicast_pkts_vport),
@@ -105,6 +118,8 @@ static const struct hinic3_xstats_name_off hinic3_vport_stats_strings[] = {
 	HINIC3_FUNC_STAT(rx_discard_vport),
 	HINIC3_FUNC_STAT(tx_err_vport),
 	HINIC3_FUNC_STAT(rx_err_vport),
+	HINIC3_FUNC_STAT(rx_mtu_err_vport),
+	HINIC3_FUNC_STAT(rx_out_of_buffer),
 };
 
 #define HINIC3_VPORT_XSTATS_NUM RTE_DIM(hinic3_vport_stats_strings)
@@ -284,12 +299,16 @@ static const struct hinic3_xstats_name_off hinic3_txq_stats_strings[] = {
 static uint32_t
 hinic3_xstats_calc_num(struct hinic3_nic_dev *nic_dev)
 {
+	uint32_t cir_drop_num = HINIC3_IS_SP620_NIC(nic_dev) ?
+				HINIC3_CIR_DROP_XSTATS_NUM : 0;
+
 	if (HINIC3_IS_VF(nic_dev->hwdev)) {
-		return (HINIC3_VPORT_XSTATS_NUM +
+		return (HINIC3_VPORT_XSTATS_NUM + cir_drop_num +
 			HINIC3_RXQ_XSTATS_NUM * nic_dev->num_rqs +
 			HINIC3_TXQ_XSTATS_NUM * nic_dev->num_sqs);
 	} else {
 		return (HINIC3_VPORT_XSTATS_NUM + HINIC3_PHYPORT_XSTATS_NUM +
+			cir_drop_num +
 			HINIC3_RXQ_XSTATS_NUM * nic_dev->num_rqs +
 			HINIC3_TXQ_XSTATS_NUM * nic_dev->num_sqs);
 	}
@@ -1269,7 +1288,14 @@ hinic3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t qid, uint16_t nb_desc,
 	txq->wqebb_size = (uint16_t)RTE_BIT32(txq->wqebb_shift);
 	txq->tx_free_thresh = tx_free_thresh;
 	txq->owner = 1;
-	txq->cos = nic_dev->default_cos;
+
+	if (!ODD_NUMBER_QUEUE_ID(qid) &&
+		hinic3_cmd_vf_lag(nic_dev->hwdev, hinic3_global_func_id(nic_dev->hwdev),
+				  HINIC3_CMD_OPCODE_GET))
+		txq->cos = SELECT_OTHER_COS_ID(nic_dev->default_cos);
+	else
+		txq->cos = nic_dev->default_cos;
+
 	txq->tx_deferred_start = tx_conf->tx_deferred_start;
 	txq->tx_wqe_compact_task = HINIC3_SUPPORT_TX_WQE_COMPACT_TASK(nic_dev);
 
@@ -2937,6 +2963,38 @@ hinic3_dev_stats_reset(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static uint16_t
+get_port_cir_drop(struct hinic3_nic_dev *nic_dev,
+		  struct rte_eth_xstat *xstats, uint32_t base)
+{
+	struct hinic3_cir_drop port_stats;
+	uint16_t i;
+	int err;
+
+	memset(&port_stats, 0, sizeof(port_stats));
+
+	err = hinic3_get_cir_drop(nic_dev->hwdev, &port_stats);
+	if (err) {
+		PMD_DRV_LOG(ERR, "Failed to get CPB cir drops from fw.");
+
+		for (i = 0; i < RTE_DIM(hinic3_cir_drop_stats_strings); i++) {
+			xstats[i].value = 0;
+			xstats[i].id = base + i;
+		}
+
+		return RTE_DIM(hinic3_cir_drop_stats_strings);
+	}
+
+	for (i = 0; i < RTE_DIM(hinic3_cir_drop_stats_strings); i++) {
+		memcpy(&xstats[i].value,
+		       (const char *)&port_stats + hinic3_cir_drop_stats_strings[i].offset,
+		       sizeof(uint64_t));
+		xstats[i].id = base + i;
+	}
+
+	return RTE_DIM(hinic3_cir_drop_stats_strings);
+}
+
 /**
  * Get device extended statistics.
  *
@@ -3024,6 +3082,10 @@ hinic3_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 		xstats[count].id = count;
 		count++;
 	}
+
+	/* Get stats from cir drop stats structure */
+	if (HINIC3_IS_SP620_NIC(nic_dev))
+		count += get_port_cir_drop(nic_dev, &xstats[count], count);
 
 	if (HINIC3_IS_VF(nic_dev->hwdev))
 		return count;
@@ -3123,6 +3185,16 @@ hinic3_dev_xstats_get_names(struct rte_eth_dev *dev,
 			hinic3_vport_stats_strings[i].name,
 			sizeof(xstats_names[count].name));
 		count++;
+	}
+
+	/* Get cir drop stats name. */
+	if (HINIC3_IS_SP620_NIC(nic_dev)) {
+		for (i = 0; i < HINIC3_CIR_DROP_XSTATS_NUM; i++) {
+			strlcpy(xstats_names[count].name,
+				hinic3_cir_drop_stats_strings[i].name,
+				sizeof(xstats_names[count].name));
+			count++;
+		}
 	}
 
 	if (HINIC3_IS_VF(nic_dev->hwdev))

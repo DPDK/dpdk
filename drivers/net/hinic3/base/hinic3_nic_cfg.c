@@ -602,6 +602,33 @@ hinic3_get_pause_info(struct hinic3_hwdev *hwdev, struct nic_pause_config *nic_p
 }
 
 int
+hinic3_get_cir_drop(void *hwdev, struct hinic3_cir_drop *stats)
+{
+	struct hinic3_port_stats_info stats_info = { 0 };
+	struct hinic3_cmd_get_dp_info_resp vport_stats = { 0 };
+	uint16_t out_size = sizeof(vport_stats);
+	int err;
+
+	if (!hwdev || !stats)
+		return -EINVAL;
+
+	stats_info.func_id = hinic3_global_func_id(hwdev);
+	err = hinic3_msg_to_mgmt_sync(hwdev, HINIC3_MOD_L2NIC,
+				      HINIC3_NIC_CMD_GET_CIR_DROP,
+				      &stats_info, sizeof(stats_info),
+				      &vport_stats, &out_size);
+	if (err || !out_size || vport_stats.msg_head.status) {
+		PMD_DRV_LOG(ERR, "Get port stats failed, err: %d, status: 0x%x, out size: 0x%x",
+			    err, vport_stats.msg_head.status, out_size);
+		return -EIO;
+	}
+
+	memcpy(stats, vport_stats.value, sizeof(*stats));
+
+	return 0;
+}
+
+int
 hinic3_get_vport_stats(struct hinic3_hwdev *hwdev, struct hinic3_vport_stats *stats)
 {
 	struct hinic3_port_stats_info stats_info;
@@ -1724,4 +1751,39 @@ hinic3_set_link_status_follow(struct hinic3_hwdev *hwdev,
 	}
 
 	return follow.head.status;
+}
+
+bool
+hinic3_cmd_vf_lag(void *hwdev, uint16_t func_id, uint8_t opcode)
+{
+	struct hinic3_vf_lag_cmd vf_lag_info = { 0 };
+	uint16_t out_size = sizeof(struct hinic3_vf_lag_cmd);
+	int err;
+
+	if (!hwdev || func_id >= MAX_FUNCTION_NUM)
+		return false;
+	vf_lag_info.func_id = func_id;
+	vf_lag_info.opcode = opcode;
+	vf_lag_info.en_flag = 0;
+
+	err = hinic3_msg_to_mgmt_sync(hwdev, HINIC3_MOD_L2NIC,
+				      HINIC3_NIC_CMD_CFG_VF_LAG,
+				      &vf_lag_info, sizeof(vf_lag_info),
+				      &vf_lag_info, &out_size);
+	if (vf_lag_info.msg_head.status == HINIC3_MGMT_CMD_UNSUPPORTED)
+		return false;
+
+	if (err || vf_lag_info.msg_head.status || !out_size) {
+		PMD_DRV_LOG(ERR,
+			    "Get vf_lag failed, err: %d, status: 0x%x, out size: 0x%x",
+			    err, vf_lag_info.msg_head.status, out_size);
+		return false;
+	}
+
+	if (opcode == HINIC3_CMD_OPCODE_GET) {
+		return !!(vf_lag_info.vf_lag_bitmap.vf_bit_map[func_id / VF_LAG_VF_NUM_PER_GROUP] &
+			  RTE_BIT32(func_id % VF_LAG_VF_NUM_PER_GROUP));
+	}
+
+	return false;
 }

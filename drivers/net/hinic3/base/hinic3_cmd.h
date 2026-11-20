@@ -94,6 +94,8 @@ enum hinic3_nic_cmd {
 	/* PORT CFG */
 	HINIC3_NIC_CMD_CFG_PAUSE_INFO			= 101,
 	HINIC3_NIC_CMD_VF_COS				= 104,
+	HINIC3_NIC_CMD_GET_CIR_DROP			= 115,
+	HINIC3_NIC_CMD_CFG_VF_LAG			= 243,
 };
 
 /* COMM commands between driver to MPU. */
