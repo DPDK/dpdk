@@ -784,7 +784,7 @@ hinic3_start_rq(struct rte_eth_dev *eth_dev, struct hinic3_rxq *rxq)
 	hinic3_add_rq_to_rx_queue_list(nic_dev, rxq->q_id);
 
 	if (nic_dev->rss_state == HINIC3_RSS_ENABLE) {
-		if ((hinic3_get_driver_feature(nic_dev) & NIC_F_FDIR) != 0)
+		if ((hinic3_get_driver_feature(nic_dev) & NIC_F_HTN_FDIR) != 0)
 			err = hinic3_set_rq_enable(nic_dev, rxq->q_id, true);
 		if (err) {
 			PMD_DRV_LOG(ERR, "Flush rq failed, eth_dev:%s, queue_idx:%d",
