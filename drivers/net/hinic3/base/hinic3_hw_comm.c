@@ -276,10 +276,6 @@ hinic3_set_root_ctxt(struct hinic3_hwdev *hwdev, uint32_t rq_depth,
 	root_ctxt.rq_depth = (uint16_t)rte_log2_u32(rq_depth);
 	root_ctxt.rx_buf_sz = get_hw_rx_buf_size(hwdev, rx_buf_sz);
 	root_ctxt.sq_depth = (uint16_t)rte_log2_u32(sq_depth);
-	root_ctxt.cmdq_mode = hwdev->cmdqs->cmdq_mode;
-
-	if (hwdev->cmdqs->cmdq_mode == HINIC3_ENHANCE_CMDQ)
-		root_ctxt.cmdq_depth--;
 
 	err = hinic3_msg_to_mgmt_sync(hwdev, HINIC3_MOD_COMM,
 				      HINIC3_MGMT_CMD_SET_VAT,
@@ -333,6 +329,11 @@ hinic3_set_cmdq_depth(struct hinic3_hwdev *hwdev, uint16_t cmdq_depth)
 	root_ctxt.func_idx = hinic3_global_func_id(hwdev);
 	root_ctxt.set_cmdq_depth = 1;
 	root_ctxt.cmdq_depth = (uint8_t)rte_log2_u32(cmdq_depth);
+
+	root_ctxt.cmdq_mode = hwdev->cmdqs->cmdq_mode;
+
+	if (root_ctxt.cmdq_mode == HINIC3_ENHANCE_CMDQ)
+		root_ctxt.cmdq_depth--;
 
 	err = hinic3_msg_to_mgmt_sync(hwdev, HINIC3_MOD_COMM,
 				      HINIC3_MGMT_CMD_SET_VAT,
