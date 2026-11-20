@@ -108,7 +108,7 @@ static uint8_t prepare_cmd_buf_set_rss_indir_table(struct hinic3_nic_dev *nic_de
 
 	for (i = 0; i < HINIC3_RSS_INDIR_SIZE; i++)
 		indir_tbl->entry[i] = (uint16_t)(*(indir_table + i));
-	size = sizeof(indir_tbl->entry) / 4;
+	size = (size_t)sizeof(indir_tbl->entry) / sizeof(uint32_t);
 	temp = (uint32_t *)indir_tbl->entry;
 	for (i = 0; i < size; i++) {
 		rte_atomic_thread_fence(rte_memory_order_seq_cst);
@@ -136,16 +136,11 @@ static void cmd_buf_to_rss_indir_table(const struct hinic3_cmd_buf *cmd_buf, uin
 		indir_table[i] = *(indir_tbl + i);
 }
 
-struct hinic3_nic_cmdq_ops *hinic3_nic_cmdq_get_stn_ops(void)
-{
-	static struct hinic3_nic_cmdq_ops cmdq_ops = {
-		.prepare_cmd_buf_clean_tso_lro_space =    prepare_cmd_buf_clean_tso_lro_space,
-		.prepare_cmd_buf_qp_context_multi_store = prepare_cmd_buf_qp_context_multi_store,
-		.prepare_cmd_buf_modify_svlan =           prepare_cmd_buf_modify_svlan,
-		.prepare_cmd_buf_set_rss_indir_table =    prepare_cmd_buf_set_rss_indir_table,
-		.prepare_cmd_buf_get_rss_indir_table =    prepare_cmd_buf_get_rss_indir_table,
-		.cmd_buf_to_rss_indir_table =             cmd_buf_to_rss_indir_table,
-	};
-
-	return &cmdq_ops;
-}
+const struct hinic3_nic_cmdq_ops hinic3_stn_cmdq_ops = {
+	.prepare_cmd_buf_clean_tso_lro_space =    prepare_cmd_buf_clean_tso_lro_space,
+	.prepare_cmd_buf_qp_context_multi_store = prepare_cmd_buf_qp_context_multi_store,
+	.prepare_cmd_buf_modify_svlan =           prepare_cmd_buf_modify_svlan,
+	.prepare_cmd_buf_set_rss_indir_table =    prepare_cmd_buf_set_rss_indir_table,
+	.prepare_cmd_buf_get_rss_indir_table =    prepare_cmd_buf_get_rss_indir_table,
+	.cmd_buf_to_rss_indir_table =             cmd_buf_to_rss_indir_table,
+};
