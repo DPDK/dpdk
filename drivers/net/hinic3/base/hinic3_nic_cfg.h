@@ -967,6 +967,33 @@ int hinic3_msg_to_mgmt_sync(struct hinic3_hwdev *hwdev, enum hinic3_mod_type mod
 
 int hinic3_set_ci_table(struct hinic3_hwdev *hwdev, struct hinic3_sq_attr *attr);
 
+enum hinic3_fec_mode_opcode {
+	HINIC3_FEC_MODE_OPCODE_GET = 0,
+	HINIC3_FEC_MODE_OPCODE_SET = 1,
+};
+
+struct mag_cmd_cfg_fec_mode {
+	struct mgmt_msg_head head;
+	uint8_t port_id;
+	uint8_t opcode;
+	uint8_t advertised_fec;
+	uint8_t supported_fec;
+};
+
+enum hinic3_cmd_port_fec {
+	HINIC3_PORT_FEC_NOT_SET = 0,
+	HINIC3_PORT_FEC_RSFEC = 1,
+	HINIC3_PORT_FEC_BASEFEC = 2,
+	HINIC3_PORT_FEC_NOFEC = 3,
+	HINIC3_PORT_FEC_LLRSFEC = 4,
+};
+
+struct hinic3_fec_param_value_map {
+	uint8_t fec_offset;
+	uint8_t hinic3_fec_value;
+	uint8_t ethtool_fec_value;
+};
+
 /**
  * Update MAC address to hardware.
  *
@@ -1582,5 +1609,10 @@ struct hinic3_vf_lag_cmd {
 int hinic3_get_cir_drop(void *hwdev, struct hinic3_cir_drop *stats);
 
 bool hinic3_cmd_vf_lag(void *hwdev, uint16_t func_id, uint8_t opcode);
+
+int hinic3_set_fec_mode(struct hinic3_hwdev *hwdev, uint8_t fecparam);
+
+int hinic3_get_fec_mode(struct hinic3_hwdev *hwdev, uint8_t *advertised_fec,
+			uint8_t *supported_fec);
 
 #endif /* _HINIC3_NIC_CFG_H_ */

@@ -132,6 +132,7 @@ New Features
 
   * Added vport statistics, including CIR drop, and VF link
     aggregation (LAG) support.
+  * Added FEC mode get and set support.
 
 * **Updated Intel iavf driver.**
 

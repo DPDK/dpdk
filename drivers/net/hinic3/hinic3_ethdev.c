@@ -3430,6 +3430,133 @@ hinic3_dev_filter_ctrl(struct rte_eth_dev *dev, const struct rte_flow_ops **arg)
 	return 0;
 }
 
+static const uint32_t HINIC3_FEC_CAPA_NUM_PER_SPEED = 1;
+
+static const uint32_t hinic3_speed_capa[] = {
+	RTE_ETH_SPEED_NUM_NONE, RTE_ETH_SPEED_NUM_10M,
+	RTE_ETH_SPEED_NUM_100M, RTE_ETH_SPEED_NUM_1G,
+	RTE_ETH_SPEED_NUM_10G, RTE_ETH_SPEED_NUM_25G,
+	RTE_ETH_SPEED_NUM_40G, RTE_ETH_SPEED_NUM_50G,
+	RTE_ETH_SPEED_NUM_100G, RTE_ETH_SPEED_NUM_200G,
+	RTE_ETH_SPEED_NUM_400G, RTE_ETH_SPEED_NUM_800G
+};
+
+static bool
+hinic3_fec_param_valid(uint32_t fec_param)
+{
+	if (fec_param == RTE_ETH_FEC_MODE_CAPA_MASK(LLRS) ||
+	    fec_param == RTE_ETH_FEC_MODE_CAPA_MASK(RS) ||
+	    fec_param == RTE_ETH_FEC_MODE_CAPA_MASK(BASER) ||
+	    fec_param == RTE_ETH_FEC_MODE_CAPA_MASK(NOFEC)) {
+		return true;
+	}
+
+	return false;
+}
+
+static int
+hinic3_fec_set(struct rte_eth_dev *dev, uint32_t fec_capa)
+{
+	struct hinic3_nic_dev *nic_dev = HINIC3_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	int err;
+
+	if (!hinic3_fec_param_valid(fec_capa)) {
+		if (fec_capa & RTE_ETH_FEC_MODE_CAPA_MASK(AUTO))
+			PMD_DRV_LOG(ERR,
+				    "Unsupported fec param 0x%x, AUTO is configured by hinicadm5.",
+				    fec_capa);
+		else
+			PMD_DRV_LOG(ERR, "Unsupported fec param 0x%x.", fec_capa);
+		return -EINVAL;
+	}
+
+	err = hinic3_set_fec_mode(nic_dev->hwdev, (uint8_t)fec_capa);
+	if (err) {
+		/*
+		 * A forced FEC mode can only be configured after
+		 * auto-negotiation is disabled with the hinicadm5 tool.
+		 * While auto-negotiation is on, the firmware rejects the SET
+		 * request (management status 0x10), and the PMD has no way to
+		 * toggle it. The firmware also reports the negotiated mode on
+		 * GET, so the AUTO state cannot be detected before the attempt.
+		 */
+		PMD_DRV_LOG(ERR,
+			    "Failed to set fec param 0x%x, err %d (AUTO is managed by hinicadm5).",
+			    fec_capa, err);
+		return err;
+	}
+
+	return 0;
+}
+
+static int
+hinic3_fec_get(struct rte_eth_dev *dev, uint32_t *fec_capa)
+{
+	struct hinic3_nic_dev *nic_dev = HINIC3_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	uint8_t advertised_fec = 0;
+	int err;
+
+	err = hinic3_get_fec_mode(nic_dev->hwdev, &advertised_fec, NULL);
+	if (err) {
+		PMD_DRV_LOG(ERR, "Get fec param failed: %d.", err);
+		return err;
+	}
+
+	if (advertised_fec == 0) {
+		PMD_DRV_LOG(ERR, "Firmware reported an unknown FEC mode.");
+		return -EINVAL;
+	}
+
+	*fec_capa = (uint32_t)advertised_fec;
+
+	return 0;
+}
+
+static int
+hinic3_fec_capability_get(struct rte_eth_dev *dev,
+			  struct rte_eth_fec_capa *speed_fec_capa,
+			  unsigned int num)
+{
+	struct hinic3_nic_dev *nic_dev = HINIC3_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
+	struct nic_port_info port_info = { 0 };
+	uint8_t supported_fec = 0;
+	int err;
+
+	if (speed_fec_capa == NULL)
+		return HINIC3_FEC_CAPA_NUM_PER_SPEED;
+
+	if (num < HINIC3_FEC_CAPA_NUM_PER_SPEED) {
+		PMD_DRV_LOG(ERR, "Not enough array size(%u) to store FEC capabilities, should not be less than %u.",
+			    num, HINIC3_FEC_CAPA_NUM_PER_SPEED);
+		return HINIC3_FEC_CAPA_NUM_PER_SPEED;
+	}
+
+	err = hinic3_get_fec_mode(nic_dev->hwdev, NULL, &supported_fec);
+	if (err) {
+		PMD_DRV_LOG(ERR, "Failed to get fec capability, err: %d.", err);
+		return err;
+	}
+
+	err = hinic3_get_port_info(nic_dev->hwdev, &port_info);
+	if (err) {
+		PMD_DRV_LOG(ERR, "Failed to get port info, err: %d.", err);
+		return err;
+	}
+
+	if (port_info.speed >= RTE_DIM(hinic3_speed_capa))
+		return -EINVAL;
+
+	speed_fec_capa->speed = hinic3_speed_capa[port_info.speed];
+	/* AUTO is managed by hinicadm5 and cannot be set through the PMD. */
+	speed_fec_capa->capa = (uint32_t)supported_fec &
+			       ~RTE_ETH_FEC_MODE_CAPA_MASK(AUTO);
+
+	if (speed_fec_capa->capa == 0)
+		return -ENOTSUP;
+
+	return HINIC3_FEC_CAPA_NUM_PER_SPEED;
+}
+
 static const struct eth_dev_ops hinic3_pmd_ops = {
 	.dev_configure                 = hinic3_dev_configure,
 	.dev_infos_get                 = hinic3_dev_infos_get,
@@ -3476,6 +3603,9 @@ static const struct eth_dev_ops hinic3_pmd_ops = {
 	.mac_addr_add                  = hinic3_mac_addr_add,
 	.set_mc_addr_list              = hinic3_set_mc_addr_list,
 	.flow_ops_get                  = hinic3_dev_filter_ctrl,
+	.fec_get_capability            = hinic3_fec_capability_get,
+	.fec_get                       = hinic3_fec_get,
+	.fec_set                       = hinic3_fec_set,
 };
 
 static const struct eth_dev_ops hinic3_pmd_vf_ops = {
