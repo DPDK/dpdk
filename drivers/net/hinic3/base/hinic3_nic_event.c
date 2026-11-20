@@ -15,6 +15,7 @@ static const char *g_hw_to_char_fec[HILINK_FEC_MAX_TYPE] = {
 static const char *g_hw_to_speed_info[PORT_SPEED_UNKNOWN] = {
 	"not set", "10MB", "100MB", "1GB",   "10GB",
 	"25GB",	   "40GB", "50GB",  "100GB", "200GB",
+	"400GB",   "800GB",
 };
 static const char *g_hw_to_an_state_info[PORT_CFG_AN_OFF + 1] = {
 	"not set", "on", "off",
@@ -23,6 +24,37 @@ static const char *g_hw_to_an_state_info[PORT_CFG_AN_OFF + 1] = {
 struct port_type_table {
 	uint32_t port_type;
 	const char *port_type_name;
+};
+
+/*
+ * Hardware cable speed modes.
+ *
+ * The firmware reports the cable speed mode as a uint8_t value. Speeds whose raw
+ * Gbps value cannot be represented in 8 bits (notably 400G and 800G) are
+ * therefore encoded with indirection codes instead, and must be translated
+ * back to their real speeds through speed_mode_map[] below.
+ */
+enum {
+	HW_CABLE_SPEED_MODE_200G = 200,
+	HW_CABLE_SPEED_MODE_400G = 201,
+	HW_CABLE_SPEED_MODE_800G = 202,
+};
+
+/* Real cable speeds in Gbps, as exposed to the upper layer. */
+enum {
+	REAL_CABLE_SPEED_400G    = 400,
+	REAL_CABLE_SPEED_800G    = 800,
+};
+
+/* Mapping between a cable speed mode (uint8_t) and its real speed in Gbps. */
+struct speed_mode_map_entry {
+	uint8_t speed_mode;
+	uint32_t real_speed;
+};
+
+static const struct speed_mode_map_entry speed_mode_map[] = {
+	{HW_CABLE_SPEED_MODE_400G, REAL_CABLE_SPEED_400G},
+	{HW_CABLE_SPEED_MODE_800G, REAL_CABLE_SPEED_800G},
 };
 
 void
@@ -35,6 +67,7 @@ hinic3_get_link_port_info(struct hinic3_hwdev *hwdev, uint8_t link_state,
 		RTE_ETH_SPEED_NUM_10G,	RTE_ETH_SPEED_NUM_25G,
 		RTE_ETH_SPEED_NUM_40G,	RTE_ETH_SPEED_NUM_50G,
 		RTE_ETH_SPEED_NUM_100G, RTE_ETH_SPEED_NUM_200G,
+		RTE_ETH_SPEED_NUM_400G, RTE_ETH_SPEED_NUM_800G
 	};
 	struct nic_port_info port_info = {0};
 	int err;
@@ -53,6 +86,13 @@ hinic3_get_link_port_info(struct hinic3_hwdev *hwdev, uint8_t link_state,
 			link->link_duplex = RTE_ETH_LINK_FULL_DUPLEX;
 			link->link_autoneg = RTE_ETH_LINK_FIXED;
 		} else {
+			if (port_info.speed >= LINK_SPEED_LEVELS) {
+				PMD_DRV_LOG(WARNING,
+					"Invalid port speed %u reported by firmware, reset to %u",
+					port_info.speed,
+					port_info.speed % LINK_SPEED_LEVELS);
+			}
+
 			link->link_speed =
 				port_speed[port_info.speed % LINK_SPEED_LEVELS];
 			link->link_duplex = port_info.duplex;
@@ -176,6 +216,22 @@ get_port_temperature_power(struct mag_cmd_event_port_info *info, char *str)
 	return 0;
 }
 
+static uint32_t
+get_real_cable_speed(uint8_t speed)
+{
+	uint32_t i;
+
+	if (speed <= HW_CABLE_SPEED_MODE_200G)
+		return speed;
+	for (i = 0; i < RTE_DIM(speed_mode_map); i++) {
+		if (speed_mode_map[i].speed_mode == speed)
+			return speed_mode_map[i].real_speed;
+	}
+
+	PMD_DRV_LOG(ERR, "unsupported cable speed mode: 0x%x", speed);
+	return speed;
+}
+
 static void
 print_cable_info(struct mag_cmd_event_port_info *port_info)
 {
@@ -201,9 +257,9 @@ print_cable_info(struct mag_cmd_event_port_info *port_info)
 	memcpy(vendor, port_info->vendor_name,
 	       sizeof(port_info->vendor_name));
 	snprintf(str, CAP_INFO_MAX_LEN - 1,
-		     "Vendor: %s, %s, length: %um, max_speed: %uGbps",
-		     vendor, port_type, port_info->cable_length,
-		     port_info->max_speed);
+	     "Vendor: %s, %s, length: %um, max_speed: %uGbps",
+	     vendor, port_type, port_info->cable_length,
+	     get_real_cable_speed(port_info->max_speed));
 
 	if (port_info->port_type == LINK_PORT_OPTICAL_MM ||
 	    port_info->port_type == LINK_PORT_AOC) {

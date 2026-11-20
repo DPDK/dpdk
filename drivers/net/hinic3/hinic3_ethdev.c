@@ -553,6 +553,10 @@ hinic3_get_nic_type(struct rte_pci_device *pci_dev)
 	case HINIC3_DEV_ID_SP230:
 	case HINIC3_DEV_ID_VF_SP230:
 		return NIC_SP230;
+	case HINIC3_DEV_ID_SP560:
+	case HINIC3_DEV_ID_VF_SP560:
+	case HINIC3_DEV_ID_HYPER_VF_SP560:
+		return NIC_SP560;
 	default:
 		return NIC_UNKNOWN;
 	}
@@ -573,6 +577,7 @@ hinic3_cmdq_get_ops(struct hinic3_nic_dev *nic_dev)
 	static const struct hinic3_nic_cmdq_ops *cmdq_ops[] = {
 		[NIC_SP620]   = &hinic3_stn_cmdq_ops,
 		[NIC_SP230]   = &hinic3_htn_cmdq_ops,
+		[NIC_SP560]   = &hinic3_stn_cmdq_ops,
 		[NIC_UNKNOWN] = &hinic3_stn_cmdq_ops,
 	};
 
@@ -1190,7 +1195,8 @@ hinic3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qid, uint16_t nb_desc,
 	}
 
 	/* If NIC support compact CQE, use compact wqe as default. */
-	if (HINIC3_SUPPORT_RX_HW_COMPACT_CQE(nic_dev)) {
+	if (HINIC3_SUPPORT_RX_HW_COMPACT_CQE(nic_dev) ||
+	    HINIC3_SUPPORT_RX_SW_COMPACT_CQE(nic_dev)) {
 		rxq->wqe_type = HINIC3_COMPACT_RQ_WQE;
 	} else {
 		if (buf_size >= HINIC3_RX_BUF_SIZE_4K &&
@@ -1250,7 +1256,8 @@ hinic3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qid, uint16_t nb_desc,
 		goto alloc_rx_info_fail;
 	}
 
-	if (HINIC3_SUPPORT_RX_HW_COMPACT_CQE(nic_dev)) {
+	if (HINIC3_SUPPORT_RX_HW_COMPACT_CQE(nic_dev) ||
+	    HINIC3_SUPPORT_RX_SW_COMPACT_CQE(nic_dev)) {
 		ci_mz = hinic3_dma_zone_reserve(dev, "hinic3_ci_mz", qid,
 						sizeof(*rxq->rq_ci),
 						RTE_CACHE_LINE_SIZE, (int)socket_id);
@@ -1489,7 +1496,8 @@ hinic3_rx_queue_release(struct rte_eth_dev *dev, uint16_t queue_id)
 
 	hinic3_free_rxq_mbufs(rxq);
 
-	if (HINIC3_SUPPORT_RX_HW_COMPACT_CQE(nic_dev))
+	if (HINIC3_SUPPORT_RX_HW_COMPACT_CQE(nic_dev) ||
+	    HINIC3_SUPPORT_RX_SW_COMPACT_CQE(nic_dev))
 		hinic3_memzone_free(rxq->ci_mz);
 	else
 		hinic3_memzone_free(rxq->cqe_mz);
@@ -3806,7 +3814,8 @@ static void hinic3_nic_tx_rx_ops_init(struct hinic3_nic_dev *nic_dev)
 	else
 		nic_dev->tx_ops->nic_tx_set_wqe_offload = hinic3_tx_set_normal_task_offload;
 
-	if (HINIC3_SUPPORT_RX_HW_COMPACT_CQE(nic_dev)) {
+	if (HINIC3_SUPPORT_RX_HW_COMPACT_CQE(nic_dev) ||
+	    HINIC3_SUPPORT_RX_SW_COMPACT_CQE(nic_dev)) {
 		nic_dev->rx_ops->nic_rx_get_cqe_info = hinic3_rx_get_compact_cqe_info;
 		nic_dev->rx_ops->nic_rx_cqe_done = hinic3_rx_integrated_cqe_done;
 		nic_dev->rx_ops->nic_rx_poll_rq_empty = hinic3_poll_integrated_cqe_rq_empty;
@@ -4091,6 +4100,9 @@ static const struct rte_pci_id pci_id_hinic3_map[] = {
 	{RTE_PCI_DEVICE(PCI_VENDOR_ID_HUAWEI, HINIC3_DEV_ID_VF_SP230)},
 
 	{RTE_PCI_DEVICE(PCI_VENDOR_ID_HUAWEI, HINIC3_DEV_ID_SP920)},
+	{RTE_PCI_DEVICE(PCI_VENDOR_ID_HUAWEI, HINIC3_DEV_ID_SP560)},
+	{RTE_PCI_DEVICE(PCI_VENDOR_ID_HUAWEI, HINIC3_DEV_ID_VF_SP560)},
+	{RTE_PCI_DEVICE(PCI_VENDOR_ID_HUAWEI, HINIC3_DEV_ID_HYPER_VF_SP560)},
 
 	{.vendor_id = 0},
 };

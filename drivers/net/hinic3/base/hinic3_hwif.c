@@ -141,7 +141,9 @@
 static inline bool hinic3_is_vf_dev(const struct rte_pci_device *pdev)
 {
 	return pdev->id.device_id == HINIC3_DEV_ID_VF_SP620 ||
-	       pdev->id.device_id == HINIC3_DEV_ID_VF_SP230;
+	       pdev->id.device_id == HINIC3_DEV_ID_VF_SP230 ||
+	       pdev->id.device_id == HINIC3_DEV_ID_VF_SP560 ||
+	       pdev->id.device_id == HINIC3_DEV_ID_HYPER_VF_SP560;
 }
 
 uint32_t

@@ -139,6 +139,7 @@ New Features
   * Added Geneve and VXLAN-GPE flow items, and raised the dynamic TCAM
     limit to 2048 entries on the STN tile.
   * Added mailbox message counter reporting through the device private dump API.
+  * Added support for the SP560 NIC.
 
 * **Updated Intel iavf driver.**
 
