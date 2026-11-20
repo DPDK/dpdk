@@ -144,6 +144,7 @@ New Features
   * Added a compact CQE receive data path.
   * Extended TCP segmentation offload (TSO) to 255 segments.
   * Added a compact task transmit data path.
+  * Added Tx burst mode reporting.
 
 * **Updated Intel iavf driver.**
 
