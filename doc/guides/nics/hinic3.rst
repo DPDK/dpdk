@@ -80,4 +80,9 @@ mode; they are ignored with the SW compact and split CQE modes.
 Limitations or Known issues
 ---------------------------
 
+The number of segments in one Tx packet is also limited by the Tx queue
+depth: a packet whose SGE count would need the whole ring is rejected, so
+a queue of 128 or 256 descriptors can transmit at most 126 or 254 segments
+even though the device reports a segment limit of 255.
+
 x86-32, Windows, and BSD are not supported yet.

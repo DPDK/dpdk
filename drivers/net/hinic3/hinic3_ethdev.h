@@ -50,7 +50,6 @@
 #define HINIC3_PKT_RX_LRO		RTE_MBUF_F_RX_LRO
 #define HINIC3_PKT_TX_L4_NO_CKSUM	RTE_MBUF_F_TX_L4_NO_CKSUM
 
-#define HINCI3_CPY_MEMPOOL_NAME "cpy_mempool"
 /* Mbuf pool for copy invalid mbuf segs. */
 #define HINIC3_COPY_MEMPOOL_DEPTH	1024
 #define HINIC3_COPY_MEMPOOL_CACHE	128
