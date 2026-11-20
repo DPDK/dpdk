@@ -77,8 +77,6 @@ hinic3_fdir_tcam_ipv4_init(struct hinic3_fdir_filter *rule,
 	/* Fill type of ip. */
 	tcam_key->key_mask.ip_type = HINIC3_UINT1_MAX;
 	tcam_key->key_info.ip_type = HINIC3_FDIR_IP_TYPE_IPV4;
-	tcam_key->key_mask.vlan_flag = HINIC3_UINT1_MAX;
-	tcam_key->key_info.vlan_flag = 0;
 
 	/* Fill src IPv4. */
 	tcam_key->key_mask.sipv4_h =
@@ -101,8 +99,9 @@ hinic3_fdir_tcam_ipv4_init(struct hinic3_fdir_filter *rule,
 		HINIC3_32_LOWER_16_BITS(rule->key_spec.ipv4.dst_ip);
 }
 
-static void hinic3_fdir_ipv6_tcam_key_init_sip(struct hinic3_fdir_filter *rule,
-					       struct hinic3_tcam_key *tcam_key)
+static inline void
+hinic3_fdir_ipv6_tcam_key_init_sip(struct hinic3_fdir_filter *rule,
+				   struct hinic3_tcam_key *tcam_key)
 {
 	tcam_key->key_mask_ipv6.sipv6_key0 =
 		HINIC3_32_UPPER_16_BITS(rule->key_mask.ipv6.src_ip[0]);
@@ -138,8 +137,9 @@ static void hinic3_fdir_ipv6_tcam_key_init_sip(struct hinic3_fdir_filter *rule,
 		HINIC3_32_LOWER_16_BITS(rule->key_spec.ipv6.src_ip[0x3]);
 }
 
-static void hinic3_fdir_ipv6_tcam_key_init_dip(struct hinic3_fdir_filter *rule,
-					       struct hinic3_tcam_key *tcam_key)
+static inline void
+hinic3_fdir_ipv6_tcam_key_init_dip(struct hinic3_fdir_filter *rule,
+				   struct hinic3_tcam_key *tcam_key)
 {
 	tcam_key->key_mask_ipv6.dipv6_key0 =
 		HINIC3_32_UPPER_16_BITS(rule->key_mask.ipv6.dst_ip[0]);
@@ -175,8 +175,9 @@ static void hinic3_fdir_ipv6_tcam_key_init_dip(struct hinic3_fdir_filter *rule,
 		HINIC3_32_LOWER_16_BITS(rule->key_spec.ipv6.dst_ip[0x3]);
 }
 
-static void hinic3_fdir_ipv6_tcam_key_init(struct hinic3_fdir_filter *rule,
-					   struct hinic3_tcam_key *tcam_key)
+static void
+hinic3_fdir_ipv6_tcam_key_init(struct hinic3_fdir_filter *rule,
+			       struct hinic3_tcam_key *tcam_key)
 {
 	hinic3_fdir_ipv6_tcam_key_init_sip(rule, tcam_key);
 	hinic3_fdir_ipv6_tcam_key_init_dip(rule, tcam_key);
@@ -189,8 +190,6 @@ hinic3_fdir_tcam_ipv6_init(struct hinic3_fdir_filter *rule,
 	/* Fill type of ip. */
 	tcam_key->key_mask_ipv6.ip_type = HINIC3_UINT1_MAX;
 	tcam_key->key_info_ipv6.ip_type = HINIC3_FDIR_IP_TYPE_IPV6;
-	tcam_key->key_mask_ipv6.vlan_flag = HINIC3_UINT1_MAX;
-	tcam_key->key_info_ipv6.vlan_flag = 0;
 
 	hinic3_fdir_ipv6_tcam_key_init(rule, tcam_key);
 }
@@ -224,9 +223,6 @@ hinic3_fdir_tcam_notunnel_init(struct rte_eth_dev *dev,
 
 	tcam_key->key_mask.function_id = HINIC3_UINT15_MAX;
 
-	tcam_key->key_mask.vlan_flag = 1;
-	tcam_key->key_info.vlan_flag = 0;
-
 	tcam_key->key_info.function_id = hinic3_global_func_id(nic_dev->hwdev) &
 					 HINIC3_UINT15_MAX;
 
@@ -240,15 +236,11 @@ hinic3_fdir_tcam_notunnel_init(struct rte_eth_dev *dev,
 }
 
 static void
-hinic3_fdir_tcam_vxlan_ipv4_init(struct hinic3_fdir_filter *rule,
+hinic3_fdir_tcam_vxlan_geneve_ipv4_init(struct hinic3_fdir_filter *rule,
 				 struct hinic3_tcam_key *tcam_key)
 {
-	/* Fill type of ip. */
 	tcam_key->key_mask.ip_type = HINIC3_UINT1_MAX;
 	tcam_key->key_info.ip_type = HINIC3_FDIR_IP_TYPE_IPV4;
-	tcam_key->key_mask.vlan_flag = HINIC3_UINT1_MAX;
-	tcam_key->key_info.vlan_flag = 0;
-
 	/* Fill src ipv4. */
 	tcam_key->key_mask.sipv4_h =
 		HINIC3_32_UPPER_16_BITS(rule->key_mask.inner_ipv4.src_ip);
@@ -271,14 +263,12 @@ hinic3_fdir_tcam_vxlan_ipv4_init(struct hinic3_fdir_filter *rule,
 }
 
 static void
-hinic3_fdir_tcam_vxlan_ipv6_init(struct hinic3_fdir_filter *rule,
+hinic3_fdir_tcam_vxlan_geneve_ipv6_init(struct hinic3_fdir_filter *rule,
 				 struct hinic3_tcam_key *tcam_key)
 {
 	/* Fill type of ip. */
 	tcam_key->key_mask_vxlan_ipv6.ip_type = HINIC3_UINT1_MAX;
 	tcam_key->key_info_vxlan_ipv6.ip_type = HINIC3_FDIR_IP_TYPE_IPV6;
-	tcam_key->key_mask_vxlan_ipv6.vlan_flag = HINIC3_UINT1_MAX;
-	tcam_key->key_info_vxlan_ipv6.vlan_flag = 0;
 
 	/* Use inner dst ipv6 to fill the dst ipv6 of tcam_key. */
 	tcam_key->key_mask_vxlan_ipv6.dipv6_key0 =
@@ -331,9 +321,6 @@ hinic3_fdir_tcam_ipv6_vxlan_init(struct rte_eth_dev *dev,
 	tcam_key->key_mask_ipv6.outer_ip_type = HINIC3_UINT1_MAX;
 	tcam_key->key_info_ipv6.outer_ip_type = HINIC3_FDIR_IP_TYPE_IPV6;
 
-	tcam_key->key_mask_ipv6.vlan_flag = HINIC3_UINT1_MAX;
-	tcam_key->key_info_ipv6.vlan_flag = 0;
-
 	tcam_key->key_mask_ipv6.function_id = HINIC3_UINT15_MAX;
 	tcam_key->key_info_ipv6.function_id =
 		hinic3_global_func_id(nic_dev->hwdev) & HINIC3_UINT15_MAX;
@@ -359,7 +346,7 @@ hinic3_fdir_tcam_ipv6_vxlan_init(struct rte_eth_dev *dev,
  * Pointer to the TCAM key.
  */
 static void
-hinic3_fdir_tcam_vxlan_init(struct rte_eth_dev *dev,
+hinic3_fdir_tcam_vxlan_geneve_init(struct rte_eth_dev *dev,
 			    struct hinic3_fdir_filter *rule,
 			    struct hinic3_tcam_key *tcam_key)
 {
@@ -409,17 +396,15 @@ hinic3_fdir_tcam_vxlan_init(struct rte_eth_dev *dev,
 	tcam_key->key_mask.tunnel_type = HINIC3_UINT4_MAX;
 	tcam_key->key_info.tunnel_type = rule->tunnel_type;
 
-	tcam_key->key_mask.vlan_flag = 1;
 	tcam_key->key_mask.function_id = HINIC3_UINT15_MAX;
-	tcam_key->key_info.vlan_flag = 0;
 	tcam_key->key_info.function_id = hinic3_global_func_id(nic_dev->hwdev) &
 					 HINIC3_UINT15_MAX;
 
 	if (rule->ip_type == HINIC3_FDIR_IP_TYPE_IPV4)
-		hinic3_fdir_tcam_vxlan_ipv4_init(rule, tcam_key);
+		hinic3_fdir_tcam_vxlan_geneve_ipv4_init(rule, tcam_key);
 
 	else if (rule->ip_type == HINIC3_FDIR_IP_TYPE_IPV6)
-		hinic3_fdir_tcam_vxlan_ipv6_init(rule, tcam_key);
+		hinic3_fdir_tcam_vxlan_geneve_ipv6_init(rule, tcam_key);
 }
 
 static void
@@ -432,7 +417,7 @@ hinic3_fdir_tcam_info_init(struct rte_eth_dev *dev,
 	if (rule->tunnel_type == HINIC3_FDIR_TUNNEL_MODE_NORMAL)
 		hinic3_fdir_tcam_notunnel_init(dev, rule, tcam_key);
 	else
-		hinic3_fdir_tcam_vxlan_init(dev, rule, tcam_key);
+		hinic3_fdir_tcam_vxlan_geneve_init(dev, rule, tcam_key);
 
 	/* Set the queue index. */
 	fdir_tcam_rule->data.qid = rule->rq_index;
@@ -841,7 +826,7 @@ hinic3_dynamic_lookup_tcam_filter(struct hinic3_nic_dev *nic_dev,
 	 * capacity of dynamic TCAM blocks.
 	 */
 	if (rule_nums >= block_cnt * HINIC3_TCAM_DYNAMIC_BLOCK_SIZE) {
-		if (block_cnt >= (HINIC3_TCAM_DYNAMIC_MAX_FILTERS /
+		if (block_cnt >= (HINIC3_TCAM_DYNAMIC_MAX_FILTERS(nic_dev) /
 				  HINIC3_TCAM_DYNAMIC_BLOCK_SIZE)) {
 			PMD_DRV_LOG(ERR,
 				"Dynamic tcam block is full, alloc failed!");
@@ -1597,6 +1582,7 @@ hinic3_flow_add_del_ethertype_filter(struct rte_eth_dev *dev,
 	/* Get dev private info. */
 	struct hinic3_nic_dev *nic_dev = HINIC3_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
 	int ret;
+
 	/* Add or remove an Ethernet type filter rule. */
 	ret = hinic3_flow_add_del_ethertype_filter_rule(dev, ethertype_filter, add);
 

@@ -136,6 +136,8 @@ New Features
   * Added Class of Service (COS) mask and map support.
   * Added VF link up/down and promiscuous mode support.
   * Updated RSS hash type configuration.
+  * Added Geneve and VXLAN-GPE flow items, and raised the dynamic TCAM
+    limit to 2048 entries on the STN tile.
   * Added mailbox message counter reporting through the device private dump API.
 
 * **Updated Intel iavf driver.**
