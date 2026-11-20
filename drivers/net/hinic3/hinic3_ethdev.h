@@ -141,6 +141,8 @@ struct hinic3_nic_dev {
 
 	RTE_ATOMIC(uint64_t)dev_status;
 
+	uint8_t admin_down; /**< Link down requested by dev_set_link_down(). */
+
 	uint8_t pause_set; /**< Flag of PAUSE frame setting. */
 	struct nic_pause_config nic_pause;
 

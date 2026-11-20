@@ -468,6 +468,8 @@ hinic3_set_vport_enable(struct hinic3_hwdev *hwdev, bool enable)
 		return -EIO;
 	}
 
+	hwdev->vf_valid_status = enable;
+
 	return 0;
 }
 

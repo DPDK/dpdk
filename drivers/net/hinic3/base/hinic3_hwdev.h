@@ -157,7 +157,8 @@ struct hinic3_hwdev {
 	char mgmt_ver[MGMT_VERSION_MAX_LEN];
 
 	uint16_t max_vfs;
-	uint16_t link_status;
+	uint8_t link_status;
+	uint8_t vf_valid_status; /* vport_enable: 1, vport_disable: 0 */
 	uint64_t features[HINIC3_MAX_FEATURE_QWORD];
 };
 
