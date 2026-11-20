@@ -967,6 +967,7 @@ hinic3_flow_fdir_vxlan(struct rte_flow_error *error,
 {
 	const struct rte_flow_item_vxlan *spec_vxlan, *mask_vxlan;
 	uint32_t vxlan_vni_id = 0;
+	uint32_t vxlan_vni_id_mask = 0;
 
 	spec_vxlan = (const struct rte_flow_item_vxlan *)flow_item->spec;
 	mask_vxlan = (const struct rte_flow_item_vxlan *)flow_item->mask;
@@ -990,8 +991,11 @@ hinic3_flow_fdir_vxlan(struct rte_flow_error *error,
 	}
 
 	memcpy(((uint8_t *)&vxlan_vni_id + 1), spec_vxlan->vni, 3);
-	filter->fdir_filter.key_mask.tunnel.tunnel_id =
+	filter->fdir_filter.key_spec.tunnel.tunnel_id =
 		rte_be_to_cpu_32(vxlan_vni_id);
+	memcpy(((uint8_t *)&vxlan_vni_id_mask + 1), mask_vxlan->vni, 3);
+	filter->fdir_filter.key_mask.tunnel.tunnel_id =
+		rte_be_to_cpu_32(vxlan_vni_id_mask);
 	return 0;
 }
 
