@@ -6499,7 +6499,7 @@ ixgbe_ethertype_table_add(struct ixgbe_ethertype_table *table,
 	int free_idx = -1;
 	int i;
 
-	for (i = 0; i < IXGBE_MAX_ETQF_FILTERS; i++) {
+	for (i = 0; i < IXGBE_ETQF_TABLE_SIZE; i++) {
 		if (table->entries[i].used) {
 			if (table->entries[i].ethertype == ethertype)
 				return -EEXIST;
@@ -6521,7 +6521,7 @@ ixgbe_ethertype_table_add(struct ixgbe_ethertype_table *table,
 int
 ixgbe_ethertype_table_del(struct ixgbe_ethertype_table *table, uint8_t idx)
 {
-	if (idx >= IXGBE_MAX_ETQF_FILTERS || !table->entries[idx].used)
+	if (idx >= IXGBE_ETQF_TABLE_SIZE || !table->entries[idx].used)
 		return -ENOENT;
 
 	table->entries[idx] = (struct ixgbe_ethertype_entry){0};
@@ -6762,28 +6762,13 @@ static int
 ixgbe_timesync_enable(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct ixgbe_filter_info *filter_info =
-		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
 	uint32_t tsync_ctl;
 	uint32_t tsauxc;
-	uint32_t etqf;
 	struct timespec ts;
-	int idx;
 
 	memset(&ts, 0, sizeof(struct timespec));
 
-	/* Reserve the shared ETQF slot before changing timestamp hardware. */
-	etqf = RTE_ETHER_TYPE_1588 | IXGBE_ETQF_FILTER_EN | IXGBE_ETQF_1588;
-	if (!filter_info->timesync_installed) {
-		idx = ixgbe_ethertype_table_add(&filter_info->ethertype_table,
-				RTE_ETHER_TYPE_1588, etqf, 0);
-		if (idx < 0) {
-			PMD_DRV_LOG(ERR, "no free ETQF slot for 1588 timestamping");
-			return idx;
-		}
-		filter_info->timesync_idx = idx;
-		filter_info->timesync_installed = true;
-	}
+	/* 1588 uses a fixed ETQF table slot, no need to reserve it */
 
 	/* get current system time */
 	clock_gettime(CLOCK_REALTIME, &ts);
@@ -6802,7 +6787,8 @@ ixgbe_timesync_enable(struct rte_eth_dev *dev)
 	ixgbe_start_timecounters(dev);
 
 	/* Enable L2 filtering of IEEE1588/802.1AS Ethernet frame types. */
-	ixgbe_ethertype_filter_program(hw, filter_info->timesync_idx, etqf, 0);
+	ixgbe_ethertype_filter_program(hw, IXGBE_ETQF_FILTER_TIMESYNC,
+			RTE_ETHER_TYPE_1588 | IXGBE_ETQF_FILTER_EN | IXGBE_ETQF_1588, 0);
 
 	/* Enable timestamping of received PTP packets. */
 	tsync_ctl = IXGBE_READ_REG(hw, IXGBE_TSYNCRXCTL);
@@ -6826,8 +6812,6 @@ static int
 ixgbe_timesync_disable(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct ixgbe_filter_info *filter_info =
-		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
 	uint32_t tsync_ctl;
 
 	/* Disable timestamping of transmitted PTP packets. */
@@ -6841,12 +6825,7 @@ ixgbe_timesync_disable(struct rte_eth_dev *dev)
 	IXGBE_WRITE_REG(hw, IXGBE_TSYNCRXCTL, tsync_ctl);
 
 	/* Disable L2 filtering of IEEE1588/802.1AS Ethernet frame types. */
-	if (filter_info->timesync_installed) {
-		ixgbe_ethertype_filter_program(hw, filter_info->timesync_idx, 0, 0);
-		ixgbe_ethertype_table_del(&filter_info->ethertype_table,
-				filter_info->timesync_idx);
-		filter_info->timesync_installed = false;
-	}
+	ixgbe_ethertype_filter_program(hw, IXGBE_ETQF_FILTER_TIMESYNC, 0, 0);
 
 	/* Stop incrementing the System Time registers. */
 	IXGBE_WRITE_REG(hw, IXGBE_TIMINCA, 0);

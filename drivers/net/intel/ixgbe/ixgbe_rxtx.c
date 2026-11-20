@@ -1428,9 +1428,8 @@ ixgbe_rxd_pkt_info_to_pkt_flags(uint16_t pkt_info)
 		0, 0, 0,  RTE_MBUF_F_RX_FDIR,
 	};
 #ifdef RTE_LIBRTE_IEEE1588
-	static uint64_t ip_pkt_etqf_map[8] = {
-		0, 0, 0, RTE_MBUF_F_RX_IEEE1588_PTP,
-		0, 0, 0, 0,
+	static const uint64_t ip_pkt_etqf_map[IXGBE_MAX_ETQF_FILTERS] = {
+		[IXGBE_ETQF_FILTER_TIMESYNC] = RTE_MBUF_F_RX_IEEE1588_PTP,
 	};
 
 	if (likely(pkt_info & IXGBE_RXDADV_PKTTYPE_ETQF))
