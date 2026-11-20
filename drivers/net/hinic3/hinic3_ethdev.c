@@ -318,8 +318,6 @@ hinic3_xstats_calc_num(struct hinic3_nic_dev *nic_dev)
 	}
 }
 
-#define HINIC3_MAX_QUEUE_DEPTH 16384
-#define HINIC3_MIN_QUEUE_DEPTH 128
 #define HINIC3_TXD_ALIGN       1
 #define HINIC3_RXD_ALIGN       1
 
@@ -739,6 +737,8 @@ hinic3_dev_configure(struct rte_eth_dev *dev)
 
 	nic_dev->num_sqs = dev->data->nb_tx_queues;
 	nic_dev->num_rqs = dev->data->nb_rx_queues;
+	nic_dev->rxq_depth = 0;
+	nic_dev->txq_depth = 0;
 
 	nic_dev->mtu_size =
 		(uint16_t)HINIC3_PKTLEN_TO_MTU(HINIC3_MAX_RX_PKT_LEN(dev->data->dev_conf.rxmode));
@@ -1118,16 +1118,8 @@ hinic3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qid, uint16_t nb_desc,
 
 	nic_dev = HINIC3_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
 
-	/* Queue depth must be equal to queue 0 */
-	if (qid != 0 && nb_desc != nic_dev->rxqs[0]->q_depth) {
-		PMD_DRV_LOG(WARNING, "rxq%u depth:%u is not equal to queue0 depth:%u.",
-			    qid, nb_desc, nic_dev->rxqs[0]->q_depth);
-		nb_desc = nic_dev->rxqs[0]->q_depth;
-	}
-
 	/* Queue depth must be power of 2, otherwise will be aligned up. */
-	rq_depth = (nb_desc & (nb_desc - 1))
-			? ((uint16_t)(1U << (rte_log2_u32(nb_desc) + 1))) : nb_desc;
+	rq_depth = (uint16_t)rte_align32pow2(nb_desc);
 
 	/*
 	 * Validate number of receive descriptors.
@@ -1141,6 +1133,19 @@ hinic3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qid, uint16_t nb_desc,
 		PMD_DRV_LOG(ERR,
 			    "nb_desc: %d, q_depth: %d, port: %d queue: %d",
 			    nb_desc, rq_depth, dev->data->port_id, qid);
+		return -EINVAL;
+	}
+
+	/*
+	 * The hardware tracks a single queue depth. Keep the value chosen by
+	 * the first queue of this configuration and compare against it, so a
+	 * runtime reconfiguration with a different depth is not rejected by
+	 * queues that still hold the previous depth.
+	 */
+	if (nic_dev->rxq_depth != 0 && nic_dev->rxq_depth != rq_depth) {
+		PMD_DRV_LOG(ERR,
+			    "rxq%u depth:%u is not equal to the port depth:%u.",
+			    qid, rq_depth, nic_dev->rxq_depth);
 		return -EINVAL;
 	}
 
@@ -1297,6 +1302,7 @@ hinic3_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qid, uint16_t nb_desc,
 		}
 	}
 	dev->data->rx_queues[qid] = rxq;
+	nic_dev->rxq_depth = rq_depth;
 
 	return 0;
 
@@ -1353,8 +1359,7 @@ hinic3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t qid, uint16_t nb_desc,
 	hwdev = nic_dev->hwdev;
 
 	/* Queue depth must be power of 2, otherwise will be aligned up. */
-	sq_depth = (nb_desc & (nb_desc - 1))
-				? ((uint16_t)(1U << (rte_log2_u32(nb_desc) + 1))) : nb_desc;
+	sq_depth = (uint16_t)rte_align32pow2(nb_desc);
 
 	/*
 	 * Validate number of transmit descriptors.
@@ -1368,6 +1373,19 @@ hinic3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t qid, uint16_t nb_desc,
 		PMD_DRV_LOG(ERR,
 			    "nb_desc: %d, q_depth: %d, port: %d queue: %d",
 			    nb_desc, sq_depth, dev->data->port_id, qid);
+		return -EINVAL;
+	}
+
+	/*
+	 * The hardware tracks a single queue depth. Keep the value chosen by
+	 * the first queue of this configuration and compare against it, so a
+	 * runtime reconfiguration with a different depth is not rejected by
+	 * queues that still hold the previous depth.
+	 */
+	if (nic_dev->txq_depth != 0 && nic_dev->txq_depth != sq_depth) {
+		PMD_DRV_LOG(ERR,
+			    "txq%u depth:%u is not equal to the port depth:%u.",
+			    qid, sq_depth, nic_dev->txq_depth);
 		return -EINVAL;
 	}
 
@@ -1468,6 +1486,7 @@ hinic3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t qid, uint16_t nb_desc,
 	}
 
 	dev->data->tx_queues[qid] = txq;
+	nic_dev->txq_depth = sq_depth;
 
 	return 0;
 
@@ -2113,6 +2132,33 @@ hinic3_dev_start(struct rte_eth_dev *eth_dev)
 	int err;
 
 	nic_dev = HINIC3_ETH_DEV_TO_PRIVATE_NIC_DEV(eth_dev);
+
+	/*
+	 * The root context carries a single depth per direction, taken from
+	 * queue 0, and a queue setup cannot change the other queues. A partial
+	 * reconfiguration would therefore leave the rings sized differently
+	 * from the root context, so refuse to start unless every configured
+	 * queue is present and shares the depth of queue 0.
+	 */
+	for (i = 0; i < nic_dev->num_rqs; i++) {
+		if (nic_dev->rxqs[i] == NULL ||
+		    nic_dev->rxqs[i]->q_depth != nic_dev->rxqs[0]->q_depth) {
+			PMD_DRV_LOG(ERR,
+				    "rxq%u is missing or has a different depth than rxq0.",
+				    i);
+			return -EINVAL;
+		}
+	}
+	for (i = 0; i < nic_dev->num_sqs; i++) {
+		if (nic_dev->txqs[i] == NULL ||
+		    nic_dev->txqs[i]->q_depth != nic_dev->txqs[0]->q_depth) {
+			PMD_DRV_LOG(ERR,
+				    "txq%u is missing or has a different depth than txq0.",
+				    i);
+			return -EINVAL;
+		}
+	}
+
 	err = hinic3_copy_mempool_init(nic_dev);
 	if (err) {
 		PMD_DRV_LOG(ERR, "Create copy mempool failed, dev_name: %s",
@@ -2263,6 +2309,7 @@ hinic3_dev_stop(struct rte_eth_dev *dev)
 {
 	struct hinic3_nic_dev *nic_dev;
 	struct rte_eth_link link;
+	uint16_t i;
 	int err;
 
 	nic_dev = HINIC3_ETH_DEV_TO_PRIVATE_NIC_DEV(dev);
@@ -2314,6 +2361,21 @@ hinic3_dev_stop(struct rte_eth_dev *dev)
 
 	/* Free mempool. */
 	hinic3_copy_mempool_uninit(nic_dev);
+
+	/* A stopped device starts a new queue configuration. */
+	nic_dev->rxq_depth = 0;
+	nic_dev->txq_depth = 0;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		dev->data->rx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		struct hinic3_txq *txq = dev->data->tx_queues[i];
+
+		if (txq != NULL)
+			HINIC3_SET_TXQ_STOPPED(txq);
+		dev->data->tx_queue_state[i] = RTE_ETH_QUEUE_STATE_STOPPED;
+	}
+
 	return 0;
 }
 
