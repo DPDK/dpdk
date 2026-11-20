@@ -141,6 +141,7 @@ New Features
   * Added mailbox message counter reporting through the device private dump API.
   * Added support for the SP560 NIC.
   * Added device parameters for runtime configuration.
+  * Added a compact CQE receive data path.
 
 * **Updated Intel iavf driver.**
 
