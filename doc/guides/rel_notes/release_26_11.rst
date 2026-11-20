@@ -6,63 +6,17 @@
 DPDK Release 26.11
 ==================
 
-.. **Read this first.**
-
-   The text in the sections below explains how to update the release notes.
-
-   Use proper spelling, capitalization and punctuation in all sections.
-
-   Variable and config names should be quoted as fixed width text:
-   ``LIKE_THIS``.
-
-   Build the docs and view the output file to ensure the changes are correct::
-
-      ninja -C build doc
-      xdg-open build/doc/guides/html/rel_notes/release_26_11.html
-
-
 New Features
 ------------
-
-.. This section should contain new features added in this release.
-   Sample format:
-
-   * **Add a title in the past tense with a full stop.**
-
-     Add a short 1-2 sentence description in the past tense.
-     The description should be enough to allow someone scanning
-     the release notes to understand the new feature.
-
-     If the feature adds a lot of sub-features you can use a bullet list
-     like this:
-
-     * Added feature foo to do something.
-     * Enhanced feature bar to do something else.
-
-     Refer to the previous release notes for examples.
-
-     Suggested order in release notes items:
-     * Core libs (EAL, mempool, ring, mbuf, buses)
-     * Device abstraction libs and PMDs (ordered alphabetically by vendor name)
-       - ethdev (lib, PMDs)
-       - cryptodev (lib, PMDs)
-       - eventdev (lib, PMDs)
-       - etc
-     * Other libs
-     * Apps, Examples, Tools (if significant)
-
-     This section is a comment. Do not overwrite or remove it.
-     Also, make sure to start the actual text at the margin.
-     =======================================================
 
 * **Added division round up macro.**
 
   Added the ``RTE_DIV_ROUND_UP`` macro in ``rte_common.h``
-  to divide dividend by divisor, rounding up to the nearest integer.
+  to divide a dividend by a divisor, rounding up to the nearest integer.
 
 * **Improved pointer arithmetic macros.**
 
-  Updated  the macros ``RTE_PTR_ADD``, ``RTE_PTR_SUB``,
+  Updated the macros ``RTE_PTR_ADD``, ``RTE_PTR_SUB``,
   ``RTE_PTR_ALIGN``, ``RTE_PTR_ALIGN_CEIL`` and ``RTE_PTR_ALIGN_FLOOR``
   to preserve const/volatile qualifiers
   and use pointer arithmetic instead of integer casts to enable compiler optimizations.
@@ -77,12 +31,12 @@ New Features
 
   Introduced pile, a lock-free, stack-like implementation,
   optimized for bulk operations.
-  The pile is only LIFO on bulk level, not on object level;
-  i.e. arrays of bulks are pushed and popped in LIFO manner,
+  The pile is only LIFO at the bulk level, not at the object level;
+  i.e., arrays of bulks are pushed and popped in a LIFO manner,
   but objects within each bulk are not ordered as expected by a stack.
   Furthermore, it is not strictly bounded by its size, but might hold more objects.
 
-* **Added unplug operation support to DPAA bus.**
+* **Added support for the unplug operation to the DPAA bus.**
 
   Implemented device unplug operation to allow runtime removal of DPAA devices.
 
@@ -100,11 +54,11 @@ New Features
   The platform bus now matches DPDK drivers against the device-tree ``compatible`` sysfs strings
   exposed by each platform device, in addition to the existing kernel driver name and
   device name checks.
-  This allows drivers to be probed by DT compatible string when
+  This allows drivers to be probed by a device tree (DT) compatible string when
   the kernel driver is the generic ``vfio-platform``,
   which carries no device identity in its name.
 
-* **Added link speed 1.6T to ethdev.**
+* **Added 1.6T link speed to ethdev.**
 
   Added the 1.6 Tb/s Ethernet link speed,
   allowing aggregate links such as two 800 Gb/s members to be represented.
@@ -183,8 +137,8 @@ New Features
     The old name is no longer accepted.
   * Increased the maximum number of secondary unicast MAC addresses from 64 to 32k.
     This increases a VF port memory footprint by ~192kB.
-  * Added support for reading the PTP hardware clock (PHC) time with ``rte_eth_timesync_read_time()``,
-    when allowed by the PF.
+  * Added support for reading the PTP hardware clock (PHC) time
+    with ``rte_eth_timesync_read_time()``, when allowed by the PF.
 
 * **Updated Intel ice driver.**
 
@@ -237,7 +191,7 @@ New Features
   * Added the inner IP header to the RSS hash so tunneled traffic is
     distributed across the Rx queues.
 
-* **Updated NXP ENETC4 PMD.**
+* **Updated NXP ENETC4 driver.**
 
   Updated the NXP ENETC4 poll mode driver for i.MX95:
 
@@ -261,7 +215,7 @@ New Features
 
 * **Updated Solarflare network driver.**
 
-  * Added VF support on AMD Solarflare X45xx adapters.
+  * Added VF support for AMD Solarflare X45xx adapters.
 
 * **Updated Wangxun txgbe driver.**
 
@@ -306,7 +260,7 @@ New Features
 
   * Added support for Gen 6 QAT devices.
 
-* **Added AMD AE4DMA DMA PMD.**
+* **Added AMD AE4DMA DMA driver.**
 
   Added a new dmadev driver for the AMD AE4DMA hardware DMA engine.
   Each PCI function exposes 16 hardware command queues; the PMD registers one
@@ -337,9 +291,9 @@ New Features
   with AMD-specific hardware access, a primary/secondary topology
   and a packed scratchpad handshake.
 
-* **Supported auto-detection of uncore power driver.**
+* **Added auto-detection of the uncore power driver.**
 
-  The uncore power library got automatic probing of multiple uncore drivers
+  The uncore power library now probes multiple uncore drivers automatically
   when using ``RTE_UNCORE_PM_ENV_AUTO_DETECT``,
   instead of defaulting only to the Intel uncore driver.
 
@@ -347,7 +301,7 @@ New Features
 
   Added build time configurable graph node profiling statistics
   via ``RTE_GRAPH_PROFILE`` in ``rte_config.h`` (disabled by default).
-  When enabled, tracks cycles spent processing various burst size ranges per node.
+  When enabled, it tracks cycles spent processing various burst size ranges per node.
   The edges of the ranges are build time configurable via
   ``RTE_GRAPH_PROFILE_BURST_SMALL``, ``RTE_GRAPH_PROFILE_BURST_MEDIUM``, and
   ``RTE_GRAPH_PROFILE_BURST_LARGE`` in ``rte_config.h``.
@@ -358,7 +312,7 @@ New Features
   using bitmap scanning instead of a circular buffer.
   This ensures that in fan-out-then-converge topologies,
   all branches feeding a converge node complete before that node is visited.
-  Reducing the occurrence of double-visits.
+  This reduces the occurrence of double-visits.
 
 * **Added explicit link auto-negotiation control in testpmd.**
 
@@ -382,15 +336,6 @@ New Features
 
 Removed Items
 -------------
-
-.. This section should contain removed items in this release. Sample format:
-
-   * Add a short 1-2 sentence description of the removed item
-     in the past tense.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
 
 * Removed deprecated symbols:
 
@@ -504,25 +449,13 @@ Removed Items
 API Changes
 -----------
 
-.. This section should contain API changes. Sample format:
-
-   * sample: Add a short 1-2 sentence description of the API change
-     which was announced in the previous releases and made in this release.
-     Start with a scope label like "ethdev:".
-     Use fixed width quotes for ``function_names`` or ``struct_names``.
-     Use the past tense.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
-
 * eal: Improved pointer arithmetic macros.
 
   * ``RTE_PTR_ADD``, ``RTE_PTR_SUB``, ``RTE_PTR_ALIGN``, ``RTE_PTR_ALIGN_CEIL``,
     and ``RTE_PTR_ALIGN_FLOOR`` now preserve const/volatile qualifiers.
     These macros do not nest infinitely and may require intermediate variables.
   * Passing NULL to ``RTE_PTR_ADD``, ``RTE_PTR_SUB``, ``RTE_PTR_ALIGN``,
-    ``RTE_PTR_ALIGN_CEIL``, or ``RTE_PTR_ALIGN_FLOOR`` clarified as undefined behavior.
+    ``RTE_PTR_ALIGN_CEIL``, or ``RTE_PTR_ALIGN_FLOOR`` is clarified as undefined behavior.
   * ``RTE_PTR_ADD`` and ``RTE_PTR_SUB`` no longer accept integer types
     as the pointer argument; existing code should use native operators (e.g. + -).
   * ``RTE_PTR_ALIGN``, ``RTE_PTR_ALIGN_CEIL`` and ``RTE_PTR_ALIGN_FLOOR``
@@ -586,7 +519,7 @@ API Changes
   * The ``RTE_ETH_NUM_RECEIVE_MAC_ADDR`` and ``RTE_ETH_VMDQ_NUM_UC_HASH_ARRAY`` macros
     are VMDq related and are sizes of internal arrays in ethdev
     that only drivers need to care about.
-    Those macros are moved to the driver only ethdev API.
+    Those macros have been moved to the driver only ethdev API.
 
 * ethdev: Promoted the following API from experimental to stable:
 
@@ -684,7 +617,7 @@ API Changes
   ``rte_reorder_min_seqn_set`` and ``rte_reorder_memory_footprint_get``.
 
 * vhost: Introduced ``RTE_VHOST_USER_MAP_POPULATE``
-  as a replacement of ``RTE_VHOST_USER_ASYNC_COPY``
+  as a replacement for ``RTE_VHOST_USER_ASYNC_COPY``
   for users that did not rely on the vhost async copy feature
   but expected guest pages to be prefaulted.
 
@@ -698,8 +631,8 @@ API Changes
 
 * bpf: Made the ``bpf_def.h`` header file private,
   so eBPF instruction opcodes are no longer publicly available
-  (their numerical values follow the RFC and e.g. Linux headers).
-  The definition of the instruction struct and number of program arguments
+  (their numerical values follow the RFC and match, for example, those in Linux headers).
+  The definition of the instruction struct and the number of program arguments
   were moved to ``rte_bpf.h`` and gained the public ``RTE_`` prefix:
   ``struct rte_ebpf_insn`` and ``RTE_BPF_FUNC_MAX_ARGS``.
 
@@ -713,18 +646,6 @@ API Changes
 ABI Changes
 -----------
 
-.. This section should contain ABI changes. Sample format:
-
-   * sample: Add a short 1-2 sentence description of the ABI change
-     which was announced in the previous releases and made in this release.
-     Start with a scope label like "ethdev:".
-     Use fixed width quotes for ``function_names`` or ``struct_names``.
-     Use the past tense.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
-
 * cryptodev: The struct ``rte_cryptodev_asymmetric_xform_capability``
   was updated to include ``rsa_capa``, a new ``rte_crypto_rsa_capa`` field.
 
@@ -734,36 +655,5 @@ ABI Changes
 * raw/ntb: The ``mw_size_align`` field was removed from ``struct ntb_dev_info``.
 
 
-Known Issues
-------------
-
-.. This section should contain new known issues in this release. Sample format:
-
-   * **Add title in present tense with full stop.**
-
-     Add a short 1-2 sentence description of the known issue
-     in the present tense. Add information on any known workarounds.
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
-
-
 Tested Platforms
 ----------------
-
-.. This section should contain a list of platforms that were tested
-   with this release.
-
-   The format is:
-
-   * <vendor> platform with <vendor> <type of devices> combinations
-
-     * List of CPU
-     * List of OS
-     * List of devices
-     * Other relevant details...
-
-   This section is a comment. Do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =======================================================
