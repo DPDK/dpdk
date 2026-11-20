@@ -145,6 +145,7 @@ New Features
   * Extended TCP segmentation offload (TSO) to 255 segments.
   * Added a compact task transmit data path.
   * Added Tx burst mode reporting.
+  * Added Tx queue copied-mbuf statistics.
 
 * **Updated Intel iavf driver.**
 
