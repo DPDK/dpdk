@@ -60,7 +60,6 @@
 #define ENA_MAX_CUSTOMER_METRICS	6
 
 #define ENA_IDX_NEXT_MASKED(idx, mask) (((idx) + 1) & (mask))
-#define ENA_IDX_ADD_MASKED(idx, n, mask) (((idx) + (n)) & (mask))
 
 
 #define ENA_HASH_KEY_SIZE		40

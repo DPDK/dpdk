@@ -3425,8 +3425,8 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		if (ena_xmit_mbuf(tx_ring, tx_pkts[sent_idx]))
 			break;
 		tx_ring->pkts_without_db = true;
-		rte_prefetch0(tx_pkts[ENA_IDX_ADD_MASKED(sent_idx, 4,
-			tx_ring->size_mask)]);
+		if (likely((sent_idx + 4) < nb_pkts))
+			rte_prefetch0(tx_pkts[sent_idx + 4]);
 	}
 
 	/* If there are ready packets to be xmitted... */
