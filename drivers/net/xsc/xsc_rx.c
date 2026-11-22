@@ -195,7 +195,7 @@ xsc_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	return nb_pkts;
 }
 
-static void
+static int
 xsc_rxq_initialize(struct xsc_dev *xdev, struct xsc_rxq_data *rxq_data)
 {
 	const uint32_t wqe_n = rxq_data->wqe_s;
@@ -210,6 +210,24 @@ xsc_rxq_initialize(struct xsc_dev *xdev, struct xsc_rxq_data *rxq_data)
 	void *jumbo_buffer_va = xdev->jumbo_buffer_va;
 	volatile struct xsc_wqe_data_seg *seg;
 	volatile struct xsc_wqe_data_seg *seg_next;
+
+	if (rx_ds_num != 1 && jumbo_buffer_pa == NULL) {
+		jumbo_buffer_pa = rte_malloc(NULL, XSC_MAX_RECV_LEN, 0);
+		if (jumbo_buffer_pa == NULL) {
+			PMD_DRV_LOG(ERR, "Failed to malloc jumbo_buffer");
+			return -ENOMEM;
+		}
+
+		jumbo_buffer_va = (void *)rte_malloc_virt2iova(jumbo_buffer_pa);
+		if ((rte_iova_t)jumbo_buffer_va == RTE_BAD_IOVA) {
+			PMD_DRV_LOG(ERR, "Failed to get IOVA of jumbo_buffer");
+			rte_free(jumbo_buffer_pa);
+			return -EFAULT;
+		}
+
+		xdev->jumbo_buffer_pa = jumbo_buffer_pa;
+		xdev->jumbo_buffer_va = jumbo_buffer_va;
+	}
 
 	for (i = 0; (i != wqe_n); ++i) {
 		mbuf = (*rxq_data->elts)[i];
@@ -227,25 +245,6 @@ xsc_rxq_initialize(struct xsc_dev *xdev, struct xsc_rxq_data *rxq_data)
 
 		if (rx_ds_num != 1) {
 			seg_next = seg + 1;
-			if (jumbo_buffer_va == NULL) {
-				jumbo_buffer_pa = rte_malloc(NULL, XSC_MAX_RECV_LEN, 0);
-				if (jumbo_buffer_pa == NULL) {
-					/* Rely on mtu */
-					seg->seg_len = XSC_MAX_RECV_LEN;
-					PMD_DRV_LOG(ERR, "Failed to malloc jumbo_buffer");
-					continue;
-				} else {
-					jumbo_buffer_va =
-						(void *)rte_malloc_virt2iova(jumbo_buffer_pa);
-					if ((rte_iova_t)jumbo_buffer_va == RTE_BAD_IOVA) {
-						seg->seg_len = XSC_MAX_RECV_LEN;
-						PMD_DRV_LOG(ERR, "Failed to turn jumbo_buffer");
-						continue;
-					}
-				}
-				xdev->jumbo_buffer_pa = jumbo_buffer_pa;
-				xdev->jumbo_buffer_va = jumbo_buffer_va;
-			}
 			*seg_next = (struct xsc_wqe_data_seg){
 				.va = rte_cpu_to_le_64((uint64_t)jumbo_buffer_va),
 				.seg_len = rte_cpu_to_le_32(XSC_MAX_RECV_LEN - seg_len),
@@ -264,6 +263,8 @@ xsc_rxq_initialize(struct xsc_dev *xdev, struct xsc_rxq_data *rxq_data)
 	recv_db.next_pid = wqe_n << log2ds;
 	recv_db.qp_num = rxq_data->qpn;
 	rte_write32(rte_cpu_to_le_32(recv_db.recv_data), rxq_data->rq_db);
+
+	return 0;
 }
 
 static int
@@ -484,7 +485,11 @@ xsc_rss_qp_create(struct xsc_ethdev_priv *priv, int port_id)
 
 		rxq_data->qpn = rqn_base + i;
 		xsc_dev_modify_qp_status(xdev, rxq_data->qpn, 1, XSC_CMD_OP_RTR2RTS_QP);
-		xsc_rxq_initialize(xdev, rxq_data);
+		ret = xsc_rxq_initialize(xdev, rxq_data);
+		if (ret != 0) {
+			rte_errno = -ret;
+			goto set_qp_fail;
+		}
 		rxq_data->cq_ci = 0;
 		PMD_DRV_LOG(INFO, "Port %d create rx qp, wqe_s:%d, wqe_n:%d, qp_db=%p, qpn:%u",
 			    port_id,
