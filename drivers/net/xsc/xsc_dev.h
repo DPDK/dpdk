@@ -189,8 +189,8 @@ struct xsc_dev {
 	void *dev_priv;
 	char name[PCI_PRI_STR_SIZE];
 	void *bar_addr;
-	void *jumbo_buffer_pa;
-	void *jumbo_buffer_va;
+	void *jumbo_buf;
+	rte_iova_t jumbo_iova;
 	uint64_t bar_len;
 	int ctrl_fd;
 	rte_intr_callback_fn intr_cb;

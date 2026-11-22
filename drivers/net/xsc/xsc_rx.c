@@ -206,27 +206,27 @@ xsc_rxq_initialize(struct xsc_dev *xdev, struct xsc_rxq_data *rxq_data)
 	uint32_t log2ds = rte_log2_u32(rx_ds_num);
 	uintptr_t addr;
 	struct rte_mbuf *mbuf;
-	void *jumbo_buffer_pa = xdev->jumbo_buffer_pa;
-	void *jumbo_buffer_va = xdev->jumbo_buffer_va;
+	void *jumbo_buf = xdev->jumbo_buf;
+	rte_iova_t jumbo_iova = xdev->jumbo_iova;
 	volatile struct xsc_wqe_data_seg *seg;
 	volatile struct xsc_wqe_data_seg *seg_next;
 
-	if (rx_ds_num != 1 && jumbo_buffer_pa == NULL) {
-		jumbo_buffer_pa = rte_malloc(NULL, XSC_MAX_RECV_LEN, 0);
-		if (jumbo_buffer_pa == NULL) {
+	if (rx_ds_num != 1 && jumbo_buf == NULL) {
+		jumbo_buf = rte_malloc(NULL, XSC_MAX_RECV_LEN, 0);
+		if (jumbo_buf == NULL) {
 			PMD_DRV_LOG(ERR, "Failed to malloc jumbo_buffer");
 			return -ENOMEM;
 		}
 
-		jumbo_buffer_va = (void *)rte_malloc_virt2iova(jumbo_buffer_pa);
-		if ((rte_iova_t)jumbo_buffer_va == RTE_BAD_IOVA) {
+		jumbo_iova = rte_malloc_virt2iova(jumbo_buf);
+		if (jumbo_iova == RTE_BAD_IOVA) {
 			PMD_DRV_LOG(ERR, "Failed to get IOVA of jumbo_buffer");
-			rte_free(jumbo_buffer_pa);
+			rte_free(jumbo_buf);
 			return -EFAULT;
 		}
 
-		xdev->jumbo_buffer_pa = jumbo_buffer_pa;
-		xdev->jumbo_buffer_va = jumbo_buffer_va;
+		xdev->jumbo_buf = jumbo_buf;
+		xdev->jumbo_iova = jumbo_iova;
 	}
 
 	for (i = 0; (i != wqe_n); ++i) {
@@ -246,7 +246,7 @@ xsc_rxq_initialize(struct xsc_dev *xdev, struct xsc_rxq_data *rxq_data)
 		if (rx_ds_num != 1) {
 			seg_next = seg + 1;
 			*seg_next = (struct xsc_wqe_data_seg){
-				.va = rte_cpu_to_le_64((uint64_t)jumbo_buffer_va),
+				.va = rte_cpu_to_le_64(jumbo_iova),
 				.seg_len = rte_cpu_to_le_32(XSC_MAX_RECV_LEN - seg_len),
 				.lkey = 0,
 			};

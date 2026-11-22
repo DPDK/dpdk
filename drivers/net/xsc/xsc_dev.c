@@ -151,8 +151,8 @@ xsc_dev_close(struct xsc_dev *xdev, int repr_id)
 		 * The buffer is shared by all the ports, the other Rx
 		 * queues hold its IOVA until the device is stopped.
 		 */
-		rte_free(xdev->jumbo_buffer_pa);
-		xdev->jumbo_buffer_pa = NULL;
+		rte_free(xdev->jumbo_buf);
+		xdev->jumbo_buf = NULL;
 	}
 
 	return ret;
