@@ -97,6 +97,8 @@ struct nqe_cn {
 };
 
 struct bnxt_ring;
+struct bnxt_ring_stats;
+struct bnxt_ring_stats_ext;
 struct bnxt_cp_ring_info {
 	uint32_t		cp_raw_cons;
 
@@ -114,7 +116,10 @@ struct bnxt_cp_ring_info {
 	uint32_t                epoch;
 	uint32_t		toggle;
 	uint8_t			dpi;  /* Doorbell page index for multi-doorbell support */
-
+	struct bnxt_ring_stats		*stats_mask;
+	struct bnxt_ring_stats_ext	*ext_stats_mask;
+	struct bnxt_ring_stats		*consec_low;
+	struct bnxt_ring_stats_ext	*consec_low_ext;
 };
 
 #define RX_CMP_L2_ERRORS						\

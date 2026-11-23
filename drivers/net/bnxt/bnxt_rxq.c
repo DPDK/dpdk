@@ -8,6 +8,7 @@
 #include <rte_malloc.h>
 
 #include "bnxt.h"
+#include "bnxt_stats.h"
 #include "bnxt_filter.h"
 #include "bnxt_hwrm.h"
 #include "bnxt_ring.h"

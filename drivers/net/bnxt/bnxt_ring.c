@@ -15,6 +15,7 @@
 #include "bnxt_rxr.h"
 #include "bnxt_txq.h"
 #include "bnxt_txr.h"
+#include "bnxt_stats.h"
 
 #include "hsi_struct_def_dpdk.h"
 
@@ -649,6 +650,10 @@ int bnxt_alloc_hwrm_rx_ring(struct bnxt *bp, int queue_index)
 	if (rc)
 		goto err_out;
 
+	rc = bnxt_get_ring_stats_masks(bp, cpr);
+	if (rc)
+		goto err_out;
+
 	if (BNXT_HAS_RING_GRPS(bp)) {
 		bp->grp_info[queue_index].fw_stats_ctx = cpr->hw_stats_ctx_id;
 		bp->grp_info[queue_index].cp_fw_ring_id = cp_ring->fw_ring_id;
@@ -930,6 +935,10 @@ int bnxt_alloc_hwrm_tx_ring(struct bnxt *bp, int queue_index)
 	bnxt_hwrm_set_ring_coal(bp, &coal, cp_ring->fw_ring_id);
 
 	rc = bnxt_hwrm_stat_ctx_alloc(bp, cpr);
+	if (rc)
+		goto err_out;
+
+	rc = bnxt_get_ring_stats_masks(bp, cpr);
 	if (rc)
 		goto err_out;
 

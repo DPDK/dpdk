@@ -544,6 +544,299 @@ static const struct bnxt_xstats_name_off bnxt_tx_ext_stats_strings[] = {
  * Statistics functions
  */
 
+void bnxt_masks_fill(struct bnxt *bp, uint64_t *dst,
+		     const uint64_t *src, uint32_t count)
+{
+	uint64_t def_mask;
+	uint32_t i;
+
+	def_mask = (BNXT_CHIP_P5(bp) || BNXT_CHIP_P7(bp)) ?
+		   (1ULL << 48) - 1 : UINT64_MAX;
+
+	for (i = 0; i < count; i++)
+		dst[i] = src ? rte_le_to_cpu_64(src[i]) : def_mask;
+}
+
+/*
+ * Apply the per-counter HW masks to the raw DMA stat values. The mask array is
+ * populated by bnxt_get_ring_stats_masks() (from firmware, or the chip-width
+ * default when firmware does not report masks). Any caller that reaches here
+ * with a NULL mask is misconfigured, so fail loudly rather than silently
+ * defaulting to an all-ones mask.
+ */
+int bnxt_apply_stats_masks(uint64_t *dst, const uint64_t *src,
+		const uint64_t *masks, uint32_t count)
+{
+	uint32_t i;
+
+	if (masks == NULL) {
+		PMD_DRV_LOG_LINE(ERR, "ring stats mask not initialized");
+		return -EINVAL;
+	}
+
+	for (i = 0; i < count; i++)
+		dst[i] = rte_le_to_cpu_64(src[i]) & masks[i];
+
+	return 0;
+}
+
+int bnxt_get_ring_stats_masks(struct bnxt *bp, struct bnxt_cp_ring_info *cpr)
+{
+	uint64_t *cpr_masks;
+
+	if (cpr->stats_mask == NULL) {
+		cpr->stats_mask = rte_zmalloc("bnxt_stats_mask",
+					      sizeof(*cpr->stats_mask), 0);
+		if (cpr->stats_mask == NULL)
+			goto enomem;
+	}
+	if (cpr->ext_stats_mask == NULL) {
+		cpr->ext_stats_mask = rte_zmalloc("bnxt_ext_stats_mask",
+						  sizeof(*cpr->ext_stats_mask), 0);
+		if (cpr->ext_stats_mask == NULL)
+			goto enomem;
+	}
+	if (cpr->consec_low == NULL) {
+		cpr->consec_low = rte_zmalloc("bnxt_consec_low",
+					      sizeof(*cpr->consec_low), 0);
+		if (cpr->consec_low == NULL)
+			goto enomem;
+	}
+	if (cpr->consec_low_ext == NULL) {
+		cpr->consec_low_ext = rte_zmalloc("bnxt_consec_low_ext",
+						  sizeof(*cpr->consec_low_ext), 0);
+		if (cpr->consec_low_ext == NULL)
+			goto enomem;
+	}
+
+	cpr_masks = (uint64_t *)cpr->stats_mask;
+	bnxt_masks_fill(bp, cpr_masks, NULL, BNXT_RING_STATS_CNT);
+	cpr_masks = (uint64_t *)cpr->ext_stats_mask;
+	bnxt_masks_fill(bp, cpr_masks, NULL, BNXT_RING_STATS_EXT_CNT);
+
+	if (cpr->hw_stats_ctx_id == HWRM_NA_SIGNATURE)
+		return 0;
+
+	if (BNXT_TPA_V2_P7(bp))
+		bnxt_hwrm_ring_stats_ext_masks(bp, cpr);
+	else
+		bnxt_hwrm_ring_stats_masks(bp, cpr);
+
+	return 0;
+
+enomem:
+	bnxt_clear_ring_stats_masks(cpr);
+	return -ENOMEM;
+}
+
+void bnxt_clear_ring_stats_masks(struct bnxt_cp_ring_info *cpr)
+{
+	rte_free(cpr->stats_mask);
+	cpr->stats_mask = NULL;
+	rte_free(cpr->ext_stats_mask);
+	cpr->ext_stats_mask = NULL;
+	rte_free(cpr->consec_low);
+	cpr->consec_low = NULL;
+	rte_free(cpr->consec_low_ext);
+	cpr->consec_low_ext = NULL;
+}
+
+static inline uint64_t *bnxt_stat_ptr(void *base, uint16_t off)
+{
+	return (uint64_t *)((char *)base + off);
+}
+
+static uint64_t bnxt_pick_ring_stat(uint64_t prev, uint64_t pdma, uint64_t p1,
+				    uint64_t p2, uint64_t mask,
+				    uint64_t *consec_low)
+{
+	uint64_t low = 0, prev_low, drop, bit;
+
+	pdma &= mask;
+	p1 &= mask;
+	p2 &= mask;
+
+	/* One of the HW stat values that make up this counter was zero as
+	 * returned by HW in this iteration, so use the previous
+	 * iteration's counter value
+	 */
+	if ((pdma == 0 || p1 == 0 || p2 == 0) && prev != 0)
+		return prev;
+
+	/* Consensus vote to correct for bit flips */
+	for (bit = 0; bit < 64ULL; bit++) {
+		int ones = 0;
+		if (pdma & (1ULL << bit))
+			ones++;
+		if (p1 & (1ULL << bit))
+			ones++;
+		if (p2 & (1ULL << bit))
+			ones++;
+		if (ones > 1)
+			low |= (1ULL << bit);
+	}
+
+	prev_low = prev & mask;
+
+	/* Automatically accept an increase in stats.
+	 * Reset the low counter to 0 to break an under-
+	 * report streak.
+	 */
+	if (low >= prev_low) {
+		*consec_low = 0;
+		return (prev & ~mask) | low;
+	}
+
+	/* Rollover detected by assuming a drop can't be
+	 * over half the mask magnitude. Updates the software
+	 * counter to acknowledge that a rollover has happened
+	 * by incrementing the first bit beyond the masked region.
+	 */
+	drop = prev_low - low;
+	if (drop > (mask >> 1)) {
+		*consec_low = 0;
+		return ((prev & ~mask) | low) + mask + 1;
+	}
+
+	/* Code to accept a lower stat value in case a stat
+	 * was over-reported on a previous iteration. At 3
+	 * consistently low stats, the probability of 3 flukes
+	 * is low enough to accept that an incorrect previous
+	 * stat may have been locked in.
+	 */
+	if (++(*consec_low) > BNXT_STAT_CONSEC_LOW_MAX) {
+		*consec_low = 0;
+		return (prev & ~mask) | low;
+	}
+
+	return prev;
+}
+
+int bnxt_get_ring_stats(struct bnxt *bp, struct bnxt_cp_ring_info *cpr, int idx,
+			 struct bnxt_ring_stats *ring_stats, bool rx)
+{
+	struct bnxt_ring_stats *prev_stats = &bp->prev_rx_ring_stats[idx];
+	struct ctx_hw_stats *curr_stats = (struct ctx_hw_stats *)cpr->hw_stats;
+	struct bnxt_ring_stats p1 = {0}, p2 = {0};
+	uint32_t i;
+	int rc = 0;
+
+	if (!rx)
+		prev_stats = &bp->prev_tx_ring_stats[idx];
+
+	if (!bp->eth_dev->data->dev_started) {
+		if (rx)
+			memcpy(&ring_stats->rx_ucast_pkts,
+			       &prev_stats->rx_ucast_pkts,
+			       sizeof(*ring_stats) -
+			       offsetof(struct bnxt_ring_stats, rx_ucast_pkts));
+		else
+			memcpy(ring_stats, prev_stats,
+			       offsetof(struct bnxt_ring_stats, rx_ucast_pkts));
+
+		return 0;
+	}
+
+	if (cpr->stats_mask == NULL || cpr->consec_low == NULL) {
+		PMD_DRV_LOG_LINE(ERR, "ring stats masks not initialized");
+		return -EINVAL;
+	}
+
+	rc = bnxt_hwrm_stats_query(bp, cpr, &p1);
+	if (rc)
+		return rc;
+	rc = bnxt_hwrm_stats_query(bp, cpr, &p2);
+	if (rc)
+		return rc;
+
+	for (i = 0; i < RTE_DIM(bnxt_ring_stat_offsets); i++) {
+		const struct bnxt_stat_offset_table *stat_offsets = &bnxt_ring_stat_offsets[i];
+		uint64_t *out  = bnxt_stat_ptr(ring_stats, stat_offsets->dst_off);
+		uint64_t *prev = bnxt_stat_ptr(prev_stats, stat_offsets->dst_off);
+
+		if (stat_offsets->is_rx != rx)
+			continue;
+
+		*out = bnxt_pick_ring_stat(*prev,
+				rte_le_to_cpu_64(*bnxt_stat_ptr(curr_stats, stat_offsets->src_off)),
+				*bnxt_stat_ptr(&p1, stat_offsets->dst_off),
+				*bnxt_stat_ptr(&p2, stat_offsets->dst_off),
+				*bnxt_stat_ptr(cpr->stats_mask, stat_offsets->dst_off),
+				bnxt_stat_ptr(cpr->consec_low, stat_offsets->dst_off));
+		*prev = *out;
+	}
+
+	return rc;
+}
+
+int bnxt_get_ring_stats_ext(struct bnxt *bp, struct bnxt_cp_ring_info *cpr, int idx,
+			     struct bnxt_ring_stats_ext *ring_stats, bool rx)
+{
+	struct bnxt_ring_stats_ext *prev_stats = &bp->prev_rx_ring_stats_ext[idx];
+	struct bnxt_ring_stats_ext *curr_stats =
+		(struct bnxt_ring_stats_ext *)cpr->hw_stats;
+	struct bnxt_ring_stats_ext p1 = {0}, p2 = {0};
+	uint32_t i;
+	int rc = 0;
+
+	if (!rx)
+		prev_stats = &bp->prev_tx_ring_stats_ext[idx];
+
+	if (!bp->eth_dev->data->dev_started) {
+		if (rx) {
+			/* rx fields straddle the tx block: copy the rx base
+			 * fields and the trailing tpa fields separately.
+			 */
+			memcpy(ring_stats, prev_stats,
+			       offsetof(struct bnxt_ring_stats_ext, tx_ucast_pkts));
+			memcpy(&ring_stats->rx_tpa_eligible_pkt,
+			       &prev_stats->rx_tpa_eligible_pkt,
+			       sizeof(*ring_stats) -
+			       offsetof(struct bnxt_ring_stats_ext, rx_tpa_eligible_pkt));
+		} else {
+			memcpy(&ring_stats->tx_ucast_pkts,
+			       &prev_stats->tx_ucast_pkts,
+			       offsetof(struct bnxt_ring_stats_ext, rx_tpa_eligible_pkt) -
+			       offsetof(struct bnxt_ring_stats_ext, tx_ucast_pkts));
+		}
+
+		return 0;
+	}
+
+	if (cpr->ext_stats_mask == NULL || cpr->consec_low_ext == NULL) {
+		PMD_DRV_LOG_LINE(ERR, "ring ext stats masks not initialized");
+		return -EINVAL;
+	}
+
+	rc = bnxt_hwrm_stats_ext_query(bp, cpr, &p1);
+	if (rc)
+		return rc;
+	rc = bnxt_hwrm_stats_ext_query(bp, cpr, &p2);
+	if (rc)
+		return rc;
+
+	for (i = 0; i < RTE_DIM(bnxt_ring_stat_ext_offsets); i++) {
+		const struct bnxt_stat_offset_table *stat_ext_offsets =
+			&bnxt_ring_stat_ext_offsets[i];
+		uint64_t *out  = bnxt_stat_ptr(ring_stats, stat_ext_offsets->dst_off);
+		uint64_t *prev = bnxt_stat_ptr(prev_stats, stat_ext_offsets->dst_off);
+
+		if (stat_ext_offsets->is_rx != rx)
+			continue;
+
+		*out = bnxt_pick_ring_stat(*prev,
+				rte_le_to_cpu_64(*bnxt_stat_ptr(curr_stats,
+								stat_ext_offsets->src_off)),
+				*bnxt_stat_ptr(&p1, stat_ext_offsets->dst_off),
+				*bnxt_stat_ptr(&p2, stat_ext_offsets->dst_off),
+				*bnxt_stat_ptr(cpr->ext_stats_mask, stat_ext_offsets->dst_off),
+				bnxt_stat_ptr(cpr->consec_low_ext, stat_ext_offsets->dst_off));
+		*prev = *out;
+	}
+
+	return rc;
+}
+
 void bnxt_free_stats(struct bnxt *bp)
 {
 	int i;
@@ -669,8 +962,9 @@ static int bnxt_stats_get_ext(struct rte_eth_dev *eth_dev,
 		if (cpr->hw_stats_ctx_id == HWRM_NA_SIGNATURE)
 			continue;
 
-		rc = bnxt_hwrm_ring_stats_ext(bp, cpr->hw_stats_ctx_id, i,
-					      &ring_stats, true);
+		rc = bnxt_get_ring_stats_ext(bp, cpr, i,
+					     &ring_stats, true);
+
 		if (unlikely(rc))
 			return rc;
 
@@ -695,8 +989,9 @@ static int bnxt_stats_get_ext(struct rte_eth_dev *eth_dev,
 		if (!txq->tx_started)
 			continue;
 
-		rc = bnxt_hwrm_ring_stats_ext(bp, cpr->hw_stats_ctx_id, i,
-					      &ring_stats, false);
+		rc = bnxt_get_ring_stats_ext(bp, cpr, i,
+					     &ring_stats, false);
+
 		if (unlikely(rc))
 			return rc;
 
@@ -736,8 +1031,9 @@ int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 		if (cpr->hw_stats_ctx_id == HWRM_NA_SIGNATURE)
 			continue;
 
-		rc = bnxt_hwrm_ring_stats(bp, cpr->hw_stats_ctx_id, i,
-					  &ring_stats, true);
+		rc = bnxt_get_ring_stats(bp, cpr, i,
+					 &ring_stats, true);
+
 		if (unlikely(rc))
 			return rc;
 
@@ -757,8 +1053,9 @@ int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 		if (!txq->tx_started)
 			continue;
 
-		rc = bnxt_hwrm_ring_stats(bp, cpr->hw_stats_ctx_id, i,
-					  &ring_stats, false);
+		rc = bnxt_get_ring_stats(bp, cpr, i,
+					 &ring_stats, false);
+
 		if (unlikely(rc))
 			return rc;
 
@@ -946,11 +1243,11 @@ int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
 			continue;
 
 		if (BNXT_TPA_V2_P7(bp))
-			rc = bnxt_hwrm_ring_stats_ext(bp, cpr->hw_stats_ctx_id, i,
-						      &ring_stats_ext, true);
+			rc = bnxt_get_ring_stats_ext(bp, cpr, i,
+						     &ring_stats_ext, true);
 		else
-			rc = bnxt_hwrm_ring_stats(bp, cpr->hw_stats_ctx_id, i,
-						  &ring_stats, true);
+			rc = bnxt_get_ring_stats(bp, cpr, i,
+						 &ring_stats, true);
 
 		if (unlikely(rc))
 			return rc;
@@ -972,11 +1269,11 @@ int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
 			continue;
 
 		if (BNXT_TPA_V2_P7(bp))
-			rc = bnxt_hwrm_ring_stats_ext(bp, cpr->hw_stats_ctx_id, i,
-						      &ring_stats_ext, false);
+			rc = bnxt_get_ring_stats_ext(bp, cpr, i,
+						     &ring_stats_ext, false);
 		else
-			rc = bnxt_hwrm_ring_stats(bp, cpr->hw_stats_ctx_id, i,
-						  &ring_stats, false);
+			rc = bnxt_get_ring_stats(bp, cpr, i,
+						 &ring_stats, false);
 		if (unlikely(rc))
 			return rc;
 

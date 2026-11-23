@@ -827,6 +827,16 @@ static int bnxt_alloc_prev_ring_ext_stats(struct bnxt *bp)
 	if (bp->tx_cp_nr_rings > 0 && bp->prev_tx_ring_stats_ext == NULL)
 		goto error;
 
+	/* The hardware stat context is reset on every start.
+	 * Clearing software stats to match even when memory
+	 * isn't re-allocated.
+	 */
+	memset(bp->prev_rx_ring_stats_ext, 0,
+	       sizeof(struct bnxt_ring_stats_ext) * bp->rx_cp_nr_rings);
+	if (bp->prev_tx_ring_stats_ext != NULL)
+		memset(bp->prev_tx_ring_stats_ext, 0,
+		       sizeof(struct bnxt_ring_stats_ext) * bp->tx_cp_nr_rings);
+
 	return 0;
 
 error:
@@ -854,6 +864,16 @@ static int bnxt_alloc_prev_ring_stats(struct bnxt *bp)
 						     0);
 	if (bp->tx_cp_nr_rings > 0 && bp->prev_tx_ring_stats == NULL)
 		goto error;
+
+	/* The hardware stat context is reset on every start.
+	 * Clearing software stats to match even when memory
+	 * isn't re-allocated.
+	 */
+	memset(bp->prev_rx_ring_stats, 0,
+	       sizeof(struct bnxt_ring_stats) * bp->rx_cp_nr_rings);
+	if (bp->prev_tx_ring_stats != NULL)
+		memset(bp->prev_tx_ring_stats, 0,
+		       sizeof(struct bnxt_ring_stats) * bp->tx_cp_nr_rings);
 
 	return 0;
 

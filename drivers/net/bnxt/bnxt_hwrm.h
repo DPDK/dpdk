@@ -368,10 +368,12 @@ int bnxt_hwrm_fw_echo_reply(struct bnxt *bp, uint32_t echo_req_data1,
 			    uint32_t echo_req_data2);
 int bnxt_hwrm_poll_ver_get(struct bnxt *bp);
 int bnxt_hwrm_rx_ring_reset(struct bnxt *bp, int queue_index);
-int bnxt_hwrm_ring_stats(struct bnxt *bp, uint32_t cid, int idx,
-			 struct bnxt_ring_stats *stats, bool rx);
-int bnxt_hwrm_ring_stats_ext(struct bnxt *bp, uint32_t cid, int idx,
-			     struct bnxt_ring_stats_ext *ring_stats, bool rx);
+int bnxt_hwrm_stats_query(struct bnxt *bp, struct bnxt_cp_ring_info *cpr,
+			  struct bnxt_ring_stats *ring_stats);
+int bnxt_hwrm_stats_ext_query(struct bnxt *bp, struct bnxt_cp_ring_info *cpr,
+			      struct bnxt_ring_stats_ext *ring_stats);
+int bnxt_hwrm_ring_stats_masks(struct bnxt *bp, struct bnxt_cp_ring_info *cpr);
+int bnxt_hwrm_ring_stats_ext_masks(struct bnxt *bp, struct bnxt_cp_ring_info *cpr);
 int bnxt_hwrm_read_sfp_module_eeprom_info(struct bnxt *bp, uint16_t i2c_addr,
 					  uint16_t page_number, uint16_t start_addr,
 					  uint16_t data_length, uint8_t *buf);
