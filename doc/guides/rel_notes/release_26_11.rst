@@ -657,3 +657,148 @@ ABI Changes
 
 Tested Platforms
 ----------------
+
+* Intel\ |reg| platforms with Intel\ |reg| NICs combinations
+
+  * CPU
+
+    * Intel Atom\ |reg| P6952 processor CPU @ 2.20GHz
+    * Intel\ |reg| Xeon\ |reg| 6553P-B  CPU @ 2.60GHz
+    * Intel\ |reg| Xeon\ |reg| 6740E  CPU @ 2.40GHz
+    * Intel\ |reg| Xeon\ |reg| 6756P-B  CPU @ 2.20GHz
+    * Intel\ |reg| Xeon\ |reg| 6767P  CPU @ 2.40GHz
+    * Intel\ |reg| Xeon\ |reg| 6972P  CPU @ 2.40GHz
+    * Intel\ |reg| Xeon\ |reg| CPU Max 9480  CPU @ 1.90GHz
+    * Intel\ |reg| Xeon\ |reg| Gold 6348  CPU @ 2.60GHz
+    * Intel\ |reg| Xeon\ |reg| Gold 6430L  CPU @ 1.90GHz
+    * Intel\ |reg| Xeon\ |reg| Platinum 8468H  CPU @ 2.10GHz
+    * Intel\ |reg| Xeon\ |reg| Platinum 8490H  CPU @ 1.90GHz
+
+  * OS:
+
+    * Fedora Linux 43
+    * Fedora Linux 44
+    * FreeBSD 15.1
+    * Microsoft Azure Linux 3.0
+    * OpenAnolis OS 8.10
+    * openEuler 24.03 (LTS-SP4)
+    * Red Hat Enterprise Linux Server release 10
+    * Red Hat Enterprise Linux Server release 10.2
+    * Ubuntu 24.04.4 LTS
+    * Ubuntu 26.04.1 LTS
+    * VMware ESXi 9.0
+
+  * NICs:
+
+    * Intel\ |reg| Ethernet Controller E835-CC for QSFP
+
+      * Firmware version: 2.20 0x80019eb7 1.4116.0
+      * Device id (pf/vf): 8086:1249 / 8086:1889
+      * Driver version: 2.7.6 (ice)
+      * OS Default DDP: 1.3.59.0
+      * COMMS DDP: 1.3.63.0
+      * Wireless Edge DDP: 1.3.28.0
+
+    * Intel\ |reg| Ethernet Controller E835-CC for SFP
+
+      * Firmware version: 2.20 0x80019ed9 1.4116.0
+      * Device id (pf/vf): 8086:124a / 8086:1889
+      * Driver version: 2.7.6 (ice)
+      * OS Default DDP: 1.3.59.0
+      * COMMS DDP: 1.3.63.0
+      * Wireless Edge DDP: 1.3.28.0
+
+    * Intel\ |reg| Ethernet Controller E810-C for SFP (4x25G)
+
+      * Firmware version: 5.10 0x80022601 1.4113.0
+      * Device id (pf/vf): 8086:1593 / 8086:1889
+      * Driver version(out-of-tree): 2.7.6 (ice)
+      * Driver version(in-tree): 7.0.0-31-generic (Ubuntu26.04.1 LTS) (ice)
+      * OS Default DDP: 1.3.59.0
+      * COMMS DDP: 1.3.63.0
+      * Wireless Edge DDP: 1.3.28.0
+
+    * Intel\ |reg| Ethernet Controller E810-C for QSFP (2x100G)
+
+      * Firmware version: 5.10 0x80022601 1.4113.0
+      * Device id (pf/vf): 8086:1592 / 8086:1889
+      * Driver version(out-of-tree): 2.7.6 (ice)
+      * Driver version(in-tree): 6.6.150.1-1.azl3 (Microsoft Azure Linux 3.0) /
+        6.12.0-211.7.3.el10_2.x86_64+rt (RHEL10.2) / 7.0.0-31-generic (Ubuntu26.04.1 LTS) (ice)
+      * OS Default DDP: 1.3.59.0
+      * COMMS DDP: 1.3.63.0
+      * Wireless Edge DDP: 1.3.28.0
+
+    * Intel\ |reg| Ethernet Controller E830-CC for QSFP
+
+      * Firmware version: 2.20 0x80019f95 1.4116.0
+      * Device id (pf/vf): 8086:12d2 / 8086:1889
+      * Driver version: 2.7.6 (ice)
+      * OS Default DDP: 1.3.59.0
+      * COMMS DDP: 1.3.63.0
+      * Wireless Edge DDP: 1.3.28.0
+
+    * Intel\ |reg| Ethernet Connection E825-C for QSFP
+
+      * Firmware version: 4.10 0x800084d5 1.4002.0
+      * Device id (pf/vf): 8086:579d / 8086:1889
+      * Driver version: 2.7.6 (ice)
+      * OS Default DDP: 1.3.59.0
+      * COMMS DDP: 1.3.63.0
+      * Wireless Edge DDP: 1.3.28.0
+
+    * Intel\ |reg| Ethernet Network Adapter E610-XT2
+
+      * Firmware version: 1.70 0x8000f6da 1.4116.0
+      * Device id (pf/vf): 8086:57b0 / 8086:57ad
+      * Driver version(out-of-tree): 6.5.9 (ixgbe)
+
+    * Intel\ |reg| Ethernet Controller X550 1563
+
+      * Firmware version: 3.70 0x8000184a 1.3052.0
+      * Device id (pf/vf): 8086:1563 / 8086:1565
+      * Driver version(out-of-tree): 6.5.9 (ixgbe)
+
+    * Intel\ |reg| Ethernet Converged Network Adapter X710-DA4 (4x10G)
+
+      * Firmware version: 9.58 0x8001049c 1.4113.0
+      * Device id (pf/vf): 8086:1572 / 8086:154c
+      * Driver version(out-of-tree): 2.30.83 (i40e)
+      * Driver version(in-tree): 6.12.0-55.9.1.el10_0.x86_64 (RHEL10) (i40e)
+
+    * Intel\ |reg| Ethernet Converged Network Adapter XXV710-DA2 (2x25G)
+
+      * Firmware version:  9.58 0x800104f6 1.4113.0
+      * Device id (pf/vf): 8086:158b / 8086:154c
+      * Driver version(out-of-tree): 2.30.83 (i40e)
+
+    * Intel\ |reg| Ethernet Converged Network Adapter XL710-QDA2 (2X40G)
+
+      * Firmware version(PF): 9.58 0x800104da 1.4113.0
+      * Device id (pf/vf): 8086:1583 / 8086:154c
+      * Driver version(out-of-tree): 2.30.83 (i40e)
+      * Driver version(in-tree): 7.0.0-31-generic (Ubuntu26.04.1 LTS) (i40e)
+
+    * Intel\ |reg| Corporation Ethernet Connection X722 for 10GbE SFP (2x10G)
+
+      * Firmware version: 6.51 0x80004430 1.4113.0
+      * Device id (pf/vf): 8086:37d0 / 8086:37cd
+      * Driver version(out-of-tree): 2.30.83 (i40e)
+
+    * Intel\ |reg| Ethernet Controller I226-LM
+
+      * Firmware version: 2.14, 0x8000028c (2017:888d)
+      * Device id (pf): 8086:125b
+      * Driver version(in-tree): 7.0.0-15-generic (Ubuntu26.04.1 LTS) (igc)
+
+    * Intel\ |reg| Infrastructure Processing Unit (Intel\ |reg| IPU) E2100
+
+      * Firmware version: ci-ts.release.2.2.0.12025
+      * Device id (idpf/cpfl): 8086:1452/8086:1453
+      * Driver version: 1.0.12 (idpf)
+
+    * Intel\ |reg| Corporation Device 11df
+
+      * Firmware version: MEV IMC IPU-6.18.1-CI-RELEASE.3.1.14860.478
+      * Device id (idpf/cpfl): 8086:11df/8086:0de2
+      * Driver version: 1.0.12 (idpf)
