@@ -116,6 +116,8 @@ New Features
     (a failed PCIe DMA transaction) without a full adapter reset,
     gated behind the new ``func-error-support`` devarg (default off).
     Added a ``func_error_recovery`` xstat to report the recovery count.
+  * Enabled the extended ring statistics, including the TPA counters,
+    on P5 devices that support TPA v2.
 
 * **Updated Intel cpfl driver.**
 

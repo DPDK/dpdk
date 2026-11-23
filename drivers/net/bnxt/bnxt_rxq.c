@@ -512,7 +512,7 @@ int bnxt_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	/* reset the previous stats for the rx_queue since the counters
 	 * will be cleared when the queue is started.
 	 */
-	if (BNXT_TPA_V2_P7(bp))
+	if (BNXT_TPA_V2_P7(bp) || BNXT_TPA_V2_P5(bp))
 		memset(&bp->prev_rx_ring_stats_ext[rx_queue_id], 0,
 		       sizeof(struct bnxt_ring_stats_ext));
 	else

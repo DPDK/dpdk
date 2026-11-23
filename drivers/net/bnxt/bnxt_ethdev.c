@@ -791,7 +791,7 @@ static int bnxt_update_phy_setting(struct bnxt *bp)
 static void bnxt_free_prev_ring_stats_ext(struct bnxt *bp)
 {
 	/* tpa v2 devices use ext variant local struct */
-	if (BNXT_TPA_V2_P7(bp)) {
+	if (BNXT_TPA_V2_P7(bp) || BNXT_TPA_V2_P5(bp)) {
 		rte_free(bp->prev_rx_ring_stats_ext);
 		rte_free(bp->prev_tx_ring_stats_ext);
 		bp->prev_rx_ring_stats_ext = NULL;
@@ -846,7 +846,7 @@ error:
 
 static int bnxt_alloc_prev_ring_stats(struct bnxt *bp)
 {
-	if (BNXT_TPA_V2_P7(bp))
+	if (BNXT_TPA_V2_P7(bp) || BNXT_TPA_V2_P5(bp))
 		return bnxt_alloc_prev_ring_ext_stats(bp);
 
 	if (bp->prev_rx_ring_stats == NULL)

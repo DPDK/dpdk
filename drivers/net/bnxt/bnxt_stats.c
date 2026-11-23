@@ -617,7 +617,7 @@ int bnxt_get_ring_stats_masks(struct bnxt *bp, struct bnxt_cp_ring_info *cpr)
 	if (cpr->hw_stats_ctx_id == HWRM_NA_SIGNATURE)
 		return 0;
 
-	if (BNXT_TPA_V2_P7(bp))
+	if (BNXT_TPA_V2_P7(bp) || BNXT_TPA_V2_P5(bp))
 		bnxt_hwrm_ring_stats_ext_masks(bp, cpr);
 	else
 		bnxt_hwrm_ring_stats_masks(bp, cpr);
@@ -824,6 +824,11 @@ int bnxt_get_ring_stats_ext(struct bnxt *bp, struct bnxt_cp_ring_info *cpr, int 
 		if (stat_ext_offsets->is_rx != rx)
 			continue;
 
+		/* P5 ext stats does not report rx_tpa_events */
+		if (BNXT_TPA_V2_P5(bp) &&
+		   stat_ext_offsets->dst_off == offsetof(struct bnxt_ring_stats_ext, rx_tpa_events))
+			continue;
+
 		*out = bnxt_pick_ring_stat(*prev,
 				rte_le_to_cpu_64(*bnxt_stat_ptr(curr_stats,
 								stat_ext_offsets->src_off)),
@@ -1014,7 +1019,7 @@ int bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 	if (rc)
 		return rc;
 
-	if (BNXT_TPA_V2_P7(bp))
+	if (BNXT_TPA_V2_P7(bp) || BNXT_TPA_V2_P5(bp))
 		return bnxt_stats_get_ext(eth_dev, bnxt_stats, qstats);
 
 	bnxt_stats->oerrors += rte_atomic_load_explicit(&bp->func_error_info->oerrors,
@@ -1078,7 +1083,7 @@ static void bnxt_clear_prev_stat(struct bnxt *bp)
 	 * Clear the cached values of stats returned by HW in the previous
 	 * get operation.
 	 */
-	if (BNXT_TPA_V2_P7(bp)) {
+	if (BNXT_TPA_V2_P7(bp) || BNXT_TPA_V2_P5(bp)) {
 		memset(bp->prev_rx_ring_stats_ext, 0,
 		       sizeof(struct bnxt_ring_stats_ext) * bp->rx_cp_nr_rings);
 		memset(bp->prev_tx_ring_stats_ext, 0,
@@ -1218,7 +1223,7 @@ int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
 	if (rc)
 		return rc;
 
-	if (BNXT_TPA_V2_P7(bp))
+	if (BNXT_TPA_V2_P7(bp) || BNXT_TPA_V2_P5(bp))
 		sz = RTE_DIM(bnxt_func_stats_ext_strings);
 	else
 		sz = RTE_DIM(bnxt_func_stats_strings);
@@ -1242,7 +1247,7 @@ int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
 		if (!rxq->rx_started)
 			continue;
 
-		if (BNXT_TPA_V2_P7(bp))
+		if (BNXT_TPA_V2_P7(bp) || BNXT_TPA_V2_P5(bp))
 			rc = bnxt_get_ring_stats_ext(bp, cpr, i,
 						     &ring_stats_ext, true);
 		else
@@ -1252,7 +1257,7 @@ int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
 		if (unlikely(rc))
 			return rc;
 
-		if (BNXT_TPA_V2_P7(bp))
+		if (BNXT_TPA_V2_P7(bp) || BNXT_TPA_V2_P5(bp))
 			bnxt_fill_func_qstats_ext(&func_qstats_ext,
 						  &ring_stats_ext, true);
 		else
@@ -1268,7 +1273,7 @@ int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
 		if (!txq->tx_started)
 			continue;
 
-		if (BNXT_TPA_V2_P7(bp))
+		if (BNXT_TPA_V2_P7(bp) || BNXT_TPA_V2_P5(bp))
 			rc = bnxt_get_ring_stats_ext(bp, cpr, i,
 						     &ring_stats_ext, false);
 		else
@@ -1277,7 +1282,7 @@ int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
 		if (unlikely(rc))
 			return rc;
 
-		if (BNXT_TPA_V2_P7(bp))
+		if (BNXT_TPA_V2_P7(bp) || BNXT_TPA_V2_P5(bp))
 			bnxt_fill_func_qstats_ext(&func_qstats_ext,
 						  &ring_stats_ext, false);
 		else
@@ -1314,7 +1319,7 @@ int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
 		count++;
 	}
 
-	if (BNXT_TPA_V2_P7(bp)) {
+	if (BNXT_TPA_V2_P7(bp) || BNXT_TPA_V2_P5(bp)) {
 		for (i = 0; i < RTE_DIM(bnxt_func_stats_ext_strings); i++) {
 			xstats[count].id = count;
 			xstats[count].value = *(uint64_t *)((char *)&func_qstats_ext +
@@ -1428,7 +1433,7 @@ int bnxt_dev_xstats_get_names_op(struct rte_eth_dev *eth_dev,
 	if (rc)
 		return rc;
 
-	if (BNXT_TPA_V2_P7(bp))
+	if (BNXT_TPA_V2_P7(bp) || BNXT_TPA_V2_P5(bp))
 		sz = RTE_DIM(bnxt_func_stats_ext_strings);
 	else
 		sz = RTE_DIM(bnxt_func_stats_strings);
@@ -1458,7 +1463,7 @@ int bnxt_dev_xstats_get_names_op(struct rte_eth_dev *eth_dev,
 		count++;
 	}
 
-	if (BNXT_TPA_V2_P7(bp)) {
+	if (BNXT_TPA_V2_P7(bp) || BNXT_TPA_V2_P5(bp)) {
 		for (i = 0; i < RTE_DIM(bnxt_func_stats_ext_strings); i++) {
 			strlcpy(xstats_names[count].name,
 				bnxt_func_stats_ext_strings[i].name,

@@ -169,13 +169,14 @@ struct bnxt_pf_resource_info {
 	 BNXT_TUNNELED_OFFLOADS_CAP_GRE_EN(bp)   &&		\
 	 BNXT_TUNNELED_OFFLOADS_CAP_IPINIP_EN(bp))
 
-/* Is this tpa_v2 and P7
- * Just add P5 to this once we validate on Thor FW
- */
+/* Is this tpa_v2 and P7 */
 #define BNXT_TPA_V2_P7(bp) ((bp)->max_tpa_v2 && BNXT_CHIP_P7(bp))
+/* Is this tpa_v2 and P5 */
+#define BNXT_TPA_V2_P5(bp) ((bp)->max_tpa_v2 && BNXT_CHIP_P5(bp))
 /* Get the size of the stat context size for DMA from HW */
-#define BNXT_HWRM_CTX_GET_SIZE(bp)  (BNXT_TPA_V2_P7(bp) ?	\
-	sizeof(struct ctx_hw_stats_ext) :			\
+#define BNXT_HWRM_CTX_GET_SIZE(bp)					\
+	(BNXT_TPA_V2_P7(bp) ? sizeof(struct ctx_hw_stats_ext) :         \
+	BNXT_TPA_V2_P5(bp) ? (sizeof(struct ctx_hw_stats_ext) - sizeof(uint64_t)) :	\
 	sizeof(struct ctx_hw_stats))
 
 int bnxt_hwrm_cfa_l2_clear_rx_mask(struct bnxt *bp,
