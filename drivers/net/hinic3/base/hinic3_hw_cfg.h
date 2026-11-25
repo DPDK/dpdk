@@ -40,6 +40,8 @@ struct service_cap {
 
 	uint8_t flexq_en;
 	uint8_t cos_valid_bitmap;
+	uint8_t cos_mask_mode;
+	uint8_t cos_mask_bitmap;
 	uint16_t max_vf; /**< Max VF number that PF supported. */
 
 	struct nic_service_cap nic_cap; /**< NIC capability. */
@@ -80,9 +82,11 @@ struct hinic3_cfg_cmd_dev_cap {
 	uint8_t flexq_en;
 	uint8_t valid_cos_bitmap;
 	/* Reserved for func_valid_cos_bitmap. */
-	uint16_t rsvd_cos;
+	uint16_t rsvd_valid_cos[2];
+	uint8_t cos_mask_mode;
+	uint8_t cos_mask_bitmap;
 
-	uint32_t rsvd[11];
+	uint32_t rsvd[10];
 
 	/* l2nic */
 	uint16_t nic_max_sq_id;

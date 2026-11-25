@@ -22,6 +22,8 @@ parse_pub_res_cap(struct service_cap *cap,
 	cap->chip_svc_type = cap->svc_type;
 
 	cap->cos_valid_bitmap = dev_cap->valid_cos_bitmap;
+	cap->cos_mask_mode = dev_cap->cos_mask_mode;
+	cap->cos_mask_bitmap = dev_cap->cos_mask_bitmap;
 	cap->flexq_en = dev_cap->flexq_en;
 
 	cap->host_total_function = dev_cap->host_total_func;

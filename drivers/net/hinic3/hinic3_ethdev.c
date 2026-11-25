@@ -76,6 +76,9 @@ enum hinic3_rx_mod {
 #define HINIC3_DEFAULT_RX_MODE \
 	(HINIC3_RX_MODE_UC | HINIC3_RX_MODE_MC | HINIC3_RX_MODE_BC)
 
+#define HINIC3_DEFAULT_COS_MASK		0x7
+#define HINIC3_DEFAULT_COS_MASK_BITMAP	0xff
+
 struct hinic3_xstats_name_off {
 	char name[RTE_ETH_XSTATS_NAME_SIZE];
 	uint32_t offset;
@@ -451,10 +454,8 @@ hinic3_deinit_mac_addr(struct rte_eth_dev *eth_dev)
 static int
 hinic3_pf_get_default_cos(struct hinic3_hwdev *hwdev, uint8_t *cos_id)
 {
-	struct hinic3_nic_dev *nic_dev = hwdev->dev_handle;
 	uint8_t default_cos = 0;
 	uint8_t valid_cos_bitmap;
-	uint8_t cos_num_max;
 	uint8_t i;
 
 	valid_cos_bitmap = hwdev->cfg_mgmt->svc_cap.cos_valid_bitmap;
@@ -463,10 +464,7 @@ hinic3_pf_get_default_cos(struct hinic3_hwdev *hwdev, uint8_t *cos_id)
 		return -EFAULT;
 	}
 
-	cos_num_max = nic_dev->feature_cap & NIC_F_HTN_CMDQ ?
-		      HINIC3_COS_NUM_MAX_HTN : HINIC3_COS_NUM_MAX;
-
-	for (i = 0; i < cos_num_max; i++) {
+	for (i = 0; i < HINIC3_COS_NUM_MAX; i++) {
 		if (valid_cos_bitmap & RTE_BIT32(i))
 			/* Find max cos id as default cos. */
 			default_cos = i;
@@ -477,11 +475,52 @@ hinic3_pf_get_default_cos(struct hinic3_hwdev *hwdev, uint8_t *cos_id)
 	return 0;
 }
 
+static void
+hinic3_get_cos_mask(struct hinic3_hwdev *hwdev, uint8_t *cos_mask)
+{
+	uint8_t cos_mask_mode;
+
+	cos_mask_mode = hwdev->cfg_mgmt->svc_cap.cos_mask_mode;
+	if (!cos_mask_mode) {
+		*cos_mask = HINIC3_DEFAULT_COS_MASK; /* default: 8 COS*/
+		PMD_DRV_LOG(INFO,
+			"cos mask not provided by firmware, use default 0x%x",
+			HINIC3_DEFAULT_COS_MASK);
+		return;
+	}
+
+	*cos_mask = cos_mask_mode;
+}
+
+static void
+hinic3_get_cos_mask_bitmap(struct hinic3_nic_dev *nic_dev)
+{
+	int i;
+	uint8_t default_cos = 0;
+	uint8_t cos_mask_bitmap = nic_dev->hwdev->cfg_mgmt->svc_cap.cos_mask_bitmap == 0
+			? HINIC3_DEFAULT_COS_MASK_BITMAP
+			: nic_dev->hwdev->cfg_mgmt->svc_cap.cos_mask_bitmap;
+
+	PMD_DRV_LOG(INFO, "cos_mask_bitmap: 0x%x", cos_mask_bitmap);
+	for (i = HINIC3_COS_NUM_MAX - 1; i >= 0; i--) {
+		if (cos_mask_bitmap & RTE_BIT32(i)) {
+			default_cos = i;
+			break;
+		}
+	}
+
+	for (i = 0; i < HINIC3_COS_NUM_MAX; i++)
+		nic_dev->cos_map[i] = ((RTE_BIT32(i) & cos_mask_bitmap) == 0) ? default_cos : i;
+}
+
 static int
 hinic3_init_default_cos(struct hinic3_nic_dev *nic_dev)
 {
+	uint8_t cos_mask = 0;
 	uint8_t cos_id = 0;
 	int err;
+
+	hinic3_get_cos_mask(nic_dev->hwdev, &cos_mask);
 
 	if (!HINIC3_IS_VF(nic_dev->hwdev)) {
 		err = hinic3_pf_get_default_cos(nic_dev->hwdev, &cos_id);
@@ -497,8 +536,9 @@ hinic3_init_default_cos(struct hinic3_nic_dev *nic_dev)
 		}
 	}
 
+	nic_dev->cos_mask = cos_mask;
 	nic_dev->default_cos = cos_id;
-	PMD_DRV_LOG(DEBUG, "Default cos %d", nic_dev->default_cos);
+	PMD_DRV_LOG(DEBUG, "Default cos %d, cos mask %d", nic_dev->default_cos, nic_dev->cos_mask);
 	return 0;
 }
 
@@ -533,6 +573,7 @@ hinic3_set_default_hw_feature(struct hinic3_nic_dev *nic_dev)
 {
 	int err;
 
+	hinic3_get_cos_mask_bitmap(nic_dev);
 	err = hinic3_init_default_cos(nic_dev);
 	if (err)
 		return err;
@@ -1296,6 +1337,10 @@ hinic3_tx_queue_setup(struct rte_eth_dev *dev, uint16_t qid, uint16_t nb_desc,
 		txq->cos = SELECT_OTHER_COS_ID(nic_dev->default_cos);
 	else
 		txq->cos = nic_dev->default_cos;
+
+	if (HINIC3_IS_SP230_NIC(nic_dev))
+		txq->cos = nic_dev->cos_map[txq->cos &
+			(HINIC3_COS_NUM_MAX - 1) & nic_dev->cos_mask];
 
 	txq->tx_deferred_start = tx_conf->tx_deferred_start;
 	txq->tx_wqe_compact_task = HINIC3_SUPPORT_TX_WQE_COMPACT_TASK(nic_dev);

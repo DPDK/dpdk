@@ -133,6 +133,7 @@ struct hinic3_nic_dev {
 	uint8_t rx_queue_list[HINIC3_MAX_QUEUE_NUM];
 	rte_spinlock_t queue_list_lock;
 
+	uint32_t cos_mask;
 	uint32_t default_cos;
 	uint32_t rx_csum_en;
 
@@ -155,6 +156,7 @@ struct hinic3_nic_dev {
 	struct hinic3_tcam_info tcam;
 	struct hinic3_ethertype_filter_list filter_ethertype_list;
 	struct hinic3_fdir_rule_filter_list filter_fdir_rule_list;
+	uint8_t cos_map[HINIC3_COS_NUM_MAX];
 	struct hinic3_nic_cmdq_ops *cmdq_ops;
 	struct hinic3_nic_rx_ops *rx_ops;
 	struct hinic3_nic_tx_ops *tx_ops;
