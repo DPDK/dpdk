@@ -4064,9 +4064,106 @@ alloc_eth_addr_fail:
 }
 
 static int
+hinic3_nic_common_args_check_handler(const char *key, const char *val, void *opaque)
+{
+	struct hinic3_nic_common_dev_config *config = opaque;
+	char *end;
+	signed long tmp;
+
+	if (val == NULL || *val == '\0') {
+		PMD_DRV_LOG(ERR, "Key %s is missing value.", key);
+		return -EINVAL;
+	}
+
+	errno = 0;
+	tmp = strtol(val, &end, 10);
+	if (errno != 0 || *end != '\0' || tmp < 0) {
+		PMD_DRV_LOG(ERR, "%s: \"%s\" is an invalid integer.", key, val);
+		return -EINVAL;
+	}
+
+	if (strcmp(key, "tx_pending_limit") == 0) {
+		if (tmp > UINT8_MAX)
+			goto out_of_range;
+		config->tx_pending_limit = tmp;
+	} else if (strcmp(key, "tx_coalescing_time") == 0) {
+		if (tmp > UINT8_MAX)
+			goto out_of_range;
+		config->tx_coalescing_time = tmp;
+	} else if (strcmp(key, "rx_cqe_coalesce_num") == 0) {
+		if (tmp > UINT8_MAX)
+			goto out_of_range;
+		config->rx_cqe_coalesce_num = tmp;
+	} else if (strcmp(key, "rx_cqe_timer_loop") == 0) {
+		if (tmp > UINT8_MAX)
+			goto out_of_range;
+		config->rx_cqe_timer_loop = tmp;
+	} else {
+		PMD_DRV_LOG(ERR, "Unknown parameter: %s", key);
+		return -EINVAL;
+	}
+
+	return 0;
+
+out_of_range:
+	PMD_DRV_LOG(ERR, "%s: value exceeds the maximum allowed value.", key);
+	return -EINVAL;
+}
+
+static const char *const hinic3_nic_common_valid_args[] = {
+	"tx_pending_limit",
+	"tx_coalescing_time",
+	"rx_cqe_coalesce_num",
+	"rx_cqe_timer_loop",
+	NULL
+};
+
+static int
+hinic3_nic_common_config_get(struct rte_pci_device *pci_dev,
+			     struct hinic3_nic_common_dev_config *config)
+{
+	int ret = 0;
+	struct rte_kvargs *kvlist;
+	struct rte_device *eal_dev = &pci_dev->device;
+
+	/* Set private param defaults. */
+	config->tx_pending_limit = HINIC3_DEFAULT_TX_CI_PENDING_LIMIT;
+	config->tx_coalescing_time = HINIC3_DEFAULT_TX_CI_COALESCING_TIME;
+	config->rx_cqe_coalesce_num = HINIC3_RX_CQE_COALESCE_NUM;
+	config->rx_cqe_timer_loop = HINIC3_RX_CQE_TIMER_LOOP;
+
+	if (eal_dev->devargs == NULL || eal_dev->devargs->args == NULL)
+		return 0;
+
+	kvlist = rte_kvargs_parse(eal_dev->devargs->args,
+				  hinic3_nic_common_valid_args);
+	if (kvlist == NULL) {
+		PMD_DRV_LOG(ERR, "nic private parameter err, the format must be '-a dev,[key]=[value]'.");
+		return -EINVAL;
+	}
+
+	ret = rte_kvargs_process(kvlist, NULL, hinic3_nic_common_args_check_handler, config);
+	if (ret < 0)
+		ret = -EINVAL;
+
+	rte_kvargs_free(kvlist);
+
+	PMD_DRV_LOG(INFO, "tx_pending_limit:%upkt, tx_coalescing_time:%uus, "
+		"rx_cqe_coalesce_num:%upkt, rx_cqe_timer_loop:%uus.",
+		config->tx_pending_limit * HINIC3_COALESCING_UNIT_PKTS,
+		config->tx_coalescing_time,
+		config->rx_cqe_coalesce_num * HINIC3_COALESCING_UNIT_PKTS,
+		config->rx_cqe_timer_loop);
+	return ret;
+}
+
+static int
 hinic3_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev;
+	struct hinic3_nic_dev *nic_dev = HINIC3_ETH_DEV_TO_PRIVATE_NIC_DEV(eth_dev);
+	struct hinic3_nic_common_dev_config config;
+	int err = 0;
 
 	pci_dev = RTE_CLASS_TO_BUS_DEVICE(eth_dev, *pci_dev);
 
@@ -4079,11 +4176,32 @@ hinic3_dev_init(struct rte_eth_dev *eth_dev)
 	PMD_DRV_LOG(DEBUG, "Network Interface pmd driver version: %s",
 		    HINIC3_PMD_DRV_VERSION);
 
+	/*
+	 * Parse device arguments before allocating any resources so that an
+	 * invalid argument fails the probe without leaking memory. Secondary
+	 * processes re-use the primary's configuration and must not re-parse
+	 * devargs or overwrite the primary's settings.
+	 */
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		err = hinic3_nic_common_config_get(pci_dev, &config);
+		if (err < 0) {
+			PMD_DRV_LOG(ERR, "Failed to get nic device arguments.");
+			return err;
+		}
+	}
+
+	err = hinic3_func_init(eth_dev);
+	if (err)
+		return err;
+
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
+		nic_dev->config = config;
+
 	eth_dev->rx_pkt_burst = hinic3_recv_pkts;
 	eth_dev->tx_pkt_burst = hinic3_xmit_pkts;
 	eth_dev->tx_pkt_prepare = hinic3_prep_pkts;
 
-	return hinic3_func_init(eth_dev);
+	return 0;
 }
 
 static int
@@ -4138,6 +4256,11 @@ static struct rte_pci_driver rte_hinic3_pmd = {
 
 RTE_PMD_REGISTER_PCI(net_hinic3, rte_hinic3_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_hinic3, pci_id_hinic3_map);
+RTE_PMD_REGISTER_PARAM_STRING(net_hinic3,
+	"tx_pending_limit=<int> "
+	"tx_coalescing_time=<int> "
+	"rx_cqe_coalesce_num=<int> "
+	"rx_cqe_timer_loop=<int>");
 
 RTE_INIT(hinic3_init_log)
 {
