@@ -7,6 +7,10 @@ HINIC3 Poll Mode Driver
 The hinic3 PMD (**librte_net_hinic3**) provides poll mode driver support
 for 25Gbps/100Gbps/200Gbps/400Gbps Huawei SP230, SP560 and SP620 series Network Adapters.
 
+The Tx WQE task format is chosen from the firmware capabilities rather
+than from the NIC model: the SP230 and the SP560 use the compact task
+WQE, while the SP620 uses the scalar task WQE.
+
 
 Features
 --------
