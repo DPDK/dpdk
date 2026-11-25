@@ -17,6 +17,7 @@
 #define HINIC3_DCB_UP_MAX		0x8
 
 #define HINIC3_MAX_NUM_RQ		256
+#define MAX_FUNCTION_NUM		4096
 
 #define HINIC3_MAX_MTU_SIZE		9600
 #define HINIC3_MIN_MTU_SIZE		256
@@ -371,6 +372,18 @@ struct hinic3_port_stats_info {
 	uint16_t rsvd1;
 };
 
+#define HINIC3_CMD_MAX_DP_DATA_NUM 50
+struct hinic3_cir_drop {
+	uint64_t rx_discard_phy;
+};
+
+struct hinic3_cmd_get_dp_info_resp {
+	struct mgmt_msg_head msg_head;
+	uint16_t length;
+	uint16_t rsvd;
+	uint64_t value[HINIC3_CMD_MAX_DP_DATA_NUM];
+};
+
 struct hinic3_vport_stats {
 	uint64_t tx_unicast_pkts_vport;
 	uint64_t tx_unicast_bytes_vport;
@@ -390,6 +403,8 @@ struct hinic3_vport_stats {
 	uint64_t rx_discard_vport;
 	uint64_t tx_err_vport;
 	uint64_t rx_err_vport;
+	uint64_t rx_mtu_err_vport;
+	uint64_t rx_out_of_buffer; /* fw: rx_nowqe */
 };
 
 struct hinic3_cmd_vport_stats {
@@ -398,7 +413,7 @@ struct hinic3_cmd_vport_stats {
 	uint32_t stats_size;
 	uint32_t rsvd1;
 	struct hinic3_vport_stats stats;
-	uint64_t rsvd2[6];
+	uint64_t rsvd2[4];
 };
 
 struct hinic3_phy_port_stats {
@@ -1540,4 +1555,32 @@ int hinic3_set_feature_to_hw(struct hinic3_hwdev *hwdev, uint64_t *s_feature, ui
 
 int hinic3_set_link_status_follow(struct hinic3_hwdev *hwdev,
 				  enum hinic3_link_follow_status status);
+
+/* VF LAG definitions */
+#define VF_LAG_VF_NUM_GROUP_NUM 128
+#define VF_LAG_VF_NUM_PER_GROUP 32
+#define HINIC3_CMD_OPCODE_SET 0
+#define HINIC3_CMD_OPCODE_GET 1
+
+typedef struct hinic3_vf_lag_bitmap_s {
+	uint32_t vf_bit_map[VF_LAG_VF_NUM_GROUP_NUM];
+} hinic3_vf_lag_bitmap;
+
+struct hinic3_vf_lag_cmd {
+	struct mgmt_msg_head msg_head;
+
+	uint16_t func_id;
+	uint8_t opcode; /* 0 -> set, 1 -> get */
+	uint8_t en_flag; /* 0 -> disable, 1 -> enable  */
+	uint8_t bond_active_num;
+	uint8_t bond_active_bitmap;
+	uint8_t mac_sync_flag;
+	uint8_t rsvd;
+	hinic3_vf_lag_bitmap vf_lag_bitmap;
+};
+
+int hinic3_get_cir_drop(void *hwdev, struct hinic3_cir_drop *stats);
+
+bool hinic3_cmd_vf_lag(void *hwdev, uint16_t func_id, uint8_t opcode);
+
 #endif /* _HINIC3_NIC_CFG_H_ */

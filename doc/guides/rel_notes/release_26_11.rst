@@ -128,6 +128,11 @@ New Features
   * Advertised ``RTE_ETH_DEV_CAPA_FLOW_RULE_KEEP`` capability,
     as flow rules were already kept across device restart.
 
+* **Updated Huawei hinic3 ethernet driver.**
+
+  * Added vport statistics, including CIR drop, and VF link
+    aggregation (LAG) support.
+
 * **Updated Intel iavf driver.**
 
   * Runtime Rx/Tx queue setup is now automatically disabled

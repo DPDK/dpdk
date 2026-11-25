@@ -162,6 +162,9 @@ struct hinic3_nic_dev {
 
 };
 
+#define SELECT_OTHER_COS_ID(cos_id) ((cos_id) ^ 4)
+#define ODD_NUMBER_QUEUE_ID(q_id) ((q_id) & 1)
+
 #define HINIC3_IS_SP620_NIC(nic_dev) ((nic_dev)->nic_type == NIC_SP620)
 #define HINIC3_IS_SP230_NIC(nic_dev) ((nic_dev)->nic_type == NIC_SP230)
 
