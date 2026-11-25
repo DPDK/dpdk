@@ -82,7 +82,8 @@ hinic3_set_vport_state(struct hinic3_hwdev *hwdev,
 	nic_dev = HINIC3_ETH_DEV_TO_PRIVATE_NIC_DEV(hwdev->eth_dev);
 
 	if (link_state->state) {
-		if (hinic3_get_bit(HINIC3_DEV_START, &nic_dev->dev_status))
+		if (hinic3_get_bit(HINIC3_DEV_START, &nic_dev->dev_status) &&
+		    !nic_dev->admin_down)
 			err = hinic3_set_vport_enable(hwdev, true);
 	} else {
 		err = hinic3_set_vport_enable(hwdev, false);
@@ -111,6 +112,12 @@ link_status_event_handler(struct hinic3_hwdev *hwdev, struct hinic3_handler_info
 
 	/* Link event reported only after set vport enable. */
 	hinic3_get_link_port_info(hwdev, link_status->state, &link);
+
+	if (HINIC3_IS_VF(hwdev)) {
+		hwdev->link_status = link.link_status;
+		link.link_status = hwdev->link_status & hwdev->vf_valid_status;
+	}
+
 	err = rte_eth_linkstatus_set(hwdev->eth_dev, &link);
 	if (!err && hwdev->eth_dev->data->dev_conf.intr_conf.lsc != 0)
 		rte_eth_dev_callback_process(hwdev->eth_dev,
