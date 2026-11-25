@@ -230,6 +230,14 @@ hinic3_flow_fdir_ipv4(const struct rte_flow_item *flow_item,
 
 	mask_ipv4 = (const struct rte_flow_item_ipv4 *)flow_item->mask;
 	spec_ipv4 = (const struct rte_flow_item_ipv4 *)flow_item->spec;
+
+	filter->fdir_filter.ip_type = HINIC3_FDIR_IP_TYPE_IPV4;
+	filter->fdir_filter.tunnel_type = HINIC3_FDIR_TUNNEL_MODE_NORMAL;
+
+	/* A wildcard IPv4 item leaves the L4 item in charge of the rule. */
+	if (!mask_ipv4 && !spec_ipv4)
+		return 0;
+
 	if (!mask_ipv4 || !spec_ipv4) {
 		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
 				   flow_item,
@@ -252,8 +260,6 @@ hinic3_flow_fdir_ipv4(const struct rte_flow_item *flow_item,
 	}
 
 	/* Set the filter information. */
-	filter->fdir_filter.ip_type = HINIC3_FDIR_IP_TYPE_IPV4;
-	filter->fdir_filter.tunnel_type = HINIC3_FDIR_TUNNEL_MODE_NORMAL;
 	filter->fdir_filter.key_mask.ipv4.src_ip =
 		rte_be_to_cpu_32(mask_ipv4->hdr.src_addr);
 	filter->fdir_filter.key_spec.ipv4.src_ip =
@@ -380,6 +386,14 @@ hinic3_flow_fdir_udp(const struct rte_flow_item *flow_item,
 		return -rte_errno;
 	}
 
+	/* Only support src, dst ports, others should be masked. */
+	if (mask_udp->hdr.dgram_len || mask_udp->hdr.dgram_cksum) {
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
+				   flow_item,
+				   "Not supported by fdir filter, udp only support src port, dst port");
+		return -rte_errno;
+	}
+
 	/* Set the filter information. */
 	filter->fdir_filter.key_mask.src_port =
 		(uint16_t)rte_be_to_cpu_16(mask_udp->hdr.src_port);
@@ -389,6 +403,42 @@ hinic3_flow_fdir_udp(const struct rte_flow_item *flow_item,
 		(uint16_t)rte_be_to_cpu_16(mask_udp->hdr.dst_port);
 	filter->fdir_filter.key_spec.dst_port =
 		(uint16_t)rte_be_to_cpu_16(spec_udp->hdr.dst_port);
+
+	return 0;
+}
+
+static int
+hinic3_flow_fdir_icmp(const struct rte_flow_item *flow_item,
+		      struct hinic3_filter_t *filter,
+		      struct rte_flow_error *error)
+{
+	const struct rte_flow_item_icmp *spec_icmp, *mask_icmp;
+
+	mask_icmp = (const struct rte_flow_item_icmp *)flow_item->mask;
+	spec_icmp = (const struct rte_flow_item_icmp *)flow_item->spec;
+
+	filter->fdir_filter.key_mask.proto = HINIC3_UINT8_MAX;
+	filter->fdir_filter.key_spec.proto = IPPROTO_ICMP;
+
+	if (!mask_icmp && !spec_icmp)
+		return 0;
+
+	if (!mask_icmp || !spec_icmp) {
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
+				   flow_item,
+				   "Invalid fdir filter icmp mask or spec");
+		return -rte_errno;
+	}
+
+	/* Only the protocol number can be matched, others should be masked. */
+	if (mask_icmp->hdr.icmp_type || mask_icmp->hdr.icmp_code ||
+	    mask_icmp->hdr.icmp_cksum || mask_icmp->hdr.icmp_ident ||
+	    mask_icmp->hdr.icmp_seq_nb) {
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
+				   flow_item,
+				   "Not supported by fdir filter, icmp only support protocol number");
+		return -rte_errno;
+	}
 
 	return 0;
 }
@@ -460,6 +510,12 @@ hinic3_flow_parse_fdir_pattern(__rte_unused struct rte_eth_dev *dev,
 
 		case RTE_FLOW_ITEM_TYPE_UDP:
 			err = hinic3_flow_fdir_udp(flow_item, filter, error);
+			if (err)
+				return -rte_errno;
+			break;
+
+		case RTE_FLOW_ITEM_TYPE_ICMP:
+			err = hinic3_flow_fdir_icmp(flow_item, filter, error);
 			if (err)
 				return -rte_errno;
 			break;
