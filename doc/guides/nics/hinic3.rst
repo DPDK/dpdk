@@ -16,7 +16,7 @@ Features
 - Receiver Side Scaling (RSS)
 - Flow filtering
 - Checksum offload
-- VLAN/QinQ stripping and inserting
+- VLAN stripping and inserting
 - TSO offload
 - Promiscuous mode
 - Port hardware statistics
