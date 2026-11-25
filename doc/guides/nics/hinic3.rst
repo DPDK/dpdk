@@ -23,6 +23,7 @@ Features
 - Jumbo frames
 - Link state information
 - Link flow control
+- FEC
 - Scattered and gather for TX and RX
 - Allmulticast mode
 - MTU update
