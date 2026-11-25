@@ -24,6 +24,7 @@ Features
 - TSO offload
 - Promiscuous mode
 - Port hardware statistics
+- Burst mode info
 - Jumbo frames
 - Link state information
 - Link flow control
