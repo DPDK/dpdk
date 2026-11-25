@@ -15,6 +15,9 @@
 
 #define HINIC3_PMD_DRV_VERSION "B106"
 
+#define HINIC3_MAX_QUEUE_DEPTH         16384
+#define HINIC3_MIN_QUEUE_DEPTH         128
+
 #define PCI_DEV_TO_INTR_HANDLE(pci_dev) ((pci_dev)->intr_handle)
 
 #define HINIC3_PKT_RX_L4_CKSUM_BAD	RTE_MBUF_F_RX_L4_CKSUM_BAD
@@ -144,6 +147,8 @@ struct hinic3_nic_dev {
 
 	uint16_t num_sqs;
 	uint16_t num_rqs;
+	uint16_t rxq_depth;
+	uint16_t txq_depth;
 	uint16_t max_sqs;
 	uint16_t max_rqs;
 
