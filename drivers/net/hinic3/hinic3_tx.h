@@ -6,11 +6,17 @@
 #define _HINIC3_TX_H_
 
 #define MAX_SINGLE_SGE_SIZE		 65536
-#define HINIC3_NONTSO_PKT_MAX_SGE	 32 /**< non-tso max sge 32. */
+#define HINIC3_NONTSO_PKT_MAX_SGE	 38 /**< non-tso max sge 38. */
 #define HINIC3_NONTSO_SEG_NUM_VALID(num) ((num) <= HINIC3_NONTSO_PKT_MAX_SGE)
 
-#define HINIC3_TSO_PKT_MAX_SGE		127 /**< tso max sge 127. */
-#define HINIC3_TSO_SEG_NUM_INVALID(num) ((num) > HINIC3_TSO_PKT_MAX_SGE)
+#define HINIC3_TSO_PKT_MAX_SGE		255 /**< tso max sge 255. */
+
+/* Non-copy SGE configuration: 28 SGEs are not copied */
+#define HINIC3_NON_COPY_SGE_NUM	28
+#define HINIC3_NONTSO_MBUF_NUM_MAX \
+	(HINIC3_NONTSO_PKT_MAX_SGE - HINIC3_NON_COPY_SGE_NUM)
+#define HINIC3_TSO_MBUF_NUM_MAX \
+	(HINIC3_TSO_PKT_MAX_SGE - HINIC3_NON_COPY_SGE_NUM)
 
 /* Tx wqe queue info */
 struct hinic3_queue_info {
@@ -57,7 +63,6 @@ struct hinic3_wqe_info {
 	uint16_t pi;
 
 	uint16_t wqebb_cnt;
-	uint16_t rsvd2; /**< Reserved field 2. */
 
 	struct hinic3_queue_info queue_info;
 	struct hinic3_offload_info offload_info;
@@ -375,7 +380,7 @@ struct __rte_cache_aligned hinic3_txq {
 	uint64_t sq_bot_sge_addr;
 	uint32_t cos;
 	uint8_t tx_wqe_compact_task;
-	uint8_t rsvd[3];
+	uint32_t non_tso_max_pkt_len;
 	struct hinic3_txq_stats txq_stats;
 #ifdef HINIC3_XSTAT_PROF_TX
 	uint64_t prof_tx_end_tsc;
