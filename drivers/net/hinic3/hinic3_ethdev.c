@@ -884,6 +884,14 @@ hinic3_reset_rx_queue(struct rte_eth_dev *dev)
 		rxq->prod_idx = 0;
 		rxq->delta = rxq->q_depth;
 		rxq->next_to_update = 0;
+
+		/*
+		 * Hardware does not clear the CI write-back memory on reset, so
+		 * the stale hw_ci must be cleared as well, otherwise the driver
+		 * may treat queued mbufs as completed after restart.
+		 */
+		if (rxq->rq_ci != NULL)
+			memset(rxq->rq_ci, 0, sizeof(*rxq->rq_ci));
 	}
 }
 
