@@ -15,6 +15,8 @@
 
 #define HINIC3_MAX_PF_FUNCS 32
 
+#define HINIC3_MBOX_SAVE_NUM          20
+
 /* Message header define. */
 #define HINIC3_MSG_HEADER_SRC_GLB_FUNC_IDX_SHIFT 0
 #define HINIC3_MSG_HEADER_STATUS_SHIFT		 13
@@ -150,8 +152,21 @@ enum hinic3_mbox_cb_state {
 	HINIC3_PPF_TO_PF_MBOX_CB_RUNNING
 };
 
+struct mbox_send_info {
+	uint16_t cmd;
+	enum hinic3_mod_type mod;
+	uint8_t send_msg_id;
+};
+
+struct save_mbox_info {
+	struct mbox_send_info send_info[HINIC3_MBOX_SAVE_NUM];
+	uint8_t start;
+	uint8_t count;
+};
+
 struct hinic3_mbox {
 	struct hinic3_hwdev *hwdev;
+	struct save_mbox_info *save_mbox;
 
 	struct hinic3_send_mbox send_mbox;
 
@@ -163,6 +178,10 @@ struct hinic3_mbox {
 	enum mbox_event_state event_flag;
 	/* Lock for mbox event flag. */
 	rte_spinlock_t mbox_lock;
+
+	uint64_t mbox_send_cnt;
+	uint64_t mbox_ack_cnt;
+	bool mbox_error;
 };
 
 int hinic3_mbox_func_aeqe_handler(struct hinic3_hwdev *hwdev, uint8_t *header,

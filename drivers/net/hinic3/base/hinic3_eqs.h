@@ -5,6 +5,10 @@
 #ifndef _HINIC3_EQS_H_
 #define _HINIC3_EQS_H_
 
+#include <stdio.h>
+
+struct rte_pci_device;
+
 #define HINIC3_MAX_AEQS	    4
 #define HINIC3_MIN_AEQS	    2
 #define HINIC3_EQ_MAX_PAGES 4
@@ -83,7 +87,10 @@ int hinic3_aeqs_init(struct hinic3_hwdev *hwdev);
 
 void hinic3_aeqs_free(struct hinic3_hwdev *hwdev);
 
-void hinic3_dump_aeq_info(struct hinic3_hwdev *hwdev);
+void hinic3_dump_aeq_info(struct hinic3_hwdev *hwdev, FILE *file);
+
+void hinic3_dump_aeq_mbox_info(struct hinic3_hwdev *hwdev,
+			       struct rte_pci_device *pci_dev, FILE *file);
 
 int hinic3_aeq_poll_msg(struct hinic3_eq *eq, uint32_t timeout, void *param);
 
