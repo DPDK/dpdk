@@ -62,6 +62,12 @@ The following parameters are supported:
 ``tx_coalescing_time`` (default ``2``)
    Tx completion coalescing time, in microseconds.
 
+``rx_cqe_compact_en`` (default ``1``)
+   Enable (``1``) or disable (``0``) compact CQE mode. The SP230 reports the
+   HW compact CQE feature bit and always uses the compact Rx mode; the SP560
+   reports the SW compact CQE feature bit and follows this setting; the SP620
+   reports neither.
+
 ``rx_cqe_coalesce_num`` (default ``7``)
    Rx CQE coalescing count, in units of 8 packets.
 
