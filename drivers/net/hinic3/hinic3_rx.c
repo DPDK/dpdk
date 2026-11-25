@@ -639,6 +639,25 @@ hinic3_poll_integrated_cqe_rq_empty(struct hinic3_rxq *rxq)
 	rq_ci.dw1.value = hinic3_hw_cpu32(val);
 	hw_ci = rq_ci.dw1.bs.hw_ci;
 
+	if (HINIC3_IS_SP560_NIC(rxq->nic_dev)) {
+		uint16_t sw_pi = hinic3_get_rq_local_pi(rxq);
+		uint64_t end;
+
+		end = cycles + msecs_to_cycles(HINIC3_FLUSH_QUEUE_TIMEOUT);
+		do {
+			val = rte_read32(&rxq->rq_ci->dw1.value);
+			rq_ci.dw1.value = hinic3_hw_cpu32(val);
+			hw_ci = rq_ci.dw1.bs.hw_ci;
+			if (sw_pi == hw_ci)
+				break;
+
+			rte_delay_us(1);
+		} while (time_before(cycles, end));
+
+		if (sw_pi != hw_ci)
+			return -EFAULT;
+	}
+
 	while (sw_ci != hw_ci) {
 		rx_info = &rxq->rx_info[sw_ci];
 		rte_pktmbuf_free(rx_info->mbuf);

@@ -8,6 +8,24 @@
 #include "hinic3_hwif.h"
 #include "hinic3_stn_cmdq.h"
 
+#define HINIC3_DEFAULT_DROP_THD_ON			0xFFFF
+#define HINIC3_DEFAULT_DROP_THD_OFF			0
+#define WQ_PREFETCH_MAX					6
+#define WQ_PREFETCH_MIN					1
+#define WQ_PREFETCH_THRESHOLD				256
+
+#define RQ_CTXT_CEQ_ATTR_CI_WR_SHIFT			0
+#define RQ_CTXT_CEQ_ATTR_INTR_SHIFT			21
+#define RQ_CTXT_CEQ_ATTR_INTR_ARM_SHIFT			30
+#define RQ_CTXT_CEQ_ATTR_EN_SHIFT			31
+
+#define RQ_CTXT_CEQ_ATTR_CI_WR_MASK			0x1U
+#define RQ_CTXT_CEQ_ATTR_INTR_MASK			0x3FFU
+#define RQ_CTXT_CEQ_ATTR_INTR_ARM_MASK			0x1U
+#define RQ_CTXT_CEQ_ATTR_EN_MASK			0x1U
+/* Indicate ucode that this is an interrupt in the DPDK scenario. */
+#define RQ_CTXT_INVALID_INTR_NUM			0x1FFU
+
 #define STN_SQ_CTXT_SIZE(num_sqs)	((uint16_t)(sizeof(struct hinic3_stn_qp_ctxt_header) \
 						    + (num_sqs) * sizeof(struct hinic3_sq_ctxt)))
 #define STN_RQ_CTXT_SIZE(num_rqs)	((uint16_t)(sizeof(struct hinic3_stn_qp_ctxt_header) \
@@ -136,6 +154,43 @@ static void cmd_buf_to_rss_indir_table(const struct hinic3_cmd_buf *cmd_buf, uin
 		indir_table[i] = *(indir_tbl + i);
 }
 
+static void
+prepare_sq_ctxt_drop_and_prefetch(struct hinic3_sq_ctxt *sq_ctxt)
+{
+	sq_ctxt->pkt_drop_thd = SQ_CTXT_PKT_DROP_THD_SET(HINIC3_DEFAULT_DROP_THD_ON, THD_ON) |
+				SQ_CTXT_PKT_DROP_THD_SET(HINIC3_DEFAULT_DROP_THD_OFF, THD_OFF);
+
+	sq_ctxt->pref_cache = SQ_CTXT_PREF_SET(WQ_PREFETCH_MIN, CACHE_MIN) |
+			      SQ_CTXT_PREF_SET(WQ_PREFETCH_MAX, CACHE_MAX) |
+			      SQ_CTXT_PREF_SET(WQ_PREFETCH_THRESHOLD, CACHE_THRESHOLD);
+}
+
+static void
+prepare_rq_ctxt_ceq_and_prefetch(struct hinic3_rq_ctxt *rq_ctxt, uint16_t wqe_type,
+	uint16_t msix_entry_idx, bool support_rq_sw_compact_cqe, uint8_t intr_disable)
+{
+	uint16_t ceq_intr = intr_disable ? RQ_CTXT_INVALID_INTR_NUM : msix_entry_idx;
+
+	rq_ctxt->ceq_attr = RQ_CTXT_CEQ_ATTR_SET(intr_disable, EN) |
+			    RQ_CTXT_CEQ_ATTR_SET(0, INTR_ARM) |
+			    RQ_CTXT_CEQ_ATTR_SET(ceq_intr, INTR);
+	if (wqe_type == HINIC3_COMPACT_RQ_WQE && support_rq_sw_compact_cqe) {
+		/*
+		 * With the SW compact CQE, EN enables the CEQ context and must
+		 * be set for the attributes below to take effect; it does not
+		 * mask Rx interrupts. Interrupt delivery is controlled by the
+		 * INTR field above, where RQ_CTXT_INVALID_INTR_NUM keeps the
+		 * queue silent while a valid vector enables the interrupt.
+		 */
+		rq_ctxt->ceq_attr |= RQ_CTXT_CEQ_ATTR_SET(1, EN);
+		rq_ctxt->ceq_attr |= RQ_CTXT_CEQ_ATTR_SET(1, CI_WR);
+		rq_ctxt->ceq_attr |= RQ_CTXT_CEQ_ATTR_SET(1, INTR_ARM);
+	}
+	rq_ctxt->pref_cache = RQ_CTXT_PREF_SET(WQ_PREFETCH_MIN, CACHE_MIN) |
+			      RQ_CTXT_PREF_SET(WQ_PREFETCH_MAX, CACHE_MAX) |
+			      RQ_CTXT_PREF_SET(WQ_PREFETCH_THRESHOLD, CACHE_THRESHOLD);
+}
+
 const struct hinic3_nic_cmdq_ops hinic3_stn_cmdq_ops = {
 	.prepare_cmd_buf_clean_tso_lro_space =    prepare_cmd_buf_clean_tso_lro_space,
 	.prepare_cmd_buf_qp_context_multi_store = prepare_cmd_buf_qp_context_multi_store,
@@ -143,4 +198,6 @@ const struct hinic3_nic_cmdq_ops hinic3_stn_cmdq_ops = {
 	.prepare_cmd_buf_set_rss_indir_table =    prepare_cmd_buf_set_rss_indir_table,
 	.prepare_cmd_buf_get_rss_indir_table =    prepare_cmd_buf_get_rss_indir_table,
 	.cmd_buf_to_rss_indir_table =             cmd_buf_to_rss_indir_table,
+	.prepare_sq_ctxt_drop_and_prefetch =      prepare_sq_ctxt_drop_and_prefetch,
+	.prepare_rq_ctxt_ceq_and_prefetch =       prepare_rq_ctxt_ceq_and_prefetch,
 };

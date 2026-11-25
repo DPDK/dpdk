@@ -102,7 +102,7 @@ enum nic_feature_cap {
 
 };
 
-#define DEFAULT_DRV_FEATURE		0x3FC3FFF
+#define DEFAULT_DRV_FEATURE		0x0BFC3FFF
 
 TAILQ_HEAD(hinic3_ethertype_filter_list, rte_flow);
 TAILQ_HEAD(hinic3_fdir_rule_filter_list, rte_flow);
@@ -110,7 +110,8 @@ TAILQ_HEAD(hinic3_fdir_rule_filter_list, rte_flow);
 enum nic_type {
 	NIC_SP620 = 0,
 	NIC_SP230 = 1,
-	NIC_UNKNOWN = 2,
+	NIC_SP560 = 2,
+	NIC_UNKNOWN = 3,
 };
 
 struct hinic3_nic_dev {
@@ -172,6 +173,7 @@ struct hinic3_nic_dev {
 
 #define HINIC3_IS_SP620_NIC(nic_dev) ((nic_dev)->nic_type == NIC_SP620)
 #define HINIC3_IS_SP230_NIC(nic_dev) ((nic_dev)->nic_type == NIC_SP230)
+#define HINIC3_IS_SP560_NIC(nic_dev) ((nic_dev)->nic_type == NIC_SP560)
 
 extern const struct rte_flow_ops hinic3_flow_ops;
 

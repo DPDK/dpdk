@@ -13,12 +13,6 @@
 
 #define HINIC3_DEAULT_TX_CI_PENDING_LIMIT	3
 #define HINIC3_DEAULT_TX_CI_COALESCING_TIME	16
-#define HINIC3_DEAULT_DROP_THD_ON		0xFFFF
-#define HINIC3_DEAULT_DROP_THD_OFF		0
-
-#define WQ_PREFETCH_MAX				6
-#define WQ_PREFETCH_MIN				1
-#define WQ_PREFETCH_THRESHOLD			256
 
 #define CI_IDX_HIGH_SHIFH			12
 
@@ -53,16 +47,6 @@
 	(((val) & SQ_CTXT_WQ_PAGE_##member##_MASK)	\
 	 << SQ_CTXT_WQ_PAGE_##member##_SHIFT)
 
-#define SQ_CTXT_PKT_DROP_THD_ON_SHIFT		0
-#define SQ_CTXT_PKT_DROP_THD_OFF_SHIFT		16
-
-#define SQ_CTXT_PKT_DROP_THD_ON_MASK		0xFFFFU
-#define SQ_CTXT_PKT_DROP_THD_OFF_MASK		0xFFFFU
-
-#define SQ_CTXT_PKT_DROP_THD_SET(val, member)		\
-	(((val) & SQ_CTXT_PKT_DROP_##member##_MASK)	\
-	 << SQ_CTXT_PKT_DROP_##member##_SHIFT)
-
 #define SQ_CTXT_GLOBAL_SQ_ID_SHIFT		0
 
 #define SQ_CTXT_GLOBAL_SQ_ID_MASK		0x1FFFU
@@ -84,30 +68,6 @@
 	(((val) & SQ_CTXT_VLAN_##member##_MASK)		\
 	 << SQ_CTXT_VLAN_##member##_SHIFT)
 
-#define SQ_CTXT_PREF_CACHE_THRESHOLD_SHIFT	0
-#define SQ_CTXT_PREF_CACHE_MAX_SHIFT		14
-#define SQ_CTXT_PREF_CACHE_MIN_SHIFT		25
-
-#define SQ_CTXT_PREF_CACHE_THRESHOLD_MASK	0x3FFFU
-#define SQ_CTXT_PREF_CACHE_MAX_MASK		0x7FFU
-#define SQ_CTXT_PREF_CACHE_MIN_MASK		0x7FU
-
-#define SQ_CTXT_PREF_CI_HI_SHIFT		0
-#define SQ_CTXT_PREF_OWNER_SHIFT		4
-
-#define SQ_CTXT_PREF_CI_HI_MASK			0xFU
-#define SQ_CTXT_PREF_OWNER_MASK			0x1U
-
-#define SQ_CTXT_PREF_WQ_PFN_HI_SHIFT		0
-#define SQ_CTXT_PREF_CI_LOW_SHIFT		20
-
-#define SQ_CTXT_PREF_WQ_PFN_HI_MASK		0xFFFFFU
-#define SQ_CTXT_PREF_CI_LOW_MASK		0xFFFU
-
-#define SQ_CTXT_PREF_SET(val, member)			\
-	(((val) & SQ_CTXT_PREF_##member##_MASK)		\
-	 << SQ_CTXT_PREF_##member##_SHIFT)
-
 #define SQ_CTXT_WQ_BLOCK_PFN_HI_SHIFT		0
 
 #define SQ_CTXT_WQ_BLOCK_PFN_HI_MASK		0x7FFFFFU
@@ -125,18 +85,6 @@
 #define RQ_CTXT_CI_PI_SET(val, member)			\
 	(((val) & RQ_CTXT_##member##_MASK) << RQ_CTXT_##member##_SHIFT)
 
-#define RQ_CTXT_CEQ_ATTR_INTR_SHIFT		21
-#define RQ_CTXT_CEQ_ATTR_INTR_ARM_SHIFT		30
-#define RQ_CTXT_CEQ_ATTR_EN_SHIFT		31
-
-#define RQ_CTXT_CEQ_ATTR_INTR_MASK		0x3FFU
-#define RQ_CTXT_CEQ_ATTR_INTR_ARM_MASK		0x1U
-#define RQ_CTXT_CEQ_ATTR_EN_MASK		0x1U
-
-#define RQ_CTXT_CEQ_ATTR_SET(val, member)		\
-	(((val) & RQ_CTXT_CEQ_ATTR_##member##_MASK)	\
-	 << RQ_CTXT_CEQ_ATTR_##member##_SHIFT)
-
 #define RQ_CTXT_WQ_PAGE_HI_PFN_SHIFT		0
 #define RQ_CTXT_WQ_PAGE_WQE_TYPE_SHIFT		28
 #define RQ_CTXT_WQ_PAGE_OWNER_SHIFT		31
@@ -148,37 +96,6 @@
 #define RQ_CTXT_WQ_PAGE_SET(val, member)		\
 	(((val) & RQ_CTXT_WQ_PAGE_##member##_MASK)	\
 	 << RQ_CTXT_WQ_PAGE_##member##_SHIFT)
-
-#define RQ_CTXT_CQE_LEN_SHIFT			28
-
-#define RQ_CTXT_CQE_LEN_MASK			0x3U
-
-#define RQ_CTXT_CQE_LEN_SET(val, member)		\
-	(((val) & RQ_CTXT_##member##_MASK) << RQ_CTXT_##member##_SHIFT)
-
-#define RQ_CTXT_PREF_CACHE_THRESHOLD_SHIFT	0
-#define RQ_CTXT_PREF_CACHE_MAX_SHIFT		14
-#define RQ_CTXT_PREF_CACHE_MIN_SHIFT		25
-
-#define RQ_CTXT_PREF_CACHE_THRESHOLD_MASK	0x3FFFU
-#define RQ_CTXT_PREF_CACHE_MAX_MASK		0x7FFU
-#define RQ_CTXT_PREF_CACHE_MIN_MASK		0x7FU
-
-#define RQ_CTXT_PREF_CI_HI_SHIFT		0
-#define RQ_CTXT_PREF_OWNER_SHIFT		4
-
-#define RQ_CTXT_PREF_CI_HI_MASK			0xFU
-#define RQ_CTXT_PREF_OWNER_MASK			0x1U
-
-#define RQ_CTXT_PREF_WQ_PFN_HI_SHIFT		0
-#define RQ_CTXT_PREF_CI_LOW_SHIFT		20
-
-#define RQ_CTXT_PREF_WQ_PFN_HI_MASK		0xFFFFFU
-#define RQ_CTXT_PREF_CI_LOW_MASK		0xFFFU
-
-#define RQ_CTXT_PREF_SET(val, member)			\
-	(((val) & RQ_CTXT_PREF_##member##_MASK)		\
-	 << RQ_CTXT_PREF_##member##_SHIFT)
 
 #define RQ_CTXT_WQ_BLOCK_PFN_HI_SHIFT		0
 
@@ -206,6 +123,10 @@ hinic3_sq_prepare_ctxt(struct hinic3_txq *sq, uint16_t sq_id,
 	uint32_t wq_page_pfn_hi, wq_page_pfn_lo, wq_block_pfn_hi, wq_block_pfn_lo;
 	uint16_t pi_start, ci_start;
 
+	memset(sq_ctxt, 0, sizeof(*sq_ctxt));
+
+	hinic3_cmdq_get_ops(sq->nic_dev)->prepare_sq_ctxt_drop_and_prefetch(sq_ctxt);
+
 	ci_start = sq->cons_idx & sq->q_mask;
 	pi_start = sq->prod_idx & sq->q_mask;
 
@@ -232,10 +153,6 @@ hinic3_sq_prepare_ctxt(struct hinic3_txq *sq, uint16_t sq_id,
 
 	sq_ctxt->wq_pfn_lo = wq_page_pfn_lo;
 
-	sq_ctxt->pkt_drop_thd =
-		SQ_CTXT_PKT_DROP_THD_SET(HINIC3_DEAULT_DROP_THD_ON, THD_ON) |
-		SQ_CTXT_PKT_DROP_THD_SET(HINIC3_DEAULT_DROP_THD_OFF, THD_OFF);
-
 	sq_ctxt->global_sq_id =
 		SQ_CTXT_GLOBAL_QUEUE_ID_SET(sq_id, GLOBAL_SQ_ID);
 
@@ -244,11 +161,6 @@ hinic3_sq_prepare_ctxt(struct hinic3_txq *sq, uint16_t sq_id,
 				 SQ_CTXT_VLAN_CEQ_SET(1, INSERT_MODE);
 
 	sq_ctxt->rsvd0 = 0;
-
-	sq_ctxt->pref_cache =
-		SQ_CTXT_PREF_SET(WQ_PREFETCH_MIN, CACHE_MIN) |
-		SQ_CTXT_PREF_SET(WQ_PREFETCH_MAX, CACHE_MAX) |
-		SQ_CTXT_PREF_SET(WQ_PREFETCH_THRESHOLD, CACHE_THRESHOLD);
 
 	sq_ctxt->pref_ci_owner =
 		SQ_CTXT_PREF_SET(CI_HIGN_IDX(ci_start), CI_HI) |
@@ -278,6 +190,9 @@ hinic3_rq_prepare_ctxt(struct hinic3_rxq *rq, struct hinic3_rq_ctxt *rq_ctxt)
 	uint16_t pi_start, ci_start;
 	uint16_t wqe_type = rq->wqe_type;
 	uint8_t intr_disable;
+	bool support_rq_sw_compact_cqe = false;
+
+	memset(rq_ctxt, 0, sizeof(*rq_ctxt));
 
 	/* RQ depth is in unit of 8 Bytes. */
 	ci_start = (uint16_t)((rq->cons_idx & rq->q_mask) << wqe_type);
@@ -292,49 +207,53 @@ hinic3_rq_prepare_ctxt(struct hinic3_rxq *rq, struct hinic3_rq_ctxt *rq_ctxt)
 
 	/* Use 0-level CLA. */
 	wq_block_pfn = WQ_BLOCK_PFN(wq_page_addr);
+
 	wq_block_pfn_hi = upper_32_bits(wq_block_pfn);
 	wq_block_pfn_lo = lower_32_bits(wq_block_pfn);
 
 	rq_ctxt->ci_pi = RQ_CTXT_CI_PI_SET(ci_start, CI_IDX) |
 			 RQ_CTXT_CI_PI_SET(pi_start, PI_IDX);
 
-	/* RQ doesn't need ceq, msix_entry_idx set 1, but mask not enable. */
+	/* RQ doesn't need ceq, msix_entry_idx set 1, but mask not enable */
 	intr_disable = rq->dp_intr_en ? 0 : 1;
-	rq_ctxt->ceq_attr = RQ_CTXT_CEQ_ATTR_SET(intr_disable, EN) |
-			    RQ_CTXT_CEQ_ATTR_SET(0, INTR_ARM) |
-			    RQ_CTXT_CEQ_ATTR_SET(rq->msix_entry_idx, INTR);
+	support_rq_sw_compact_cqe = HINIC3_SUPPORT_RX_SW_COMPACT_CQE(rq->nic_dev);
+	hinic3_cmdq_get_ops(rq->nic_dev)->prepare_rq_ctxt_ceq_and_prefetch(rq_ctxt,
+		wqe_type, rq->msix_entry_idx, support_rq_sw_compact_cqe, intr_disable);
 
-	/* Use 32Byte WQE with SGE for CQE in default. */
+	/* Use 32Byte WQE with SGE for CQE in default */
 	rq_ctxt->wq_pfn_hi_type_owner =
 		RQ_CTXT_WQ_PAGE_SET(wq_page_pfn_hi, HI_PFN) |
 		RQ_CTXT_WQ_PAGE_SET(1, OWNER);
+	rq_ctxt->pi_paddr_hi = upper_32_bits(rq->pi_dma_addr);
+	rq_ctxt->pi_paddr_lo = lower_32_bits(rq->pi_dma_addr);
 
 	switch (wqe_type) {
 	case HINIC3_EXTEND_RQ_WQE:
-		/* Use 32Byte WQE with SGE for CQE. */
+		/* Use 32Byte WQE with SGE for CQE */
 		rq_ctxt->wq_pfn_hi_type_owner |=
 			RQ_CTXT_WQ_PAGE_SET(0, WQE_TYPE);
 		break;
 	case HINIC3_NORMAL_RQ_WQE:
-		/* Use 16Byte WQE with 32Bytes SGE for CQE. */
+		/* Use 16Byte WQE with 32Bytes SGE for CQE */
 		rq_ctxt->wq_pfn_hi_type_owner |=
 			RQ_CTXT_WQ_PAGE_SET(2, WQE_TYPE);
 		rq_ctxt->cqe_sge_len = RQ_CTXT_CQE_LEN_SET(1, CQE_LEN);
 		break;
 	case HINIC3_COMPACT_RQ_WQE:
-		/* Use 8Byte WQE without SGE for CQE. */
+		/* Use 8Byte WQE without SGE for CQE */
 		rq_ctxt->wq_pfn_hi_type_owner |= RQ_CTXT_WQ_PAGE_SET(3, WQE_TYPE);
+		if (HINIC3_SUPPORT_RX_SW_COMPACT_CQE(rq->nic_dev)) {
+			rq_ctxt->cqe_sge_len |=
+				RQ_CTXT_CQE_LEN_SET(RQ_CQE_AGGREGATE_NUM, MAX_COUNT);
+			rq_ctxt->pi_paddr_hi = upper_32_bits(rq->rq_ci_paddr >> RQ_CI_ADDR_SHIFT);
+			rq_ctxt->pi_paddr_lo = lower_32_bits(rq->rq_ci_paddr >> RQ_CI_ADDR_SHIFT);
+		}
 		break;
 	default:
 		PMD_DRV_LOG(INFO, "Invalid rq wqe type: %u", wqe_type);
 	}
 
 	rq_ctxt->wq_pfn_lo = wq_page_pfn_lo;
-
-	rq_ctxt->pref_cache =
-		RQ_CTXT_PREF_SET(WQ_PREFETCH_MIN, CACHE_MIN) |
-		RQ_CTXT_PREF_SET(WQ_PREFETCH_MAX, CACHE_MAX) |
-		RQ_CTXT_PREF_SET(WQ_PREFETCH_THRESHOLD, CACHE_THRESHOLD);
 
 	rq_ctxt->pref_ci_owner =
 		RQ_CTXT_PREF_SET(CI_HIGN_IDX(ci_start), CI_HI) |
@@ -346,8 +265,7 @@ hinic3_rq_prepare_ctxt(struct hinic3_rxq *rq, struct hinic3_rq_ctxt *rq_ctxt)
 
 	rq_ctxt->pref_wq_pfn_lo = wq_page_pfn_lo;
 
-	rq_ctxt->pi_paddr_hi = upper_32_bits(rq->pi_dma_addr);
-	rq_ctxt->pi_paddr_lo = lower_32_bits(rq->pi_dma_addr);
+
 
 	rq_ctxt->wq_block_pfn_hi =
 		RQ_CTXT_WQ_BLOCK_SET(wq_block_pfn_hi, PFN_HI);

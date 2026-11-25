@@ -15,6 +15,10 @@
 
 #define HINIC3_DEV_ID_SP920	0x0224
 
+#define HINIC3_DEV_ID_SP560		0x0230
+#define HINIC3_DEV_ID_VF_SP560		0x0231
+#define HINIC3_DEV_ID_HYPER_VF_SP560	0x0232
+
 /*
  * Bit30/bit31 for bar index flag.
  * 00: bar0

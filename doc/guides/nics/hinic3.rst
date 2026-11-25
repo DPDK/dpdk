@@ -5,7 +5,7 @@ HINIC3 Poll Mode Driver
 =======================
 
 The hinic3 PMD (**librte_net_hinic3**) provides poll mode driver support
-for 25Gbps/100Gbps/200Gbps Huawei SPx series Network Adapters.
+for 25Gbps/100Gbps/200Gbps/400Gbps Huawei SP230, SP560 and SP620 series Network Adapters.
 
 
 Features
