@@ -437,17 +437,15 @@ hinic3_init_rss_type(struct hinic3_nic_dev *nic_dev,
 	rss_type.tcp_ipv6 = (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_TCP) ? 1 : 0;
 	rss_type.udp_ipv4 = (rss_hf & RTE_ETH_RSS_NONFRAG_IPV4_UDP) ? 1 : 0;
 	rss_type.udp_ipv6 = (rss_hf & RTE_ETH_RSS_NONFRAG_IPV6_UDP) ? 1 : 0;
-
-	if (nic_dev->feature_cap & NIC_F_HTN_CMDQ) {
-		rss_type.ipv6_ext = (rss_hf & RTE_ETH_RSS_IPV6_EX) ? 1 : 0;
-		rss_type.tcp_ipv6_ext = (rss_hf & RTE_ETH_RSS_IPV6_TCP_EX) ? 1 : 0;
-	} else {
-		rss_type.ipv6_ext = 0;
-		rss_type.tcp_ipv6_ext = 0;
-	}
+	rss_type.ipv6_ext = (rss_hf & RTE_ETH_RSS_IPV6_EX) ? 1 : 0;
+	rss_type.tcp_ipv6_ext = (rss_hf & RTE_ETH_RSS_IPV6_TCP_EX) ? 1 : 0;
 
 	err = hinic3_set_rss_type(nic_dev->hwdev, rss_type);
-	return err;
+	if (err)
+		return err;
+
+	nic_dev->rss_type = rss_type;
+	return 0;
 }
 
 int
@@ -502,6 +500,8 @@ hinic3_update_rss_config(struct rte_eth_dev *dev,
 	return 0;
 
 init_rss_fail:
+	nic_dev->rss_type.val = 0;
+
 	if (hinic3_rss_template_free(nic_dev->hwdev))
 		PMD_DRV_LOG(WARNING, "Free rss template failed");
 
@@ -701,6 +701,8 @@ hinic3_stop_rq(struct rte_eth_dev *eth_dev, struct hinic3_rxq *rxq)
 	uint32_t head_ci, head_done;
 	int err;
 
+	rte_atomic_store_explicit(&rxq->rss_en, 0, rte_memory_order_relaxed);
+
 	/* Disable rxq intr. */
 	hinic3_dev_rx_queue_intr_disable(eth_dev, rxq->q_id);
 
@@ -778,6 +780,11 @@ hinic3_start_rq(struct rte_eth_dev *eth_dev, struct hinic3_rxq *rxq)
 {
 	struct hinic3_nic_dev *nic_dev = rxq->nic_dev;
 	int err = 0;
+
+	rte_atomic_store_explicit(&rxq->rss_en,
+				  (nic_dev->rss_state == HINIC3_RSS_ENABLE) &&
+				  (nic_dev->rss_type.val != 0),
+				  rte_memory_order_relaxed);
 
 	/* Lock dev queue switch.  */
 	rte_spinlock_lock(&nic_dev->queue_list_lock);
@@ -921,6 +928,23 @@ hinic3_recv_jumbo_pkt(struct hinic3_rxq *rxq, struct rte_mbuf *head_mbuf,
 	}
 }
 
+void
+hinic3_rxq_rss_en_update(struct rte_eth_dev *eth_dev)
+{
+	struct hinic3_nic_dev *nic_dev = HINIC3_ETH_DEV_TO_PRIVATE_NIC_DEV(eth_dev);
+	uint8_t rss_en = (nic_dev->rss_state == HINIC3_RSS_ENABLE) &&
+			 (nic_dev->rss_type.val != 0);
+	uint16_t i;
+
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
+		struct hinic3_rxq *rxq = eth_dev->data->rx_queues[i];
+
+		if (rxq != NULL)
+			rte_atomic_store_explicit(&rxq->rss_en, rss_en,
+						  rte_memory_order_relaxed);
+	}
+}
+
 int
 hinic3_start_all_rqs(struct rte_eth_dev *eth_dev)
 {
@@ -933,6 +957,10 @@ hinic3_start_all_rqs(struct rte_eth_dev *eth_dev)
 
 	for (i = 0; i < nic_dev->num_rqs; i++) {
 		rxq = eth_dev->data->rx_queues[i];
+		rte_atomic_store_explicit(&rxq->rss_en,
+					  (nic_dev->rss_state == HINIC3_RSS_ENABLE) &&
+					  (nic_dev->rss_type.val != 0),
+					  rte_memory_order_relaxed);
 		hinic3_add_rq_to_rx_queue_list(nic_dev, rxq->q_id);
 		err = hinic3_rearm_rxq_mbuf(rxq);
 		if (err) {
@@ -1056,6 +1084,8 @@ hinic3_rx_get_compact_cqe_info(struct hinic3_rxq *rxq, volatile struct hinic3_rq
 	cqe_info->pkt_len = HINIC3_RQ_COMPACT_CQE_STATUS_GET(dw0, PKT_LEN);
 	cqe_info->ts_flag = HINIC3_RQ_COMPACT_CQE_STATUS_GET(dw0, TS_FLAG);
 	cqe_info->ptype = HINIC3_RQ_COMPACT_CQE_STATUS_GET(dw0, PTYPE);
+	cqe_info->rss_type = rte_atomic_load_explicit(&rxq->rss_en,
+						      rte_memory_order_relaxed);
 	cqe_info->rss_hash_value = dw1;
 
 	if (cqe_info->cqe_len == HINIC3_RQ_COMPACT_CQE_16BYTE) {

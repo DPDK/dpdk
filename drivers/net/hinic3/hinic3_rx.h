@@ -5,6 +5,8 @@
 #ifndef _HINIC3_RX_H_
 #define _HINIC3_RX_H_
 
+#include <rte_stdatomic.h>
+
 #define RQ_CQE_OFFOLAD_TYPE_PTYPE_OFFLOAD_SHIFT	0
 #define RQ_CQE_OFFOLAD_TYPE_VLAN_EN_SHIFT	21
 #define RQ_CQE_OFFOLAD_TYPE_RSS_TYPE_SHIFT	24
@@ -358,6 +360,12 @@ struct __rte_cache_aligned hinic3_rxq {
 	rte_iova_t cqe_start_paddr;
 	void *cqe_start_vaddr;
 	uint8_t dp_intr_en;
+	/**
+	 * RSS was enabled when this queue was started. Written by the
+	 * control path and read by the Rx data path, so it is accessed with
+	 * relaxed atomics.
+	 */
+	RTE_ATOMIC(uint8_t)rss_en;
 	uint16_t msix_entry_idx;
 
 	bool rx_deferred_start; /* don't start this queue in dev start */
@@ -421,6 +429,7 @@ void hinic3_init_rx_queue_list(struct hinic3_nic_dev *nic_dev);
 void hinic3_remove_rq_from_rx_queue_list(struct hinic3_nic_dev *nic_dev,
 					 uint16_t queue_id);
 int hinic3_start_all_rqs(struct rte_eth_dev *eth_dev);
+void hinic3_rxq_rss_en_update(struct rte_eth_dev *eth_dev);
 
 #ifdef HINIC3_XSTAT_RXBUF_INFO
 void hinic3_get_stats(struct hinic3_rxq *rxq);

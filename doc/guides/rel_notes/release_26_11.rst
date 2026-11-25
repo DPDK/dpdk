@@ -135,6 +135,7 @@ New Features
   * Added FEC mode get and set support.
   * Added Class of Service (COS) mask and map support.
   * Added VF link up/down and promiscuous mode support.
+  * Updated RSS hash type configuration.
   * Added mailbox message counter reporting through the device private dump API.
 
 * **Updated Intel iavf driver.**
