@@ -34,10 +34,10 @@ struct ptpv2_msg {
 /*
  * Forwarding of IEEE1588 Precise Time Protocol (PTP) packets.
  *
- * In this mode, packets are received one by one and are expected to be
- * PTP V2 L2 Ethernet frames (with the specific Ethernet type "0x88F7")
- * containing PTP "sync" messages (version 2 at offset 1, and message ID
- * 0 at offset 0).
+ * In this mode, packets are received in bursts and processed one by one.
+ * They are expected to be PTP V2 L2 Ethernet frames (with the specific
+ * Ethernet type "0x88F7") containing PTP "sync" messages (version 2 at
+ * offset 1, and message ID 0 at offset 0).
  *
  * Check that each received packet is a IEEE1588 PTP V2 packet of type
  * PTP_SYNC_MESSAGE, and that it has been identified and timestamped
@@ -89,21 +89,14 @@ port_ieee1588_tx_timestamp_check(portid_t pi)
 	       (wait_us == 1) ? "" : "s");
 }
 
-static bool
-ieee1588_packet_fwd(struct fwd_stream *fs)
+static void
+ieee1588_process_packet(struct fwd_stream *fs, struct rte_mbuf *mb)
 {
-	struct rte_mbuf  *mb;
 	struct rte_ether_hdr *eth_hdr;
 	struct rte_ether_addr addr;
 	struct ptpv2_msg *ptp_hdr;
 	uint16_t eth_type;
 	uint32_t timesync_index;
-
-	/*
-	 * Receive 1 packet at a time.
-	 */
-	if (common_fwd_stream_receive(fs, &mb, 1) == 0)
-		return false;
 
 	/*
 	 * Check that the received packet is a PTP packet that was detected
@@ -124,14 +117,14 @@ ieee1588_packet_fwd(struct fwd_stream *fs)
 			       (unsigned) mb->pkt_len);
 		}
 		rte_pktmbuf_free(mb);
-		return false;
+		return;
 	}
 	if (eth_type != RTE_ETHER_TYPE_1588) {
 		printf("Port %u Received NON PTP packet incorrectly"
 		       " detected by hardware\n",
 		       fs->rx_port);
 		rte_pktmbuf_free(mb);
-		return false;
+		return;
 	}
 
 	/*
@@ -145,14 +138,14 @@ ieee1588_packet_fwd(struct fwd_stream *fs)
 		       " protocol version 0x%x (should be 0x02)\n",
 		       fs->rx_port, ptp_hdr->version);
 		rte_pktmbuf_free(mb);
-		return false;
+		return;
 	}
 	if (ptp_hdr->msg_id != PTP_SYNC_MESSAGE) {
 		printf("Port %u Received PTP V2 Ethernet frame with unexpected"
 		       " message ID 0x%x (expected 0x0 - PTP_SYNC_MESSAGE)\n",
 		       fs->rx_port, ptp_hdr->msg_id);
 		rte_pktmbuf_free(mb);
-		return false;
+		return;
 	}
 	printf("Port %u IEEE1588 PTP V2 SYNC Message filtered by hardware\n",
 	       fs->rx_port);
@@ -166,7 +159,7 @@ ieee1588_packet_fwd(struct fwd_stream *fs)
 		       " by hardware\n",
 		       fs->rx_port);
 		rte_pktmbuf_free(mb);
-		return false;
+		return;
 	}
 
 	/* For i40e we need the timesync register index. It is ignored for the
@@ -184,14 +177,25 @@ ieee1588_packet_fwd(struct fwd_stream *fs)
 	mb->ol_flags |= RTE_MBUF_F_TX_IEEE1588_TMST;
 	if (common_fwd_stream_transmit(fs, &mb, 1) == 0) {
 		printf("Port %u sent PTP packet dropped\n", fs->tx_port);
-		return false;
+		return;
 	}
 
 	/*
 	 * Check the TX timestamp.
 	 */
 	port_ieee1588_tx_timestamp_check(fs->tx_port);
-	return true;
+}
+
+static bool
+ieee1588_packet_fwd(struct fwd_stream *fs)
+{
+	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
+
+	const uint16_t nb_rx = common_fwd_stream_receive(fs, pkts_burst, nb_pkt_per_burst);
+	for (uint16_t i = 0; i < nb_rx; i++)
+		ieee1588_process_packet(fs, pkts_burst[i]);
+
+	return nb_rx > 0;
 }
 
 static int
